@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
@@ -678,7 +679,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b24</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b26</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -757,7 +758,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="switchTab('albums')" id="nav-albums" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Альбомы</button>
                     <button onclick="switchTab('battle')" id="nav-battle" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Бой</button>
                     <button onclick="switchTab('rewards')" id="nav-rewards" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Награды</button>
-                    <button onclick="switchTab('studio')" id="nav-studio" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Студия</button>
+                    <button onclick="switchTab('studio')" id="nav-studio" style="display:none" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Студия</button>
                 </nav>
             </div>
         </div>
@@ -776,7 +777,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <button onclick="switchTab('rewards')" id="mob-nav-rewards" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-gift text-[15px] mb-0.5"></i> Награды
             </button>
-            <button onclick="switchTab('studio')" id="mob-nav-studio" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
+            <button onclick="switchTab('studio')" id="mob-nav-studio" style="display:none" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-wand-magic-sparkles text-[15px] mb-0.5"></i> Студия
             </button>
         </div>
@@ -808,7 +809,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
                 <div id="carousel-dots" class="flex flex-wrap items-center justify-center gap-2 mt-2"></div>
 
-                <div id="carousel-empty" class="hidden text-center py-14 text-slate-500">Нет доступных паков. Создайте их в Студии!</div>
+                <div id="carousel-empty" class="hidden text-center py-14 text-slate-500">Нет доступных паков.</div>
 
                 <div id="carousel-detail" class="max-w-xl mx-auto mt-4 mb-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl">
                     <!-- Данные выбранного пака -->
@@ -971,7 +972,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <!-- b24: логин и пароль комнаты — подтверждение прав создателя -->
                 <div id="cloud-auth" class="hidden"></div>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="text" id="cloud-room" placeholder="Код комнаты — придумайте свой, например: moipaki2026" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
+                    <input type="text" id="cloud-room" placeholder="Код комнаты: 7j8uytui — главная, подключается автоматически" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
                     <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         <button type="button" onclick="cloudConnect()" class="px-3 py-2.5 bg-sky-600/80 hover:bg-sky-500 border border-sky-500/40 rounded-xl text-xs font-semibold text-white transition"><i class="fa-solid fa-plug mr-1"></i>Подключить</button>
                         <button type="button" onclick="cloudCreate()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Придумать код автоматически и опубликовать мои паки"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Создать комнату</button>
@@ -980,7 +981,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <button type="button" onclick="cloudDisconnect()" class="px-3 py-2.5 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-xl text-xs font-semibold text-slate-300 transition" title="Отключиться от комнаты"><i class="fa-solid fa-xmark mr-1"></i>Отключить</button>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Регистрация не нужна, но у комнаты есть логин и пароль:</b> «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья вводят тот же код комнаты → «Подключить» → «Получить» и видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
+                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Все игроки сайта автоматически подключены к главной комнате <span class="text-emerald-300">7j8uytui</span> — вводить код не нужно.</b> Регистрация не нужна, но у комнаты есть логин и пароль: «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья уже в главной комнате автоматически (или вводят её код → «Подключить») и сразу видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». <b class="text-slate-300">Изменения отправляются в комнату автоматически</b> сразу после сохранения — даже если создатель тут же закрыл игру: правки допубликуются при следующем запуске. Участники получают обновления сами, примерно каждые 20 секунд (или мгновенно при возврате на вкладку) — без перезагрузки страницы. С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
                 <details class="text-[10px] text-slate-500">
                     <summary class="cursor-pointer hover:text-slate-300 transition">Продвинутый режим: своя база Firebase (необязательно — простое хранилище работает и так)</summary>
                     <p class="mt-2">Своя база надёжнее и держит каталог до 4 МБ. Создаётся кликами за 5 минут, код писать не нужно:</p>
@@ -1025,6 +1026,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="openResetModal()" class="px-4 py-2 bg-red-950/60 hover:bg-red-900/70 text-red-300 hover:text-red-200 border border-red-800/60 rounded-xl text-xs font-semibold transition flex items-center space-x-2">
                         <i class="fa-solid fa-rotate-left text-red-400"></i>
                         <span>Сброс прогресса</span>
+                    </button>
+                    <button onclick="lockHiddenTab()" title="Убрать этот раздел из меню — он снова станет скрытым" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700/70 rounded-xl text-xs font-semibold transition flex items-center space-x-2">
+                        <i class="fa-solid fa-eye-slash text-slate-500"></i>
+                        <span>Скрыть раздел</span>
                     </button>
                 </div>
             </div>
@@ -1365,7 +1370,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="flex items-center gap-2.5 min-w-0 flex-1">
                     <span class="w-8 h-8 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center shrink-none"><i id="unbox-music-icon" class="fa-solid fa-music text-fuchsia-400 text-xs"></i></span>
                     <div class="min-w-0">
-                        <p class="text-[11px] font-bold text-white leading-tight" title="Ссылка на mp3 задаётся в Студии: кнопка ♪ у пака или поле музыки в карточке пака">Музыка вскрытия <i class="fa-solid fa-circle-info text-slate-500 text-[9px]"></i></p>
+                        <p class="text-[11px] font-bold text-white leading-tight" title="Ссылка на mp3 задаётся у пака: кнопка ♪ или поле музыки в карточке пака">Музыка вскрытия <i class="fa-solid fa-circle-info text-slate-500 text-[9px]"></i></p>
                         <p id="unbox-music-state" class="text-[10px] text-slate-400 truncate">звук выключен</p>
                     </div>
                 </div>
@@ -1433,7 +1438,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <p>• монеты, коллекция карт и прогресс альбомов</p>
                 <p>• статистика, достижения и счётчик гаранта Epic+</p>
                 <p>• ежедневная серия, задания дня и колода</p>
-                <p>• паки и карты, созданные вами в Студии</p>
+                <p>• паки и карты, созданные вами</p>
             </div>
             <div>
                 <label class="block text-xs font-medium text-slate-400 mb-1">Для подтверждения введите слово <span class="font-mono font-bold text-red-300">СБРОС</span></label>
@@ -1448,7 +1453,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b24</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b26</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -1834,7 +1839,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     : (PackMusic.lastErr ? PackMusic.lastErr
                     : (PackMusic.url ? '\u23F8 трек на паузе'
                     : (PackMusic.stopped ? '\u23F9 трек остановлен'
-                    : 'трек не задан — добавьте ссылку в Студии')));
+                    : 'трек не задан')));
             }
             if (ico) ico.className = 'fa-solid ' + (on ? 'fa-compact-disc fa-spin text-fuchsia-300' : 'fa-music text-fuchsia-400') + ' text-xs';
             // b21: единственная кнопка панели — стоп; гаснет, когда останавливать нечего
@@ -1868,7 +1873,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             SoundFX.play('click');
             if (PackMusic.playing) { PackMusic.muted = true; PackMusic.pause(); return; }
             const url = PackMusic.url || PackMusic.resolveUrl(typeof currentUnboxingPack !== 'undefined' ? currentUnboxingPack : null);
-            if (!url) { showToast('Трек не задан — добавьте ссылку в Студии', 'error'); updateUnboxMusicUI(); return; }
+            if (!url) { showToast('Трек не задан — добавьте ссылку на mp3', 'error'); updateUnboxMusicUI(); return; }
             PackMusic.muted = false;
             PackMusic.session = true;
             PackMusic.play(url);
@@ -2957,7 +2962,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b24</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b26</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -3367,7 +3372,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'rich', icon: 'fa-coins', title: 'Богач', desc: 'Имейте 2000+ монет одновременно', reward: 200, check: s => s.coins >= 2000, prog: s => [Math.min(s.coins, 2000), 2000] },
             { id: 'streak_7', icon: 'fa-calendar-check', title: 'Неделя без пропусков', desc: 'Забирайте награду 7 дней подряд', reward: 600, check: s => Math.max(s.daily.streak, s.stats.bestStreak) >= 7, prog: s => [Math.min(Math.max(s.daily.streak, s.stats.bestStreak), 7), 7] },
             { id: 'all_missions', icon: 'fa-list-check', title: 'Идеальный день', desc: 'Выполните все задания дня', reward: 150, check: s => s.missions && s.missions.list && s.missions.list.length > 0 && s.missions.list.every(m => m.claimed) },
-            { id: 'creator', icon: 'fa-wand-magic-sparkles', title: 'Творец', desc: 'Создайте свою первую карту в Студии', reward: 50, check: s => s.stats.cardsCreated >= 1, prog: s => [Math.min(s.stats.cardsCreated, 1), 1] },
+            { id: 'creator', icon: 'fa-wand-magic-sparkles', title: 'Творец', desc: 'Создайте свою первую карту', reward: 50, secret: true, check: s => s.stats.cardsCreated >= 1, prog: s => [Math.min(s.stats.cardsCreated, 1), 1] },
             { id: 'first_win', icon: 'fa-hand-fist', title: 'Первая победа', desc: 'Выиграйте свой первый бой на Арене', reward: 100, check: s => s.stats.battlesWon >= 1, prog: s => [Math.min(s.stats.battlesWon, 1), 1] },
             { id: 'wins_10', icon: 'fa-shield-halved', title: 'Ветеран арены', desc: 'Выиграйте 10 боёв', reward: 300, check: s => s.stats.battlesWon >= 10, prog: s => [s.stats.battlesWon, 10] },
             { id: 'wins_25', icon: 'fa-medal', title: 'Гладиатор', desc: 'Выиграйте 25 боёв', reward: 600, check: s => s.stats.battlesWon >= 25, prog: s => [s.stats.battlesWon, 25] },
@@ -3894,10 +3899,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>`;
             }).join('');
 
-            // Достижения
-            const unlockedCount = ACHIEVEMENTS.filter(a => state.achievements[a.id]).length;
-            document.getElementById('achievements-counter').innerHTML = `Открыто: <b class="text-amber-400">${unlockedCount}</b> из ${ACHIEVEMENTS.length}`;
-            document.getElementById('rewards-achievements-grid').innerHTML = ACHIEVEMENTS.map(a => {
+            // Достижения (secret-достижения видны только после открытия скрытого раздела)
+            const visibleAchievements = ACHIEVEMENTS.filter(a => !a.secret || isHiddenTabUnlocked() || state.achievements[a.id]);
+            const unlockedCount = visibleAchievements.filter(a => state.achievements[a.id]).length;
+            document.getElementById('achievements-counter').innerHTML = `Открыто: <b class="text-amber-400">${unlockedCount}</b> из ${visibleAchievements.length}`;
+            document.getElementById('rewards-achievements-grid').innerHTML = visibleAchievements.map(a => {
                 const unlocked = !!state.achievements[a.id];
                 let prog = null;
                 if (!unlocked && a.prog) { try { prog = a.prog(state); } catch (e) { prog = null; } }
@@ -5800,7 +5806,130 @@ Check your Browserslist config to be sure that your targets are set up correctly
             document.getElementById('coin-balance').innerText = state.coins;
         }
 
+        // ============ СКРЫТЫЙ РАЗДЕЛ («Студия») ============
+        // Вкладка-редактор спрятана от обычных пользователей: кнопок в навигации не видно,
+        // упоминаний в интерфейсе нет, а прямой вызов switchTab('studio') не срабатывает.
+        // Открывается жестом: 5 быстрых нажатий по вкладке «Награды» (пауза между
+        // нажатиями — не больше HIDDEN_TAP_WINDOW мс, иначе счёт начинается заново).
+        // Флаг хранится отдельно от игрового сейва: «Сброс прогресса» и экспорт/импорт
+        // JSON его не трогают и не раскрывают.
+        const HIDDEN_TAB = 'studio';
+        const HIDDEN_TAB_NAV = ['nav-studio', 'mob-nav-studio'];
+        const HIDDEN_TAB_GESTURE = ['nav-rewards', 'mob-nav-rewards']; // по чему жмём
+        const HIDDEN_TAPS_NEEDED = 5;
+        const HIDDEN_TAP_WINDOW = 1600;
+        const HIDDEN_UI_KEY = 'ui_prefs_v1'; // неприметное имя: похоже на обычные настройки интерфейса
+
+        let hiddenTapCount = 0;
+        let hiddenTapLast = 0;
+        let hiddenTapTimer = null;
+        let hiddenTapHint = null;
+
+        function hiddenUiPrefs() {
+            try { return JSON.parse(LS.getItem(HIDDEN_UI_KEY) || '{}') || {}; } catch (e) { return {}; }
+        }
+        function saveHiddenUiPrefs(p) {
+            try { LS.setItem(HIDDEN_UI_KEY, JSON.stringify(p)); } catch (e) { /* работаем без сохранения */ }
+        }
+        function isHiddenTabUnlocked() {
+            return hiddenUiPrefs().section === 1;
+        }
+        // switchTab() перезаписывает className кнопок, поэтому видимость держим в style.display
+        function applyHiddenTabVisibility() {
+            const on = isHiddenTabUnlocked();
+            HIDDEN_TAB_NAV.forEach(id => {
+                const b = document.getElementById(id);
+                if (b) b.style.display = on ? '' : 'none';
+            });
+        }
+
+        // крошечная подсказка-прогресс у «Наград» — видна только во время жеста
+        function hiddenTapHintShow(count, anchor) {
+            if (!hiddenTapHint) {
+                hiddenTapHint = document.createElement('div');
+                hiddenTapHint.className = 'fixed pointer-events-none px-2 py-1 rounded-full bg-slate-950/90 border border-slate-700/70 text-[9px] font-mono tracking-[0.2em] text-slate-400 shadow-lg transition-opacity duration-300';
+                hiddenTapHint.style.zIndex = '9999';
+                document.body.appendChild(hiddenTapHint);
+            }
+            let dots = '';
+            for (let i = 0; i < HIDDEN_TAPS_NEEDED; i++) dots += i < count ? '●' : '○';
+            hiddenTapHint.textContent = dots;
+            const r = anchor.getBoundingClientRect();
+            hiddenTapHint.style.left = Math.max(8, Math.min(window.innerWidth - 96, r.left + r.width / 2 - 44)) + 'px';
+            hiddenTapHint.style.top = Math.max(4, r.top - 28) + 'px';
+            hiddenTapHint.style.opacity = '1';
+            clearTimeout(hiddenTapTimer);
+            hiddenTapTimer = setTimeout(() => {
+                hiddenTapCount = 0;
+                if (hiddenTapHint) hiddenTapHint.style.opacity = '0';
+            }, HIDDEN_TAP_WINDOW);
+        }
+
+        function onHiddenGestureTap(btn) {
+            if (isHiddenTabUnlocked()) return;
+            const now = Date.now();
+            hiddenTapCount = (now - hiddenTapLast <= HIDDEN_TAP_WINDOW) ? hiddenTapCount + 1 : 1;
+            hiddenTapLast = now;
+            if (hiddenTapCount < 2) { // одиночное нажатие — обычный переход на вкладку, без реакций
+                clearTimeout(hiddenTapTimer);
+                hiddenTapTimer = setTimeout(() => { hiddenTapCount = 0; }, HIDDEN_TAP_WINDOW);
+                return;
+            }
+            if (hiddenTapCount >= HIDDEN_TAPS_NEEDED) {
+                clearTimeout(hiddenTapTimer);
+                hiddenTapCount = 0;
+                if (hiddenTapHint) hiddenTapHint.style.opacity = '0';
+                unlockHiddenTab();
+                return;
+            }
+            // тихий тик — с каждым нажатием чуть выше, ничего не объясняя
+            if (SoundFX.enabled) { try { SoundFX.tone(300 + hiddenTapCount * 90, 0.05, 'sine', 0.05); } catch (e) {} }
+            hiddenTapHintShow(hiddenTapCount, btn);
+        }
+
+        function unlockHiddenTab() {
+            const p = hiddenUiPrefs(); p.section = 1; saveHiddenUiPrefs(p);
+            applyHiddenTabVisibility();
+            if (SoundFX.enabled) {
+                try {
+                    SoundFX.tone(523, 0.12, 'sine', 0.1);
+                    SoundFX.tone(784, 0.14, 'sine', 0.1, 0.09);
+                    SoundFX.tone(1047, 0.22, 'sine', 0.1, 0.18);
+                } catch (e) {}
+            }
+            showToast('🔓 Открыт скрытый раздел: «Студия» появилась в меню', 'success');
+            renderRewardsIfVisible(); // секретное достижение снова показывается
+        }
+
+        function lockHiddenTab() {
+            const p = hiddenUiPrefs(); p.section = 0; saveHiddenUiPrefs(p);
+            hiddenTapCount = 0;
+            clearTimeout(hiddenTapTimer);
+            if (hiddenTapHint) hiddenTapHint.style.opacity = '0';
+            applyHiddenTabVisibility();
+            const tab = document.getElementById('tab-' + HIDDEN_TAB);
+            if (tab && !tab.classList.contains('hidden')) switchTab('store');
+            renderRewardsIfVisible();
+            showToast('Раздел снова скрыт — доступ по жесту: 5 нажатий на «Награды»', 'info');
+        }
+
+        function initHiddenTab() {
+            applyHiddenTabVisibility();
+            HIDDEN_TAB_GESTURE.forEach(id => {
+                const b = document.getElementById(id);
+                if (b && !b.dataset.hiddenGesture) {
+                    b.dataset.hiddenGesture = '1';
+                    b.addEventListener('click', () => onHiddenGestureTap(b));
+                }
+            });
+        }
+
         function switchTab(tabId) {
+            // скрытый раздел недоступен, пока не открыт жестом
+            if (tabId === HIDDEN_TAB && !isHiddenTabUnlocked()) {
+                applyHiddenTabVisibility();
+                return;
+            }
             ['store', 'albums', 'battle', 'rewards', 'studio'].forEach(t => {
                 document.getElementById(`tab-${t}`).classList.add('hidden');
                 const navBtn = document.getElementById(`nav-${t}`);
@@ -6266,7 +6395,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function rollPackCards(pack) {
             const packCards = state.cards.filter(c => c.packId === pack.id);
             if (packCards.length === 0) {
-                showToast('В этом паке пока нет карточек! Добавьте их в Студии.', 'error');
+                showToast('В этом паке пока нет карточек!', 'error');
                 state.coins += pack.price;
                 updateCoinDisplay();
                 saveState();
@@ -6841,7 +6970,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        ${state.packs.length === 0 ? `<div class="col-span-full text-center py-12 text-slate-500">Нет доступных альбомов. Создайте бустер паки в Студии!</div>` :
+                        ${state.packs.length === 0 ? `<div class="col-span-full text-center py-12 text-slate-500">Нет доступных альбомов.</div>` :
                           state.packs.map(pack => {
                               const packCards = state.cards.filter(c => c.packId === pack.id);
                               const collectedCount = packCards.filter(c => state.collection[c.id]).length;
@@ -7039,9 +7168,26 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // Простой режим (по умолчанию): бесплатное хранилище textdb.dev — БЕЗ регистрации, ключей и кода.
         // Достаточно придумать код комнаты: у всех, кто введёт тот же код, паки становятся общими.
         // Продвинутый режим: своя Firebase Realtime Database через официальный REST API (без SDK) — укажите URL базы.
+        // b26: ГЛАВНАЯ КОМНАТА САЙТА — все пользователи подключаются к ней автоматически,
+        // ничего вводить не нужно. «Отключить» запоминает отказ (больше не подключаем насильно),
+        // «Создать комнату» или свой код — переключает на другую комнату.
+        const CLOUD_DEFAULT_ROOM = '7j8uytui';
+        var cloudDefaultApplied = false; // b26: главная комната подставлена автоматически (нужно предложить пароль создателю)
+        function cloudOptOut() { try { return LS.getItem('nexus_cloud_off') === '1'; } catch (e) { return false; } }
+        function cloudOptOutSet(v) { try { if (v) LS.setItem('nexus_cloud_off', '1'); else LS.removeItem('nexus_cloud_off'); } catch (e) {} }
         const CLOUD = {
             db: (function () { try { return String(LS.getItem('nexus_cloud_db') || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; } })(),
-            room: (function () { try { return LS.getItem('nexus_cloud_room') || ''; } catch (e) { return ''; } })(),
+            room: (function () {
+                // b26: своей комнаты нет и пользователь не отключался — подставляем главную.
+                // В localStorage её запишет cloudInit — там же проверяется явный отказ.
+                try {
+                    const r = LS.getItem('nexus_cloud_room');
+                    if (r) return r;
+                    if (cloudOptOut()) return '';
+                    cloudDefaultApplied = true;
+                    return CLOUD_DEFAULT_ROOM;
+                } catch (e) { return CLOUD_DEFAULT_ROOM; }
+            })(),
             lastSync: 0,
             lastErr: '',
             ownerUnknown: false, // b23: в облаке ещё нет метки создателя (old payload / пустая комната)
@@ -7064,7 +7210,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         return r.json(); // null, если комната ещё пустая
                     });
                 }
-                return fetch(this.path(), { cache: 'no-store' }).then(r => {
+                return fetch(this.path() + '?nc=' + Date.now(), { cache: 'no-store' }).then(r => { // b25: анти-кэш
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     return r.text();
                 }).then(txt => {
@@ -7087,6 +7233,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     if (!r.ok) throw new Error(r.status === 413 ? 'данные слишком большие для простого хранилища' : 'HTTP ' + r.status);
                     return true;
                 });
+            },
+            // b25: аварийная отправка при закрытии страницы — sendBeacon/keepalive доставляет данные,
+            // даже если вкладка уже закрыта (обычный fetch браузер на закрытии обрывает)
+            flush(catalog) {
+                if (!this.connected()) return false;
+                const body = JSON.stringify(catalog);
+                try {
+                    if (this.db) {
+                        fetch(this.path(), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(() => {});
+                        return true;
+                    }
+                    if (typeof navigator !== 'undefined' && navigator.sendBeacon && typeof Blob !== 'undefined') {
+                        return !!navigator.sendBeacon(this.path(), new Blob([body], { type: 'text/plain' }));
+                    }
+                    fetch(this.path(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body, keepalive: true }).catch(() => {});
+                    return true;
+                } catch (e) { return false; }
             },
             newRoom() {
                 const abc = 'abcdefghijkmnpqrstuvwxyz23456789';
@@ -7333,7 +7496,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (bad) { cloudAuthErr(bad); return; }
             if (mode !== 'login' && pass !== pass2) { cloudAuthErr('Пароли не совпадают'); return; }
             cloudAuthErr(''); cloudAuthBusy(true);
+            let fetchedRemote = null; // b25: запоминаем содержимое комнаты, чтобы не затереть его публикацией
             CLOUD.fetch().then(remote => {
+                fetchedRemote = remote;
                 const rAuth = (remote && remote.auth && remote.auth.login && remote.auth.hash) ? remote.auth : null;
                 if (mode === 'login') {
                     if (!rAuth) throw new Error('В этой комнате пароль ещё не задан');
@@ -7356,7 +7521,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 CLOUD.needAuth = false; CLOUD.ownerUnknown = false;
                 cloudRole = 'owner';
                 cloudAuthFormMode = '';
-                if (CLOUD.remoteFilled !== false) { /* контент комнаты уже слит при получении */ }
+                // b25: при проверке пароля контент комнаты НЕ сливался — сливаем сейчас,
+                // иначе публикация с этого устройства затрёт чужие паки пустым каталогом
+                if (fetchedRemote && fetchedRemote.v && cloudMerge(fetchedRemote)) { saveState(); }
                 cloudStatus(); refreshVisibleTabs();
                 showToast(mode === 'login'
                     ? '👑 Права подтверждены: вы создатель комнаты ' + CLOUD.room
@@ -7426,7 +7593,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const el = document.getElementById('cloud-status');
             if (!el) return;
             if (extra) { el.textContent = extra; return; }
-            if (!CLOUD.connected()) { el.innerHTML = 'Регистрация не нужна: придумайте <b class="text-sky-300">код комнаты</b> (например, moipaki2026) → «Подключить» → «Опубликовать». Такой же код введите на устройствах друзей — паки станут общими.'; return; }
+            if (!CLOUD.connected()) { el.innerHTML = 'Главная комната <b class="text-emerald-300">' + CLOUD_DEFAULT_ROOM + '</b> подключается автоматически у всех игроков сайта. Сейчас облако отключено — нажмите «Подключить», чтобы получать общие паки, или создайте свою комнату.'; return; }
             const t = CLOUD.lastSync ? new Date(CLOUD.lastSync).toLocaleTimeString() : '—';
             const roleTxt = cloudGuest()
                 ? ' • <span class="text-amber-300"><i class="fa-solid fa-lock text-[9px]"></i> вы участник — только просмотр (нужен логин и пароль комнаты)</span>'
@@ -7448,14 +7615,21 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (autoCb) { autoCb.disabled = guest; autoCb.classList.toggle('opacity-40', guest); }
             if (guest && !CLOUD.remoteAuth) { /* b24: вход по логину/паролю — в панели cloud-auth */ }
         }
-        function cloudPull(manual) {
-            if (!CLOUD.connected()) { if (manual) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); return; }
+        let cloudPullBusy = false; // b25: не запускаем вторую загрузку, пока первая в пути
+        function cloudPull(manual, done) {
+            if (!CLOUD.connected()) { if (manual) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); if (done) done(); return; }
+            if (cloudPullBusy) { if (done) done(); return; }
+            cloudPullBusy = true;
             cloudStatus('Загрузка из облака…');
             CLOUD.fetch().then(remote => {
                 const prevRole = cloudRole;
                 cloudResolveRole(remote); // b23: кто я в комнате — создатель или участник
                 if (remote && remote.v) {
-                    if (cloudMerge(remote)) { saveState(); refreshVisibleTabs(); }
+                    if (cloudMerge(remote)) {
+                        saveState(); refreshVisibleTabs();
+                        // b25: участник ВИДИТ, что изменения создателя прилетели (раньше слияние было молчаливым)
+                        if (!manual) showToast('☁️ Обновление из комнаты ' + cloudEsc(CLOUD.room) + ': изменения паков и карточек применены', 'success');
+                    }
                 }
                 CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
                 if (CLOUD.promptAuth) { // b24: только что подключились — при необходимости сразу просим пароль
@@ -7470,13 +7644,40 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }).catch(e => {
                 CLOUD.lastErr = String((e && e.message) || e); cloudStatus();
                 if (manual) showToast('Облако недоступно: ' + CLOUD.lastErr, 'error');
-            });
+            }).then(() => { cloudPullBusy = false; if (done) done(); });
         }
         let cloudPushT = null;
+        // b25: ФЛАГ НЕОПУБЛИКОВАННЫХ ИЗМЕНЕНИЙ. Главный баг доставки: правка сохранялась локально,
+        // публикация стояла в очереди 1.5 с, и если создатель закрывал игру раньше — изменение
+        // НЕ уходило в облако и не отправлялось никогда (при запуске данные только получались).
+        // Теперь «грязный» флаг живёт в localStorage: публикуем при закрытии страницы (sendBeacon),
+        // а если не успели — при следующем запуске и каждые 20 секунд.
+        function cloudDirty() { try { return LS.getItem('nexus_cloud_dirty') === '1'; } catch (e) { return false; } }
+        function cloudDirtySet() { try { LS.setItem('nexus_cloud_dirty', '1'); } catch (e) {} }
+        function cloudDirtyClear() { try { LS.removeItem('nexus_cloud_dirty'); } catch (e) {} }
         function cloudPublishSoon() {
-            if (!CLOUD.connected() || !cloudAuto() || cloudGuest()) return; // b23: участники не публикуют
+            if (!CLOUD.connected() || cloudGuest()) return; // b23: участники не публикуют
+            cloudDirtySet(); // b25: изменение записано, но ещё не в облаке
+            if (!cloudAuto()) { showToast('⚠️ Автопубликация выключена — нажмите «Опубликовать», чтобы отправить изменения в комнату', 'refund'); return; }
             clearTimeout(cloudPushT);
-            cloudPushT = setTimeout(cloudPushNow, 1500);
+            cloudPushT = setTimeout(() => { cloudPushT = null; cloudPushNow(); }, 1500);
+        }
+        // b25: страница закрывается/прячется — срочно допубликовать изменения синхронным beacon-запросом
+        function cloudFlushPending() {
+            try {
+                if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady()) return;
+                if (!cloudPushT && !cloudDirty()) return;
+                if (!cloudAuto() && !cloudPushT) return; // автопубликация выключена — ждём ручную кнопку
+                const cat = cloudCatalog();
+                const lim = CLOUD.db ? 4000000 : 900000;
+                if (JSON.stringify(cat).length > lim) return;
+                clearTimeout(cloudPushT); cloudPushT = null;
+                if (CLOUD.flush(cat)) cloudDirtyClear(); // beacon принят браузером — считаем доставленным
+            } catch (e) {}
+        }
+        // b25: получили данные из облака — если остались неопубликованные правки, отправляем их следом
+        function cloudAfterPull() {
+            if (CLOUD.connected() && !cloudGuest() && cloudAuthReady() && cloudAuto() && cloudDirty() && !cloudPushT) cloudPushNow();
         }
         function cloudPushNow() {
             if (!CLOUD.connected()) { showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
@@ -7490,8 +7691,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const lim = CLOUD.db ? 4000000 : 900000;
             if (JSON.stringify(cat).length > lim) { cloudStatus('Каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ): сократите описания паков и карт'); return; }
             cloudStatus('Публикация…');
-            CLOUD.push(cat).then(() => { CLOUD.lastSync = Date.now(); CLOUD.lastErr = ''; cloudStatus(); showToast('Опубликовано в комнату ' + CLOUD.room, 'success'); })
-                .catch(e => { CLOUD.lastErr = String((e && e.message) || e); cloudStatus(); showToast('Ошибка публикации: ' + CLOUD.lastErr, 'error'); });
+            CLOUD.push(cat).then(() => { cloudDirtyClear(); CLOUD.lastSync = Date.now(); CLOUD.lastErr = ''; cloudStatus(); showToast('Опубликовано в комнату ' + CLOUD.room, 'success'); })
+                .catch(e => { cloudDirtySet(); CLOUD.lastErr = String((e && e.message) || e); cloudStatus(); showToast('Ошибка публикации: ' + CLOUD.lastErr, 'error'); }); // b25: не получилось — повторим позже
         }
         function cloudSaveDb() {
             const inp = document.getElementById('cloud-db');
@@ -7510,9 +7711,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function cloudConnect(code) {
             const inp = document.getElementById('cloud-room');
-            const c = String(code || (inp && inp.value) || '').trim().toLowerCase();
-            if (!c) { showToast('Введите код комнаты', 'error'); return; }
+            const c = String(code || (inp && inp.value) || '').trim().toLowerCase() || CLOUD_DEFAULT_ROOM; // b26: пустое поле = главная комната
             CLOUD.room = c; try { LS.setItem('nexus_cloud_room', c); } catch (e) {}
+            cloudOptOutSet(false); // b26: пользователь сам подключается — отказ от главной комнаты снимаем
             cloudRole = (cloudOwnerRoom() === c) ? 'owner' : 'guest'; // b23: до ответа облака
             CLOUD.ownerUnknown = false; CLOUD.promptAuth = true; // b24
             CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = ''; CLOUD.needAuth = false;
@@ -7522,6 +7723,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function cloudCreate() {
             const code = CLOUD.newRoom();
+            cloudOptOutSet(false); // b26
             cloudDropLocalAuth(); // b24: у новой комнаты ещё нет логина/пароля
             cloudSetOwnerRoom(code); // b23: этот браузер — создатель комнаты
             cloudRole = 'owner'; CLOUD.ownerUnknown = true;
@@ -7534,6 +7736,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function cloudDisconnect() {
             CLOUD.room = ''; CLOUD.lastErr = ''; try { LS.removeItem('nexus_cloud_room'); } catch (e) {}
+            cloudOptOutSet(true); // b26: отключились сами — главную комнату больше не навязываем
             cloudRole = null; CLOUD.ownerUnknown = false; // b23: сняли роль — Студия снова доступна
             CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = ''; // b24
             CLOUD.needAuth = false; CLOUD.promptAuth = false; cloudAuthFormMode = '';
@@ -7541,13 +7744,30 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function setCloudAuto(v) { try { LS.setItem('nexus_cloud_auto', v ? '1' : '0'); } catch (e) {} }
         function cloudInit() {
-            const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room;
+            // b26: все пользователи автоматически подключаются к главной комнате сайта
+            // (кроме тех, кто нажал «Отключить» — явный отказ запоминается в localStorage)
+            if (!cloudOptOut()) {
+                if (!CLOUD.room || cloudDefaultApplied) { CLOUD.room = CLOUD_DEFAULT_ROOM; CLOUD.promptAuth = true; }
+                cloudDefaultApplied = false;
+                try { if (LS.getItem('nexus_cloud_room') !== CLOUD.room) LS.setItem('nexus_cloud_room', CLOUD.room); } catch (e) {}
+            }
+            const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room || CLOUD_DEFAULT_ROOM; // b26: код главной комнаты всегда подсказан
             const dbi = document.getElementById('cloud-db'); if (dbi) dbi.value = CLOUD.db;
             const cb = document.getElementById('cloud-auto'); if (cb) cb.checked = cloudAuto();
             if (CLOUD.connected()) cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest'; // b23
             cloudStatus();
-            if (CLOUD.connected()) cloudPull(false);
-            setInterval(() => cloudPull(false), 60000);
+            if (CLOUD.connected()) cloudPull(false, cloudAfterPull); // b25: после получения — допубликовать оставшиеся правки
+            // b25: проверяем облако чаще (каждые 20 секунд вместо 60) — обновления прилетают быстрее
+            setInterval(() => cloudPull(false, cloudAfterPull), 20000);
+            // b25: закрывают вкладку/приложение — экстренно публикуем правки создателя;
+            // вернулись на вкладку — сразу тянем свежие данные комнаты
+            try {
+                window.addEventListener('pagehide', cloudFlushPending);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) cloudFlushPending();
+                    else if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
+                });
+            } catch (e) {}
         }
 
         // У каких паков раскрыт список карточек в Студии — запоминается между перерисовками
@@ -8041,6 +8261,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         });
 
         window.onload = function() {
+            initHiddenTab(); // скрытый раздел: прячем кнопки навигации и вешаем жест на «Награды»
             updateCoinDisplay();
             updateSoundIcon();
             if (typeof window.tailwind === 'undefined') {
