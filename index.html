@@ -678,7 +678,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b22</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b23</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -968,17 +968,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </label>
                 </div>
                 <p id="cloud-status" class="text-[11px] text-slate-400">Не подключено.</p>
+                <button type="button" id="cloud-claim" onclick="cloudClaim()" class="hidden px-3 py-2 bg-amber-600/80 hover:bg-amber-500 border border-amber-500/40 rounded-xl text-xs font-semibold text-white transition" title="В облаке ещё нет метки создателя: комната создана в старой версии игры или пока пуста"><i class="fa-solid fa-crown mr-1"></i>Я создатель комнаты — взять управление</button>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input type="text" id="cloud-room" placeholder="Код комнаты — придумайте свой, например: moipaki2026" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
                     <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         <button type="button" onclick="cloudConnect()" class="px-3 py-2.5 bg-sky-600/80 hover:bg-sky-500 border border-sky-500/40 rounded-xl text-xs font-semibold text-white transition"><i class="fa-solid fa-plug mr-1"></i>Подключить</button>
                         <button type="button" onclick="cloudCreate()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Придумать код автоматически и опубликовать мои паки"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Создать комнату</button>
                         <button type="button" onclick="cloudPull(true)" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Получить данные из облака"><i class="fa-solid fa-rotate mr-1"></i>Получить</button>
-                        <button type="button" onclick="cloudPushNow()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Опубликовать свои паки в облако сейчас"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Опубликовать</button>
+                        <button type="button" id="cloud-push-btn" onclick="cloudPushNow()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Опубликовать свои паки в облако сейчас"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Опубликовать</button>
                         <button type="button" onclick="cloudDisconnect()" class="px-3 py-2.5 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-xl text-xs font-semibold text-slate-300 transition" title="Отключиться от комнаты"><i class="fa-solid fa-xmark mr-1"></i>Отключить</button>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Никакой регистрации и настроек — просто код комнаты:</b> придумайте его → «Подключить» → «Опубликовать». Друзья вводят тот же код → «Подключить» → «Получить». Все паки и карты Студии становятся общими и обновляются автоматически. Код комнаты — как пароль: чем необычнее, тем меньше шансов, что его угадают.</p>
+                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Никакой регистрации и настроек — просто код комнаты:</b> придумайте его → «Подключить» → «Опубликовать». Друзья вводят тот же код → «Подключить» → «Получить». <b class="text-slate-300">Кто создал комнату — тот создатель:</b> только он редактирует паки и карточки и публикует изменения. Остальные — участники: контент приходит к ним в режиме «только просмотр», удалить или изменить его они не могут. Код комнаты — как пароль: чем необычнее, тем меньше шансов, что его угадают.</p>
                 <details class="text-[10px] text-slate-500">
                     <summary class="cursor-pointer hover:text-slate-300 transition">Продвинутый режим: своя база Firebase (необязательно — простое хранилище работает и так)</summary>
                     <p class="mt-2">Своя база надёжнее и держит каталог до 4 МБ. Создаётся кликами за 5 минут, код писать не нужно:</p>
@@ -995,6 +996,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>
                     <p class="mt-1">Чтобы вернуться в простой режим — очистите поле URL и нажмите «Сохранить URL». Стандартный набор игры не синхронизируется. Нет сети — игра работает локально.</p>
                 </details>
+            </div>
+            <!-- b23: режим участника — Студия только для просмотра -->
+            <div id="studio-locked-banner" class="hidden bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4 text-[12px] text-amber-200 space-y-1">
+                <p class="font-bold flex items-center gap-2"><i class="fa-solid fa-lock"></i>Режим участника — только просмотр</p>
+                <p class="text-amber-200/80">Вы подключены к комнате <b id="studio-locked-room" class="text-amber-100"></b> как участник: паки и карточки добавил создатель комнаты, поэтому создавать, редактировать и удалять их здесь отключено. Управлять контентом может только создатель. Хотите править свои собственные паки — нажмите «Отключить» в панели облака выше.</p>
             </div>
             <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -1437,7 +1443,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b22</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b23</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -1984,6 +1990,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function savePackMusic(packId) {
+            if (cloudGuard()) return; // b23
             const pack = state.packs.find(p => p.id === packId);
             if (!pack) return;
             const url = packMusicInputValue(packId);
@@ -1998,6 +2005,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function clearPackMusic(packId) {
+            if (cloudGuard()) return; // b23
             const pack = state.packs.find(p => p.id === packId);
             if (!pack) return;
             pack.musicUrl = '';
@@ -2011,6 +2019,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function togglePackMusicOff(packId, off) {
+            if (cloudGuard()) return; // b23
             const pack = state.packs.find(p => p.id === packId);
             if (!pack) return;
             pack.musicOff = !!off;
@@ -2943,7 +2952,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b22</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b23</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -7030,6 +7039,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             room: (function () { try { return LS.getItem('nexus_cloud_room') || ''; } catch (e) { return ''; } })(),
             lastSync: 0,
             lastErr: '',
+            ownerUnknown: false, // b23: в облаке ещё нет метки создателя (old payload / пустая комната)
             backend() { return this.db ? 'firebase' : 'textdb'; },
             path() {
                 if (this.db) return this.db + '/nexus-rooms/' + this.room + '.json';
@@ -7076,6 +7086,46 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 return r;
             }
         };
+        // b23: РОЛИ В КОМНАТЕ. Создатель комнаты редактирует паки/карточки и публикует изменения;
+        // участники (все, кто ввёл тот же код) получают контент в режиме «только просмотр»:
+        // создание/редактирование/удаление в Студии и публикация в облако для них отключены.
+        // Владелец помечается в самом облаке полем ownerId (код устройства создателя),
+        // поэтому роль видна каждому, кто получил данные комнаты.
+        let cloudRole = null; // 'owner' | 'guest' | null (пока не подключены)
+        function cloudDeviceId() {
+            try {
+                let id = LS.getItem('nexus_cloud_devid');
+                if (!id) { id = 'd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); LS.setItem('nexus_cloud_devid', id); }
+                return id;
+            } catch (e) { return 'd-local'; }
+        }
+        function cloudOwnerRoom() { try { return LS.getItem('nexus_cloud_owner_room') || ''; } catch (e) { return ''; } }
+        function cloudSetOwnerRoom(code) { try { if (code) LS.setItem('nexus_cloud_owner_room', code); else LS.removeItem('nexus_cloud_owner_room'); } catch (e) {} }
+        function cloudGuest() { return CLOUD.connected() && cloudRole === 'guest'; }
+        // Решаем роль по данным из облака: ownerId есть — сравниваем со своим кодом устройства;
+        // ownerId нет (комната создана в старой версии или ещё пуста) — сверяем с локальной меткой создателя.
+        function cloudResolveRole(remote) {
+            if (!CLOUD.connected()) { cloudRole = null; CLOUD.ownerUnknown = false; return; }
+            const hasOwner = !!(remote && remote.ownerId);
+            CLOUD.ownerUnknown = !hasOwner;
+            if (hasOwner) cloudRole = (remote.ownerId === cloudDeviceId()) ? 'owner' : 'guest';
+            else cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest';
+        }
+        // Единый запрет для участников: вызывается в начале всех «пишущих» действий Студии
+        function cloudGuard() {
+            if (cloudGuest()) { showToast('⛔ Режим участника: редактировать и удалять может только создатель комнаты', 'error'); return true; }
+            return false;
+        }
+        // «Я создатель — взять управление»: для комнат, созданных в старой версии (без ownerId),
+        // и для пустых комнат (например после очистки данных браузера).
+        function cloudClaim() {
+            if (!CLOUD.connected()) { showToast('Сначала подключитесь к комнате', 'error'); return; }
+            if (!confirm('Взять управление комнатой ' + CLOUD.room + '?\n\nНажимайте только если ЭТО ВАША комната (вы создали её или она ещё пуста).\nПосле этого остальные пользователи комнаты станут участниками: они смогут получать ваши паки, но не смогут их редактировать или удалять.')) return;
+            cloudSetOwnerRoom(CLOUD.room);
+            cloudRole = 'owner'; CLOUD.ownerUnknown = false;
+            cloudStatus(); refreshVisibleTabs();
+            cloudPushNow(); // закрепляем статус создателя в облаке (ownerId)
+        }
         function cloudAuto() { try { return LS.getItem('nexus_cloud_auto') !== '0'; } catch (e) { return true; } }
         function cloudTombs() { try { return JSON.parse(LS.getItem('nexus_cloud_tombs') || '[]'); } catch (e) { return []; } }
         function cloudTombAdd(id) {
@@ -7084,7 +7134,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function cloudCatalog() {
             return {
-                v: 1, updatedAt: Date.now(),
+                v: 1, updatedAt: Date.now(), ownerId: cloudDeviceId(), // b23: метка создателя комнаты
                 packs: state.packs.filter(p => !STANDARD_IDS[p.id]),
                 cards: state.cards.filter(c => !STANDARD_IDS[c.id]),
                 tombs: cloudTombs()
@@ -7131,19 +7181,38 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (extra) { el.textContent = extra; return; }
             if (!CLOUD.connected()) { el.innerHTML = 'Регистрация не нужна: придумайте <b class="text-sky-300">код комнаты</b> (например, moipaki2026) → «Подключить» → «Опубликовать». Такой же код введите на устройствах друзей — паки станут общими.'; return; }
             const t = CLOUD.lastSync ? new Date(CLOUD.lastSync).toLocaleTimeString() : '—';
-            el.innerHTML = 'Комната <b class="text-emerald-300">' + cloudEsc(CLOUD.room) + '</b> • ' + (CLOUD.db ? 'своя база Firebase' : 'простое хранилище (без регистрации)') + ' • синхронизация: ' + t +
+            const roleTxt = cloudGuest()
+                ? ' • <span class="text-amber-300"><i class="fa-solid fa-lock text-[9px]"></i> вы участник — только просмотр</span>'
+                : (cloudRole === 'owner' ? ' • <span class="text-emerald-300"><i class="fa-solid fa-crown text-[9px]"></i> вы создатель — можно редактировать</span>' : '');
+            el.innerHTML = 'Комната <b class="text-emerald-300">' + cloudEsc(CLOUD.room) + '</b> • ' + (CLOUD.db ? 'своя база Firebase' : 'простое хранилище (без регистрации)') + ' • синхронизация: ' + t + roleTxt +
                 (CLOUD.lastErr ? ' • <span class="text-rose-300">ошибка: ' + cloudEsc(CLOUD.lastErr) + '</span>' : ' • <span class="text-emerald-300">онлайн</span>');
+            // b23: участнику — публикацию и автопубликацию отключаем, показываем кнопку «взять управление»
+            const guest = cloudGuest();
+            const pushBtn = document.getElementById('cloud-push-btn');
+            if (pushBtn) {
+                pushBtn.disabled = guest;
+                pushBtn.classList.toggle('opacity-40', guest);
+                pushBtn.classList.toggle('cursor-not-allowed', guest);
+                pushBtn.title = guest ? 'Публиковать может только создатель комнаты' : 'Опубликовать свои паки в облако сейчас';
+            }
+            const autoCb = document.getElementById('cloud-auto');
+            if (autoCb) { autoCb.disabled = guest; autoCb.classList.toggle('opacity-40', guest); }
+            const claim = document.getElementById('cloud-claim');
+            if (claim) claim.classList.toggle('hidden', !(guest && CLOUD.ownerUnknown));
         }
         function cloudPull(manual) {
             if (!CLOUD.connected()) { if (manual) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); return; }
             cloudStatus('Загрузка из облака…');
             CLOUD.fetch().then(remote => {
+                const prevRole = cloudRole;
+                cloudResolveRole(remote); // b23: кто я в комнате — создатель или участник
                 if (remote && remote.v) {
                     if (cloudMerge(remote)) { saveState(); refreshVisibleTabs(); }
                 }
                 CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
                 cloudStatus();
-                if (manual) showToast('Облако: данные получены', 'success');
+                if (prevRole !== cloudRole) refreshVisibleTabs(); // b23: сменилась роль — перерисовать Студию
+                if (manual) showToast(cloudGuest() ? 'Облако: данные получены (вы участник — только просмотр)' : 'Облако: данные получены', 'success');
             }).catch(e => {
                 CLOUD.lastErr = String((e && e.message) || e); cloudStatus();
                 if (manual) showToast('Облако недоступно: ' + CLOUD.lastErr, 'error');
@@ -7151,12 +7220,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         let cloudPushT = null;
         function cloudPublishSoon() {
-            if (!CLOUD.connected() || !cloudAuto()) return;
+            if (!CLOUD.connected() || !cloudAuto() || cloudGuest()) return; // b23: участники не публикуют
             clearTimeout(cloudPushT);
             cloudPushT = setTimeout(cloudPushNow, 1500);
         }
         function cloudPushNow() {
             if (!CLOUD.connected()) { showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
+            if (cloudGuest()) { showToast('⛔ Публиковать может только создатель комнаты', 'error'); return; }
             const cat = cloudCatalog();
             const lim = CLOUD.db ? 4000000 : 900000;
             if (JSON.stringify(cat).length > lim) { cloudStatus('Каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ): сократите описания паков и карт'); return; }
@@ -7184,22 +7254,29 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const c = String(code || (inp && inp.value) || '').trim().toLowerCase();
             if (!c) { showToast('Введите код комнаты', 'error'); return; }
             CLOUD.room = c; try { LS.setItem('nexus_cloud_room', c); } catch (e) {}
+            cloudRole = (cloudOwnerRoom() === c) ? 'owner' : 'guest'; // b23: до ответа облака
+            CLOUD.ownerUnknown = false;
+            cloudStatus();
             cloudPull(true);
         }
         function cloudCreate() {
             const code = CLOUD.newRoom();
+            cloudSetOwnerRoom(code); // b23: этот браузер — создатель комнаты
+            cloudRole = 'owner'; CLOUD.ownerUnknown = false;
             cloudStatus(); cloudPushNow();
-            showToast('Комната ' + code + ' создана! Передайте код другим пользователям сайта', 'success');
+            showToast('Комната ' + code + ' создана! Вы её создатель: редактируйте паки, участники получают их в режиме просмотра', 'success');
         }
         function cloudDisconnect() {
             CLOUD.room = ''; CLOUD.lastErr = ''; try { LS.removeItem('nexus_cloud_room'); } catch (e) {}
-            cloudStatus();
+            cloudRole = null; CLOUD.ownerUnknown = false; // b23: сняли роль — Студия снова доступна
+            cloudStatus(); refreshVisibleTabs();
         }
         function setCloudAuto(v) { try { LS.setItem('nexus_cloud_auto', v ? '1' : '0'); } catch (e) {} }
         function cloudInit() {
             const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room;
             const dbi = document.getElementById('cloud-db'); if (dbi) dbi.value = CLOUD.db;
             const cb = document.getElementById('cloud-auto'); if (cb) cb.checked = cloudAuto();
+            if (CLOUD.connected()) cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest'; // b23
             cloudStatus();
             if (CLOUD.connected()) cloudPull(false);
             setInterval(() => cloudPull(false), 60000);
@@ -7210,6 +7287,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function renderStudio() {
             syncStudioMusicField(); // b20: общий трек + список своих mp3 у паков
+            // b23: участник комнаты — Студия в режиме «только просмотр»
+            const locked = cloudGuest();
+            const lb = document.getElementById('studio-locked-banner');
+            if (lb) {
+                lb.classList.toggle('hidden', !locked);
+                const rr = document.getElementById('studio-locked-room');
+                if (rr) rr.textContent = CLOUD.room || '';
+            }
+            ['form-create-pack', 'form-create-card'].forEach(fid => {
+                const f = document.getElementById(fid);
+                if (f && f.classList) { f.classList.toggle('opacity-40', locked); f.classList.toggle('pointer-events-none', locked); }
+            });
             const select = document.getElementById('card-pack-id');
             if (state.packs.length === 0) {
                 select.innerHTML = `<option value="">Сначала создайте пак</option>`;
@@ -7236,15 +7325,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             </div>
                             <div class="flex items-center space-x-2">
                                 <button onclick="toggleStudioPackCards('${p.id}')" class="h-8 px-2.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 text-[10px] font-bold flex items-center gap-1.5 transition shrink-0" title="Карточки этого пака — показать/скрыть"><i class="fa-solid fa-layer-group text-xs"></i>${pCards.length}<i id="pack-cards-chev-${p.id}" class="fa-solid fa-chevron-down text-[8px]" style="transition:transform .2s;${pOpen ? 'transform:rotate(180deg);' : ''}"></i></button>
-                                <button onclick="togglePackMusicEditor('${p.id}')" class="w-8 h-8 rounded-lg bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center transition" title="Ссылка на mp3 этого пака"><i class="fa-solid fa-music text-xs"></i></button>
+                                ${locked ? `<span class="h-8 px-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-bold flex items-center gap-1" title="Пак создателя комнаты — только просмотр"><i class="fa-solid fa-lock text-[9px]"></i>просмотр</span>` : `<button onclick="togglePackMusicEditor('${p.id}')" class="w-8 h-8 rounded-lg bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center transition" title="Ссылка на mp3 этого пака"><i class="fa-solid fa-music text-xs"></i></button>
                                 <button onclick="editPack('${p.id}')" class="w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 flex items-center justify-center transition" title="Редактировать"><i class="fa-solid fa-pen text-xs"></i></button>
-                                <button onclick="deletePack('${p.id}')" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="Удалить"><i class="fa-solid fa-trash text-xs"></i></button>
+                                <button onclick="deletePack('${p.id}')" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="Удалить"><i class="fa-solid fa-trash text-xs"></i></button>`}
                             </div>
                         </div>
                         <div id="pack-cards-${p.id}" class="${pOpen ? '' : 'hidden'} px-3 py-2.5 border-t border-slate-800 bg-slate-900/40">
                             <p class="text-[10px] text-slate-500 mb-2"><i class="fa-solid fa-layer-group text-teal-400 mr-1"></i>Карточки пака «${p.title}»: ${pCards.length}</p>
                             ${pCards.length ? `<div class="space-y-2">${pCards.map(studioCardRowHTML).join('')}</div>` : `<p class="text-[11px] text-slate-500">Пока нет карточек — добавьте первую в этот пак.</p>`}
-                            <button onclick="selectPackForNewCard('${p.id}')" class="mt-2 w-full py-2 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 text-[11px] font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Добавить карточку в этот пак</button>
+                            ${locked ? '' : `<button onclick="selectPackForNewCard('${p.id}')" class="mt-2 w-full py-2 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 text-teal-300 text-[11px] font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Добавить карточку в этот пак</button>`}
                         </div>
                         <div id="pack-music-editor-${p.id}" class="hidden px-3 py-2.5 border-t border-slate-800 bg-slate-900/60">
                             <p class="text-[10px] text-slate-500 mb-1.5">Своя ссылка на mp3 для пака «${p.title}». Пусто — пак вскрывается без музыкального трека.</p>
@@ -7300,8 +7389,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         </div>
                     </div>
                     <div class="flex items-center space-x-2">
-                        <button onclick="editCard('${c.id}')" class="w-8 h-8 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 flex items-center justify-center transition" title="Редактировать"><i class="fa-solid fa-pen text-xs"></i></button>
-                        <button onclick="deleteCard('${c.id}')" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="Удалить"><i class="fa-solid fa-trash text-xs"></i></button>
+                        ${cloudGuest() ? `<span class="h-8 px-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-bold flex items-center gap-1" title="Карточка создателя комнаты — только просмотр"><i class="fa-solid fa-lock text-[9px]"></i>просмотр</span>` : `<button onclick="editCard('${c.id}')" class="w-8 h-8 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 flex items-center justify-center transition" title="Редактировать"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button onclick="deleteCard('${c.id}')" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="Удалить"><i class="fa-solid fa-trash text-xs"></i></button>`}
                     </div>
                 </div>
             `;
@@ -7320,6 +7409,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         // «Добавить карточку в этот пак»: подставляет пак в форму и уводит фокус к ней
         function selectPackForNewCard(packId) {
+            if (cloudGuard()) return; // b23
             const sel = document.getElementById('card-pack-id');
             if (sel) sel.value = packId;
             const form = document.getElementById('form-create-card');
@@ -7410,6 +7500,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function handleSavePack(e) {
             e.preventDefault();
+            if (cloudGuard()) return; // b23: участники не создают/не правят паки
             const editId = document.getElementById('edit-pack-id').value;
             const title = document.getElementById('pack-title').value;
             const description = document.getElementById('pack-desc').value;
@@ -7460,6 +7551,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function editPack(packId) {
+            if (cloudGuard()) return; // b23
             const pack = state.packs.find(p => p.id === packId);
             if (!pack) return;
             document.getElementById('edit-pack-id').value = pack.id;
@@ -7499,6 +7591,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function handleSaveCard(e) {
             e.preventDefault();
+            if (cloudGuard()) return; // b23: участники не создают/не правят карточки
             const editId = document.getElementById('edit-card-id').value;
             const packId = document.getElementById('card-pack-id').value;
             const name = document.getElementById('card-name').value;
@@ -7556,6 +7649,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function editCard(cardId) {
+            if (cloudGuard()) return; // b23
             const card = state.cards.find(c => c.id === cardId);
             if (!card) return;
             document.getElementById('edit-card-id').value = card.id;
@@ -7651,6 +7745,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function deletePack(packId) {
+            if (cloudGuard()) return; // b23
             state.cards.filter(c => c.packId === packId).forEach(c => cloudTombAdd(c.id));
             cloudTombAdd(packId);
             state.packs = state.packs.filter(p => p.id !== packId);
@@ -7662,6 +7757,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function deleteCard(cardId) {
+            if (cloudGuard()) return; // b23
             cloudTombAdd(cardId);
             state.cards = state.cards.filter(c => c.id !== cardId);
             delete state.collection[cardId];
