@@ -3450,42 +3450,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'durak_streak3', icon: 'fa-fire', title: 'Серийный победитель', desc: '3 победы в «Дурака» подряд', reward: 200, check: s => (s.stats.bestDurakStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestDurakStreak || 0, 3), 3] }
         ];
 
-        // Стандартный набор — паки и карты из авторского сохранения
-        // nexus_tcg_backup.json (встроено в игру). Старый фан-набор
-        // «Скуби-Ду: Наш фан-набор» (pack-sdc) из стандарта УДАЛЁН.
-        const STANDARD_PACKS = [
-            {"id": "pack-1790758898081", "title": "Говорящая с призраками", "description": "Мелинда Гордон только что вышла замуж и открыла собственный антикварный магазин. С виду она такая же, как большинство девушек. Но на самом деле Мелинда обладает редчайшей способностью общаться с духами умерших людей. Девушка использует этот дар, чтобы передавать важную информацию из мира мертвых в мир живых...", "image": "https://archive.org/download/poster-set/g0.jpg", "price": 100, "color": "black", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Ghost%20Whisperer%20Intro%20Opening%20Credits%20-%20Abertura%20Series%20%28128k%29.mp3", "musicOff": false},
-            {"id": "pack-1790759015849", "title": "Сверхъестественное", "description": "Сериал рассказывает о приключениях братьев Сэма и Дина Винчестеров, которые путешествуют по Соединённым Штатам на чёрном автомобиле Chevrolet Impala 1967 года, расследуют паранормальные явления, многие из которых основаны на американских городских легендах и фольклоре, и сражаются с порождениями зла, такими как демоны и призраки.", "image": "https://archive.org/download/poster-set/s0.jpg", "price": 100, "color": "black", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Supernatural%20-%20Carry%20On%20Wayward%20Son%20%28Music%20Video%29.mp3", "musicOff": false},
-            {"id": "pack-1790759140403", "title": "Доктор Кто", "description": "Инопланетянин-гуманоид, называющий себя Доктором, путешествует через время и пространство в космическом корабле, который снаружи выглядит как полицейская будка 50-х годов. Доктор чрезвычайно эксцентричен и имеет невероятные знания в областях технологии, истории и науки. Он путешествует вместе со своими компаньонами, попутно борясь против космических злодеев и спасая Землю от бесчисленных врагов.", "image": "https://archive.org/download/poster-set/ba249bef08b2357bf2130e321d8bb37f%281%29.jpg", "price": 100, "color": "black", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Doctor%20Who%20Season.mp3", "musicOff": false},
-            {"id": "pack-1790762837197", "title": "Скуби-Ду!", "description": "Однажды мальчик по имени Шэгги встречает бездомного щенка, которому дает довольно странную кличку – Скуби-ду. Это становится началом не только настоящей дружбы, но и множества удивительных событий, в которых главные герои принимают самое активное участие. При поддержке школьников Дафни, Фредди и Вельмы приятели создают частное детективное агентство, мечтая помогать городским властям справляться с различными преступниками. Вскоре наступает момент, когда отважным сыщикам приходится столкнуться с реальной опасностью: Подлый Дик собирается выпустить на свободу Цербера, жуткую собаку-призрака, а отчаянная команда должна любой ценой остановить приближающийся апокалипсис.", "image": "https://archive.org/download/poster-set/SD_World_of_Mystery.jpg", "price": 100, "color": "gold", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Simple%20Plan%20-%20What%27s%20New%20Scooby%20Doo%20%28Official%20Lyric%20Video%29%20-%20SimplePlan%20%28128k%29.mp3", "musicOff": false}
-        ];
-        const STANDARD_CARDS = [
-            {"id": "card-1790762986400", "packId": "pack-1790762837197", "name": "Скуби-Ду", "description": "Верный друг", "rarity": "legendary", "image": "https://archive.org/download/poster-set/skubi1.jpg"},
-            {"id": "card-1790763095764", "packId": "pack-1790762837197", "name": "Шегги", "description": "Трусливый, но верный друг", "rarity": "legendary", "image": "https://archive.org/download/poster-set/skubi2.jpg"},
-            {"id": "card-1790763213286", "packId": "pack-1790762837197", "name": "Дафна", "description": "Стильная сыщица", "rarity": "legendary", "image": "https://archive.org/download/poster-set/skubi3.jpg"},
-            {"id": "card-1790763378586", "packId": "pack-1790762837197", "name": "Фред", "description": "Мастер ловушек", "rarity": "legendary", "image": "https://archive.org/download/poster-set/skubi4.jpg"},
-            {"id": "card-1790763471884", "packId": "pack-1790762837197", "name": "Велма", "description": "Главный мозг команды", "rarity": "legendary", "image": "https://archive.org/download/poster-set/skubi5.jpg"},
-            {"id": "card-1790805683832", "packId": "pack-1790762837197", "name": "Скрэппи-Ду", "description": "Маленький, гиперактивный и самоуверенный племянник Скуби-Ду", "rarity": "legendary", "image": "https://archive.org/download/poster-set/skubi6.jpg"},
-            {"id": "card-1790808827852", "packId": "pack-1790762837197", "name": "Мистическая машина", "description": "Едут на новую загадку", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi7.jpg"},
-            {"id": "card-1790808944494", "packId": "pack-1790762837197", "name": "Черный рыцарь", "description": "Пугал посетителей музея.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi8.jpg"},
-            {"id": "card-1790809042346", "packId": "pack-1790762837197", "name": "Призрак капитана Катлера", "description": "Светящийся водолаз, охранявший затонувшее золото.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi9.jpg"},
-            {"id": "card-1790809120718", "packId": "pack-1790762837197", "name": "Фантом из замка", "description": "Иллюзионист, пугавший людей в старом замке.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi10.jpg"},
-            {"id": "card-1790809206355", "packId": "pack-1790762837197", "name": "Шахтёр-сорокдевятник ", "description": "Призрак с фонарём в заброшенной шахте.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi11.jpg"},
-            {"id": "card-1790809311768", "packId": "pack-1790762837197", "name": "Зелёный призрак ", "description": "Светящийся призрак в особняке.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi12.jpg"},
-            {"id": "card-1790810571300", "packId": "pack-1790762837197", "name": "Призрак клоуна ", "description": "Терроризировал луна-парк.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi13.jpg"},
-            {"id": "card-1790811744706", "packId": "pack-1790762837197", "name": "Кукловод", "description": "Управлял марионетками, чтобы пугать людей в театре.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi14.jpg"},
-            {"id": "card-1790811974959", "packId": "pack-1790762837197", "name": "Мумия", "description": "Пугал посетителей музея, чтобы скрыть кражу.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi15.jpg"},
-            {"id": "card-1790813055255", "packId": "pack-1790762837197", "name": "Ведьма", "description": "Пугала людей в старом доме.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi16.jpg"},
-            {"id": "card-1790813843486", "packId": "pack-1790762837197", "name": "Космический призрак", "description": "Инопланетянин с жутким смехом.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi17.jpg"},
-            {"id": "card-1790814269408", "packId": "pack-1790762837197", "name": "Призрак Хайда ", "description": "Пугал людей в особняке.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi18.jpg"},
-            {"id": "card-1790814794985", "packId": "pack-1790762837197", "name": "Большой страшный оборотень", "description": "Пугал жителей города.", "rarity": "epic", "image": "https://archive.org/download/poster-set/skubi19.jpg"}
-        ];
-        STANDARD_CARDS.forEach(c => defaultCards.push({ id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image }));
-        STANDARD_PACKS.forEach(p => defaultPacks.push(Object.assign({}, p)));
+        // b27: СТАНДАРТНЫЙ НАБОР УДАЛЁН из игры: новые игроки начинают с пустой
+        // коллекцией, контент приходит из облака комнаты или создаётся в Студии.
+        // От старого стандарта остались только идентификаторы — по ним миграция
+        // вычищает паки и карты из прежних сохранений.
+        const STANDARD_PACKS = [];
+        const STANDARD_CARDS = [];
+        const STANDARD_PACK_IDS = ['pack-1790758898081', 'pack-1790759015849', 'pack-1790759140403', 'pack-1790762837197'];
+        const STANDARD_CARD_IDS = ['card-1790762986400', 'card-1790763095764', 'card-1790763213286', 'card-1790763378586', 'card-1790763471884', 'card-1790805683832', 'card-1790808827852', 'card-1790808944494', 'card-1790809042346', 'card-1790809120718', 'card-1790809206355', 'card-1790809311768', 'card-1790810571300', 'card-1790811744706', 'card-1790811974959', 'card-1790813055255', 'card-1790813843486', 'card-1790814269408', 'card-1790814794985'];
         // Идентификаторы стандартного набора — они в облако не синхронизируются (встроены в игру)
         const STANDARD_IDS = {};
-        STANDARD_PACKS.forEach(p => { STANDARD_IDS[p.id] = 1; });
-        STANDARD_CARDS.forEach(c => { STANDARD_IDS[c.id] = 1; });
+        STANDARD_PACK_IDS.forEach(id => { STANDARD_IDS[id] = 1; });
+        STANDARD_CARD_IDS.forEach(id => { STANDARD_IDS[id] = 1; });
 
         let state = {
             coins: parseInt(LS.getItem('nexus_coins')) || 1000,
@@ -3546,6 +3522,36 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // вычищаем его и его карты из старых сохранений навсегда
             state.packs = state.packs.filter(pp => pp.id !== 'pack-sdc');
             state.cards = state.cards.filter(cc => cc.packId !== 'pack-sdc');
+        })();
+        // b27: удалённый стандартный набор не должен оставаться в старых сохранениях
+        (function migrateStandardSets() {
+            state.packs = state.packs.filter(p => !STANDARD_IDS[p.id]);
+            state.cards = state.cards.filter(c => !STANDARD_IDS[c.id]);
+            STANDARD_CARD_IDS.forEach(id => { delete state.collection[id]; });
+            state.deck = (state.deck || []).filter(id => !STANDARD_IDS[id]);
+            if (state.albumBonus) STANDARD_PACK_IDS.forEach(id => { delete state.albumBonus[id]; });
+            if (STANDARD_PACK_IDS.indexOf(state.currentAlbumPackId) >= 0) state.currentAlbumPackId = null;
+        })();
+        // b28: одноразовая ПОЛНАЯ очистка паков («удалить все паки»): вычищает локальный
+        // сейв и — через надгробия (tombstones) + временную отсечку cloudWipeAt() —
+        // не даёт пакетам из облака вернуться: всё, что опубликовано ДО момента
+        // очистки, при слиянии игнорируется. Выполняется один раз на устройство.
+        (function migrateWipeAllPacks() {
+            try { if (LS.getItem('nexus_wipe_all_packs')) return; } catch (e) { return; }
+            (state.packs || []).forEach(p => {
+                cloudTombAdd(p.id);
+                state.cards.filter(c => c.packId === p.id).forEach(c => cloudTombAdd(c.id));
+            });
+            (state.cards || []).forEach(c => cloudTombAdd(c.id));
+            state.packs = [];
+            state.cards = [];
+            state.collection = {};
+            state.deck = [];
+            state.albumBonus = {};
+            state.currentAlbumPackId = null;
+            try { LS.setItem('nexus_wipe_all_packs', String(Date.now())); } catch (e) {}
+            cloudDirtySet(); // синхронизация доставит пустой каталог и надгробия в комнату
+            saveState();
         })();
         resolveMediaRefs();
 
@@ -3719,7 +3725,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     for (let i = 0; i < LS.length; i++) {
                         const k = LS.key(i);
                         // b19: nexus_pack_music (ссылка на трек вскрытия) — пользовательская настройка, как и звук
-                        if (k && k.indexOf('nexus_') === 0 && k !== 'nexus_sound' && k !== PACK_MUSIC_KEY) doomed.push(k);
+                        // b28: надгробия удалений и метка полной очистки — данные синхронизации,
+                        // сброс прогресса не должен их стирать, иначе удалённые паки вернутся из облака
+                        if (k && k.indexOf('nexus_') === 0 && k !== 'nexus_sound' && k !== PACK_MUSIC_KEY && k !== 'nexus_cloud_tombs' && k !== 'nexus_wipe_all_packs') doomed.push(k);
                     }
                     doomed.forEach(k => LS.removeItem(k));
                 }
@@ -8184,6 +8192,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function cloudAuto() { try { return LS.getItem('nexus_cloud_auto') !== '0'; } catch (e) { return true; } }
         function cloudTombs() { try { return JSON.parse(LS.getItem('nexus_cloud_tombs') || '[]'); } catch (e) { return []; } }
+        // b28: метка времени полной очистки паков: всё, что опубликовано в комнату
+        // РАНЬШЕ неё, при слиянии не добавляется (паки не могут «вернуться» из облака)
+        function cloudWipeAt() {
+            const v = parseInt(LS.getItem('nexus_wipe_all_packs') || '0', 10);
+            return isNaN(v) ? 0 : v;
+        }
         function cloudTombAdd(id) {
             const t = cloudTombs();
             if (!t.some(x => x.id === id)) { t.push({ id: id, at: Date.now() }); try { LS.setItem('nexus_cloud_tombs', JSON.stringify(t.slice(-300))); } catch (e) {} }
@@ -8198,32 +8212,57 @@ Check your Browserslist config to be sure that your targets are set up correctly
             };
         }
         function cloudMerge(remote) {
+            // b27: слияние возвращает сводку { add, upd, del }, чтобы показать пользователю,
+            // что именно прилетело из комнаты (в т.ч. удаления создателя).
+            const sum = { add: 0, upd: 0, del: 0 };
             let changed = false;
+            const wipeAt = cloudWipeAt(); // b28: отсечка полной очистки паков
             const tombs = cloudTombs();
             (remote.tombs || []).forEach(t => { if (t && t.id && !tombs.some(x => x.id === t.id)) { tombs.push(t); changed = true; } });
             try { LS.setItem('nexus_cloud_tombs', JSON.stringify(tombs.slice(-300))); } catch (e) {}
             const killedAt = id => { const t = tombs.find(x => x.id === id); return t ? t.at : 0; };
+            // b27: удаляя карту создателем, чистим у пользователя всё, что на неё ссылается
+            const dropCardRefs = id => {
+                if (Object.prototype.hasOwnProperty.call(state.collection, id)) { delete state.collection[id]; changed = true; }
+                if ((state.deck || []).indexOf(id) >= 0) { state.deck = state.deck.filter(d => d !== id); changed = true; }
+            };
+            const dropPack = pid => {
+                state.cards.filter(c => c.packId === pid).forEach(c => dropCardRefs(c.id));
+                const before = state.cards.length;
+                state.cards = state.cards.filter(c => c.packId !== pid);
+                if (state.cards.length !== before) changed = true;
+                const pi = state.packs.findIndex(p => p.id === pid);
+                if (pi >= 0) { state.packs.splice(pi, 1); sum.del++; changed = true; }
+                if (state.albumBonus && state.albumBonus[pid]) { delete state.albumBonus[pid]; changed = true; }
+                if (state.currentAlbumPackId === pid) state.currentAlbumPackId = null;
+            };
             (remote.packs || []).forEach(rp => {
                 if (!rp || !rp.id || STANDARD_IDS[rp.id]) return;
+                if (killedAt(rp.id) > (rp.updatedAt || 0)) { dropPack(rp.id); return; }
                 const i = state.packs.findIndex(p => p.id === rp.id);
-                if (killedAt(rp.id) > (rp.updatedAt || 0)) { if (i >= 0) { state.packs.splice(i, 1); changed = true; } return; }
-                if (i < 0) { state.packs.push(rp); changed = true; }
-                else if ((rp.updatedAt || 0) > (state.packs[i].updatedAt || 0)) { state.packs[i] = rp; changed = true; }
+                // b28: опубликованное ДО полной очистки не добавляется — паки не возвращаются
+                if (i < 0) { if ((rp.updatedAt || 0) < wipeAt) return; state.packs.push(rp); sum.add++; changed = true; }
+                else if ((rp.updatedAt || 0) > (state.packs[i].updatedAt || 0)) { state.packs[i] = rp; sum.upd++; changed = true; }
             });
             (remote.cards || []).forEach(rc => {
                 if (!rc || !rc.id || STANDARD_IDS[rc.id]) return;
+                if (killedAt(rc.id) > (rc.updatedAt || 0)) {
+                    const ci0 = state.cards.findIndex(c => c.id === rc.id);
+                    if (ci0 >= 0) { dropCardRefs(rc.id); state.cards.splice(ci0, 1); sum.del++; changed = true; }
+                    return;
+                }
                 const i = state.cards.findIndex(c => c.id === rc.id);
-                if (killedAt(rc.id) > (rc.updatedAt || 0)) { if (i >= 0) { state.cards.splice(i, 1); changed = true; } return; }
-                if (i < 0) { state.cards.push(rc); changed = true; }
-                else if ((rc.updatedAt || 0) > (state.cards[i].updatedAt || 0)) { state.cards[i] = rc; changed = true; }
+                // b28: отсечка полной очистки — старое содержимое комнаты не возвращается
+                if (i < 0) { if ((rc.updatedAt || 0) < wipeAt) return; state.cards.push(rc); sum.add++; changed = true; }
+                else if ((rc.updatedAt || 0) > (state.cards[i].updatedAt || 0)) { state.cards[i] = rc; sum.upd++; changed = true; }
             });
             tombs.forEach(t => {
-                const pi = state.packs.findIndex(p => p.id === t.id && !STANDARD_IDS[p.id] && (p.updatedAt || 0) < t.at);
-                if (pi >= 0) { state.packs.splice(pi, 1); changed = true; }
+                const isPack = state.packs.some(p => p.id === t.id && !STANDARD_IDS[p.id] && (p.updatedAt || 0) < t.at);
+                if (isPack) { dropPack(t.id); return; }
                 const ci = state.cards.findIndex(c => c.id === t.id && !STANDARD_IDS[c.id] && (c.updatedAt || 0) < t.at);
-                if (ci >= 0) { state.cards.splice(ci, 1); changed = true; }
+                if (ci >= 0) { dropCardRefs(t.id); state.cards.splice(ci, 1); sum.del++; changed = true; }
             });
-            return changed;
+            return changed ? sum : null;
         }
         function refreshVisibleTabs() {
             const vis = id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); };
@@ -8270,10 +8309,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const prevRole = cloudRole;
                 cloudResolveRole(remote); // b23: кто я в комнате — создатель или участник
                 if (remote && remote.v) {
-                    if (cloudMerge(remote)) {
+                    const m = cloudMerge(remote);
+                    if (m) {
                         saveState(); refreshVisibleTabs();
                         // b25: участник ВИДИТ, что изменения создателя прилетели (раньше слияние было молчаливым)
-                        if (!manual) showToast('☁️ Обновление из комнаты ' + cloudEsc(CLOUD.room) + ': изменения паков и карточек применены', 'success');
+                        // b27: в т.ч. явно показываем удаления, сделанные создателем комнаты
+                        if (!manual) {
+                            const bits = [];
+                            if (m.del) bits.push(`🗑 удалено создателем: ${m.del}`);
+                            if (m.add) bits.push(`новых: ${m.add}`);
+                            if (m.upd) bits.push(`обновлено: ${m.upd}`);
+                            showToast('☁️ Обновление из комнаты ' + cloudEsc(CLOUD.room) + (bits.length ? ': ' + bits.join(', ') : ': изменения применены'), 'success');
+                        }
                     }
                 }
                 CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
@@ -8306,6 +8353,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!cloudAuto()) { showToast('⚠️ Автопубликация выключена — нажмите «Опубликовать», чтобы отправить изменения в комнату', 'refund'); return; }
             clearTimeout(cloudPushT);
             cloudPushT = setTimeout(() => { cloudPushT = null; cloudPushNow(); }, 1500);
+        }
+        // b27: удаление паков/карточек создателем — критичное изменение:
+        // отправляем в комнату немедленно (без дебаунса 1.5 c), чтобы пользователи
+        // перестали видеть удалённый контент уже на ближайшем цикле синхронизации.
+        function cloudPushUrgent() {
+            if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady()) return;
+            if (!cloudAuto()) return; // автопубликация выключена — ждём кнопку «Опубликовать» (флаг dirty уже выставлен)
+            clearTimeout(cloudPushT); cloudPushT = null;
+            cloudPushNow();
         }
         // b25: страница закрывается/прячется — срочно допубликовать изменения синхронным beacon-запросом
         function cloudFlushPending() {
@@ -8885,6 +8941,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             state.cards = state.cards.filter(c => c.packId !== packId);
             saveState();
             cloudPublishSoon();
+            cloudPushUrgent(); // b27: удаление должно дойти до пользователей немедленно
             renderStudio();
             showToast('Пак и связанные карты удалены', 'success');
         }
@@ -8897,6 +8954,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             state.deck = (state.deck || []).filter(id => id !== cardId);
             saveState();
             cloudPublishSoon();
+            cloudPushUrgent(); // b27: удаление должно дойти до пользователей немедленно
             renderStudio();
             showToast('Карточка удалена', 'success');
         }
