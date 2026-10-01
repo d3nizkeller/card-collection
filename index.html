@@ -933,16 +933,32 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 </div>
                 <p id="cloud-status" class="text-[11px] text-slate-400">Не подключено.</p>
                 <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="text" id="cloud-room" placeholder="Код комнаты (например, a1b2c3d4)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
+                    <input type="text" id="cloud-room" placeholder="Код комнаты — придумайте свой, например: moipaki2026" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
                     <div class="flex items-center gap-2 shrink-0 flex-wrap">
                         <button type="button" onclick="cloudConnect()" class="px-3 py-2.5 bg-sky-600/80 hover:bg-sky-500 border border-sky-500/40 rounded-xl text-xs font-semibold text-white transition"><i class="fa-solid fa-plug mr-1"></i>Подключить</button>
-                        <button type="button" onclick="cloudCreate()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Создать новую общую комнату"><i class="fa-solid fa-plus mr-1"></i>Создать комнату</button>
+                        <button type="button" onclick="cloudCreate()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Придумать код автоматически и опубликовать мои паки"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Создать комнату</button>
                         <button type="button" onclick="cloudPull(true)" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Получить данные из облака"><i class="fa-solid fa-rotate mr-1"></i>Получить</button>
                         <button type="button" onclick="cloudPushNow()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Опубликовать свои паки в облако сейчас"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Опубликовать</button>
                         <button type="button" onclick="cloudDisconnect()" class="px-3 py-2.5 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-xl text-xs font-semibold text-slate-300 transition" title="Отключиться от комнаты"><i class="fa-solid fa-xmark mr-1"></i>Отключить</button>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500">Как работает: паки и карточки, созданные в Студии, публикуются в общую комнату, и все пользователи сайта с тем же кодом получают их (автообновление ~раз в минуту). Стандартный набор не синхронизируется. Хранилище — бесплатный JSONBlob.com без регистраций: создайте комнату, передайте код остальным, они нажмут «Подключить». Пока нет сети — игра работает локально.</p>
+                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Никакой регистрации и настроек — просто код комнаты:</b> придумайте его → «Подключить» → «Опубликовать». Друзья вводят тот же код → «Подключить» → «Получить». Все паки и карты Студии становятся общими и обновляются автоматически. Код комнаты — как пароль: чем необычнее, тем меньше шансов, что его угадают.</p>
+                <details class="text-[10px] text-slate-500">
+                    <summary class="cursor-pointer hover:text-slate-300 transition">Продвинутый режим: своя база Firebase (необязательно — простое хранилище работает и так)</summary>
+                    <p class="mt-2">Своя база надёжнее и держит каталог до 4 МБ. Создаётся кликами за 5 минут, код писать не нужно:</p>
+                    <ol class="list-decimal pl-5 mt-1 space-y-1">
+                        <li>Откройте <b>console.firebase.google.com</b> → «Создать проект» (бесплатно, название любое).</li>
+                        <li>Слева: Build → <b>Realtime Database</b> → «Create Database» → регион любой → режим «<b>test mode</b>» (чтение/запись открыты).</li>
+                        <li>На вкладке Realtime Database скопируйте URL базы вида <b>https://имя-проекта-default-rtdb.firebaseio.com</b> (или …firebasedatabase.app).</li>
+                        <li>Вставьте URL в поле ниже → «Сохранить URL» → «Создать комнату» → передайте код комнаты игрокам.</li>
+                        <li>Игроки: вставляют тот же URL и код комнаты → «Подключить». Готово.</li>
+                    </ol>
+                    <div class="flex flex-col sm:flex-row gap-2 mt-2">
+                        <input type="url" id="cloud-db" placeholder="URL базы Firebase: https://…firebasedatabase.app (пусто = простой режим)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
+                        <button type="button" onclick="cloudSaveDb()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition shrink-0" title="Сохранить URL базы в этом браузере (пустое поле — вернуться в простой режим)"><i class="fa-solid fa-database mr-1"></i>Сохранить URL</button>
+                    </div>
+                    <p class="mt-1">Чтобы вернуться в простой режим — очистите поле URL и нажмите «Сохранить URL». Стандартный набор игры не синхронизируется. Нет сети — игра работает локально.</p>
+                </details>
             </div>
             <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -6970,44 +6986,58 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }, { passive: true });
 
         // ============ ОБЛАКО: общий каталог паков и карт для всех пользователей сайта ============
-        // JSONBlob.com: бесплатное публичное хранилище без регистраций.
-        // «Комната» = id blob'а: кто создал — делится кодом с остальными.
+        // Простой режим (по умолчанию): бесплатное хранилище textdb.dev — БЕЗ регистрации, ключей и кода.
+        // Достаточно придумать код комнаты: у всех, кто введёт тот же код, паки становятся общими.
+        // Продвинутый режим: своя Firebase Realtime Database через официальный REST API (без SDK) — укажите URL базы.
         const CLOUD = {
-            api: 'https://jsonblob.com/api/jsonBlob/',
+            db: (function () { try { return String(LS.getItem('nexus_cloud_db') || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; } })(),
             room: (function () { try { return LS.getItem('nexus_cloud_room') || ''; } catch (e) { return ''; } })(),
             lastSync: 0,
             lastErr: '',
+            backend() { return this.db ? 'firebase' : 'textdb'; },
+            path() {
+                if (this.db) return this.db + '/nexus-rooms/' + this.room + '.json';
+                return 'https://textdb.dev/api/data/nexus-tcg-room-' + this.room;
+            },
             connected() { return !!this.room; },
             fetch() {
-                return fetch(this.api + this.room, { headers: { 'Accept': 'application/json' } }).then(r => {
-                    if (r.status === 404) return null;
+                if (!this.connected()) return Promise.resolve(null);
+                if (this.db) {
+                    return fetch(this.path(), { headers: { 'Accept': 'application/json' } }).then(r => {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.json(); // null, если комната ещё пустая
+                    });
+                }
+                return fetch(this.path(), { cache: 'no-store' }).then(r => {
                     if (!r.ok) throw new Error('HTTP ' + r.status);
-                    return r.json();
+                    return r.text();
+                }).then(txt => {
+                    txt = String(txt || '').trim();
+                    if (!txt) return null; // комната ещё пустая
+                    try { return JSON.parse(txt); } catch (e) { throw new Error('облако вернуло не-JSON'); }
                 });
             },
             push(catalog) {
-                if (!this.room) return this.create().then(() => this.push(catalog));
-                return fetch(this.api + this.room, {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(catalog)
+                if (!this.room) this.newRoom();
+                const body = JSON.stringify(catalog);
+                if (this.db) {
+                    return fetch(this.path(), {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body
+                    }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
+                }
+                return fetch(this.path(), {
+                    method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body
                 }).then(r => {
-                    if (r.status === 404) return this.create().then(() => this.push(catalog)); // blob истёк — создаём заново
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    if (!r.ok) throw new Error(r.status === 413 ? 'данные слишком большие для простого хранилища' : 'HTTP ' + r.status);
                     return true;
                 });
             },
-            create() {
-                return fetch(this.api, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ v: 1, updatedAt: Date.now(), packs: [], cards: [], tombs: [] })
-                }).then(r => {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    const loc = r.headers.get('Location') || '';
-                    const id = loc.split('/').pop() || r.headers.get('X-JsonBlob-Id') || '';
-                    if (!id) throw new Error('сервис не вернул код комнаты');
-                    this.room = id; try { LS.setItem('nexus_cloud_room', id); } catch (e) {}
-                    const inp = document.getElementById('cloud-room'); if (inp) inp.value = id;
-                    return id;
-                });
+            newRoom() {
+                const abc = 'abcdefghijkmnpqrstuvwxyz23456789';
+                let r = ''; for (let i = 0; i < 8; i++) r += abc[Math.floor(Math.random() * abc.length)];
+                this.room = r; try { LS.setItem('nexus_cloud_room', r); } catch (e) {}
+                const inp = document.getElementById('cloud-room'); if (inp) inp.value = r;
+                return r;
             }
         };
         function cloudAuto() { try { return LS.getItem('nexus_cloud_auto') !== '0'; } catch (e) { return true; } }
@@ -7063,13 +7093,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const el = document.getElementById('cloud-status');
             if (!el) return;
             if (extra) { el.textContent = extra; return; }
-            if (!CLOUD.room) { el.innerHTML = 'Не подключено. Создайте комнату или введите существующий код — и паки станут общими для всех пользователей сайта.'; return; }
+            if (!CLOUD.connected()) { el.innerHTML = 'Регистрация не нужна: придумайте <b class="text-sky-300">код комнаты</b> (например, moipaki2026) → «Подключить» → «Опубликовать». Такой же код введите на устройствах друзей — паки станут общими.'; return; }
             const t = CLOUD.lastSync ? new Date(CLOUD.lastSync).toLocaleTimeString() : '—';
-            el.innerHTML = 'Комната <b class="text-emerald-300">' + cloudEsc(CLOUD.room) + '</b> • синхронизация: ' + t +
+            el.innerHTML = 'Комната <b class="text-emerald-300">' + cloudEsc(CLOUD.room) + '</b> • ' + (CLOUD.db ? 'своя база Firebase' : 'простое хранилище (без регистрации)') + ' • синхронизация: ' + t +
                 (CLOUD.lastErr ? ' • <span class="text-rose-300">ошибка: ' + cloudEsc(CLOUD.lastErr) + '</span>' : ' • <span class="text-emerald-300">онлайн</span>');
         }
         function cloudPull(manual) {
-            if (!CLOUD.connected()) { if (manual) showToast('Сначала подключитесь к комнате', 'error'); return; }
+            if (!CLOUD.connected()) { if (manual) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); return; }
             cloudStatus('Загрузка из облака…');
             CLOUD.fetch().then(remote => {
                 if (remote && remote.v) {
@@ -7090,25 +7120,40 @@ Check your Browserslist config to be sure that your targets are set up correctly
             cloudPushT = setTimeout(cloudPushNow, 1500);
         }
         function cloudPushNow() {
+            if (!CLOUD.connected()) { showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
             const cat = cloudCatalog();
-            if (JSON.stringify(cat).length > 1500000) { cloudStatus('Каталог больше 1.5 МБ — публикация невозможна'); return; }
+            const lim = CLOUD.db ? 4000000 : 900000;
+            if (JSON.stringify(cat).length > lim) { cloudStatus('Каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ): сократите описания паков и карт'); return; }
             cloudStatus('Публикация…');
-            CLOUD.push(cat).then(() => { CLOUD.lastSync = Date.now(); CLOUD.lastErr = ''; cloudStatus(); showToast('Опубликовано в облако' + (CLOUD.room ? ' (комната ' + CLOUD.room + ')' : ''), 'success'); })
+            CLOUD.push(cat).then(() => { CLOUD.lastSync = Date.now(); CLOUD.lastErr = ''; cloudStatus(); showToast('Опубликовано в комнату ' + CLOUD.room, 'success'); })
                 .catch(e => { CLOUD.lastErr = String((e && e.message) || e); cloudStatus(); showToast('Ошибка публикации: ' + CLOUD.lastErr, 'error'); });
+        }
+        function cloudSaveDb() {
+            const inp = document.getElementById('cloud-db');
+            let u = String((inp && inp.value) || '').trim().replace(/\/+$/, '');
+            if (!u) {
+                CLOUD.db = ''; try { LS.removeItem('nexus_cloud_db'); } catch (e) {}
+                cloudStatus(); showToast('Простой режим (без регистрации) включён', 'success');
+                if (CLOUD.room) cloudPull(false);
+                return;
+            }
+            if (!/^https?:\/\/.+/i.test(u)) { showToast('Вставьте URL базы вида https://…firebasedatabase.app', 'error'); return; }
+            CLOUD.db = u; try { LS.setItem('nexus_cloud_db', u); } catch (e) {}
+            cloudStatus();
+            showToast('URL базы сохранён', 'success');
+            if (CLOUD.room) cloudPull(false);
         }
         function cloudConnect(code) {
             const inp = document.getElementById('cloud-room');
-            const c = String(code || (inp && inp.value) || '').trim();
+            const c = String(code || (inp && inp.value) || '').trim().toLowerCase();
             if (!c) { showToast('Введите код комнаты', 'error'); return; }
             CLOUD.room = c; try { LS.setItem('nexus_cloud_room', c); } catch (e) {}
             cloudPull(true);
         }
         function cloudCreate() {
-            cloudStatus('Создаём комнату…');
-            CLOUD.create().then(id => {
-                cloudStatus(); cloudPushNow();
-                showToast('Комната создана! Передайте код ' + id + ' другим пользователям сайта', 'success');
-            }).catch(e => { cloudStatus('Ошибка создания: ' + ((e && e.message) || e)); showToast('Не удалось создать комнату: ' + ((e && e.message) || e), 'error'); });
+            const code = CLOUD.newRoom();
+            cloudStatus(); cloudPushNow();
+            showToast('Комната ' + code + ' создана! Передайте код другим пользователям сайта', 'success');
         }
         function cloudDisconnect() {
             CLOUD.room = ''; CLOUD.lastErr = ''; try { LS.removeItem('nexus_cloud_room'); } catch (e) {}
@@ -7117,6 +7162,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function setCloudAuto(v) { try { LS.setItem('nexus_cloud_auto', v ? '1' : '0'); } catch (e) {} }
         function cloudInit() {
             const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room;
+            const dbi = document.getElementById('cloud-db'); if (dbi) dbi.value = CLOUD.db;
             const cb = document.getElementById('cloud-auto'); if (cb) cb.checked = cloudAuto();
             cloudStatus();
             if (CLOUD.connected()) cloudPull(false);
