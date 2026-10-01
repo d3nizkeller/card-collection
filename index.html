@@ -639,15 +639,51 @@ Check your Browserslist config to be sure that your targets are set up correctly
         .confetti-piece {
             animation: confettiFall var(--fall-dur) var(--fall-delay) ease-in forwards;
         }
+
+        /* ===== b22: Адаптивность — телефоны и планшеты ===== */
+        html { -webkit-text-size-adjust: 100%; }
+        body { overflow-x: clip; }
+
+        /* Модальные окна: содержимое центрируется через margin:auto и при
+           нехватке места скроллится, а не обрезается сверху (flex-center fix) */
+        #modal-unboxing, #modal-inspect, #modal-export,
+        #modal-reset, #modal-daily, #modal-pack3d { overscroll-behavior: contain; }
+        #modal-unboxing > div,
+        #modal-daily > div,
+        #modal-export > div,
+        #modal-reset > div,
+        #modal-inspect > div:first-child { margin: auto; }
+
+        /* Просмотр карты: карточка 9:16 всегда влезает в экран по высоте,
+           крестик закрытия — во внутреннем отступе сверху */
+        #modal-inspect > div:first-child {
+            padding-top: 2.75rem;
+            max-width: min(24rem, max(150px, calc((100vh - 210px) * 9 / 16)), 100%);
+        }
+
+        @media (max-width: 640px) {
+            /* iOS не зумит страницу при фокусе на полях ввода (нужно >=16px) */
+            input:not([readonly]):not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+            select, textarea:not([readonly]) { font-size: 16px !important; }
+            /* Тосты во всю ширину внизу — не висят углом над интерфейсом */
+            #toast-container { left: .75rem; right: .75rem; bottom: .75rem; }
+            #toast-container > div { width: 100%; justify-content: center; }
+            /* Бейдж сборки уезжает влево, чтобы не спорить с тостами */
+            #build-badge { right: auto !important; left: 8px !important; }
+        }
+
+        @media (max-width: 400px) {
+            .carousel-stage { height: 300px; }
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 29.09-b21</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b22</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('store')">
-                <svg viewBox="0 0 64 64" class="w-11 h-11 shrink-0 drop-shadow-[0_4px_14px_rgba(16,185,129,.45)]" aria-hidden="true">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer min-w-0" onclick="switchTab('store')">
+                <svg viewBox="0 0 64 64" class="w-9 h-9 sm:w-11 sm:h-11 shrink-0 drop-shadow-[0_4px_14px_rgba(16,185,129,.45)]" aria-hidden="true">
                     <defs>
                         <linearGradient id="kcBadge" x1="0" y1="0" x2="1" y2="1">
                             <stop offset="0" stop-color="#052e2b"/>
@@ -687,28 +723,28 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <path d="M50 9l1.4 3.1 3.1 1.4-3.1 1.4-1.4 3.1-1.4-3.1-3.1-1.4 3.1-1.4z" fill="#fde68a" opacity=".95"/>
                     <path d="M13 47l1 2.2 2.2 1-2.2 1-1 2.2-1-2.2-2.2-1 2.2-1z" fill="#a7f3d0" opacity=".8"/>
                 </svg>
-                <div class="leading-tight">
-                    <h1 class="font-black text-lg sm:text-xl tracking-wide bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-200 bg-clip-text text-transparent">Коллекционер карт</h1>
-                    <p class="text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-slate-400">Собери свою коллекцию</p>
+                <div class="leading-tight min-w-0">
+                    <h1 class="font-black text-[15px] sm:text-xl tracking-wide bg-gradient-to-r from-emerald-300 via-teal-200 to-amber-200 bg-clip-text text-transparent">Коллекционер карт</h1>
+                    <p class="hidden sm:block text-[10px] sm:text-[11px] uppercase tracking-[0.22em] text-slate-400">Собери свою коллекцию</p>
                 </div>
             </div>
 
             <!-- Coin Balance -->
-            <div class="flex items-center space-x-3 md:space-x-6">
-                <div class="flex items-center space-x-2 bg-slate-900/90 border border-slate-700/60 px-4 py-1.5 rounded-full shadow-inner">
+            <div class="flex items-center space-x-1.5 sm:space-x-3 lg:space-x-6 shrink-0">
+                <div class="flex items-center space-x-2 bg-slate-900/90 border border-slate-700/60 px-2.5 sm:px-4 py-1.5 rounded-full shadow-inner">
                     <i class="fa-solid fa-coins text-amber-400 text-sm"></i>
-                    <span id="coin-balance" class="font-bold text-amber-300 tracking-wider">1000</span>
+                    <span id="coin-balance" class="font-bold text-amber-300 tracking-wider text-sm sm:text-base">1000</span>
                 </div>
 
                 <!-- Sound Toggle -->
-                <button onclick="toggleSound()" class="w-9 h-9 flex items-center justify-center bg-slate-900/90 border border-slate-700/60 rounded-full text-slate-300 hover:text-white transition shrink-0" title="Звук вкл/выкл">
+                <button onclick="toggleSound()" class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-900/90 border border-slate-700/60 rounded-full text-slate-300 hover:text-white transition shrink-0" title="Звук вкл/выкл">
                     <i id="sound-icon" class="fa-solid fa-volume-high text-sm"></i>
                 </button>
 
                 <!-- Daily Reward Button -->
-                <button onclick="openDailyModal()" id="daily-header-btn" class="relative px-3 md:px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-semibold transition flex items-center space-x-2" title="Ежедневная награда">
+                <button onclick="openDailyModal()" id="daily-header-btn" class="relative px-2.5 sm:px-3 lg:px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-semibold transition flex items-center space-x-2" title="Ежедневная награда">
                     <i class="fa-solid fa-gift"></i>
-                    <span class="hidden lg:inline">Ежедневная награда</span>
+                    <span class="hidden xl:inline">Ежедневная награда</span>
                     <span id="daily-dot" class="hidden absolute -top-1.5 -right-1.5 flex w-3 h-3">
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
@@ -716,7 +752,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 </button>
 
                 <!-- Nav Tabs -->
-                <nav class="hidden md:flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                <nav class="hidden lg:flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                     <button onclick="switchTab('store')" id="nav-store" class="px-3 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-600 text-white shadow">Магазин</button>
                     <button onclick="switchTab('albums')" id="nav-albums" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Альбомы</button>
                     <button onclick="switchTab('battle')" id="nav-battle" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Бой</button>
@@ -727,26 +763,26 @@ Check your Browserslist config to be sure that your targets are set up correctly
         </div>
 
         <!-- Mobile Bottom Nav -->
-        <div class="md:hidden flex justify-around bg-slate-900 border-t border-slate-800 py-2">
-            <button onclick="switchTab('store')" id="mob-nav-store" class="flex flex-col items-center text-xs text-emerald-400">
-                <i class="fa-solid fa-store text-base mb-1"></i> Магазин
+        <div class="lg:hidden flex justify-around bg-slate-900 border-t border-slate-800 py-1.5 px-1">
+            <button onclick="switchTab('store')" id="mob-nav-store" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-emerald-400">
+                <i class="fa-solid fa-store text-[15px] mb-0.5"></i> Магазин
             </button>
-            <button onclick="switchTab('albums')" id="mob-nav-albums" class="flex flex-col items-center text-xs text-slate-400">
-                <i class="fa-solid fa-book-open text-base mb-1"></i> Альбомы
+            <button onclick="switchTab('albums')" id="mob-nav-albums" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
+                <i class="fa-solid fa-book-open text-[15px] mb-0.5"></i> Альбомы
             </button>
-            <button onclick="switchTab('battle')" id="mob-nav-battle" class="flex flex-col items-center text-xs text-slate-400">
-                <i class="fa-solid fa-hand-fist text-base mb-1"></i> Бой
+            <button onclick="switchTab('battle')" id="mob-nav-battle" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
+                <i class="fa-solid fa-hand-fist text-[15px] mb-0.5"></i> Бой
             </button>
-            <button onclick="switchTab('rewards')" id="mob-nav-rewards" class="flex flex-col items-center text-xs text-slate-400">
-                <i class="fa-solid fa-gift text-base mb-1"></i> Награды
+            <button onclick="switchTab('rewards')" id="mob-nav-rewards" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
+                <i class="fa-solid fa-gift text-[15px] mb-0.5"></i> Награды
             </button>
-            <button onclick="switchTab('studio')" id="mob-nav-studio" class="flex flex-col items-center text-xs text-slate-400">
-                <i class="fa-solid fa-wand-magic-sparkles text-base mb-1"></i> Студия
+            <button onclick="switchTab('studio')" id="mob-nav-studio" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
+                <i class="fa-solid fa-wand-magic-sparkles text-[15px] mb-0.5"></i> Студия
             </button>
         </div>
     </header>
 
-    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    <main class="flex-grow max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
         
         <!-- STORE TAB -->
         <section id="tab-store" class="space-y-6">
@@ -796,7 +832,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="setBattleMode('durak')" id="mode-durak-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-diamond mr-1.5"></i>Дурак</button>
                 </div>
                 <div id="lobby-arena" class="space-y-6">
-                <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between gap-4 md:items-center">
+                <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between gap-4 md:items-center">
                     <div>
                         <h2 class="text-2xl font-black text-white tracking-tight">Арена Nexus</h2>
                         <p class="text-sm text-slate-400 mt-1">Соберите колоду из 3–5 карт и сражайтесь с противниками за монеты!</p>
@@ -811,7 +847,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- Deck Builder -->
-                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+                    <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
                         <h3 class="text-lg font-bold text-white flex items-center space-x-2">
                             <i class="fa-solid fa-clone text-emerald-400"></i>
                             <span>Моя колода</span>
@@ -825,7 +861,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>
 
                     <!-- Opponents -->
-                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+                    <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
                         <h3 class="text-lg font-bold text-white flex items-center space-x-2">
                             <i class="fa-solid fa-hand-fist text-rose-400"></i>
                             <span>Противники</span>
@@ -837,7 +873,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
                 <!-- Durak lobby -->
                 <div id="lobby-durak" class="space-y-6 hidden">
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between gap-4 md:items-center">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between gap-4 md:items-center">
                         <div>
                             <h2 class="text-2xl font-black text-white tracking-tight">Дурак <span class="text-emerald-400">♦</span> в 3D</h2>
                             <p class="text-sm text-slate-400 mt-1">Классическая карточная игра: 36 карт, козырь, бей или забирай. Не останься дураком!</p>
@@ -846,7 +882,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         </div>
                         <button onclick="startDurak()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 shrink-0"><i class="fa-solid fa-play mr-2"></i>Играть в дурака</button>
                     </div>
-                    <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-2 text-sm text-slate-300">
+                    <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-2 text-sm text-slate-300">
                         <h3 class="font-bold text-white mb-2"><i class="fa-solid fa-book text-teal-400 mr-2"></i>Коротко правила</h3>
                         <p>• Ходите одной картой, подкидывайте карты тех же достоинств, что уже на столе (до 6 пар).</p>
                         <p>• Отбивайтесь старшей картой той же масти или любым козырем по некозырной атаке.</p>
@@ -863,7 +899,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <!-- Durak view -->
             <div id="durak-view" class="hidden space-y-4 max-w-3xl mx-auto">
                 <div id="durak-topbar"></div>
-                <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900" style="position:relative;height:380px;overflow:hidden;">
+                <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900" style="position:relative;height:clamp(260px,44vh,380px);overflow:hidden;">
                     <div id="durak-3d-container" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
                     <div id="durak-status" style="position:absolute;bottom:8px;left:8px;right:8px;z-index:10;pointer-events:none;text-align:center;"></div>
                 </div>
@@ -874,13 +910,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         <!-- REWARDS TAB -->
         <section id="tab-rewards" class="space-y-8 hidden">
-            <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-6 rounded-2xl border border-slate-800">
+            <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
                 <h2 class="text-2xl font-black text-white tracking-tight">Награды и достижения</h2>
                 <p class="text-sm text-slate-400 mt-1">Заходите каждый день, выполняйте задания и открывайте достижения — получайте монеты на новые паки!</p>
             </div>
 
             <!-- Daily Reward -->
-            <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
                 <div class="flex flex-wrap justify-between items-center gap-2">
                     <h3 class="text-lg font-bold text-white flex items-center space-x-2">
                         <i class="fa-solid fa-gift text-emerald-400"></i>
@@ -893,7 +929,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             </div>
 
             <!-- Daily Missions -->
-            <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
                 <div class="flex flex-wrap justify-between items-center gap-2">
                     <h3 class="text-lg font-bold text-white flex items-center space-x-2">
                         <i class="fa-solid fa-list-check text-teal-400"></i>
@@ -905,7 +941,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             </div>
 
             <!-- Achievements -->
-            <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
                 <div class="flex flex-wrap justify-between items-center gap-2">
                     <h3 class="text-lg font-bold text-white flex items-center space-x-2">
                         <i class="fa-solid fa-trophy text-amber-400"></i>
@@ -920,7 +956,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         <!-- STUDIO TAB -->
         <section id="tab-studio" class="space-y-8 hidden overflow-x-clip">
             <!-- Облако: общие паки для всех пользователей сайта -->
-            <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-3">
+            <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-lg font-bold text-white flex items-center space-x-2">
                         <i class="fa-solid fa-cloud text-sky-400"></i>
@@ -960,12 +996,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <p class="mt-1">Чтобы вернуться в простой режим — очистите поле URL и нажмите «Сохранить URL». Стандартный набор игры не синхронизируется. Нет сети — игра работает локально.</p>
                 </details>
             </div>
-            <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-black text-white tracking-tight">Создание и редактирование (Студия)</h2>
                     <p class="text-sm text-slate-400 mt-1">Создавайте и редактируйте паки и карточки, экспортируйте или импортируйте сохранения, сбрасывайте прогресс.</p>
                 </div>
-                <div class="flex items-center space-x-3 flex-wrap gap-y-2">
+                <div class="flex items-center flex-wrap gap-2">
                     <button onclick="exportData()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition flex items-center space-x-2">
                         <i class="fa-solid fa-download text-emerald-400"></i>
                         <span>Экспорт JSON</span>
@@ -984,7 +1020,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <!-- Create/Edit Pack Form -->
-                <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+                <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
                     <h3 id="pack-form-title" class="text-lg font-bold text-white flex items-center space-x-2">
                         <i class="fa-solid fa-box text-emerald-400"></i>
                         <span>Новый Бустер Пак</span>
@@ -1051,7 +1087,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 </div>
 
                 <!-- Create/Edit Card Form -->
-                <div class="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+                <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
                     <h3 id="card-form-title" class="text-lg font-bold text-white flex items-center space-x-2">
                         <i class="fa-solid fa-id-card text-teal-400"></i>
                         <span>Новая Карточка</span>
@@ -1293,7 +1329,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             <!-- Studio Management Lists -->
             <div class="pt-4">
-                <div class="bg-slate-900/60 p-6 rounded-2xl border border-slate-800">
+                <div class="bg-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
                     <h4 class="text-md font-bold text-white mb-1">Существующие паки и их карточки</h4>
                     <p class="text-[10px] text-slate-500 mb-3"><i class="fa-solid fa-layer-group text-teal-400 mr-1"></i>Карточки каждого пака — прямо под ним: нажмите на счётчик карт у пака, чтобы раскрыть или скрыть список</p>
                     <div id="studio-packs-list" class="space-y-3 max-h-[30rem] overflow-y-auto pr-2"></div>
@@ -1303,10 +1339,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </main>
 
     <!-- Unboxing Modal -->
-    <div id="modal-unboxing" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-4">
-        <div class="max-w-4xl w-full flex flex-col items-center space-y-6">
-            <div class="flex justify-between w-full max-w-xl items-center px-4">
-                <h3 class="text-xl font-bold text-white" id="unboxing-title">Вскрытие пака</h3>
+    <div id="modal-unboxing" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
+        <div class="max-w-4xl w-full flex flex-col items-center space-y-3 sm:space-y-6">
+            <div class="flex flex-wrap justify-between w-full max-w-xl items-center gap-2 px-1 sm:px-4">
+                <h3 class="text-base sm:text-xl font-bold text-white" id="unboxing-title">Вскрытие пака</h3>
                 <div class="flex space-x-3">
                     <button onclick="scratchAllCards()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition shadow">Стереть всё</button>
                     <button onclick="closeUnboxingModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Закрыть</button>
@@ -1326,16 +1362,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
             </div>
             <p class="text-xs text-slate-400 text-center animate-pulse">Зажмите и водите мышкой или пальцем по карте, чтобы стереть фольгу!</p>
             
-            <div id="unboxing-cards-container" class="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-3xl justify-items-center py-4">
+            <div id="unboxing-cards-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 w-full max-w-3xl justify-items-center py-2 sm:py-4">
                 <!-- Scratch cards rendered here -->
             </div>
         </div>
     </div>
 
     <!-- 3D Card Inspection Modal -->
-    <div id="modal-inspect" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg hidden flex flex-col items-center justify-center p-4">
+    <div id="modal-inspect" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-lg hidden flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
         <div class="relative w-full max-w-sm flex flex-col items-center">
-            <button onclick="closeInspectModal()" class="absolute -top-12 right-0 z-20 text-slate-400 hover:text-white text-xl p-2" title="Закрыть (Esc)"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="closeInspectModal()" class="absolute top-0 right-0 z-20 text-slate-400 hover:text-white text-xl p-2" title="Закрыть (Esc)"><i class="fa-solid fa-xmark"></i></button>
             <div id="inspect-float" class="relative w-full flex flex-col items-center" style="perspective:1200px;">
             <div id="inspect-aura" class="aura aura-inspect hidden"></div>
             <div id="inspect-card-render" class="w-full card-aspect rounded-2xl border-2 shadow-2xl relative flex flex-col justify-between p-4 overflow-hidden transition-transform duration-200" style="transform-style:preserve-3d;">
@@ -1351,8 +1387,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </div>
 
     <!-- Export Modal (fallback when downloads are blocked) -->
-    <div id="modal-export" class="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full shadow-2xl relative space-y-4">
+    <div id="modal-export" class="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 max-w-2xl w-full shadow-2xl relative space-y-4">
             <button onclick="closeExportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center"><i class="fa-solid fa-download text-emerald-400"></i></div>
@@ -1371,8 +1407,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </div>
 
     <!-- Reset Progress Modal (b17) -->
-    <div id="modal-reset" class="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-red-800/50 rounded-2xl p-6 max-w-md w-full shadow-2xl relative space-y-4">
+    <div id="modal-reset" class="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-red-800/50 rounded-2xl p-4 sm:p-6 max-w-md w-full shadow-2xl relative space-y-4">
             <button onclick="closeResetModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
             <div class="flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center"><i class="fa-solid fa-rotate-left text-red-400"></i></div>
@@ -1400,8 +1436,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </div>
 
     <!-- 3D Pack Opening Modal -->
-    <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 29.09-b21</div>
+    <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b22</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -1414,8 +1450,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </div>
 
     <!-- Daily Reward Modal -->
-    <div id="modal-daily" class="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full shadow-2xl relative">
+    <div id="modal-daily" class="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl relative">
             <button onclick="closeDailyModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
             <div class="flex items-center space-x-3 mb-5">
                 <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/30">
@@ -2907,7 +2943,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b21</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b22</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -4985,7 +5021,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             arenaEl.innerHTML = `
                 <div class="space-y-4 max-w-3xl mx-auto">
                     <div id="arena-topbar"></div>
-                    <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900" style="position:relative;height:360px;overflow:hidden;">
+                    <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900" style="position:relative;height:clamp(250px,42vh,360px);overflow:hidden;">
                         <div id="battle-3d-container" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
                         <div id="hud-enemy" style="position:absolute;top:8px;left:8px;right:8px;z-index:10;pointer-events:none;"></div>
                         <div id="hud-player" style="position:absolute;bottom:8px;left:8px;right:8px;z-index:10;pointer-events:none;"></div>
@@ -5007,7 +5043,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             const topbar = document.getElementById('arena-topbar');
             if (topbar) topbar.innerHTML = `
-                <div class="flex items-center justify-between bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3">
                     <button onclick="exitBattle()" class="text-xs font-semibold text-slate-400 hover:text-rose-400 transition flex items-center space-x-1.5"><i class="fa-solid fa-arrow-left"></i><span>Покинуть бой</span></button>
                     <div class="text-center">
                         <p class="font-bold text-white text-sm">${battle.opp.name} <span class="text-amber-400 text-[10px] tracking-tighter ml-1">${stars}</span></p>
@@ -5755,19 +5791,19 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 document.getElementById(`tab-${t}`).classList.add('hidden');
                 const navBtn = document.getElementById(`nav-${t}`);
                 if (navBtn) {
-                    navBtn.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white";
+                    navBtn.className = "px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white";
                 }
                 const mobBtn = document.getElementById(`mob-nav-${t}`);
                 if (mobBtn) {
-                    mobBtn.className = "flex flex-col items-center text-xs text-slate-400";
+                    mobBtn.className = "flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400";
                 }
             });
 
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
             const activeNav = document.getElementById(`nav-${tabId}`);
-            if (activeNav) activeNav.className = "px-4 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-600 text-white shadow";
+            if (activeNav) activeNav.className = "px-3 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-600 text-white shadow";
             const activeMob = document.getElementById(`mob-nav-${tabId}`);
-            if (activeMob) activeMob.className = "flex flex-col items-center text-xs text-emerald-400";
+            if (activeMob) activeMob.className = "flex flex-col items-center text-[11px] leading-tight px-0.5 text-emerald-400";
 
             if (tabId === 'store') renderStore();
             if (tabId === 'albums') renderAlbumsHub();
@@ -6019,7 +6055,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>
                 </div>
                 <div id="carousel-odds">${renderPackOdds(pack)}</div>
-                <div class="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between gap-3">
+                <div class="mt-4 pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
                     <span id="carousel-price" class="font-bold text-amber-400 flex items-center space-x-1.5">
                         <i class="fa-solid fa-coins"></i>
                         <span>${pack.price}</span>
@@ -6785,7 +6821,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             container.innerHTML = `
                 <div class="space-y-6">
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-6 rounded-2xl border border-slate-800">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
                         <h2 class="text-2xl font-black text-white">Альбомы коллекции</h2>
                         <p class="text-sm text-slate-400 mt-1">Выберите альбом, чтобы просмотреть карточки конкретного бустер пака.</p>
                     </div>
