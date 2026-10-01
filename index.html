@@ -3727,7 +3727,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         // b19: nexus_pack_music (ссылка на трек вскрытия) — пользовательская настройка, как и звук
                         // b28: надгробия удалений и метка полной очистки — данные синхронизации,
                         // сброс прогресса не должен их стирать, иначе удалённые паки вернутся из облака
-                        if (k && k.indexOf('nexus_') === 0 && k !== 'nexus_sound' && k !== PACK_MUSIC_KEY && k !== 'nexus_cloud_tombs' && k !== 'nexus_wipe_all_packs') doomed.push(k);
+                        if (k && k.indexOf('nexus_') === 0 && k !== 'nexus_sound' && k !== PACK_MUSIC_KEY && k !== 'nexus_cloud_tombs' && k !== 'nexus_wipe_all_packs' && k !== 'nexus_wipe_room_done') doomed.push(k);
                     }
                     doomed.forEach(k => LS.removeItem(k));
                 }
@@ -8192,11 +8192,29 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function cloudAuto() { try { return LS.getItem('nexus_cloud_auto') !== '0'; } catch (e) { return true; } }
         function cloudTombs() { try { return JSON.parse(LS.getItem('nexus_cloud_tombs') || '[]'); } catch (e) { return []; } }
-        // b28: метка времени полной очистки паков: всё, что опубликовано в комнату
-        // РАНЬШЕ неё, при слиянии не добавляется (паки не могут «вернуться» из облака)
-        function cloudWipeAt() {
-            const v = parseInt(LS.getItem('nexus_wipe_all_packs') || '0', 10);
-            return isNaN(v) ? 0 : v;
+        // b29: точечная зачистка комнаты: один раз получаем каталог комнаты и ставим
+        // надгробия на все ID, которые были в нём на момент очистки. Всё, что создатель
+        // опубликует ПОСЛЕ (новые ID), доходит до пользователей как обычно.
+        function cloudWipeRoomOnce(done) {
+            let finished = false;
+            try { finished = LS.getItem('nexus_wipe_room_done') === '1'; } catch (e) { finished = true; }
+            if (finished || !CLOUD.connected()) { if (done) done(); return; }
+            CLOUD.fetch().then(remote => {
+                try {
+                    if (remote && remote.v) {
+                        const ids = {};
+                        (remote.packs || []).forEach(p => { if (p && p.id) { cloudTombAdd(p.id); ids[p.id] = 1; } });
+                        (remote.cards || []).forEach(c => { if (c && c.id) { cloudTombAdd(c.id); ids[c.id] = 1; } });
+                        state.packs = state.packs.filter(p => !ids[p.id]);
+                        state.cards = state.cards.filter(c => !ids[c.id]);
+                        saveState();
+                        cloudDirtySet(); // пустой каталог + надгробия уйдут в комнату
+                        if (!cloudGuest() && cloudAuthReady() && cloudAuto()) cloudPushNow();
+                    }
+                } catch (e) {}
+                try { LS.setItem('nexus_wipe_room_done', '1'); } catch (e) {}
+                if (done) done();
+            }).catch(() => { if (done) done(); }); // нет сети — повторим при следующем запуске
         }
         function cloudTombAdd(id) {
             const t = cloudTombs();
@@ -8216,7 +8234,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // что именно прилетело из комнаты (в т.ч. удаления создателя).
             const sum = { add: 0, upd: 0, del: 0 };
             let changed = false;
-            const wipeAt = cloudWipeAt(); // b28: отсечка полной очистки паков
             const tombs = cloudTombs();
             (remote.tombs || []).forEach(t => { if (t && t.id && !tombs.some(x => x.id === t.id)) { tombs.push(t); changed = true; } });
             try { LS.setItem('nexus_cloud_tombs', JSON.stringify(tombs.slice(-300))); } catch (e) {}
@@ -8240,8 +8257,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (!rp || !rp.id || STANDARD_IDS[rp.id]) return;
                 if (killedAt(rp.id) > (rp.updatedAt || 0)) { dropPack(rp.id); return; }
                 const i = state.packs.findIndex(p => p.id === rp.id);
-                // b28: опубликованное ДО полной очистки не добавляется — паки не возвращаются
-                if (i < 0) { if ((rp.updatedAt || 0) < wipeAt) return; state.packs.push(rp); sum.add++; changed = true; }
+                if (i < 0) { state.packs.push(rp); sum.add++; changed = true; }
                 else if ((rp.updatedAt || 0) > (state.packs[i].updatedAt || 0)) { state.packs[i] = rp; sum.upd++; changed = true; }
             });
             (remote.cards || []).forEach(rc => {
@@ -8252,8 +8268,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     return;
                 }
                 const i = state.cards.findIndex(c => c.id === rc.id);
-                // b28: отсечка полной очистки — старое содержимое комнаты не возвращается
-                if (i < 0) { if ((rc.updatedAt || 0) < wipeAt) return; state.cards.push(rc); sum.add++; changed = true; }
+                if (i < 0) { state.cards.push(rc); sum.add++; changed = true; }
                 else if ((rc.updatedAt || 0) > (state.cards[i].updatedAt || 0)) { state.cards[i] = rc; sum.upd++; changed = true; }
             });
             tombs.forEach(t => {
@@ -8457,7 +8472,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const cb = document.getElementById('cloud-auto'); if (cb) cb.checked = cloudAuto();
             if (CLOUD.connected()) cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest'; // b23
             cloudStatus();
-            if (CLOUD.connected()) cloudPull(false, cloudAfterPull); // b25: после получения — допубликовать оставшиеся правки
+            if (CLOUD.connected()) {
+                // b29: сначала одноразовая зачистка комнаты от старых паков, затем обычное получение
+                cloudWipeRoomOnce(() => cloudPull(false, cloudAfterPull));
+            }
             // b25: проверяем облако чаще (каждые 20 секунд вместо 60) — обновления прилетают быстрее
             setInterval(() => cloudPull(false, cloudAfterPull), 20000);
             // b25: закрывают вкладку/приложение — экстренно публикуем правки создателя;
