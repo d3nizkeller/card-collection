@@ -142,6 +142,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
         body { font-family: 'Inter', sans-serif; }
         .card-aspect { aspect-ratio: 9 / 16; }
         .pack-aspect { aspect-ratio: 0.53; }
+        /* появление карточек альбомов каскадом (fill backwards — после анимации
+           трансформации не удерживаются и hover-эффекты работают как обычно) */
+        @keyframes albumIn {
+            from { opacity: 0; transform: translateY(16px) scale(0.97); }
+            to   { opacity: 1; transform: none; }
+        }
+        .album-in { animation: albumIn 0.5s cubic-bezier(0.22, 0.9, 0.35, 1) backwards; }
+        @media (prefers-reduced-motion: reduce) { .album-in { animation: none; } }
         .foil-shine {
             background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.25) 100%);
         }
@@ -786,10 +794,38 @@ Check your Browserslist config to be sure that your targets are set up correctly
     <main class="flex-grow max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
         
         <!-- STORE TAB -->
-        <section id="tab-store" class="space-y-6">
-            <div id="store-carousel" class="pack-carousel bg-gradient-to-b from-slate-900/70 to-slate-950/40 rounded-2xl border border-slate-800 px-2 py-5 sm:px-6">
-                <div class="flex items-center justify-between gap-3 px-1 sm:px-2">
-                    <p class="text-[11px] text-slate-500"><i class="fa-solid fa-compact-disc text-teal-400 mr-1.5"></i>Карусель паков: листайте стрелками, свайпом или колесом мыши — смена пака каждые 15 секунд</p>
+        <section id="tab-store" class="space-y-4 sm:space-y-6">
+            <div class="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/70">
+                <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-sky-500/10 pointer-events-none"></div>
+                <div class="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-28 -left-14 w-64 h-64 rounded-full bg-fuchsia-500/10 blur-3xl pointer-events-none"></div>
+                <div class="relative p-4 sm:p-7 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-300/90"><i class="fa-solid fa-store"></i>Магазин</div>
+                        <h2 class="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black text-white tracking-tight">Бустер-паки</h2>
+                        <p class="text-xs sm:text-sm text-slate-400 mt-1.5 sm:mt-2 max-w-xl">Выберите пак в карусели или на витрине ниже — вскрытие пополнит коллекцию, альбомы и задания дня.</p>
+                    </div>
+                    <div class="flex items-stretch gap-1.5 sm:gap-3 flex-wrap shrink-0">
+                        <div class="rounded-xl sm:rounded-2xl bg-slate-950/60 border border-slate-800/80 px-2.5 sm:px-3 py-2 sm:py-2.5 min-w-0">
+                            <div class="flex items-center gap-1 sm:gap-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500"><i class="fa-solid fa-boxes-stacked text-emerald-400 shrink-0"></i><span class="truncate">паков в продаже</span></div>
+                            <div id="store-stat-packs" class="mt-0.5 sm:mt-1 text-sm sm:text-lg font-black text-white leading-none">0</div>
+                        </div>
+                        <div class="rounded-xl sm:rounded-2xl bg-slate-950/60 border border-slate-800/80 px-2.5 sm:px-3 py-2 sm:py-2.5 min-w-0">
+                            <div class="flex items-center gap-1 sm:gap-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500"><i class="fa-solid fa-clone text-sky-400 shrink-0"></i><span class="truncate">карт в каталоге</span></div>
+                            <div id="store-stat-cards" class="mt-0.5 sm:mt-1 text-sm sm:text-lg font-black text-white leading-none">0</div>
+                        </div>
+                        <div class="rounded-xl sm:rounded-2xl bg-slate-950/60 border border-slate-800/80 px-2.5 sm:px-3 py-2 sm:py-2.5 min-w-0">
+                            <div class="flex items-center gap-1 sm:gap-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500"><i class="fa-solid fa-coins text-amber-400 shrink-0"></i><span class="truncate">баланс</span></div>
+                            <div id="store-stat-coins" class="mt-0.5 sm:mt-1 text-sm sm:text-lg font-black text-amber-300 leading-none">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="store-carousel" class="pack-carousel relative overflow-hidden bg-gradient-to-b from-slate-900/70 to-slate-950/40 rounded-3xl border border-slate-800/80 px-2 py-5 sm:px-6">
+                <div class="pointer-events-none absolute inset-x-0 top-1/3 h-1/2 bg-[radial-gradient(ellipse_at_center,rgba(52,211,153,0.08),transparent_65%)]"></div>
+                <div class="relative flex items-center justify-between gap-3 px-1 sm:px-2">
+                    <p class="text-[10px] sm:text-[11px] text-slate-500 min-w-0 truncate"><i class="fa-solid fa-compact-disc text-teal-400 mr-1.5"></i><span class="sm:hidden">Карусель: свайп, стрелки или колесо мыши</span><span class="hidden sm:inline">Карусель паков: листайте стрелками, свайпом или колесом мыши — смена пака каждые 15 секунд</span></p>
                     <div class="flex items-center gap-2 shrink-0">
                         <div id="pity-indicator" class="items-center space-x-1.5 text-[11px] bg-purple-500/10 border border-purple-500/30 text-purple-300 px-2.5 py-1 rounded-lg" style="display:none;">
                             <i class="fa-solid fa-shield-halved"></i>
@@ -807,13 +843,21 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <button type="button" id="carousel-prev" onclick="carouselStep(-1)" aria-label="Предыдущий пак" class="carousel-arrow prev"><i class="fa-solid fa-chevron-left"></i></button>
                 <button type="button" id="carousel-next" onclick="carouselStep(1)" aria-label="Следующий пак" class="carousel-arrow next"><i class="fa-solid fa-chevron-right"></i></button>
 
-                <div id="carousel-dots" class="flex flex-wrap items-center justify-center gap-2 mt-2"></div>
+                <div id="carousel-dots" class="relative flex flex-wrap items-center justify-center gap-2 mt-2"></div>
 
                 <div id="carousel-empty" class="hidden text-center py-14 text-slate-500">Нет доступных паков.</div>
 
-                <div id="carousel-detail" class="max-w-xl mx-auto mt-4 mb-1 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+                <div id="carousel-detail" class="relative max-w-xl mx-auto mt-4 mb-1 bg-gradient-to-br from-slate-900/90 to-slate-950/70 border border-slate-800/80 rounded-3xl p-4 sm:p-6 shadow-xl">
                     <!-- Данные выбранного пака -->
                 </div>
+            </div>
+
+            <div id="store-showcase-wrap" class="space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+                    <h3 class="text-sm sm:text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-emerald-400"></i>Витрина паков</h3>
+                    <span class="text-[10px] sm:text-[11px] text-slate-500">клик по обложке — пак в карусель, кнопка — открыть пак</span>
+                </div>
+                <div id="store-showcase" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5"></div>
             </div>
         </section>
 
@@ -842,18 +886,24 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <div class="text-right bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3">
                         <p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Сила колоды</p>
                         <p id="deck-power-badge" class="text-2xl font-black text-amber-400">0</p>
-                        <p class="text-[10px] text-slate-500">Побед: <span id="battles-won-badge" class="text-emerald-400 font-bold">0</span> • Поражений: <span id="battles-lost-badge" class="text-rose-400 font-bold">0</span></p>
+                        <p class="text-[10px] text-slate-500">Побед: <span id="battles-won-badge" class="text-emerald-400 font-bold">0</span> • Поражений: <span id="battles-lost-badge" class="text-rose-400 font-bold">0</span> • Серия: <span id="battle-streak-badge" class="text-amber-400 font-bold">0</span></p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <!-- Deck Builder -->
                     <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
-                        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
-                            <i class="fa-solid fa-clone text-emerald-400"></i>
-                            <span>Моя колода</span>
-                            <span class="text-xs font-normal text-slate-400">(3–5 карт)</span>
-                        </h3>
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                                <i class="fa-solid fa-clone text-emerald-400"></i>
+                                <span>Моя колода</span>
+                                <span class="text-xs font-normal text-slate-400">(3–5 карт)</span>
+                            </h3>
+                            <div class="flex items-center gap-2">
+                                <button onclick="autoBuildDeck()" title="Собрать колоду из 5 сильнейших собранных карт" class="px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-[11px] font-bold transition shadow-lg shadow-emerald-950/40"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Авто-колода</button>
+                                <button onclick="clearDeck()" title="Очистить колоду" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-bold transition"><i class="fa-solid fa-broom mr-1"></i>Очистить</button>
+                            </div>
+                        </div>
                         <div id="deck-slots" class="flex flex-wrap gap-3"></div>
                         <div>
                             <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Коллекция — нажмите, чтобы добавить в колоду</h4>
@@ -869,6 +919,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         </h3>
                         <div id="opponents-list" class="space-y-3"></div>
                     </div>
+                </div>
+
+                <!-- Battle history -->
+                <div id="battle-history-panel" class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-clock-rotate-left text-teal-400"></i>
+                            <span>История боёв</span>
+                        </h3>
+                        <span class="text-[11px] text-slate-500 flex items-center gap-1.5"><i class="fa-solid fa-fire text-amber-400"></i>Серия побед: <b id="history-streak" class="text-amber-400">0</b> • Рекорд: <b id="history-best-streak" class="text-amber-300">0</b></span>
+                    </div>
+                    <div id="battle-history-list" class="space-y-2"></div>
                 </div>
                 </div><!-- /lobby-arena -->
 
@@ -1396,6 +1458,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             </div>
             <!-- b18: счётчик / листание альбома -->
             <div id="inspect-counter" class="hidden mt-3 text-[11px] font-mono tracking-wide text-slate-400 text-center"></div>
+            <button id="inspect-deck-btn" onclick="inspectDeckToggle()" class="hidden mt-2 px-4 py-2 rounded-xl text-xs font-bold transition"></button>
             <p class="mt-1 text-[10px] text-slate-600 text-center">Листайте стрелками ← → или свайпом, Esc — закрыть</p>
         </div>
         <button id="inspect-prev" onclick="inspectStep(-1)" title="Предыдущая (←)" style="display:none;" class="hidden fixed left-2 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-slate-900/85 border border-slate-700 hover:border-emerald-400 hover:text-emerald-300 text-slate-200 flex items-center justify-center transition shadow-xl"><i class="fa-solid fa-chevron-left"></i></button>
@@ -3330,6 +3393,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             packsOpened: 0, rarePlusFound: 0, epicPlusFound: 0, legendariesFound: 0,
             duplicatesSold: 0, coinsFromDupes: 0, cardsCreated: 0, bestStreak: 0,
             battlesWon: 0, battlesLost: 0, flawlessWins: 0, championWins: 0, oppWins: {},
+            battleStreak: 0, bestBattleStreak: 0,
             durakWins: 0, durakLosses: 0, durakStreak: 0, bestDurakStreak: 0
         };
 
@@ -3369,6 +3433,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'dupes_10', icon: 'fa-recycle', title: 'Дубликат-торговец', desc: 'Продайте 10 дубликатов', reward: 150, check: s => s.stats.duplicatesSold >= 10, prog: s => [s.stats.duplicatesSold, 10] },
             { id: 'dupes_50', icon: 'fa-money-bill-trend-up', title: 'Торговый магнат', desc: 'Продайте 50 дубликатов', reward: 400, check: s => s.stats.duplicatesSold >= 50, prog: s => [s.stats.duplicatesSold, 50] },
             { id: 'album_complete', icon: 'fa-book-open', title: 'Полный альбом', desc: 'Полностью соберите один из альбомов', reward: 750, check: s => completedAlbums(s) >= 1, prog: s => [completedAlbums(s), 1] },
+            { id: 'albums_3', icon: 'fa-box-archive', title: 'Архивариус', desc: 'Соберите 3 альбома полностью', reward: 1200, check: s => completedAlbums(s) >= 3, prog: s => [Math.min(completedAlbums(s), 3), 3] },
+            { id: 'albums_5', icon: 'fa-crown', title: 'Мастер коллекции', desc: 'Соберите 5 альбомов полностью', reward: 2500, check: s => completedAlbums(s) >= 5, prog: s => [Math.min(completedAlbums(s), 5), 5] },
+            { id: 'albums_10', icon: 'fa-gem', title: 'Живая легенда', desc: 'Соберите 10 альбомов полностью', reward: 5000, check: s => completedAlbums(s) >= 10, prog: s => [Math.min(completedAlbums(s), 10), 10] },
             { id: 'rich', icon: 'fa-coins', title: 'Богач', desc: 'Имейте 2000+ монет одновременно', reward: 200, check: s => s.coins >= 2000, prog: s => [Math.min(s.coins, 2000), 2000] },
             { id: 'streak_7', icon: 'fa-calendar-check', title: 'Неделя без пропусков', desc: 'Забирайте награду 7 дней подряд', reward: 600, check: s => Math.max(s.daily.streak, s.stats.bestStreak) >= 7, prog: s => [Math.min(Math.max(s.daily.streak, s.stats.bestStreak), 7), 7] },
             { id: 'all_missions', icon: 'fa-list-check', title: 'Идеальный день', desc: 'Выполните все задания дня', reward: 150, check: s => s.missions && s.missions.list && s.missions.list.length > 0 && s.missions.list.every(m => m.claimed) },
@@ -3377,6 +3444,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'wins_10', icon: 'fa-shield-halved', title: 'Ветеран арены', desc: 'Выиграйте 10 боёв', reward: 300, check: s => s.stats.battlesWon >= 10, prog: s => [s.stats.battlesWon, 10] },
             { id: 'wins_25', icon: 'fa-medal', title: 'Гладиатор', desc: 'Выиграйте 25 боёв', reward: 600, check: s => s.stats.battlesWon >= 25, prog: s => [s.stats.battlesWon, 25] },
             { id: 'flawless', icon: 'fa-star', title: 'Безупречная победа', desc: 'Выиграйте бой, не потеряв ни одного бойца', reward: 250, check: s => s.stats.flawlessWins >= 1, prog: s => [Math.min(s.stats.flawlessWins, 1), 1] },
+            { id: 'battle_streak3', icon: 'fa-fire', title: 'На волне побед', desc: 'Выиграйте 3 боя подряд на Арене', reward: 250, check: s => (s.stats.bestBattleStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestBattleStreak || 0, 3), 3] },
             { id: 'champion_down', icon: 'fa-crown', title: 'Убийца королей', desc: 'Победите Чемпиона Nexus', reward: 800, check: s => (s.stats.championWins || 0) >= 1, prog: s => [Math.min(s.stats.championWins || 0, 1), 1] },
             { id: 'durak_win', icon: 'fa-diamond', title: 'Не дурак!', desc: 'Выиграйте партию в «Дурака»', reward: 150, check: s => (s.stats.durakWins || 0) >= 1, prog: s => [Math.min(s.stats.durakWins || 0, 1), 1] },
             { id: 'durak_streak3', icon: 'fa-fire', title: 'Серийный победитель', desc: '3 победы в «Дурака» подряд', reward: 200, check: s => (s.stats.bestDurakStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestDurakStreak || 0, 3), 3] }
@@ -3430,11 +3498,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
             achievements: JSON.parse(LS.getItem('nexus_achievements') || '{}'),
             pity: Object.assign({ packsSinceEpic: 0 }, JSON.parse(LS.getItem('nexus_pity') || '{}')),
             deck: JSON.parse(LS.getItem('nexus_deck') || '[]'),
+            history: JSON.parse(LS.getItem('nexus_history') || '[]'),
+            albumBonus: JSON.parse(LS.getItem('nexus_album_bonus') || '{}'),
             currentAlbumPackId: null
         };
         // нормализация вложенных объектов после миграции
         state.stats.oppWins = Object.assign({}, state.stats.oppWins || {});
         if (!Array.isArray(state.deck)) state.deck = [];
+        if (!Array.isArray(state.history)) state.history = [];
+        if (!state.albumBonus || typeof state.albumBonus !== 'object') state.albumBonus = {};
         // Тяжёлые base64-арты Скуби не пишем в localStorage — храним ссылки,
         // а в памяти держим полные data-URI (защищает от переполнения квоты)
         const SCOOBY_REF = {};
@@ -3489,6 +3561,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 LS.setItem('nexus_achievements', JSON.stringify(state.achievements));
                 LS.setItem('nexus_pity', JSON.stringify(state.pity));
                 LS.setItem('nexus_deck', JSON.stringify(state.deck));
+                LS.setItem('nexus_history', JSON.stringify((state.history || []).slice(0, 30)));
+                LS.setItem('nexus_album_bonus', JSON.stringify(state.albumBonus || {}));
             } catch (err) {
                 // Квота localStorage или private-режим: игра НЕ должна падать
                 try {
@@ -3580,11 +3654,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             state.achievements = imported.achievements || {};
                             state.pity = Object.assign({ packsSinceEpic: 0 }, imported.pity || {});
                             state.deck = Array.isArray(imported.deck) ? imported.deck : [];
+                        state.history = Array.isArray(imported.history) ? imported.history.slice(0, 30) : [];
+                        state.albumBonus = (imported.albumBonus && typeof imported.albumBonus === 'object') ? imported.albumBonus : {};
                             state.stats.oppWins = Object.assign({}, state.stats.oppWins || {});
                             state.currentAlbumPackId = null;
                             resolveMediaRefs();
                             saveState();
                             updateCoinDisplay();
+                            checkAlbumRewards();
                             ensureDailyMissions();
                             updateDailyDot();
                             switchTab('store');
@@ -3658,6 +3735,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             state.achievements = {};
             state.pity = { packsSinceEpic: 0 };
             state.deck = [];
+            state.history = [];
+            state.albumBonus = {};
             state.currentAlbumPackId = null;
             resolveMediaRefs();
             saveState();
@@ -4082,6 +4161,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             document.getElementById('deck-power-badge').innerText = power;
             document.getElementById('battles-won-badge').innerText = state.stats.battlesWon;
             document.getElementById('battles-lost-badge').innerText = state.stats.battlesLost;
+            const streakBadge = document.getElementById('battle-streak-badge');
+            if (streakBadge) streakBadge.innerText = state.stats.battleStreak || 0;
+            renderBattleHistory();
 
             // Слоты колоды
             const slots = document.getElementById('deck-slots');
@@ -4167,6 +4249,70 @@ Check your Browserslist config to be sure that your targets are set up correctly
             state.deck = state.deck.filter(id => id !== cardId);
             saveState();
             renderLobby();
+        }
+
+        // ----- Авто-колода: 5 сильнейших собранных карт по суммарной мощи -----
+        function autoBuildDeck() {
+            const owned = state.cards.filter(c => state.collection[c.id]);
+            if (owned.length < 3) { showToast('Для авто-колоды нужно минимум 3 собранные карты', 'error'); return; }
+            const power = c => { const st = getCardStats(c); return st.atk + st.hp; };
+            const top = owned.slice().sort((a, b) =>
+                power(b) - power(a) ||
+                RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) ||
+                (a.name || '').localeCompare(b.name || '', 'ru')
+            ).slice(0, 5);
+            state.deck = top.map(c => c.id);
+            saveState();
+            renderLobby();
+            const p = top.reduce((s, c) => s + power(c), 0);
+            SoundFX.play('swap');
+            showToast(`⚡ Авто-колода собрана: сила ${p} (бойцов: ${top.length})`, 'success');
+        }
+
+        function clearDeck() {
+            if (!state.deck.length) { showToast('Колода уже пуста', 'info'); return; }
+            state.deck = [];
+            saveState();
+            renderLobby();
+            showToast('Колода очищена', 'success');
+        }
+
+        // ----- История боёв и серии побед -----
+        function pushBattleHistory(e) {
+            if (!Array.isArray(state.history)) state.history = [];
+            state.history.unshift(Object.assign({ t: Date.now() }, e));
+            state.history = state.history.slice(0, 30);
+        }
+
+        function renderBattleHistory() {
+            const list = document.getElementById('battle-history-list');
+            if (!list) return;
+            const st = document.getElementById('history-streak');
+            if (st) st.innerText = state.stats.battleStreak || 0;
+            const bs = document.getElementById('history-best-streak');
+            if (bs) bs.innerText = state.stats.bestBattleStreak || 0;
+
+            const h = Array.isArray(state.history) ? state.history : [];
+            if (!h.length) {
+                list.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Боёв ещё не было — соберите колоду и выберите противника выше.</p>`;
+                return;
+            }
+            const fmt = t => {
+                try {
+                    const d = new Date(t);
+                    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                } catch (e) { return ''; }
+            };
+            list.innerHTML = h.slice(0, 8).map(x => `
+                <div class="flex items-center gap-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 px-3 py-2">
+                    <span class="w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-black border ${x.win ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'}">${x.win ? 'W' : 'L'}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-slate-200 truncate">${x.opp || 'Противник'}${x.flawless ? ' <span class="text-amber-300">• безупречно</span>' : ''}${x.exit ? ' <span class="text-slate-500">• выход из боя</span>' : ''}</p>
+                        <p class="text-[10px] text-slate-500">${fmt(x.t)}</p>
+                    </div>
+                    ${x.streak > 1 ? `<span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-amber-300/90 shrink-0"><i class="fa-solid fa-fire"></i>${x.streak}</span>` : ''}
+                    ${x.win && x.reward ? `<span class="text-[11px] font-bold text-amber-300 shrink-0"><i class="fa-solid fa-coins mr-1"></i>+${x.reward}</span>` : ''}
+                </div>`).join('');
         }
 
         // ----- Начало боя -----
@@ -4425,17 +4571,28 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 state.stats.oppWins[battle.opp.id] = (state.stats.oppWins[battle.opp.id] || 0) + 1;
                 if (flawless) state.stats.flawlessWins++;
                 if (battle.opp.id === 'opp-5') state.stats.championWins = (state.stats.championWins || 0) + 1;
-                battleLog(`🏆 ПОБЕДА! Награда: +${reward} монет${flawless ? ' • БЕЗУПРЕЧНО — ни одного павшего бойца!' : ''}`);
+                // серия побед + бонус каждые 3 победы подряд
+                state.stats.battleStreak = (state.stats.battleStreak || 0) + 1;
+                state.stats.bestBattleStreak = Math.max(state.stats.bestBattleStreak || 0, state.stats.battleStreak);
+                let streakBonus = 0;
+                if (state.stats.battleStreak % 3 === 0) {
+                    streakBonus = 100;
+                    state.coins += streakBonus;
+                }
+                pushBattleHistory({ win: true, opp: battle.opp.name, reward: reward + streakBonus, flawless, streak: state.stats.battleStreak });
+                battleLog(`🏆 ПОБЕДА! Награда: +${reward} монет${flawless ? ' • БЕЗУПРЕЧНО — ни одного павшего бойца!' : ''}${streakBonus ? ` • 🔥 серия ${state.stats.battleStreak}: бонус +${streakBonus}` : ''}`);
                 saveState();
                 updateCoinDisplay();
                 SoundFX.play('win');
                 battle3dPlay('player', 'victory');
                 launchConfetti(flawless ? 180 : 110);
-                showToast(`🏆 Победа над «${battle.opp.name}»! +${reward} монет`, 'success');
+                showToast(`🏆 Победа над «${battle.opp.name}»! +${reward} монет${streakBonus ? ` • 🔥 серия ${state.stats.battleStreak}: +${streakBonus}` : ''}`, 'success');
                 updateMissions('win_battle', 1);
                 checkAchievements();
             } else {
                 state.stats.battlesLost++;
+                state.stats.battleStreak = 0;
+                pushBattleHistory({ win: false, opp: battle.opp.name, streak: 0 });
                 battleLog('💀 Поражение… Все ваши бойцы пали.');
                 saveState();
                 SoundFX.play('lose');
@@ -4448,6 +4605,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function exitBattle() {
             if (battle && !battle.over) {
                 state.stats.battlesLost++;
+                state.stats.battleStreak = 0;
+                pushBattleHistory({ win: false, opp: battle.opp.name, exit: true, streak: 0 });
                 saveState();
                 showToast('Вы покинули поле боя — это засчитано как поражение', 'error');
             }
@@ -5804,6 +5963,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function updateCoinDisplay() {
             document.getElementById('coin-balance').innerText = state.coins;
+            const sc = document.getElementById('store-stat-coins');
+            if (sc) sc.textContent = state.coins;
         }
 
         // ============ СКРЫТЫЙ РАЗДЕЛ («Студия») ============
@@ -5987,6 +6148,67 @@ Check your Browserslist config to be sure that your targets are set up correctly
             packCarousel.idx = ((packCarousel.idx % n) + n) % n;
         }
 
+        // ============ ВИТРИНА МАГАЗИНА: все паки плитками под каруселью ============
+        function renderStoreShowcase() {
+            const wrap = document.getElementById('store-showcase');
+            const box = document.getElementById('store-showcase-wrap');
+            if (!wrap || !box) return;
+            if (!state.packs.length) { box.style.display = 'none'; return; }
+            box.style.display = '';
+
+            const sp = document.getElementById('store-stat-packs');
+            if (sp) sp.textContent = state.packs.length;
+            const scards = document.getElementById('store-stat-cards');
+            if (scards) scards.textContent = state.cards.length;
+
+            wrap.innerHTML = state.packs.map((pack, i) => {
+                const packCards = state.cards.filter(c => c.packId === pack.id);
+                const cardsInPack = packCards.length;
+                const rarStat = albumRarityStats(packCards);
+                const active = i === packCarousel.idx;
+                return `
+                    <div class="album-in h-full" style="animation-delay:${Math.min(i, 8) * 60}ms">
+                        <div data-sc-idx="${i}" class="group relative h-full flex flex-col rounded-2xl border ${active ? 'border-emerald-500/50' : 'border-slate-800/80'} bg-slate-900/70 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-950/50">
+                            <div class="relative pack-aspect overflow-hidden shrink-0 cursor-pointer" onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });" title="Показать пак в карусели">
+                                <img src="${pack.image}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.07]" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
+                                <div class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"></div>
+                                <span data-sc-badge class="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/90 text-slate-950 shadow-lg ${active ? '' : 'hidden'}"><i class="fa-solid fa-compact-disc"></i>в карусели</span>
+                                <span class="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-slate-950/70 text-slate-200 border border-slate-700/70 backdrop-blur-sm"><i class="fa-solid fa-clone text-teal-300"></i>${cardsInPack}</span>
+                                <span class="absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2 py-1 rounded-lg bg-amber-400/90 text-slate-950 shadow-lg"><i class="fa-solid fa-coins"></i>${pack.price}</span>
+                            </div>
+                            <div class="p-3 pt-2.5 sm:p-4 sm:pt-3.5 flex flex-col gap-2.5 sm:gap-3 flex-1">
+                                <div>
+                                    <h3 class="font-bold text-white text-sm sm:text-base leading-snug transition-colors group-hover:text-emerald-300">${pack.title}</h3>
+                                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 sm:mt-1 line-clamp-2">${pack.description || ''}</p>
+                                </div>
+                                ${rarStat.length ? `
+                                <div class="flex flex-wrap gap-1 sm:gap-1.5">
+                                    ${rarStat.map(x => `<span class="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold font-mono border" style="color:${RAR_COLORS[x.r] || '#94a3b8'};border-color:${(RAR_COLORS[x.r] || '#94a3b8')}44;background:${(RAR_COLORS[x.r] || '#94a3b8')}14" title="${RARITY_LABELS_RU[x.r] || x.r}: ${x.all} шт."><i class="fa-solid fa-circle text-[6px]"></i>${x.all}</span>`).join('')}
+                                </div>` : ''}
+                                <div class="mt-auto pt-2 sm:pt-2.5 border-t border-slate-800/70 flex items-center gap-2">
+                                    <button onclick="buyPack('${pack.id}')" class="flex-1 min-w-0 px-3 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-bold transition shadow-lg shadow-emerald-950/40 truncate"><i class="fa-solid fa-box-open mr-1"></i>Открыть пак</button>
+                                    <button onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });" title="Показать в карусели" class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/70 text-slate-300 hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-compact-disc text-xs"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // подсветка карточки витрины, которая сейчас в центре карусели
+        function updateShowcaseActive() {
+            const wrap = document.getElementById('store-showcase');
+            if (!wrap) return;
+            wrap.querySelectorAll('[data-sc-idx]').forEach(el => {
+                const on = Number(el.getAttribute('data-sc-idx')) === packCarousel.idx;
+                el.classList.toggle('border-emerald-500/50', on);
+                el.classList.toggle('border-slate-800/80', !on);
+                const b = el.querySelector('[data-sc-badge]');
+                if (b) b.classList.toggle('hidden', !on);
+            });
+        }
+
         function renderStore() {
             updatePityIndicator();
             preloadPackImages();
@@ -6010,6 +6232,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (emptyMsg) emptyMsg.classList.remove('hidden');
                 ['carousel-prev', 'carousel-next'].forEach(id => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
                 carouselStopAuto();
+                renderStoreShowcase();
                 return;
             }
             if (detail) detail.style.display = '';
@@ -6104,6 +6327,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             carouselBindStage(stage);
             carouselStartAuto();
             requestAnimationFrame(() => fitPackLabels(ring));
+            renderStoreShowcase();
         }
 
         // Расставить паки в ряд (без наложения друг на друга) и подсветить выбранный
@@ -6188,8 +6412,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             det.innerHTML = `
                 <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <h3 class="font-black text-white text-lg leading-tight truncate">${pack.title}</h3>
-                        <p class="text-xs text-slate-400 mt-1">${pack.description || ''}</p>
+                        <h3 class="font-black text-white text-lg sm:text-xl leading-tight truncate">${pack.title}</h3>
+                        <p class="text-[11px] sm:text-xs text-slate-400 mt-1 line-clamp-2">${pack.description || ''}</p>
                     </div>
                     <div class="shrink-0 flex flex-col items-end gap-1.5">
                         <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-teal-500/10 text-teal-300 border border-teal-500/30">${cardsInPack} карт</span>
@@ -6197,16 +6421,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ${PackMusic.resolveUrl(pack) ? `<span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30 inline-flex items-center gap-1 max-w-[190px]" title="Трек играет при вскрытии и стирании фольги"><i class="fa-solid fa-music"></i><span class="truncate">${PackMusic.trackNameFor(PackMusic.resolveUrl(pack))}</span></span>` : ''}
                     </div>
                 </div>
-                <div id="carousel-odds">${renderPackOdds(pack)}</div>
-                <div class="mt-4 pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                    <span id="carousel-price" class="font-bold text-amber-400 flex items-center space-x-1.5">
+                <div id="carousel-odds" class="mt-3">${renderPackOdds(pack)}</div>
+                <div class="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+                    <span id="carousel-price" class="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-2 font-black text-amber-300">
                         <i class="fa-solid fa-coins"></i>
-                        <span>${pack.price}</span>
+                        <span class="text-sm sm:text-base">${pack.price}</span>
+                        <span class="text-[9px] uppercase tracking-wider text-amber-200/70 font-bold">монет</span>
                     </span>
-                    <button id="carousel-open-btn" onclick="buyPack('${pack.id}')" class="px-5 py-2.5 font-bold text-sm rounded-xl transition shadow-lg ${afford ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25' : 'bg-slate-800 text-slate-500 border border-slate-700 shadow-none cursor-not-allowed'}">
+                    <button id="carousel-open-btn" onclick="buyPack('${pack.id}')" class="px-5 sm:px-6 py-2.5 sm:py-3 font-bold text-sm rounded-xl transition shadow-lg ${afford ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25' : 'bg-slate-800 text-slate-500 border border-slate-700 shadow-none cursor-not-allowed'}">
                         <i class="fa-solid fa-box-open mr-1.5"></i>${afford ? 'Открыть пак' : 'Не хватает монет'}
                     </button>
                 </div>`;
+            updateShowcaseActive();
         }
 
         function carouselGoTo(i) {
@@ -6730,7 +6956,47 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (card.rarity === 'legendary') state.stats.legendariesFound++;
 
             saveState();
+            checkAlbumRewards();
             checkAchievements();
+        }
+
+        // ============ НАГРАДЫ ЗА СОБРАННЫЕ АЛЬБОМЫ ============
+        // Альбом, собранный на 100%, единовременно приносит бонус монет.
+        // Выплаченные бонусы запомнились в state.albumBonus (ключ nexus_album_bonus),
+        // поэтому награда даётся ровно один раз на альбом.
+        function albumBonusFor(pack) {
+            const n = state.cards.filter(c => c.packId === pack.id).length;
+            return 200 + n * 10; // чем вместительнее альбом, тем ценнее награда
+        }
+        function isAlbumComplete(pack) {
+            const pc = state.cards.filter(c => c.packId === pack.id);
+            return pc.length > 0 && pc.every(c => state.collection[c.id]);
+        }
+        function checkAlbumRewards() {
+            if (!state.albumBonus || typeof state.albumBonus !== 'object') state.albumBonus = {};
+            const done = [];
+            let total = 0;
+            state.packs.forEach(p => {
+                if (state.albumBonus[p.id]) return;
+                if (!isAlbumComplete(p)) return;
+                const b = albumBonusFor(p);
+                state.albumBonus[p.id] = Date.now();
+                state.coins += b;
+                total += b;
+                done.push({ title: p.title, bonus: b });
+            });
+            if (!done.length) return 0;
+            saveState();
+            updateCoinDisplay();
+            SoundFX.play('achievement');
+            launchConfetti(140);
+            if (done.length === 1) {
+                showToast(`📖 Альбом «${done[0].title}» собран полностью! Бонус +${done[0].bonus} монет`, 'success');
+            } else {
+                showToast(`📖 Альбомов собрано полностью: ${done.length}! Бонус +${total} монет`, 'success');
+            }
+            renderRewardsIfVisible();
+            return total;
         }
 
         function closeUnboxingModal() {
@@ -6770,13 +7036,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return true;
         }
 
-        function albumCardHTML(card) {
+        function albumCardHTML(card, opts) {
+            const compact = !!(opts && opts.compact);
             const localNum = getCardLocalNumber(card);
             const rarLabel = RARITY_LABELS_RU[card.rarity] || card.rarity;
             const copies = cardCopies(card.id);
             const rarColor = RAR_COLORS[card.rarity] || '#94a3b8';
 
             if (!copies) {
+                if (compact) {
+                    return `
+                        <div class="w-full card-aspect rounded-xl border-2 border-slate-800 bg-slate-900/40 p-1.5 sm:p-2 flex flex-col justify-between opacity-70">
+                            <span class="text-[9px] font-mono font-bold text-slate-500">#${localNum}</span>
+                            <div class="flex flex-col items-center justify-center flex-1"><i class="fa-solid fa-lock text-sm sm:text-base text-slate-600"></i></div>
+                            <span class="text-[9px] text-slate-600 truncate text-center">???</span>
+                        </div>
+                    `;
+                }
                 return `
                     <div class="w-full card-aspect rounded-2xl border-2 border-slate-800 bg-slate-900/40 p-3 sm:p-4 flex flex-col justify-between opacity-70">
                         <div class="flex justify-between items-center gap-1">
@@ -6796,6 +7072,20 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
 
             const L = cardLayoutOf(card);
+            if (compact) {
+                return `
+                    <div onclick="inspectCard('${card.id}')" class="relative w-full card-aspect rounded-xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-1.5 sm:p-2 flex flex-col justify-between cursor-pointer shadow-lg hover:scale-[1.03] transition overflow-hidden group">
+                        <img src="${card.image}" alt="${card.name}" data-card-id="${card.id}" onerror="this.onerror=null;imgFallback(this);" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
+                        <div class="relative z-10 flex justify-between items-start gap-1">
+                            <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
+                            ${copies > 1 ? `<span class="text-[8px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 backdrop-blur-sm">×${copies}</span>` : ''}
+                        </div>
+                        <h4 class="relative z-10 w-full font-bold text-white text-[10px] truncate drop-shadow-md ${L.text}">${card.name}</h4>
+                        ${cardShineOverlay(card)}
+                    </div>
+                `;
+            }
             const badgeHtml = `<div class="w-full flex justify-between items-start gap-1">
                         <span class="text-xs font-mono font-bold text-slate-200 bg-slate-950/70 px-2 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
                         <span class="flex items-center gap-1 shrink-0">
@@ -6824,6 +7114,49 @@ Check your Browserslist config to be sure that your targets are set up correctly
             `;
         }
 
+        // Строка карточки (вид «Строки» внутри альбома)
+        function albumRowHTML(card) {
+            const localNum = getCardLocalNumber(card);
+            const copies = cardCopies(card.id);
+            const rarColor = RAR_COLORS[card.rarity] || '#94a3b8';
+            const rarLabel = RARITY_LABELS_RU[card.rarity] || card.rarity;
+
+            if (!copies) {
+                return `
+                    <div class="flex items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-800/80 bg-slate-900/40 p-2 opacity-80">
+                        <div class="w-9 sm:w-11 shrink-0 rounded-lg border-2 border-slate-800 bg-slate-950/60 flex items-center justify-center" style="aspect-ratio:9/16"><i class="fa-solid fa-lock text-slate-600 text-sm"></i></div>
+                        <span class="font-mono text-[10px] text-slate-600 w-9 sm:w-10 shrink-0">#${localNum}</span>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-sm text-slate-500 truncate">??? <i class="fa-solid fa-eye-slash text-[10px]"></i></h4>
+                            <p class="text-[10px] text-slate-600 truncate">Пока не найдена</p>
+                        </div>
+                        <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border shrink-0" style="color:${rarColor};border-color:${rarColor}44;background:${rarColor}14">${rarLabel}</span>
+                    </div>`;
+            }
+            const st = getCardStats(card);
+            return `
+                <div onclick="inspectCard('${card.id}')" class="group flex items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-800/80 bg-slate-900/60 p-2 cursor-pointer transition hover:border-emerald-500/40 hover:bg-slate-900">
+                    <div class="relative w-9 sm:w-11 shrink-0 rounded-lg overflow-hidden border-2 shadow" style="aspect-ratio:9/16;border-color:${rarColor}">
+                        <img src="${card.image}" alt="${card.name}" onerror="this.onerror=null;imgFallback(this);" class="absolute inset-0 w-full h-full object-cover">
+                    </div>
+                    <span class="font-mono text-[10px] text-slate-500 w-9 sm:w-10 shrink-0">#${localNum}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5">
+                            <h4 class="font-bold text-sm text-white truncate group-hover:text-emerald-300 transition-colors">${card.name}</h4>
+                            ${card.musicUrl ? '<i class="fa-solid fa-music text-[9px] text-fuchsia-300" title="У карты своя музыка"></i>' : ''}
+                            ${copies > 1 ? `<span class="text-[9px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 shrink-0">×${copies}</span>` : ''}
+                        </div>
+                        <p class="text-[10px] text-slate-500 truncate">${card.description || ''}</p>
+                    </div>
+                    <span class="hidden md:flex items-center gap-1.5 shrink-0">
+                        <span class="text-[10px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${st.atk}</span>
+                        <span class="text-[10px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${st.hp}</span>
+                    </span>
+                    <span class="hidden sm:inline text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border shrink-0" style="color:${rarColor};border-color:${rarColor}44;background:${rarColor}14">${rarLabel}</span>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-600 group-hover:text-emerald-400 transition-colors shrink-0"></i>
+                </div>`;
+        }
+
         function renderAlbumGrid() {
             const wrap = document.getElementById('album-grid-wrap');
             if (!wrap) return '';
@@ -6849,7 +7182,34 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>
                 `;
             } else {
-                out = `<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">${visible.map(c => albumCardHTML(c)).join('')}</div>`;
+                const cv = albumsUiState().cardView;
+                if (cv === 'rows') {
+                    out = `<div class="flex flex-col gap-1.5 sm:gap-2">${visible.map(c => albumRowHTML(c)).join('')}</div>`;
+                } else if (cv === 'album') {
+                    // вид «Альбом»: карточки разложены по страницам, как в настоящем альбоме
+                    const PER = 9;
+                    const pages = [];
+                    for (let i = 0; i < visible.length; i += PER) pages.push(visible.slice(i, i + PER));
+                    out = `<div class="space-y-4 sm:space-y-6">${pages.map((pg, k) => {
+                        const nums = pg.map(c => getCardLocalNumber(c));
+                        return `
+                            <div class="relative rounded-2xl border border-slate-800/80 bg-gradient-to-br from-slate-900/80 to-slate-950/60 p-3 sm:p-5 overflow-hidden shadow-xl">
+                                <div class="absolute inset-0 pointer-events-none opacity-40" style="background-image:radial-gradient(rgba(148,163,184,0.09) 1px, transparent 1px);background-size:14px 14px;"></div>
+                                <div class="relative flex flex-wrap items-center justify-between gap-2 mb-3">
+                                    <span class="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-slate-400"><i class="fa-solid fa-book-open text-emerald-400 mr-1.5"></i>Страница ${k + 1} <span class="text-slate-600">из ${pages.length}</span></span>
+                                    <span class="text-[10px] font-mono text-slate-500">карты #${nums[0]}–#${nums[nums.length - 1]}</span>
+                                </div>
+                                <div class="relative grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">${pg.map(c => albumCardHTML(c)).join('')}</div>
+                            </div>`;
+                    }).join('')}</div>`;
+                } else {
+                    const gridCls = cv === 'gallery'
+                        ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8'
+                        : cv === 'compact'
+                            ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2.5'
+                            : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6';
+                    out = `<div class="${gridCls}">${visible.map(c => albumCardHTML(c, { compact: cv === 'compact' })).join('')}</div>`;
+                }
             }
             wrap.innerHTML = out;
             return out;
@@ -6883,6 +7243,231 @@ Check your Browserslist config to be sure that your targets are set up correctly
             renderAlbumsHub();
         }
 
+        // Кольцо прогресса (inline-SVG): размер, толщина обводки, подпись в центре
+        function albumRingHTML(pct, size, strokeW, label) {
+            const p = Math.min(100, Math.max(0, pct || 0));
+            const r = (size - strokeW) / 2;
+            const c = 2 * Math.PI * r;
+            const off = c * (1 - p / 100);
+            const color = p >= 100 ? '#fbbf24' : '#34d399';
+            const fs = Math.round(size * 0.24);
+            return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="drop-shadow-lg shrink-0" aria-hidden="true">
+                <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="rgba(2,6,23,0.62)" stroke="rgba(148,163,184,0.22)" stroke-width="${strokeW}"></circle>
+                <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})" style="transition: stroke-dashoffset .6s ease"></circle>
+                <text x="50%" y="50%" dy="0.35em" text-anchor="middle" font-size="${fs}" font-weight="800" fill="${p >= 100 ? '#fde68a' : '#e2e8f0'}" font-family="ui-monospace, SFMono-Regular, monospace">${label !== undefined ? label : p + '%'}</text>
+            </svg>`;
+        }
+
+        // ============ ХАБ АЛЬБОМОВ: поиск, вид (сетка/строки), сортировка ============
+        // Настройки вида и сортировки живут в ui_prefs_v1 (не в сейве): сброс прогресса
+        // и экспорт/импорт их не трогают. Поисковый запрос — только на время сессии.
+        let albumsUi = null;
+        const ALBUMS_SORTS = {
+            name: 'По названию',
+            progress: 'По прогрессу',
+            cards: 'По числу карт',
+            missing: 'По недостающим'
+        };
+        // Виды карточек внутри альбома: сетка / альбом-страницы / строки / компактно / крупно
+        const ALBUM_CARD_VIEWS = {
+            grid: 'Сетка',
+            album: 'Альбом',
+            rows: 'Строки',
+            compact: 'Компактно',
+            gallery: 'Крупно'
+        };
+        const ALBUM_CARD_VIEW_ICONS = {
+            grid: 'fa-table-cells-large',
+            album: 'fa-book-open',
+            rows: 'fa-list',
+            compact: 'fa-grip',
+            gallery: 'fa-image'
+        };
+
+        function albumsUiState() {
+            if (!albumsUi) {
+                const p = hiddenUiPrefs().albums || {};
+                albumsUi = {
+                    q: '',
+                    view: p.view === 'rows' ? 'rows' : 'grid',
+                    sort: ALBUMS_SORTS[p.sort] ? p.sort : 'name',
+                    cardView: ALBUM_CARD_VIEWS[p.cardView] ? p.cardView : 'grid'
+                };
+            }
+            return albumsUi;
+        }
+        function saveAlbumsUiPrefs() {
+            const u = albumsUiState();
+            const p = hiddenUiPrefs();
+            p.albums = { view: u.view, sort: u.sort, cardView: u.cardView };
+            saveHiddenUiPrefs(p);
+        }
+        function setAlbumsCardView(v) {
+            const u = albumsUiState();
+            if (!ALBUM_CARD_VIEWS[v] || u.cardView === v) return;
+            u.cardView = v;
+            saveAlbumsUiPrefs();
+            renderAlbumsHub(); // перерисовывает шапку (активная кнопка) и сетку карт
+        }
+        function setAlbumsView(v) {
+            const u = albumsUiState();
+            if (u.view === v) return;
+            u.view = v;
+            saveAlbumsUiPrefs();
+            renderAlbumsHub();
+        }
+        function setAlbumsSort(s) {
+            const u = albumsUiState();
+            if (!ALBUMS_SORTS[s]) return;
+            u.sort = s;
+            saveAlbumsUiPrefs();
+            renderAlbumsList(); // только список: select не теряет фокус
+        }
+        function onAlbumsSearch() {
+            const el = document.getElementById('albums-search');
+            albumsUiState().q = el ? el.value : '';
+            renderAlbumsList(); // только список: фокус в поле не теряется
+        }
+        function clearAlbumsSearch() {
+            albumsUiState().q = '';
+            const el = document.getElementById('albums-search');
+            if (el) el.value = '';
+            renderAlbumsList();
+        }
+        function albumPackStats(pack) {
+            const pc = state.cards.filter(c => c.packId === pack.id);
+            const have = pc.filter(c => state.collection[c.id]).length;
+            return { total: pc.length, have, pct: pc.length ? Math.round(have / pc.length * 100) : 0 };
+        }
+        const albumEsc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+        // Плитка альбома (режим «сетка»)
+        function albumCardTile(pack, i) {
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            const s = albumPackStats(pack);
+            const collectedCount = s.have;
+            const progressPct = s.pct;
+            const copiesTotal = packCards.reduce((t, c) => t + cardCopies(c.id), 0);
+            const copiesNote = copiesTotal > collectedCount ? ' • копий всего ' + copiesTotal : '';
+            const rarStat = albumRarityStats(packCards);
+            const done = s.total > 0 && s.have >= s.total;
+
+            return `
+                <div class="album-in h-full" style="animation-delay:${Math.min(i, 8) * 70}ms">
+                    <div onclick="openAlbum('${pack.id}')" class="group relative h-full flex flex-col rounded-2xl border border-slate-800/80 bg-slate-900/70 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-950/50">
+                        <div class="relative pack-aspect overflow-hidden shrink-0">
+                            <img src="${pack.image}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.07]" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
+                            <div class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"></div>
+                            <div class="absolute top-1.5 right-1.5 origin-top-right scale-[0.78] sm:scale-100 sm:top-2.5 sm:right-2.5">${albumRingHTML(progressPct, 46, 4)}</div>
+                            ${done
+                                ? '<span class="absolute top-2 left-2 sm:top-3 sm:left-3 inline-flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-amber-400/90 text-slate-950 shadow-lg"><i class="fa-solid fa-check"></i>Собран</span>'
+                                : `<span class="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 inline-flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-slate-950/70 text-slate-200 border border-slate-700/70 backdrop-blur-sm"><i class="fa-solid fa-clone text-emerald-300"></i>${collectedCount} / ${s.total}</span>`}
+                        </div>
+                        <div class="p-3 pt-2.5 sm:p-4 sm:pt-3.5 flex flex-col gap-2.5 sm:gap-3 flex-1">
+                            <div>
+                                <h3 class="font-bold text-white text-sm sm:text-base leading-snug transition-colors group-hover:text-emerald-300">${pack.title}</h3>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 sm:mt-1 line-clamp-2">${pack.description}</p>
+                            </div>
+                            ${rarStat.length ? `
+                            <div class="flex flex-wrap gap-1 sm:gap-1.5">
+                                ${rarStat.map(x => `<span class="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold font-mono border" style="color:${RAR_COLORS[x.r] || '#94a3b8'};border-color:${(RAR_COLORS[x.r] || '#94a3b8')}44;background:${(RAR_COLORS[x.r] || '#94a3b8')}14" title="${RARITY_LABELS_RU[x.r] || x.r}: собрано ${x.have} из ${x.all}"><i class="fa-solid fa-circle text-[6px]"></i>${x.have}/${x.all}</span>`).join('')}
+                            </div>` : ''}
+                            <div class="mt-auto space-y-2.5 sm:space-y-3">
+                                <div>
+                                    <div class="flex items-center justify-between text-[9px] sm:text-[10px] mb-1">
+                                        <span class="uppercase tracking-wider font-bold text-slate-500">Прогресс</span>
+                                        <span class="font-mono text-slate-300">${progressPct}%</span>
+                                    </div>
+                                    <div class="h-1 sm:h-1.5 rounded-full bg-slate-800/90 overflow-hidden">
+                                        <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-all duration-700" style="width:${progressPct}%"></div>
+                                    </div>
+                                </div>
+                                <div class="pt-2 sm:pt-3 border-t border-slate-800/70 flex items-center justify-between gap-2">
+                                    <span class="text-[10px] sm:text-[11px] text-slate-400 truncate"><i class="fa-solid fa-layer-group text-slate-500 mr-1 sm:mr-1.5"></i>${collectedCount} / ${s.total}${copiesNote ? `<span class="hidden sm:inline">${copiesNote}</span>` : ''}</span>
+                                    <span class="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center justify-center transition-all duration-300 group-hover:bg-emerald-500 group-hover:text-slate-950"><i class="fa-solid fa-arrow-right text-[10px] sm:text-xs"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        // Строка альбома (режим «строки»)
+        function albumCardRow(pack, i) {
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            const s = albumPackStats(pack);
+            const rarStat = albumRarityStats(packCards);
+            const done = s.total > 0 && s.have >= s.total;
+
+            return `
+                <div class="album-in" style="animation-delay:${Math.min(i, 10) * 40}ms">
+                    <div onclick="openAlbum('${pack.id}')" class="group flex items-center gap-3 sm:gap-4 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-2.5 sm:p-3 cursor-pointer transition-all duration-300 hover:border-emerald-500/40 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-950/40">
+                        <div class="relative w-14 sm:w-16 shrink-0 rounded-xl overflow-hidden shadow-md" style="aspect-ratio:0.53">
+                            <img src="${pack.image}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                            ${done ? '<span class="absolute inset-0 flex items-center justify-center bg-slate-950/40"><i class="fa-solid fa-check text-amber-300 text-sm drop-shadow"></i></span>' : ''}
+                        </div>
+                        <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
+                            <h3 class="font-bold text-white text-sm sm:text-base truncate transition-colors group-hover:text-emerald-300">${pack.title}</h3>
+                            <p class="text-[10px] sm:text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-2">${pack.description}</p>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1 sm:h-1.5 rounded-full bg-slate-800/90 overflow-hidden">
+                                    <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-300 transition-all duration-700" style="width:${s.pct}%"></div>
+                                </div>
+                                <span class="text-[9px] sm:text-[10px] font-mono text-slate-400 shrink-0">${s.have}/${s.total} • ${s.pct}%</span>
+                            </div>
+                            ${rarStat.length ? `
+                            <div class="hidden sm:flex flex-wrap gap-1.5">
+                                ${rarStat.map(x => `<span class="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold font-mono border" style="color:${RAR_COLORS[x.r] || '#94a3b8'};border-color:${(RAR_COLORS[x.r] || '#94a3b8')}44;background:${(RAR_COLORS[x.r] || '#94a3b8')}14" title="${RARITY_LABELS_RU[x.r] || x.r}: собрано ${x.have} из ${x.all}"><i class="fa-solid fa-circle text-[6px]"></i>${x.have}/${x.all}</span>`).join('')}
+                            </div>` : ''}
+                        </div>
+                        <div class="hidden sm:block shrink-0">${albumRingHTML(s.pct, 44, 4)}</div>
+                        <span class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center justify-center transition-all duration-300 group-hover:bg-emerald-500 group-hover:text-slate-950"><i class="fa-solid fa-arrow-right text-xs"></i></span>
+                    </div>
+                </div>`;
+        }
+
+        // Перерисовка только списка альбомов (поиск/сортировка/вид не сбивают фокус)
+        function renderAlbumsList() {
+            const wrap = document.getElementById('albums-list-wrap');
+            if (!wrap) return;
+            const u = albumsUiState();
+            const q = (u.q || '').trim().toLowerCase();
+            const cache = new Map();
+            const stat = p => { if (!cache.has(p.id)) cache.set(p.id, albumPackStats(p)); return cache.get(p.id); };
+
+            let packs = state.packs.filter(p =>
+                !q || (p.title || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q));
+            const byName = (a, b) => (a.title || '').localeCompare(b.title || '', 'ru');
+            const cmps = {
+                name: byName,
+                progress: (a, b) => stat(b).pct - stat(a).pct || byName(a, b),
+                cards: (a, b) => stat(b).total - stat(a).total || byName(a, b),
+                missing: (a, b) => (stat(b).total - stat(b).have) - (stat(a).total - stat(a).have) || byName(a, b)
+            };
+            packs = packs.slice().sort(cmps[u.sort] || byName);
+
+            const cnt = document.getElementById('albums-shown-count');
+            if (cnt) cnt.textContent = q
+                ? `Найдено: ${packs.length} из ${state.packs.length} ${pluralRu(state.packs.length, 'альбом', 'альбома', 'альбомов')}`
+                : '';
+
+            if (state.packs.length && packs.length === 0) {
+                wrap.innerHTML = `
+                    <div class="text-center py-14 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl">
+                        <i class="fa-solid fa-filter-circle-xmark text-3xl text-slate-700"></i>
+                        <p class="mt-3 text-sm font-semibold text-slate-400">Ничего не нашлось по запросу «${albumEsc(u.q)}»</p>
+                        <button onclick="clearAlbumsSearch()" class="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Сбросить поиск</button>
+                    </div>`;
+                return;
+            }
+
+            wrap.innerHTML = u.view === 'rows'
+                ? `<div class="flex flex-col gap-2 sm:gap-3">${packs.map((p, i) => albumCardRow(p, i)).join('')}</div>`
+                : `<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">${packs.map((p, i) => albumCardTile(p, i)).join('')}</div>`;
+        }
+
         function renderAlbumsHub() {
             const container = document.getElementById('albums-view-container');
             
@@ -6905,54 +7490,68 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     const on = albumFilter.rarity === key;
                     return `<button onclick="setAlbumRarity('${key}')" class="px-3 py-1.5 rounded-xl text-[11px] font-bold border transition ${on ? 'text-slate-950 shadow-lg' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:border-slate-500'}"${on ? ` style="background:${color};border-color:${color}"` : ''}>${label}</button>`;
                 };
+                const u = albumsUiState(); // вид карточек внутри альбома
 
                 container.innerHTML = `
-                    <div class="space-y-5">
-                        <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
-                            <div class="flex items-start justify-between gap-4">
-                                <div class="flex items-start space-x-3 sm:space-x-4 min-w-0">
-                                    <button onclick="backToAlbumsHub()" class="w-10 h-10 shrink-0 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition" title="Ко всем альбомам">
+                    <div class="space-y-3 sm:space-y-4">
+                        <div class="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/70">
+                            <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-sky-500/10 pointer-events-none"></div>
+                            <div class="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+                            <div class="relative p-4 sm:p-6 space-y-3.5 sm:space-y-4">
+                                <div class="flex items-center gap-3 sm:gap-4">
+                                    <button onclick="backToAlbumsHub()" class="w-10 h-10 shrink-0 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/60 flex items-center justify-center text-slate-300 hover:text-white transition" title="Ко всем альбомам">
                                         <i class="fa-solid fa-arrow-left"></i>
                                     </button>
-                                    <div class="min-w-0">
-                                        <h2 class="text-xl sm:text-2xl font-black text-white break-words leading-tight">Альбом: ${pack.title}</h2>
-                                        <p class="text-xs text-slate-400 mt-1">Собрано: <span class="text-slate-200 font-semibold">${collectedCount} / ${packCards.length}</span> (${progressPct}%)${dupesTotal > 0 ? ` • повторок продано: ${dupesTotal}` : ''}</p>
+                                    <div class="w-12 h-[4.5rem] sm:w-14 sm:h-24 rounded-xl overflow-hidden border border-slate-700/70 shadow-lg shrink-0">
+                                        <img src="${pack.image}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300/80">Альбом</div>
+                                        <h2 class="text-lg sm:text-2xl font-black text-white break-words leading-tight">${pack.title}</h2>
+                                        <p class="text-[11px] sm:text-xs text-slate-400 mt-1">Собрано: <span class="text-slate-200 font-semibold">${collectedCount} / ${packCards.length}</span> (${progressPct}%)${dupesTotal > 0 ? ` • повторок: ${dupesTotal}` : ''}${state.albumBonus && state.albumBonus[pack.id] ? ' • <span class="text-amber-300 font-semibold"><i class="fa-solid fa-book-open mr-0.5"></i>бонус альбома получен</span>' : ''}</p>
+                                    </div>
+                                    <div class="sm:hidden shrink-0">${albumRingHTML(progressPct, 48, 5)}</div>
+                                    <div class="hidden sm:flex items-center gap-3 shrink-0 pr-1">
+                                        ${albumRingHTML(progressPct, 68, 6)}
+                                        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 leading-relaxed">общий<br>прогресс</div>
                                     </div>
                                 </div>
-                                <div class="hidden sm:block w-36 shrink-0">
-                                    <div class="text-right text-[11px] font-mono text-emerald-300 mb-1">${progressPct}%</div>
-                                    <div class="w-full bg-slate-950 rounded-full h-3 overflow-hidden border border-slate-700">
-                                        <div class="bg-emerald-500 h-full transition-all duration-500" style="width: ${progressPct}%"></div>
-                                    </div>
-                                </div>
+
+                                ${rarStat.length ? `
+                                <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                                    ${rarStat.map(x => {
+                                        const col = RAR_COLORS[x.r] || '#94a3b8';
+                                        const rp = x.all ? Math.round(x.have / x.all * 100) : 0;
+                                        return `
+                                        <span class="flex items-center gap-2 rounded-xl bg-slate-950/60 border border-slate-800/80 pl-2 pr-2.5 py-1.5">
+                                            <i class="fa-solid fa-circle text-[7px]" style="color:${col}"></i>
+                                            <span class="text-[10px] font-black uppercase tracking-wide" style="color:${col}">${RARITY_LABELS_RU[x.r] || x.r}</span>
+                                            <span class="w-14 sm:w-16 h-1 rounded-full bg-slate-800/80 overflow-hidden"><span class="block h-full rounded-full transition-all duration-500" style="width:${rp}%;background:${col}"></span></span>
+                                            <span class="text-[10px] font-mono text-slate-300">${x.have}/${x.all}</span>
+                                        </span>`;
+                                    }).join('')}
+                                </div>` : ''}
                             </div>
+                        </div>
 
-                            ${rarStat.length ? `
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                ${rarStat.map(x => `
-                                    <div class="bg-slate-950/70 border border-slate-800 rounded-xl px-2.5 py-2">
-                                        <div class="flex items-center justify-between gap-1">
-                                            <span class="text-[10px] font-black uppercase tracking-wide" style="color:${RAR_COLORS[x.r] || '#94a3b8'}">${RARITY_LABELS_RU[x.r] || x.r}</span>
-                                            <span class="text-[10px] font-mono text-slate-300 shrink-0">${x.have}/${x.all}</span>
-                                        </div>
-                                        <div class="mt-1.5 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                                            <div class="h-full rounded-full transition-all duration-500" style="width:${x.all ? Math.round(x.have / x.all * 100) : 0}%;background:${RAR_COLORS[x.r] || '#94a3b8'}"></div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>` : ''}
-
-                            <div class="flex flex-wrap items-center gap-2 pt-1">
+                        <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-2.5 sm:p-3 space-y-2.5">
+                            <div class="flex flex-wrap items-center gap-2">
                                 ${chip('all', 'Все', '#34d399')}
                                 ${RARITY_ORDER.map(r => chip(r, RARITY_LABELS_RU[r], RAR_COLORS[r])).join('')}
                                 <button onclick="toggleAlbumMissing()" class="px-3 py-1.5 rounded-xl text-[11px] font-bold border transition ${albumFilter.missing ? 'bg-rose-500 border-rose-400 text-slate-950 shadow-lg' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:border-slate-500'}"><i class="fa-solid fa-lock mr-1"></i>Только не найденные</button>
-                                <div class="relative ml-auto w-full sm:w-60">
+                                <span id="album-shown-count" class="ml-auto text-[10px] font-mono text-slate-500 pr-1 whitespace-nowrap"></span>
+                            </div>
+                            <div class="h-px bg-slate-800/70"></div>
+                            <div class="grid gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
+                                <div class="flex rounded-xl border border-slate-700 overflow-hidden shrink-0 justify-self-start" title="Вид карточек: сетка, альбом, строки, компактно, крупно">
+                                    ${Object.keys(ALBUM_CARD_VIEWS).map(k => `<button onclick="setAlbumsCardView('${k}')" title="${ALBUM_CARD_VIEWS[k]}" class="px-2.5 py-2 text-[11px] transition ${u.cardView === k ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid ${ALBUM_CARD_VIEW_ICONS[k]}"></i><span class="hidden lg:inline ml-1">${ALBUM_CARD_VIEWS[k]}</span></button>`).join('')}
+                                </div>
+                                <div class="relative">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] pointer-events-none"></i>
                                     <input id="album-search" type="text" value="${String(albumFilter.q || '').replace(/"/g, '&quot;')}" oninput="onAlbumSearch()" placeholder="Поиск по названию…" autocomplete="off" class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500">
                                     <button onclick="clearAlbumSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs ${albumFilter.q ? '' : 'hidden'}" title="Очистить поиск"><i class="fa-solid fa-xmark"></i></button>
                                 </div>
                             </div>
-                            <p id="album-shown-count" class="text-[11px] text-slate-500 font-mono"></p>
                         </div>
 
                         <div id="album-grid-wrap"></div>
@@ -6962,57 +7561,81 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 return;
             }
 
+            // сводная статистика по всем альбомам для hero-шапки
+            const totals = state.packs.reduce((acc, p) => {
+                const pc = state.cards.filter(c => c.packId === p.id);
+                const cc = pc.filter(c => state.collection[c.id]).length;
+                acc.cards += pc.length;
+                acc.have += cc;
+                if (pc.length && cc >= pc.length) acc.done += 1;
+                return acc;
+            }, { cards: 0, have: 0, done: 0 });
+            const overallPct = totals.cards ? Math.round(totals.have / totals.cards * 100) : 0;
+            const statTile = (value, label, icon, color) => `
+                <div class="rounded-xl sm:rounded-2xl bg-slate-950/60 border border-slate-800/80 px-2 sm:px-3 py-2 sm:py-2.5 backdrop-blur-sm min-w-0">
+                    <div class="flex items-center gap-1 sm:gap-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"><i class="fa-solid ${icon} shrink-0" style="color:${color}"></i><span class="truncate">${label}</span></div>
+                    <div class="mt-0.5 sm:mt-1 text-sm sm:text-lg font-black text-white leading-none truncate">${value}</div>
+                </div>`;
+            const u = albumsUiState(); // поиск / вид / сортировка хаба
+
             container.innerHTML = `
-                <div class="space-y-6">
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
-                        <h2 class="text-2xl font-black text-white">Альбомы коллекции</h2>
-                        <p class="text-sm text-slate-400 mt-1">Выберите альбом, чтобы просмотреть карточки конкретного бустер пака.</p>
+                <div class="space-y-4 sm:space-y-6">
+                    <div class="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/70">
+                        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-sky-500/10 pointer-events-none"></div>
+                        <div class="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+                        <div class="absolute -bottom-28 -left-14 w-64 h-64 rounded-full bg-purple-500/10 blur-3xl pointer-events-none"></div>
+                        <div class="relative p-4 sm:p-7 flex flex-col lg:flex-row lg:items-center gap-5 sm:gap-6">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-300/90"><i class="fa-solid fa-book-open"></i>Коллекция</div>
+                                        <h2 class="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black text-white tracking-tight">Альбомы коллекции</h2>
+                                        <p class="text-xs sm:text-sm text-slate-400 mt-1.5 sm:mt-2 max-w-xl">Выберите альбом, чтобы просмотреть карточки конкретного бустер-пака и свой прогресс сборки.</p>
+                                    </div>
+                                    <div class="sm:hidden shrink-0 flex flex-col items-center gap-1 pt-0.5">
+                                        ${albumRingHTML(overallPct, 56, 5)}
+                                        <span class="text-[8px] uppercase tracking-wider font-bold text-slate-500 text-center leading-tight">общий<br>прогресс</span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 sm:mt-5 grid grid-cols-3 gap-1.5 sm:gap-3 max-w-md">
+                                    ${statTile(state.packs.length, 'альбомов', 'fa-layer-group', '#34d399')}
+                                    ${statTile(totals.have + ' / ' + totals.cards, 'карт собрано', 'fa-clone', '#38bdf8')}
+                                    ${statTile(totals.done, 'собрано полностью', 'fa-circle-check', '#fbbf24')}
+                                </div>
+                            </div>
+                            <div class="hidden sm:flex items-center gap-3 sm:gap-4 shrink-0 lg:pr-2">
+                                ${albumRingHTML(overallPct, 72, 7)}
+                                <div class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-slate-500 leading-relaxed">общий<br>прогресс<br>коллекции</div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        ${state.packs.length === 0 ? `<div class="col-span-full text-center py-12 text-slate-500">Нет доступных альбомов.</div>` :
-                          state.packs.map(pack => {
-                              const packCards = state.cards.filter(c => c.packId === pack.id);
-                              const collectedCount = packCards.filter(c => state.collection[c.id]).length;
-                              const progressPct = packCards.length > 0 ? Math.round((collectedCount / packCards.length) * 100) : 0;
-                              const copiesTotal = packCards.reduce((s, c) => s + cardCopies(c.id), 0);
-                              const copiesNote = copiesTotal > collectedCount ? ` • копий всего ${copiesTotal}` : '';
-                              const rarStat = albumRarityStats(packCards);
-
-                              return `
-                                  <div onclick="openAlbum('${pack.id}')" class="bg-slate-900/80 rounded-2xl border border-slate-800/80 p-4 flex flex-col justify-between shadow-xl hover:border-slate-700 cursor-pointer transition group">
-                                      <div>
-                                          <div class="w-full pack-aspect rounded-xl overflow-hidden mb-4 relative shadow-md">
-                                              <img src="${pack.image}" alt="${pack.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
-                                              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent"></div>
-                                              <div class="absolute bottom-3 left-3 right-3">
-                                                  <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Прогресс: ${progressPct}%</span>
-                                              </div>
-                                          </div>
-                                          <h3 class="font-bold text-white text-lg">${pack.title}</h3>
-                                          <p class="text-xs text-slate-400 mt-1 line-clamp-2">${pack.description}</p>
-                                          ${rarStat.length ? `
-                                          <div class="mt-3 space-y-1">
-                                              ${rarStat.map(x => `
-                                                  <div class="flex items-center gap-2">
-                                                      <span class="text-[9px] font-black uppercase w-16 shrink-0 truncate" style="color:${RAR_COLORS[x.r] || '#94a3b8'}">${RARITY_LABELS_RU[x.r] || x.r}</span>
-                                                      <span class="flex-1 h-1 rounded-full bg-slate-800 overflow-hidden"><span class="block h-full rounded-full" style="width:${x.all ? Math.round(x.have / x.all * 100) : 0}%;background:${RAR_COLORS[x.r] || '#94a3b8'}"></span></span>
-                                                      <span class="text-[9px] font-mono text-slate-500 w-9 text-right shrink-0">${x.have}/${x.all}</span>
-                                                  </div>
-                                              `).join('')}
-                                          </div>` : ''}
-                                      </div>
-                                      <div class="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-300">
-                                          <span>Собрано: ${collectedCount} / ${packCards.length}${copiesNote}</span>
-                                          <span class="text-emerald-400 font-semibold group-hover:translate-x-1 transition">Открыть <i class="fa-solid fa-arrow-right ml-1"></i></span>
-                                      </div>
-                                  </div>
-                              `;
-                          }).join('')
-                        }
-                    </div>
+                    ${state.packs.length === 0 ? `
+                        <div class="text-center py-16 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl">
+                            <div class="mx-auto w-14 h-14 rounded-2xl bg-slate-800/70 border border-slate-700 flex items-center justify-center"><i class="fa-solid fa-book-open text-xl text-slate-500"></i></div>
+                            <p class="mt-4 text-sm font-semibold text-slate-400">Нет доступных альбомов.</p>
+                        </div>` : `
+                    <div class="space-y-2.5 sm:space-y-3">
+                        <div class="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-950/50 border border-slate-800/80 px-2.5 sm:px-3 py-2.5">
+                            <div class="relative flex-1 min-w-[9rem]">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] pointer-events-none"></i>
+                                <input id="albums-search" type="text" value="${albumEsc(u.q)}" oninput="onAlbumsSearch()" placeholder="Поиск альбома по названию…" autocomplete="off" class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-emerald-500">
+                                <button onclick="clearAlbumsSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs ${u.q ? '' : 'hidden'}" title="Очистить поиск"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <select id="albums-sort" onchange="setAlbumsSort(this.value)" title="Сортировка альбомов" class="bg-slate-950 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500 cursor-pointer">
+                                ${Object.keys(ALBUMS_SORTS).map(k => `<option value="${k}"${u.sort === k ? ' selected' : ''}>${ALBUMS_SORTS[k]}</option>`).join('')}
+                            </select>
+                            <div class="flex rounded-xl border border-slate-700 overflow-hidden shrink-0" title="Вид списка">
+                                <button onclick="setAlbumsView('grid')" title="Сетка" class="px-2.5 py-2 text-xs transition ${u.view === 'grid' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid fa-table-cells-large"></i></button>
+                                <button onclick="setAlbumsView('rows')" title="Строки" class="px-2.5 py-2 text-xs transition ${u.view === 'rows' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid fa-list"></i></button>
+                            </div>
+                        </div>
+                        <p id="albums-shown-count" class="text-[11px] text-slate-500 font-mono"></p>
+                        <div id="albums-list-wrap"></div>
+                    </div>`}
                 </div>
             `;
+            renderAlbumsList();
         }
 
         function openAlbum(packId) {
@@ -7095,7 +7718,29 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (card.musicUrl) CardMusic.play(card.musicUrl); else CardMusic.stop();
 
             updateInspectNav();
+            updateInspectDeckBtn();
             document.getElementById('modal-inspect').classList.remove('hidden');
+        }
+
+        // кнопка «В колоду» в просмотре карты (работает только для собранных карт)
+        function updateInspectDeckBtn() {
+            const b = document.getElementById('inspect-deck-btn');
+            if (!b) return;
+            const id = (inspectList || [])[inspectIdx];
+            const owned = !!id && !!state.collection[id];
+            const inDeck = !!id && state.deck.includes(id);
+            b.className = `mt-2 px-4 py-2 rounded-xl text-xs font-bold transition ${inDeck ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200'} ${owned ? '' : 'hidden'}`;
+            b.innerHTML = inDeck
+                ? '<i class="fa-solid fa-user-minus mr-1.5"></i>Убрать из колоды'
+                : '<i class="fa-solid fa-user-plus mr-1.5"></i>В колоду';
+        }
+
+        function inspectDeckToggle() {
+            const id = (inspectList || [])[inspectIdx];
+            if (!id) return;
+            if (!state.collection[id]) { showToast('Эта карта ещё не найдена', 'error'); return; }
+            if (state.deck.includes(id)) removeFromDeck(id); else addToDeck(id);
+            updateInspectDeckBtn();
         }
 
         function inspectStep(dir) {
@@ -8276,6 +8921,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             // Пересчитать достижения (например, после импорта старого сохранения)
             checkAchievements();
+            // Выплатить бонусы за альбомы, собранные до этого момента (один раз)
+            checkAlbumRewards();
 
             // Показать попап ежедневной награды, если она доступна
             if (canClaimDaily()) {
