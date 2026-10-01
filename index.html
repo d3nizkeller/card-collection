@@ -678,7 +678,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b23</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b24</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -968,7 +968,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </label>
                 </div>
                 <p id="cloud-status" class="text-[11px] text-slate-400">Не подключено.</p>
-                <button type="button" id="cloud-claim" onclick="cloudClaim()" class="hidden px-3 py-2 bg-amber-600/80 hover:bg-amber-500 border border-amber-500/40 rounded-xl text-xs font-semibold text-white transition" title="В облаке ещё нет метки создателя: комната создана в старой версии игры или пока пуста"><i class="fa-solid fa-crown mr-1"></i>Я создатель комнаты — взять управление</button>
+                <!-- b24: логин и пароль комнаты — подтверждение прав создателя -->
+                <div id="cloud-auth" class="hidden"></div>
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input type="text" id="cloud-room" placeholder="Код комнаты — придумайте свой, например: moipaki2026" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
                     <div class="flex items-center gap-2 shrink-0 flex-wrap">
@@ -979,7 +980,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <button type="button" onclick="cloudDisconnect()" class="px-3 py-2.5 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-xl text-xs font-semibold text-slate-300 transition" title="Отключиться от комнаты"><i class="fa-solid fa-xmark mr-1"></i>Отключить</button>
                     </div>
                 </div>
-                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Никакой регистрации и настроек — просто код комнаты:</b> придумайте его → «Подключить» → «Опубликовать». Друзья вводят тот же код → «Подключить» → «Получить». <b class="text-slate-300">Кто создал комнату — тот создатель:</b> только он редактирует паки и карточки и публикует изменения. Остальные — участники: контент приходит к ним в режиме «только просмотр», удалить или изменить его они не могут. Код комнаты — как пароль: чем необычнее, тем меньше шансов, что его угадают.</p>
+                <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Регистрация не нужна, но у комнаты есть логин и пароль:</b> «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья вводят тот же код комнаты → «Подключить» → «Получить» и видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
                 <details class="text-[10px] text-slate-500">
                     <summary class="cursor-pointer hover:text-slate-300 transition">Продвинутый режим: своя база Firebase (необязательно — простое хранилище работает и так)</summary>
                     <p class="mt-2">Своя база надёжнее и держит каталог до 4 МБ. Создаётся кликами за 5 минут, код писать не нужно:</p>
@@ -987,8 +988,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <li>Откройте <b>console.firebase.google.com</b> → «Создать проект» (бесплатно, название любое).</li>
                         <li>Слева: Build → <b>Realtime Database</b> → «Create Database» → регион любой → режим «<b>test mode</b>» (чтение/запись открыты).</li>
                         <li>На вкладке Realtime Database скопируйте URL базы вида <b>https://имя-проекта-default-rtdb.firebaseio.com</b> (или …firebasedatabase.app).</li>
-                        <li>Вставьте URL в поле ниже → «Сохранить URL» → «Создать комнату» → передайте код комнаты игрокам.</li>
-                        <li>Игроки: вставляют тот же URL и код комнаты → «Подключить». Готово.</li>
+                        <li>Вставьте URL в поле ниже → «Сохранить URL» → «Создать комнату» → задайте <b>логин и пароль комнаты</b> → «Опубликовать» → передайте код комнаты игрокам.</li>
+                        <li>Игроки: вставляют тот же URL и код комнаты → «Подключить». Готово (логин и пароль им не нужны — они только смотрят и получают паки).</li>
                     </ol>
                     <div class="flex flex-col sm:flex-row gap-2 mt-2">
                         <input type="url" id="cloud-db" placeholder="URL базы Firebase: https://…firebasedatabase.app (пусто = простой режим)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-sky-500">
@@ -1000,7 +1001,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <!-- b23: режим участника — Студия только для просмотра -->
             <div id="studio-locked-banner" class="hidden bg-amber-500/10 border border-amber-500/40 rounded-2xl p-4 text-[12px] text-amber-200 space-y-1">
                 <p class="font-bold flex items-center gap-2"><i class="fa-solid fa-lock"></i>Режим участника — только просмотр</p>
-                <p class="text-amber-200/80">Вы подключены к комнате <b id="studio-locked-room" class="text-amber-100"></b> как участник: паки и карточки добавил создатель комнаты, поэтому создавать, редактировать и удалять их здесь отключено. Управлять контентом может только создатель. Хотите править свои собственные паки — нажмите «Отключить» в панели облака выше.</p>
+                <p class="text-amber-200/80">Вы подключены к комнате <b id="studio-locked-room" class="text-amber-100"></b> как участник: паки и карточки добавил создатель комнаты, поэтому создавать, редактировать и удалять их здесь отключено. Права создателя подтверждаются <b class="text-amber-100">логином и паролем комнаты</b> — если комната ваша, войдите по ним.</p>
+                <div class="flex flex-wrap gap-2 pt-1.5">
+                    <button type="button" onclick="cloudAuthOpenLogin()" class="px-3 py-2 rounded-xl bg-amber-600/80 hover:bg-amber-500 border border-amber-500/40 text-white text-[11px] font-bold transition"><i class="fa-solid fa-crown mr-1"></i>Я создатель — войти по логину и паролю</button>
+                    <button type="button" onclick="cloudDisconnect()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-semibold transition"><i class="fa-solid fa-xmark mr-1"></i>Отключиться и править свои паки</button>
+                </div>
             </div>
             <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -1443,7 +1448,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b23</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b24</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -2952,7 +2957,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b23</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b24</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -7040,6 +7045,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
             lastSync: 0,
             lastErr: '',
             ownerUnknown: false, // b23: в облаке ещё нет метки создателя (old payload / пустая комната)
+            remoteAuth: null,    // b24: { login, hash, salt } — логин и хэш пароля комнаты из облака
+            remoteFilled: false, // b24: в комнате уже есть опубликованный каталог
+            remoteOwnerId: '',   // b24: метка устройства создателя из облака
+            needAuth: false,     // b24: пароль комнаты ещё не задан
+            promptAuth: false,   // b24: после подключения сразу показать форму пароля
             backend() { return this.db ? 'firebase' : 'textdb'; },
             path() {
                 if (this.db) return this.db + '/nexus-rooms/' + this.room + '.json';
@@ -7086,12 +7096,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 return r;
             }
         };
-        // b23: РОЛИ В КОМНАТЕ. Создатель комнаты редактирует паки/карточки и публикует изменения;
+        // b23/b24: РОЛИ В КОМНАТЕ. Создатель комнаты редактирует паки/карточки и публикует изменения;
         // участники (все, кто ввёл тот же код) получают контент в режиме «только просмотр»:
         // создание/редактирование/удаление в Студии и публикация в облако для них отключены.
-        // Владелец помечается в самом облаке полем ownerId (код устройства создателя),
-        // поэтому роль видна каждому, кто получил данные комнаты.
+        // b24: права создателя подтверждаются ЛОГИНОМ И ПАРОЛЕМ КОМНАТЫ. Их задаёт создатель при
+        // создании комнаты, в облаке хранится только хэш пароля с солью (сам пароль никуда не уходит).
+        // На любом другом устройстве (или после очистки данных браузера), чтобы снова стать создателем,
+        // нужно ввести эти логин и пароль. Без пароля комнаты публикация отключена.
         let cloudRole = null; // 'owner' | 'guest' | null (пока не подключены)
+        let cloudAuthFormMode = ''; // '' | 'login' | 'set' | 'change' — какая форма пароля сейчас открыта
         function cloudDeviceId() {
             try {
                 let id = LS.getItem('nexus_cloud_devid');
@@ -7102,29 +7115,260 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function cloudOwnerRoom() { try { return LS.getItem('nexus_cloud_owner_room') || ''; } catch (e) { return ''; } }
         function cloudSetOwnerRoom(code) { try { if (code) LS.setItem('nexus_cloud_owner_room', code); else LS.removeItem('nexus_cloud_owner_room'); } catch (e) {} }
         function cloudGuest() { return CLOUD.connected() && cloudRole === 'guest'; }
-        // Решаем роль по данным из облака: ownerId есть — сравниваем со своим кодом устройства;
-        // ownerId нет (комната создана в старой версии или ещё пуста) — сверяем с локальной меткой создателя.
+
+        // ------------------- b24: ЛОГИН И ПАРОЛЬ КОМНАТЫ -------------------
+        function cloudAuthKey() { return 'nexus_cloud_auth_' + CLOUD.room; }
+        // Свои (сохранённые на этом устройстве) логин/пароль комнаты — доказательство прав создателя
+        function cloudLocalAuth() {
+            if (!CLOUD.room) return null;
+            try {
+                const a = JSON.parse(LS.getItem(cloudAuthKey()) || 'null');
+                return (a && a.login && a.hash) ? a : null;
+            } catch (e) { return null; }
+        }
+        function cloudSaveLocalAuth(a) { try { LS.setItem(cloudAuthKey(), JSON.stringify(a)); } catch (e) {} }
+        function cloudDropLocalAuth() { try { LS.removeItem(cloudAuthKey()); } catch (e) {} }
+        // Есть чем подтвердить права создателя: свой пароль на устройстве или пароль, уже лежащий в облаке
+        function cloudAuthReady() { return !!(cloudLocalAuth() || CLOUD.remoteAuth); }
+        function cloudAuthNorm(l) { return String(l == null ? '' : l).trim().toLowerCase(); }
+        function cloudSalt() {
+            const abc = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let s = '';
+            try {
+                if (typeof crypto !== 'undefined' && crypto && crypto.getRandomValues) {
+                    const b = new Uint8Array(12); crypto.getRandomValues(b);
+                    for (let i = 0; i < b.length; i++) s += abc[b[i] % abc.length];
+                    if (s.length === 12) return s;
+                }
+            } catch (e) {}
+            s = ''; for (let i = 0; i < 12; i++) s += abc[Math.floor(Math.random() * abc.length)];
+            return s;
+        }
+        // Запасной хэш на случай, если браузер не дал crypto.subtle (страница открыта не по https / file://)
+        function cloudHashWeak(str) {
+            let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
+            for (let r = 0; r < 256; r++) {
+                for (let i = 0; i < str.length; i++) {
+                    const c = (str.charCodeAt(i) + r) & 0xffff;
+                    h1 = (h1 ^ c) >>> 0; h1 = (h1 * 0x01000193) >>> 0;
+                    h2 = (h2 + c + (h1 >>> 13)) >>> 0; h2 = ((h2 << 7) | (h2 >>> 25)) >>> 0;
+                    h1 = (h1 ^ h2) >>> 0;
+                }
+            }
+            return 'w1:' + h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+        }
+        // Хэш пароля: SHA-256 + соль, 512 раундов. В облако уходит только он.
+        function cloudHashPass(pass, salt) {
+            const s = String(salt == null ? '' : salt);
+            if (typeof crypto !== 'undefined' && crypto && crypto.subtle && typeof TextEncoder !== 'undefined') {
+                const hex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+                const one = str => crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+                let p = one(s + ':' + String(pass));
+                for (let i = 0; i < 511; i++) p = p.then(h => one(hex(h) + s));
+                return p.then(h => 'sha256:' + hex(h));
+            }
+            return Promise.resolve(cloudHashWeak(s + ':' + String(pass)));
+        }
+        function cloudAuthMatch(a, b) {
+            return !!(a && b && a.hash && b.hash && cloudAuthNorm(a.login) === cloudAuthNorm(b.login) && String(a.hash) === String(b.hash));
+        }
+        function cloudAuthValidate(login, pass) {
+            const l = cloudAuthNorm(login), p = String(pass == null ? '' : pass);
+            if (!l) return 'Введите логин комнаты';
+            if (l.length < 3) return 'Логин — минимум 3 символа';
+            if (l.length > 24) return 'Логин — максимум 24 символа';
+            if (!/^[a-z0-9а-яё_\-.@]+$/.test(l)) return 'Логин: буквы, цифры и знаки _ - . @ (без пробелов)';
+            if (p.length < 4) return 'Пароль — минимум 4 символа';
+            if (p.length > 64) return 'Пароль — максимум 64 символа';
+            return '';
+        }
+        function cloudAuthMake(login, pass) {
+            const salt = cloudSalt();
+            return cloudHashPass(pass, salt).then(hash => ({ login: cloudAuthNorm(login), hash: hash, salt: salt, at: Date.now() }));
+        }
+        // Кто я в комнате: сначала сверяем логин/пароль комнаты с сохранёнными на устройстве,
+        // затем — метку устройства создателя (ownerId). Пароля в комнате ещё нет — решаем по метке:
+        // пустая комната свободна (создателем станет тот, кто первым задаст пароль),
+        // комната старой версии с контентом — по метке устройства/локальному флагу создателя.
         function cloudResolveRole(remote) {
-            if (!CLOUD.connected()) { cloudRole = null; CLOUD.ownerUnknown = false; return; }
-            const hasOwner = !!(remote && remote.ownerId);
-            CLOUD.ownerUnknown = !hasOwner;
-            if (hasOwner) cloudRole = (remote.ownerId === cloudDeviceId()) ? 'owner' : 'guest';
-            else cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest';
+            if (!CLOUD.connected()) {
+                cloudRole = null; CLOUD.ownerUnknown = false; CLOUD.needAuth = false;
+                CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = '';
+                return;
+            }
+            const auth = (remote && remote.auth && remote.auth.login && remote.auth.hash) ? remote.auth : null;
+            CLOUD.remoteAuth = auth;
+            CLOUD.remoteFilled = !!(remote && remote.v);
+            CLOUD.remoteOwnerId = (remote && remote.ownerId) || '';
+            CLOUD.needAuth = !auth;
+            const devOk = !!CLOUD.remoteOwnerId && CLOUD.remoteOwnerId === cloudDeviceId();
+            if (auth) {
+                CLOUD.ownerUnknown = false;
+                cloudRole = (cloudAuthMatch(auth, cloudLocalAuth()) || devOk) ? 'owner' : 'guest';
+            } else if (!CLOUD.remoteFilled) {
+                CLOUD.ownerUnknown = true;
+                cloudRole = 'owner';
+            } else {
+                CLOUD.ownerUnknown = true;
+                cloudRole = (devOk || cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest';
+            }
         }
         // Единый запрет для участников: вызывается в начале всех «пишущих» действий Студии
         function cloudGuard() {
-            if (cloudGuest()) { showToast('⛔ Режим участника: редактировать и удалять может только создатель комнаты', 'error'); return true; }
+            if (cloudGuest()) { showToast('⛔ Режим участника: редактировать может только создатель комнаты (вход по логину и паролю)', 'error'); return true; }
             return false;
         }
-        // «Я создатель — взять управление»: для комнат, созданных в старой версии (без ownerId),
-        // и для пустых комнат (например после очистки данных браузера).
-        function cloudClaim() {
-            if (!CLOUD.connected()) { showToast('Сначала подключитесь к комнате', 'error'); return; }
-            if (!confirm('Взять управление комнатой ' + CLOUD.room + '?\n\nНажимайте только если ЭТО ВАША комната (вы создали её или она ещё пуста).\nПосле этого остальные пользователи комнаты станут участниками: они смогут получать ваши паки, но не смогут их редактировать или удалять.')) return;
-            cloudSetOwnerRoom(CLOUD.room);
-            cloudRole = 'owner'; CLOUD.ownerUnknown = false;
-            cloudStatus(); refreshVisibleTabs();
-            cloudPushNow(); // закрепляем статус создателя в облаке (ownerId)
+
+        // Панель «логин и пароль комнаты» в блоке облака
+        function cloudAuthErr(msg) {
+            const e = document.getElementById('cloud-auth-err');
+            if (e) { e.textContent = msg || ''; e.classList.toggle('hidden', !msg); }
+        }
+        function cloudAuthBtnHTML(label, icon, fn, gold) {
+            return '<button type="button" onclick="' + fn + '()" class="px-3 py-2 rounded-xl text-[11px] font-bold transition shrink-0 ' +
+                (gold ? 'bg-amber-600/80 hover:bg-amber-500 border border-amber-500/40 text-white' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200') + '">' + icon + label + '</button>';
+        }
+        function renderCloudAuth() {
+            const box = document.getElementById('cloud-auth');
+            if (!box) return;
+            if (!CLOUD.connected()) { cloudAuthFormMode = ''; box.classList.add('hidden'); box.innerHTML = ''; return; }
+            box.classList.remove('hidden');
+            if (cloudAuthFormMode) return; // форма открыта и в ней печатают — не перерисовываем
+            const auth = CLOUD.remoteAuth;
+            if (auth) {
+                box.innerHTML = (cloudRole === 'owner')
+                    ? '<div class="flex flex-wrap items-center gap-2">' +
+                        '<span class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold"><i class="fa-solid fa-crown mr-1"></i>Создатель: ' + cloudEsc(auth.login) + '</span>' +
+                        '<span class="text-[10px] text-slate-500 flex-1 min-w-[180px]">Комната защищена паролем: участники получают ваши паки, но менять их не могут.</span>' +
+                        cloudAuthBtnHTML('Сменить логин/пароль', '<i class="fa-solid fa-key mr-1"></i>', 'cloudAuthOpenChange', false) +
+                      '</div>'
+                    : '<div class="flex flex-wrap items-center gap-2">' +
+                        '<span class="px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-bold"><i class="fa-solid fa-lock mr-1"></i>Комната защищена • создатель: ' + cloudEsc(auth.login) + '</span>' +
+                        '<span class="text-[10px] text-slate-500 flex-1 min-w-[180px]">Вы участник — только просмотр. Права создателя подтверждаются логином и паролем комнаты.</span>' +
+                        cloudAuthBtnHTML('Я создатель — войти', '<i class="fa-solid fa-crown mr-1"></i>', 'cloudAuthOpenLogin', true) +
+                      '</div>';
+                return;
+            }
+            const canSet = (cloudRole === 'owner') || !CLOUD.remoteOwnerId;
+            box.innerHTML = '<div class="flex flex-wrap items-center gap-2">' +
+                '<span class="px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[10px] font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>' + (CLOUD.remoteFilled ? 'Пароль комнаты не задан (комната старой версии)' : 'Пароль комнаты не задан') + '</span>' +
+                '<span class="text-[10px] text-slate-500 flex-1 min-w-[180px]">' + (canSet
+                    ? 'Без логина и пароля комнату может перехватить кто угодно, поэтому публикация отключена. Задайте их — это и есть подтверждение, что вы создатель.'
+                    : 'Комнату создал другой игрок ещё в старой версии игры: логин и пароль задаёт он. Вы участник — только просмотр.') + '</span>' +
+                (canSet ? cloudAuthBtnHTML(CLOUD.remoteFilled ? 'Задать пароль и взять управление' : 'Задать логин и пароль', '<i class="fa-solid fa-key mr-1"></i>', 'cloudAuthOpenSet', true) : '') +
+              '</div>';
+        }
+        function cloudAuthFormHTML(mode) {
+            const title = mode === 'login' ? 'Подтверждение прав создателя' : (mode === 'change' ? 'Сменить логин и пароль комнаты' : 'Логин и пароль комнаты');
+            const sub = mode === 'login'
+                ? 'Введите логин и пароль, которые задал создатель комнаты. В облаке лежит только хэш пароля: не подошли — права создателя не получить.'
+                : (mode === 'change'
+                    ? 'Потребуется текущий пароль комнаты. Новые логин и пароль сразу уйдут в облако — сообщайте их только тем, кому доверяете.'
+                    : 'Придумайте логин и пароль комнаты — они подтверждают, что вы её создатель, и нужны для входа с другого устройства. В облако уходит только хэш пароля. Забыли пароль — восстановить его нельзя, придётся создать новую комнату.');
+            const known = cloudLocalAuth() || CLOUD.remoteAuth || null;
+            const inp = (id, ph, type, val) => '<input type="' + type + '" id="' + id + '" value="' + cloudEsc(val || '') + '" placeholder="' + ph + '" autocomplete="off" spellcheck="false" onkeydown="cloudAuthEnter(event)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">';
+            const eye = id => '<button type="button" data-id="' + id + '" onclick="cloudAuthEye(this)" title="Показать/скрыть пароль" class="shrink-0 w-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 transition"><i class="fa-solid fa-eye text-xs"></i></button>';
+            const cell = inner => '<div class="flex items-stretch gap-1.5 min-w-0">' + inner + '</div>';
+            let fields = '';
+            if (mode === 'change') fields += cell(inp('cloud-auth-cur', 'текущий пароль комнаты', 'password', '') + eye('cloud-auth-cur'));
+            fields += cell(inp('cloud-auth-login', 'логин комнаты: буквы, цифры, _ - . @', 'text', mode === 'login' ? '' : (known ? known.login : '')));
+            fields += cell(inp('cloud-auth-pass', mode === 'change' ? 'новый пароль (минимум 4 символа)' : 'пароль комнаты (минимум 4 символа)', 'password', '') + eye('cloud-auth-pass'));
+            if (mode !== 'login') fields += cell(inp('cloud-auth-pass2', 'повторите пароль', 'password', '') + eye('cloud-auth-pass2'));
+            const submit = mode === 'login' ? 'Подтвердить права создателя' : 'Сохранить логин и пароль';
+            return '<div class="rounded-xl border border-amber-500/30 bg-slate-950/70 p-3 space-y-2">' +
+                '<p class="text-[12px] font-bold text-amber-200 flex items-center gap-2"><i class="fa-solid fa-shield-halved"></i>' + title + '</p>' +
+                '<p class="text-[10px] text-slate-500 leading-relaxed">' + sub + '</p>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' + fields + '</div>' +
+                '<div class="flex flex-wrap items-center gap-2">' +
+                    '<button type="button" id="cloud-auth-submit" onclick="cloudAuthSubmit()" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600/80 hover:bg-amber-500 border border-amber-500/40 text-white transition"><i class="fa-solid fa-shield-halved mr-1"></i>' + submit + '</button>' +
+                    '<button type="button" onclick="cloudAuthClose()" class="px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">Отмена</button>' +
+                    '<span id="cloud-auth-err" class="hidden text-[11px] font-semibold text-rose-300 flex-1 min-w-[150px]"></span>' +
+                '</div>' +
+              '</div>';
+        }
+        function cloudAuthOpen(mode) {
+            if (!CLOUD.connected()) { showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); return; }
+            if (mode === 'login' && !CLOUD.remoteAuth && !cloudLocalAuth()) mode = 'set'; // пароля ещё нет — задаём
+            if (mode === 'change' && !CLOUD.remoteAuth && !cloudLocalAuth()) mode = 'set';
+            cloudAuthFormMode = mode;
+            const box = document.getElementById('cloud-auth');
+            if (box) { box.classList.remove('hidden'); box.innerHTML = cloudAuthFormHTML(mode); }
+            try {
+                const f = document.getElementById(mode === 'change' ? 'cloud-auth-cur' : 'cloud-auth-login');
+                if (f && f.focus) f.focus();
+                if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'center' }); // форма видна, даже если вызвана из баннера Студии
+            } catch (e) {}
+        }
+        function cloudAuthOpenSet() { cloudAuthOpen('set'); }
+        function cloudAuthOpenLogin() { cloudAuthOpen('login'); }
+        function cloudAuthOpenChange() { cloudAuthOpen('change'); }
+        function cloudAuthClose() { cloudAuthFormMode = ''; renderCloudAuth(); }
+        function cloudAuthEnter(e) { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); cloudAuthSubmit(); } }
+        function cloudAuthEye(btn) {
+            const id = btn && (btn.getAttribute ? btn.getAttribute('data-id') : (btn.dataset ? btn.dataset.id : ''));
+            const e = id ? document.getElementById(id) : null;
+            if (!e) return;
+            const show = e.type === 'password';
+            e.type = show ? 'text' : 'password';
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-' + (show ? 'eye-slash' : 'eye') + ' text-xs"></i>';
+        }
+        function cloudAuthBusy(on) {
+            const b = document.getElementById('cloud-auth-submit');
+            if (!b) return;
+            b.disabled = !!on;
+            b.classList.toggle('opacity-50', !!on);
+            b.classList.toggle('cursor-not-allowed', !!on);
+            b.innerHTML = '<i class="fa-solid fa-' + (on ? 'spinner fa-spin' : 'shield-halved') + ' mr-1"></i>' +
+                (on ? 'Проверяем…' : (cloudAuthFormMode === 'login' ? 'Подтвердить права создателя' : 'Сохранить логин и пароль'));
+        }
+        // Подтверждение прав: логин+пароль сверяются со свежими данными комнаты из облака,
+        // поэтому перехватить или «перезаписать» чужой пароль задним числом не получится.
+        function cloudAuthSubmit() {
+            const mode = cloudAuthFormMode;
+            if (!CLOUD.connected() || !mode) { showToast('Сначала подключитесь к комнате', 'error'); return; }
+            const v = id => { const e = document.getElementById(id); return e ? String(e.value == null ? '' : e.value) : ''; };
+            const login = v('cloud-auth-login'), pass = v('cloud-auth-pass'), pass2 = v('cloud-auth-pass2'), cur = v('cloud-auth-cur');
+            if (mode === 'change' && !cur) { cloudAuthErr('Введите текущий пароль комнаты'); return; }
+            const bad = cloudAuthValidate(login, pass);
+            if (bad) { cloudAuthErr(bad); return; }
+            if (mode !== 'login' && pass !== pass2) { cloudAuthErr('Пароли не совпадают'); return; }
+            cloudAuthErr(''); cloudAuthBusy(true);
+            CLOUD.fetch().then(remote => {
+                const rAuth = (remote && remote.auth && remote.auth.login && remote.auth.hash) ? remote.auth : null;
+                if (mode === 'login') {
+                    if (!rAuth) throw new Error('В этой комнате пароль ещё не задан');
+                    return cloudHashPass(pass, rAuth.salt || '').then(h => {
+                        if (cloudAuthNorm(login) !== cloudAuthNorm(rAuth.login) || h !== String(rAuth.hash)) throw new Error('Неверный логин или пароль комнаты');
+                        return { login: cloudAuthNorm(rAuth.login), hash: String(rAuth.hash), salt: rAuth.salt || '', at: Date.now() };
+                    });
+                }
+                if (mode === 'set' && rAuth) throw new Error('Пароль в этой комнате уже задан — войдите по нему');
+                const known = rAuth || cloudLocalAuth();
+                const checkCur = (mode === 'change' && known)
+                    ? cloudHashPass(cur, known.salt || '').then(h => { if (h !== String(known.hash)) throw new Error('Текущий пароль указан неверно'); return true; })
+                    : Promise.resolve(true);
+                return checkCur.then(() => cloudAuthMake(login, pass));
+            }).then(a => {
+                if (!a) return;
+                cloudSaveLocalAuth(a);
+                cloudSetOwnerRoom(CLOUD.room);
+                CLOUD.remoteAuth = { login: a.login, hash: a.hash, salt: a.salt, at: a.at };
+                CLOUD.needAuth = false; CLOUD.ownerUnknown = false;
+                cloudRole = 'owner';
+                cloudAuthFormMode = '';
+                if (CLOUD.remoteFilled !== false) { /* контент комнаты уже слит при получении */ }
+                cloudStatus(); refreshVisibleTabs();
+                showToast(mode === 'login'
+                    ? '👑 Права подтверждены: вы создатель комнаты ' + CLOUD.room
+                    : (mode === 'change' ? 'Логин и пароль комнаты обновлены' : '👍 Комната защищена: вы её создатель'), 'success');
+                cloudPushNow(); // закрепляем логин/хэш пароля и метку создателя в облаке
+            }).catch(e => {
+                cloudAuthBusy(false);
+                const msg = String((e && e.message) || e);
+                cloudAuthErr(msg);
+                showToast('⛔ ' + msg, 'error');
+                if (/ещё не задан|уже задан/i.test(msg)) { cloudAuthFormMode = ''; renderCloudAuth(); }
+            });
         }
         function cloudAuto() { try { return LS.getItem('nexus_cloud_auto') !== '0'; } catch (e) { return true; } }
         function cloudTombs() { try { return JSON.parse(LS.getItem('nexus_cloud_tombs') || '[]'); } catch (e) { return []; } }
@@ -7135,6 +7379,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function cloudCatalog() {
             return {
                 v: 1, updatedAt: Date.now(), ownerId: cloudDeviceId(), // b23: метка создателя комнаты
+                auth: cloudLocalAuth() || CLOUD.remoteAuth || null, // b24: логин + хэш пароля комнаты
                 packs: state.packs.filter(p => !STANDARD_IDS[p.id]),
                 cards: state.cards.filter(c => !STANDARD_IDS[c.id]),
                 tombs: cloudTombs()
@@ -7174,19 +7419,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (vis('tab-albums')) renderAlbumsHub();
             if (vis('tab-studio')) renderStudio();
         }
-        function cloudEsc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+        // b24: экранируем и кавычки — логин комнаты приходит из облака и подставляется в атрибут value
+        function cloudEsc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
         function cloudStatus(extra) {
+            renderCloudAuth(); // b24: чип/форма логина и пароля комнаты
             const el = document.getElementById('cloud-status');
             if (!el) return;
             if (extra) { el.textContent = extra; return; }
             if (!CLOUD.connected()) { el.innerHTML = 'Регистрация не нужна: придумайте <b class="text-sky-300">код комнаты</b> (например, moipaki2026) → «Подключить» → «Опубликовать». Такой же код введите на устройствах друзей — паки станут общими.'; return; }
             const t = CLOUD.lastSync ? new Date(CLOUD.lastSync).toLocaleTimeString() : '—';
             const roleTxt = cloudGuest()
-                ? ' • <span class="text-amber-300"><i class="fa-solid fa-lock text-[9px]"></i> вы участник — только просмотр</span>'
-                : (cloudRole === 'owner' ? ' • <span class="text-emerald-300"><i class="fa-solid fa-crown text-[9px]"></i> вы создатель — можно редактировать</span>' : '');
+                ? ' • <span class="text-amber-300"><i class="fa-solid fa-lock text-[9px]"></i> вы участник — только просмотр (нужен логин и пароль комнаты)</span>'
+                : (cloudRole === 'owner'
+                    ? ' • <span class="text-emerald-300"><i class="fa-solid fa-crown text-[9px]"></i> вы создатель' + (CLOUD.remoteAuth ? ' «' + cloudEsc(CLOUD.remoteAuth.login) + '» — можно редактировать' : ' — задайте логин и пароль комнаты') + '</span>'
+                    : '');
             el.innerHTML = 'Комната <b class="text-emerald-300">' + cloudEsc(CLOUD.room) + '</b> • ' + (CLOUD.db ? 'своя база Firebase' : 'простое хранилище (без регистрации)') + ' • синхронизация: ' + t + roleTxt +
                 (CLOUD.lastErr ? ' • <span class="text-rose-300">ошибка: ' + cloudEsc(CLOUD.lastErr) + '</span>' : ' • <span class="text-emerald-300">онлайн</span>');
-            // b23: участнику — публикацию и автопубликацию отключаем, показываем кнопку «взять управление»
+            // b23/b24: участнику — публикацию и автопубликацию отключаем
             const guest = cloudGuest();
             const pushBtn = document.getElementById('cloud-push-btn');
             if (pushBtn) {
@@ -7197,8 +7446,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             const autoCb = document.getElementById('cloud-auto');
             if (autoCb) { autoCb.disabled = guest; autoCb.classList.toggle('opacity-40', guest); }
-            const claim = document.getElementById('cloud-claim');
-            if (claim) claim.classList.toggle('hidden', !(guest && CLOUD.ownerUnknown));
+            if (guest && !CLOUD.remoteAuth) { /* b24: вход по логину/паролю — в панели cloud-auth */ }
         }
         function cloudPull(manual) {
             if (!CLOUD.connected()) { if (manual) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); return; }
@@ -7210,9 +7458,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     if (cloudMerge(remote)) { saveState(); refreshVisibleTabs(); }
                 }
                 CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
+                if (CLOUD.promptAuth) { // b24: только что подключились — при необходимости сразу просим пароль
+                    CLOUD.promptAuth = false;
+                    if (CLOUD.needAuth && cloudRole === 'owner' && !cloudAuthFormMode) cloudAuthOpen('set');
+                }
                 cloudStatus();
                 if (prevRole !== cloudRole) refreshVisibleTabs(); // b23: сменилась роль — перерисовать Студию
-                if (manual) showToast(cloudGuest() ? 'Облако: данные получены (вы участник — только просмотр)' : 'Облако: данные получены', 'success');
+                if (manual) showToast(cloudGuest()
+                    ? 'Облако: данные получены (вы участник — только просмотр)'
+                    : (CLOUD.needAuth ? 'Комната подключена — задайте логин и пароль создателя' : 'Облако: данные получены'), 'success');
             }).catch(e => {
                 CLOUD.lastErr = String((e && e.message) || e); cloudStatus();
                 if (manual) showToast('Облако недоступно: ' + CLOUD.lastErr, 'error');
@@ -7227,6 +7481,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function cloudPushNow() {
             if (!CLOUD.connected()) { showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
             if (cloudGuest()) { showToast('⛔ Публиковать может только создатель комнаты', 'error'); return; }
+            if (!cloudAuthReady()) { // b24: комната без логина и пароля не публикуется
+                showToast('⛔ Сначала задайте логин и пароль комнаты — без них публикация отключена', 'error');
+                cloudStatus(); cloudAuthOpen('set');
+                return;
+            }
             const cat = cloudCatalog();
             const lim = CLOUD.db ? 4000000 : 900000;
             if (JSON.stringify(cat).length > lim) { cloudStatus('Каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ): сократите описания паков и карт'); return; }
@@ -7255,20 +7514,29 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!c) { showToast('Введите код комнаты', 'error'); return; }
             CLOUD.room = c; try { LS.setItem('nexus_cloud_room', c); } catch (e) {}
             cloudRole = (cloudOwnerRoom() === c) ? 'owner' : 'guest'; // b23: до ответа облака
-            CLOUD.ownerUnknown = false;
+            CLOUD.ownerUnknown = false; CLOUD.promptAuth = true; // b24
+            CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = ''; CLOUD.needAuth = false;
+            cloudAuthFormMode = '';
             cloudStatus();
             cloudPull(true);
         }
         function cloudCreate() {
             const code = CLOUD.newRoom();
+            cloudDropLocalAuth(); // b24: у новой комнаты ещё нет логина/пароля
             cloudSetOwnerRoom(code); // b23: этот браузер — создатель комнаты
-            cloudRole = 'owner'; CLOUD.ownerUnknown = false;
-            cloudStatus(); cloudPushNow();
-            showToast('Комната ' + code + ' создана! Вы её создатель: редактируйте паки, участники получают их в режиме просмотра', 'success');
+            cloudRole = 'owner'; CLOUD.ownerUnknown = true;
+            CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = '';
+            CLOUD.needAuth = true; CLOUD.lastErr = ''; CLOUD.lastSync = 0;
+            cloudAuthFormMode = '';
+            cloudStatus(); refreshVisibleTabs();
+            showToast('Комната ' + code + ' создана. Задайте логин и пароль — они подтверждают, что вы её создатель', 'success');
+            cloudAuthOpen('set'); // b24: без пароля комната не публикуется
         }
         function cloudDisconnect() {
             CLOUD.room = ''; CLOUD.lastErr = ''; try { LS.removeItem('nexus_cloud_room'); } catch (e) {}
             cloudRole = null; CLOUD.ownerUnknown = false; // b23: сняли роль — Студия снова доступна
+            CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = ''; // b24
+            CLOUD.needAuth = false; CLOUD.promptAuth = false; cloudAuthFormMode = '';
             cloudStatus(); refreshVisibleTabs();
         }
         function setCloudAuto(v) { try { LS.setItem('nexus_cloud_auto', v ? '1' : '0'); } catch (e) {} }
