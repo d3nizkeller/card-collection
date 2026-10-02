@@ -688,7 +688,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b35</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b36</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1517,7 +1517,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b35</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b36</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -8631,6 +8631,17 @@ Check your Browserslist config to be sure that your targets are set up correctly
             let diff = 0;
             state.packs.forEach(p => { if (p && p.id && !STANDARD_IDS[p.id] && !inRoomP[p.id]) diff++; });
             state.cards.forEach(c => { if (c && c.id && !STANDARD_IDS[c.id] && !inRoomC[c.id]) diff++; });
+            // b36: обратный конфликт — в комнате снова лежит то, что мы удалили (надгробие есть
+            // локально). Так бывает, когда другое устройство-создатель перезаписало комнату своим
+            // старым каталогом поверх нашего удаления. Публикуем удаление заново.
+            const tombsR = cloudTombs();
+            const killedAtR = id => { const t = tombsR.find(x => x.id === id); return t ? (t.at || 0) : 0; };
+            ((remote && Array.isArray(remote.packs)) ? remote.packs : []).forEach(x => {
+                if (x && x.id && !STANDARD_IDS[x.id] && killedAtR(x.id) > (x.updatedAt || 0)) diff++;
+            });
+            ((remote && Array.isArray(remote.cards)) ? remote.cards : []).forEach(x => {
+                if (x && x.id && !STANDARD_IDS[x.id] && killedAtR(x.id) > (x.updatedAt || 0)) diff++;
+            });
             if (!diff) return;
             cloudDirtySet();
             cloudStatus();
@@ -8649,7 +8660,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
         let cloudPushFailAt = 0;      // b33: когда не получилось в последний раз — для паузы автоповторов
         let cloudPushErrShown = false; // b33: одну и ту же ошибку не показываем каждые 20 секунд
         function cloudPushNow(opts) {
-            const quiet = !!(opts && opts.quiet);
+            opts = opts || {};
+            const quiet = !!opts.quiet;
             const fail = msg => {
                 cloudDirtySet(); cloudPushFailAt = Date.now(); // b25: не получилось — повторим позже
                 CLOUD.lastErr = msg; cloudStatus();
@@ -8669,7 +8681,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // потом публикуем объединённый каталог. Публикация «вслепую» (как раньше) затирала
             // комнату локальными данными: сброс прогресса, импорт сейва, второй браузер или
             // переполнение localStorage на одном устройстве стирали контент у всех игроков.
-            CLOUD.fetch().then(remote => {
+            // b36: цикл повторяется, если после нашей записи комната оказалась перезаписана
+            // чужим старым каталогом (textdb не умеет атомарные операции): перечитываем,
+            // сливаем снова (надгробия при этом не теряются) и публикуем ещё раз.
+            const cycle = depth => CLOUD.fetch().then(remote => {
                 const prevRole = cloudRole;
                 cloudResolveRole(remote);
                 try { if (remote && Array.isArray(remote.tombs)) LS.setItem('nexus_cloud_remote_tombs', JSON.stringify(cloudTombPrune(remote.tombs))); } catch (e) {}
@@ -8695,7 +8710,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const lim = cloudLimit();
                 const fit = cloudFitCatalog(cat, lim);
                 if (fit.tooBig) throw new Error('каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ) даже без тяжёлых артов: ' + Math.round(fit.size / 1000) + ' КБ — сократите описания паков и карт');
-                return CLOUD.push(fit.cat).then(() => {
+                return CLOUD.push(fit.cat).then(() => CLOUD.fetch().then(chk => {
+                    // b36: проверка «не затёрли ли нас»: метка комнаты отличается от нашей —
+                    // значит, между записью и чтением успел кто-то ещё; повторяем цикл.
+                    if (chk && chk.v && chk.updatedAt !== fit.cat.updatedAt && depth < 2) return cycle(depth + 1);
                     cloudDirtyClear(); CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
                     cloudPushFailAt = 0; cloudPushErrShown = false;
                     CLOUD.remotePacks = fit.cat.packs.length; CLOUD.remoteCards = fit.cat.cards.length;
@@ -8708,9 +8726,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         showToast((quiet ? '☁️ ' : '') + 'Опубликовано в комнату ' + CLOUD.room + ': ' +
                             fit.cat.packs.length + ' паков, ' + fit.cat.cards.length + ' карт', 'success');
                     }
-                });
-            }).catch(e => fail(String((e && e.message) || e)))
-              .then(() => { cloudPushBusy = false; });
+                }));
+            });
+            cycle(opts.depth || 0)
+                .catch(e => fail(String((e && e.message) || e)))
+                .then(() => { cloudPushBusy = false; });
         }
         function cloudSaveDb() {
             const inp = document.getElementById('cloud-db');
