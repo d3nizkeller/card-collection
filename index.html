@@ -2,6 +2,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
@@ -709,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b61</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b62</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1676,7 +1677,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b61</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b62</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -3001,6 +3002,17 @@ Check your Browserslist config to be sure that your targets are set up correctly
             try { renderer.outputEncoding = THREE.sRGBEncoding; } catch (e) {}
             try { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
             container.appendChild(renderer.domElement);
+            // b62: iPad/WebKit отбирает WebGL-контекст при нехватке памяти — ловим это
+            // и штатно доводим вскрытие до 2D-экрана вместо зависшего чёрного окна
+            try {
+                renderer.domElement.addEventListener('webglcontextlost', function (ev) {
+                    ev.preventDefault();
+                    if (pack3d) { try { finishPack3D(); } catch (e) {} }
+                    else {
+                        try { modal.classList.add('hidden'); container.innerHTML = ''; showUnboxingUI(pack, cards); } catch (e) {}
+                    }
+                }, false);
+            } catch (e) {}
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
@@ -3214,13 +3226,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b61</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b62</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
         function animatePack3D() {
             if (!pack3d) return;
             pack3d.animId = requestAnimationFrame(animatePack3D);
+            // b62: кадр 3D-анимации в try/catch: потеря WebGL-контекста или сбой GPU
+            // не должны ронять исключение в цикл rAF (раньше — стопка тостов «Script error.»)
+            try {
             const now = performance.now();
             const B = pack3d;
             const { renderer, scene, camera, group, body, top, cardMeshes, points } = B;
@@ -3295,6 +3310,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 }
             }
             renderer.render(scene, camera);
+            } catch (e) {
+                // b62: глючный кадр не должен убивать вскрытие — останавливаем 3D
+                // и передаём карты в обычный 2D-экран стирания фольги
+                try { console.error('animatePack3D', e); } catch (e2) {}
+                try { cancelAnimationFrame(pack3d.animId); } catch (e2) {}
+                try { finishPack3D(); } catch (e2) {}
+            }
         }
 
         let pack3dHintPhase = '';
@@ -3304,10 +3326,31 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function finishPack3D() {
             if (!pack3d) return;
-            const { pack, cards, renderer, animId, clickHandler } = pack3d;
+            const { pack, cards, renderer, animId, clickHandler, scene } = pack3d;
             cancelAnimationFrame(animId);
             try { renderer.domElement.removeEventListener('click', clickHandler); } catch (e) {}
+            // b62: освобождаем память GPU/холстов СРАЗУ, а не «когда-нибудь» через GC:
+            // геометрии, материалы и их текстуры. На планшетах серия вскрытий раньше
+            // накапливала холсты и WebGL-контексты до предела памяти WebKit, после чего
+            // getContext('2d') возвращал null и сыпались ошибки.
+            try {
+                if (scene && scene.traverse) scene.traverse(o => {
+                    if (!o || !(o.isMesh || o.isPoints || o.isSprite)) return;
+                    try { if (o.geometry) o.geometry.dispose(); } catch (e) {}
+                    try {
+                        const mats = Array.isArray(o.material) ? o.material : [o.material];
+                        mats.forEach(m => {
+                            if (!m) return;
+                            if (m.map && m.map.dispose) m.map.dispose();
+                            if (m.bumpMap && m.bumpMap.dispose) m.bumpMap.dispose();
+                            m.dispose && m.dispose();
+                        });
+                    } catch (e) {}
+                });
+            } catch (e) {}
             try { renderer.dispose(); } catch (e) {}
+            // b62: контекст WebGL отдаётся браузеру немедленно — лимит контекстов iOS не копится
+            try { renderer.forceContextLoss && renderer.forceContextLoss(); } catch (e) {}
             const container = document.getElementById('pack3d-container');
             if (container) container.innerHTML = '';
             document.getElementById('modal-pack3d').classList.add('hidden');
@@ -4163,6 +4206,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 toast.classList.add('translate-y-2', 'opacity-0');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+            return toast;
         }
 
         // ============ ЕЖЕДНЕВНАЯ НАГРАДА ============
@@ -8103,7 +8147,24 @@ Check your Browserslist config to be sure that your targets are set up correctly
             PackMusic.startFor(pack);
 
             if (typeof THREE !== 'undefined' && webglAvailable()) {
-                openPack3D(pack, cards);
+                // b62: любая авария внутри 3D-сборки (память, контекст, текстуры) —
+                // не «Script error.» на весь экран, а тихий переход в 2D-вскрытие
+                try {
+                    openPack3D(pack, cards);
+                } catch (e) {
+                    try { console.error('openPack3D', e); } catch (e2) {}
+                    try {
+                        if (pack3d) { finishPack3D(); }
+                        else {
+                            document.getElementById('modal-pack3d').classList.add('hidden');
+                            const c = document.getElementById('pack3d-container');
+                            if (c) c.innerHTML = '';
+                            showUnboxingUI(pack, cards);
+                        }
+                    } catch (e2) {
+                        try { showUnboxingUI(pack, cards); } catch (e3) {}
+                    }
+                }
             } else {
                 showUnboxingUI(pack, cards);
             }
@@ -8192,7 +8253,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             // Initialize scratch canvas drawings
             setTimeout(() => {
-                currentUnboxingCards.forEach((_, idx) => initScratchCanvas(idx));
+                currentUnboxingCards.forEach((_, idx) => {
+                    try { initScratchCanvas(idx); } catch (e) { try { console.error('initScratchCanvas', e); } catch (e2) {} }
+                });
             }, 50);
         }
 
@@ -8201,16 +8264,33 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function initScratchCanvas(idx) {
             const canvas = document.getElementById(`scratch-canvas-${idx}`);
             if (!canvas) return;
-
+            try {
             // Внутреннее разрешение = фактический размер карточки на экране:
             // фольга без растяжения и размытия (подсказка теперь в HTML-оверлее)
             const rect = canvas.getBoundingClientRect();
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             if (rect.width > 4 && rect.height > 4) {
-                canvas.width = Math.round(rect.width * dpr);
-                canvas.height = Math.round(rect.height * dpr);
+                let pw = Math.round(rect.width * dpr), ph = Math.round(rect.height * dpr);
+                // b62: потолок площади холста. На планшетах (WebKit/iOS) суммарная память
+                // холстов ограничена; при переборе getContext('2d') возвращает null и всё
+                // падает с «Cannot set properties of null». Меньше площадь — живее фольга.
+                const MAXPX = 1200000;
+                if (pw * ph > MAXPX) {
+                    const k = Math.sqrt(MAXPX / (pw * ph));
+                    pw = Math.max(2, Math.round(pw * k));
+                    ph = Math.max(2, Math.round(ph * k));
+                }
+                canvas.width = pw;
+                canvas.height = ph;
             }
             const ctx = canvas.getContext('2d');
+            // b62: браузер отказал в контексте (предел памяти холстов) — не падаем,
+            // а просто открываем карту без фольги: награда и музыка отработают штатно
+            if (!ctx) {
+                try { canvas.remove(); } catch (e) {}
+                revealCardFully(idx);
+                return;
+            }
 
             // Draw opaque foil background
             ctx.fillStyle = '#1e293b';
@@ -8233,6 +8313,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             scratchState[idx] = { isDrawing: false, scratchedPixels: 0, totalPixels: canvas.width * canvas.height, revealed: false, lastCheck: 0 };
+            } catch (e) {
+                // b62: любой сбой холста (память, dpr, скрытый модал) — открываем карту без фольги
+                try { console.error('initScratchCanvas', e); } catch (e2) {}
+                try { canvas.remove(); } catch (e2) {}
+                try { revealCardFully(idx); } catch (e2) {}
+            }
         }
 
         // Спрятать HTML-подсказку «СТИРАТЬ ЗДЕСЬ» (первое касание / раскрытие)
@@ -8293,6 +8379,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
             const rect = canvas.getBoundingClientRect();
+            // b62: нет контекста (предел памяти холстов) или нулевой размер — не падаем
+            if (!ctx || !rect.width || !rect.height) return;
 
             let clientX, clientY;
             if (e.touches && e.touches[0]) {
@@ -8303,6 +8391,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 clientY = e.clientY;
             }
 
+            try {
             const x = (clientX - rect.left) * (canvas.width / rect.width);
             const y = (clientY - rect.top) * (canvas.height / rect.height);
 
@@ -8330,6 +8419,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             SoundFX.play('scratch');
 
             checkScratchProgress(idx);
+            } catch (e) { stateObj.isDrawing = false; }
         }
 
         function checkScratchProgress(idx) {
@@ -8345,13 +8435,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const canvas = document.getElementById(`scratch-canvas-${idx}`);
             if (!canvas) return;
             const ctx = canvas.getContext('2d');
-            
+            // b62: нет контекста — читаем прогресс нечем; открываем карту без фольги,
+            // чтобы вскрытие не зависло навсегда
+            if (!ctx) { revealCardFully(idx); return; }
+
             // Sample pixels to check clearance (шаг зависит от разрешения)
             const sampleStep = canvas.width > 600 ? 40 : 20;
             let transparentCount = 0;
             let totalChecked = 0;
 
-            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height, {willReadFrequently: true});
+            let imgData;
+            try {
+                imgData = ctx.getImageData(0, 0, canvas.width, canvas.height, {willReadFrequently: true});
+            } catch (e) {
+                // b62: чтение пикселей запрещено/недоступно — считаем карту открытой
+                revealCardFully(idx);
+                return;
+            }
             for (let i = 3; i < imgData.data.length; i += 4 * sampleStep) {
                 totalChecked++;
                 if (imgData.data[i] === 0) {
@@ -10958,11 +11058,45 @@ Check your Browserslist config to be sure that your targets are set up correctly
             showToast('Карточка удалена', 'success');
         }
 
+        // b62: единый репортёр ошибок. На локальных файлах (file://) браузеры маскируют
+        // текст исключения в «Script error.», поэтому добавляем номер строки и стек в консоль,
+        // а одинаковые ошибки не складываем стопкой тостов, а считаем повторы (×N).
+        let nxErrLast = null, nxErrToast = null;
+        function nxErrorToast(text) {
+            const now = Date.now();
+            if (nxErrLast && nxErrLast.msg === text && now - nxErrLast.t < 6000) {
+                nxErrLast.t = now; nxErrLast.n++;
+                if (nxErrToast && nxErrToast.isConnected) {
+                    const sp = nxErrToast.querySelector('span');
+                    if (sp) sp.textContent = '⚠️ Ошибка: ' + text + ' — сообщите разработчику (×' + nxErrLast.n + ')';
+                }
+                return;
+            }
+            nxErrLast = { msg: text, t: now, n: 1 };
+            nxErrToast = showToast('⚠️ Ошибка: ' + text + ' — сообщите разработчику', 'error');
+        }
         window.addEventListener('error', function(ev) {
-            try { showToast('⚠️ Ошибка: ' + (ev.message || 'неизвестная') + ' — сообщите разработчику', 'error'); } catch (e) {}
+            try {
+                // игнорируем ошибки загрузки ресурсов (img/audio): у них нет message,
+                // а свои цепочки fallback-ов уже обрабатывают их локально
+                if (ev.target && ev.target !== window && (ev.target.src || ev.target.href)) return;
+                let detail = String(ev.message || 'неизвестная');
+                if (ev.lineno) detail += ' (строка ' + ev.lineno + (ev.colno ? ':' + ev.colno : '') + ')';
+                if (ev.error && ev.error.stack) { try { console.error('NX ERROR STACK:', ev.error.stack); } catch (e) {} }
+                nxErrorToast(detail);
+            } catch (e) {}
+        }, true);
+        window.addEventListener('unhandledrejection', function(ev) {
+            try {
+                const r = ev.reason;
+                nxErrorToast(String((r && r.message) || r || 'неизвестная (promise)'));
+            } catch (e) {}
         });
 
         window.onload = function() {
+          // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
+          // игра продолжит работу и покажет ПОДРОБНОСТЬ (со стеком в консоли), а не молчаливый «Script error.»
+          try {
             initHiddenTab(); // скрытый раздел: прячем кнопки навигации и вешаем жест на «Награды»
             // b47: шахта — офлайн-добыча за прошлый период и запуск тика
             try {
@@ -10994,13 +11128,17 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b61') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b61');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b61', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b62') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b62');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b62', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
             cloudInit();
+          } catch (e) {
+            try { console.error('window.onload', e); } catch (e2) {}
+            try { nxErrorToast(String((e && e.message) || e) + ' (при запуске)'); } catch (e2) {}
+          }
         };
     </script>
 </body>
