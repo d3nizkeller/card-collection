@@ -691,6 +691,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
         @media (max-width: 400px) {
             .carousel-stage { height: 300px; }
         }
+        /* b58: мобильные высоты 3D-сцен — машина помещается без простыни */
+        @media (max-width: 640px) {
+            #slots-container { height: 400px !important; }
+            #grid3d-box { height: 470px !important; }
+            #pack3d-container { height: 52vh !important; }
+        }
         /* b53: анимации сеточного слота */
         @keyframes gridDrop { from { transform: translateY(-46px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
         @keyframes gridWin { 0%,100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.08); filter: brightness(1.7); } }
@@ -703,7 +709,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b57</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b59</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -919,7 +925,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-2 mt-4">
                             <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
                             <span id="slots-bets" class="inline-flex items-center gap-1.5"></span>
-                            <button id="slots-spin" onclick="slotsSpin()" class="ml-auto px-5 py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
+                            <button id="slots-spin" onclick="slotsSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
                             <span id="slots-last">Последний выигрыш: —</span>
@@ -960,7 +966,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-2 mt-4">
                             <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
                             <span id="grid-bets" class="inline-flex items-center gap-1.5"></span>
-                            <button id="grid-spin" onclick="gridSpin()" class="ml-auto px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
+                            <button id="grid-spin" onclick="gridSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
                             <span id="grid-last">Последний выигрыш: —</span>
@@ -988,6 +994,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-helmet-safety text-amber-400 mr-2"></i>Шахта «Коллекционер карт»</h2>
                                 <p class="text-sm text-slate-400 mt-1">Пассивная добыча: монеты капают в общий баланс каждую секунду — даже офлайн (до 2 часов). Улучшение кирки покупается за те же монеты: +1 монета/сек за уровень.</p>
+                                <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-hand-pointer text-teal-400 mr-1"></i>На телефоне: тап по машине в Слотах и Сетке = спин, кнопки крупные.</p>
                             </div>
                             <div class="text-right shrink-0">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Баланс</p>
@@ -1669,7 +1676,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b57</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b59</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -2324,6 +2331,37 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // ============ 3D ВСКРЫТИЕ ПАКА (three.js) ============
         let pack3d = null;
 
+        // ============ b58: мобильная адаптация 3D-сцен ============
+        const NX3D_RESIZERS = [];
+        function nx3dOnResize(fn) { if (NX3D_RESIZERS.indexOf(fn) < 0) NX3D_RESIZERS.push(fn); }
+        function nx3dRunResizers() { for (let i = 0; i < NX3D_RESIZERS.length; i++) { try { NX3D_RESIZERS[i](); } catch (e) {} } }
+        window.addEventListener('resize', () => { clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 200); });
+        window.addEventListener('orientationchange', () => { clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 350); });
+        function nx3dFitZ(camera, halfW, halfH, desktopZ) {
+            const a = camera.aspect || 1;
+            if (a >= 1) return desktopZ; // десктоп: оставляем авторскую дистанцию
+            const t = Math.tan((camera.fov * Math.PI / 180) / 2);
+            return Math.max(halfH / t, halfW / (t * a)) * 1.06;
+        }
+        // b59: ResizeObserver — канвас пересчитывается и при реflow самого контейнера
+        // (раньше размер снимался до финальной раскладки, и машина сидела левее центра)
+        function nx3dObserve(container, fn) {
+            try {
+                const ro = new ResizeObserver(() => {
+                    clearTimeout(container._nxROt);
+                    container._nxROt = setTimeout(fn, 120);
+                });
+                ro.observe(container);
+            } catch (e) {}
+        }
+        function nx3dResizeSimple(renderer, camera, container, fit) {
+            const w = container.clientWidth || 640, h = container.clientHeight || 360;
+            if (!w || !h) return;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            if (fit) camera.position.z = nx3dFitZ(camera, fit[0], fit[1], fit[2]);
+            camera.updateProjectionMatrix();
+        }
         function webglAvailable() {
             try {
                 const c = document.createElement('canvas');
@@ -2967,6 +3005,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
             camera.position.set(0, 0, 8.9);
+            if (!window._nx3dPack) { // b58: пак на телефоне не режется краями
+                window._nx3dPack = 1;
+                const rs = () => {
+                    const c = document.getElementById('pack3d-container');
+                    if (c && pack3d && pack3d.renderer) nx3dResizeSimple(pack3d.renderer, pack3d.camera, c, [1.9, 2.35, 8.9]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+            }
 
             scene.add(new THREE.AmbientLight(0xffffff, 0.85));
             const pl0 = new THREE.PointLight(0xfff6e0, 0.55, 45); pl0.position.set(0, 2.5, 6.5); scene.add(pl0);
@@ -3167,7 +3214,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b57</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b59</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -4748,14 +4795,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
             bgx.globalAlpha = 1;
             const bgTex = new THREE.CanvasTexture(bgCv);
             try { bgTex.encoding = THREE.sRGBEncoding; } catch (e) {}
-            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(13.5, 9.8), new THREE.MeshBasicMaterial({ map: bgTex }));
+            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(30, 14), new THREE.MeshBasicMaterial({ map: bgTex }));
             bgMesh.position.set(0, 0.25, -(R + 1.5)); scene.add(bgMesh);
             // b51: боковой неон и глянцевый пол
             const neonL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), new THREE.MeshBasicMaterial({ color: 0xe879f9 }));
             neonL.position.set(-2.66, 0, -R * 0.3); scene.add(neonL);
             const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
             neonR.position.set(2.66, 0, -R * 0.3); scene.add(neonR);
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(11.5, 4.4), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
             floor.rotation.x = -Math.PI / 2;
             floor.position.set(0, -(H / 2 + 1.05), -R / 2 + 0.4); scene.add(floor);
             const back = addFrame(4.5, H + 1.7, 0.4, 0, 0, -(R + 0.45));
@@ -4833,13 +4880,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
             for (let i = 0; i < 15; i++) {
                 const bm = new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xffc94d, emissiveIntensity: 1, roughness: 0.4 });
                 const b = new THREE.Mesh(bulbGeo, bm);
-                b.position.set(-2.05 + i * (4.1 / 14), H / 2 + 1.38, 0.46);
+                b.position.set(-2.05 + i * (4.1 / 14), H / 2 + 1.85, 0.5);
                 scene.add(b); slots.bulbs.push(b);
             }
             // b52: маркиза — «корона» над верхней балкой: своя подложка, ничего не перекрывает
             const mqBack = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.56, 0.14), new THREE.MeshStandardMaterial({ color: 0x2a0a33, roughness: 0.5, metalness: 0.6, envMap: env, envMapIntensity: 0.6 }));
             mqBack.position.set(0, H / 2 + 1.02, 0.42); scene.add(mqBack);
-            mqMesh.position.set(0, H / 2 + 1.02, 0.5);
+            mqMesh.position.set(0, H / 2 + 1.55, 0.55); // b58: маркиза над верхом барабанов — ничего не перекрывает
             // b52: парящие искры вокруг автомата
             const spN = 42;
             const spGeo = new THREE.BufferGeometry();
@@ -4855,10 +4902,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
             scene.add(slots.sparks);
             slots.lineGlow = lineGlow;
             slots.winFlash = 0;
-            camera.position.set(0, 0.3, R + 5.6); // b52: весь автомат с лампочками в кадре
+            camera.position.set(0, 0.3, R + 6.4); // b52/b58: весь автомат с лампочками и полом в кадре
             camera.lookAt(0, 0.1, 0);
             slots.scene = scene; slots.camera = camera;
             slots.ready = true;
+            slots.desktopZ = camera.position.z;
+            renderer.domElement.style.cursor = 'pointer';
+            renderer.domElement.addEventListener('click', () => slotsSpin()); // b58: тап по машине = спин
+            if (!window._nx3dSlots) {
+                window._nx3dSlots = 1;
+                const rs = () => {
+                    const c = document.getElementById('slots-container');
+                    if (c && slots.renderer) nx3dResizeSimple(slots.renderer, slots.camera, c, [2.3, 4.0, slots.desktopZ || 8]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+                rs();
+            }
             slots.lastT = performance.now();
             const loop = () => {
                 slots.animId = requestAnimationFrame(loop);
@@ -5095,14 +5155,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
             bgx.globalAlpha = 1;
             const bgTex = new THREE.CanvasTexture(bgCv);
             try { bgTex.encoding = THREE.sRGBEncoding; } catch (e) {}
-            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(17, 12), new THREE.MeshBasicMaterial({ map: bgTex }));
+            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(30, 14), new THREE.MeshBasicMaterial({ map: bgTex }));
             bgMesh.position.set(0, 0.2, -4.5); scene.add(bgMesh);
             // неон по бокам и глянцевый пол
             const neonL = new THREE.Mesh(new THREE.BoxGeometry(0.08, WH + 2.2, 0.08), new THREE.MeshBasicMaterial({ color: 0xe879f9 }));
             neonL.position.set(-(WW / 2 + 0.55), 0, -1); scene.add(neonL);
             const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.08, WH + 2.2, 0.08), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
             neonR.position.set(WW / 2 + 0.55, 0, -1); scene.add(neonR);
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(15, 5), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
             floor.rotation.x = -Math.PI / 2;
             floor.position.set(0, -(WH / 2 + 1.15), 0.5); scene.add(floor);
             // корпус и золотой багет вокруг окна
@@ -5171,6 +5231,19 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             grid3d.scene = scene; grid3d.camera = camera;
             grid3d.ready = true;
+            grid3d.desktopZ = camera.position.z;
+            renderer.domElement.style.cursor = 'pointer';
+            renderer.domElement.addEventListener('click', () => gridSpin()); // b58: тап по машине = спин
+            if (!window._nx3dGrid) {
+                window._nx3dGrid = 1;
+                const rs = () => {
+                    const c = document.getElementById('grid3d-container');
+                    if (c && grid3d.renderer) nx3dResizeSimple(grid3d.renderer, grid3d.camera, c, [3.3, 4.35, grid3d.desktopZ || 10.6]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+                rs();
+            }
             grid3d.lastT = performance.now();
             const loop = () => {
                 grid3d.animId = requestAnimationFrame(loop);
@@ -6134,6 +6207,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
             camera.position.set(0, 2.6, 8.2);
             camera.lookAt(0, 1.5, 0);
+            if (!window._nx3dBattle) { // b58
+                window._nx3dBattle = 1;
+                const rs = () => {
+                    const c = document.getElementById('battle-3d-container');
+                    if (c && battle3d && battle3d.renderer) nx3dResizeSimple(battle3d.renderer, battle3d.camera, c, [3.4, 3.2, 8.2]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+            }
 
             scene.add(new THREE.AmbientLight(0xffffff, 0.7));
             scene.add(new THREE.HemisphereLight(0x8899ff, 0x080820, 0.35));
@@ -7123,6 +7205,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
             camera.position.set(0, 5.5, 8.9);
             camera.lookAt(0, 0.5, -0.1);
+            if (!window._nx3dDurak) { // b58: стол не растягивается при повороте экрана
+                window._nx3dDurak = 1;
+                const rs = () => {
+                    const c = document.getElementById('durak-3d-container');
+                    if (c && durak3d && durak3d.renderer) nx3dResizeSimple(durak3d.renderer, durak3d.camera, c, [6.2, 4.6, 10.7]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+            }
 
             scene.add(new THREE.AmbientLight(0xffffff, 0.8));
             const l1 = new THREE.PointLight(0xfff3c4, 0.9, 40); l1.position.set(0, 6, 4); scene.add(l1);
@@ -10885,9 +10976,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b57') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b57');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b57', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b59') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b59');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b59', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
