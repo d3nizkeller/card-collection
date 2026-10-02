@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b62</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b63</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1677,7 +1677,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b62</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b63</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -2336,6 +2336,25 @@ Check your Browserslist config to be sure that your targets are set up correctly
         const NX3D_RESIZERS = [];
         function nx3dOnResize(fn) { if (NX3D_RESIZERS.indexOf(fn) < 0) NX3D_RESIZERS.push(fn); }
         function nx3dRunResizers() { for (let i = 0; i < NX3D_RESIZERS.length; i++) { try { NX3D_RESIZERS[i](); } catch (e) {} } }
+        // b62: авария кадра 3D-цикла (потеря WebGL-контекста при повороте экрана,
+        // предел памяти на планшете) — останавливаем цикл и показываем ОДИН тост,
+        // вместо исключений на каждом кадре rAF
+        function nx3dLoopBail(tag, e, stopFn) {
+            try { stopFn && stopFn(); } catch (e2) {}
+            try { console.error('3d loop ' + tag, e); } catch (e2) {}
+            try { nxErrorToast('3D-цикл остановлен (' + tag + '): ' + String((e && e.message) || e)); } catch (e2) {}
+        }
+        // b62: браузер (особенно iPad при повороте) может отобрать WebGL-контекст —
+        // гасим цикл сразу и говорим пользователю один раз, а не кадр за кадром
+        function nxGuardContextLoss(renderer, tag, onLost) {
+            try {
+                renderer.domElement.addEventListener('webglcontextlost', function (ev) {
+                    ev.preventDefault();
+                    try { onLost && onLost(); } catch (e) {}
+                    try { nxErrorToast('браузер освободил 3D-контекст (' + tag + ') — сцена переведена в плоский режим'); } catch (e) {}
+                }, false);
+            } catch (e) {}
+        }
         window.addEventListener('resize', () => { clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 200); });
         window.addEventListener('orientationchange', () => { clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 350); });
         function nx3dFitZ(camera, halfW, halfH, desktopZ) {
@@ -2350,7 +2369,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             try {
                 const ro = new ResizeObserver(() => {
                     clearTimeout(container._nxROt);
-                    container._nxROt = setTimeout(fn, 120);
+                    // b62: колбэк наблюдателя под предохранителем (поворот экрана)
+                    container._nxROt = setTimeout(function () { try { fn(); } catch (e) { try { console.error('ResizeObserver fn', e); } catch (e2) {} } }, 120);
                 });
                 ro.observe(container);
             } catch (e) {}
@@ -3226,7 +3246,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b62</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b63</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -4820,6 +4840,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 60); // b52: шире кадр — маркиза целиком
             camera.position.set(0, 0.3, 7.9);
@@ -4978,6 +4999,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             slots.lastT = performance.now();
             const loop = () => {
                 slots.animId = requestAnimationFrame(loop);
+                try { // b62: кадр защищён — см. nx3dLoopBail
                 const now = performance.now();
                 const dt = Math.min(0.05, (now - slots.lastT) / 1000);
                 slots.lastT = now;
@@ -5030,6 +5052,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     slotsFinish(slots.lastResult, slots.bet);
                 }
                 renderer.render(scene, camera);
+                } catch (e) { nx3dLoopBail('slots', e, () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; }); }
             };
             loop();
         }
@@ -5189,6 +5212,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 80);
             camera.position.set(0, 0, 10.6); // b54: весь автомат с лампочками и полом в кадре
@@ -5305,6 +5329,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             grid3d.lastT = performance.now();
             const loop = () => {
                 grid3d.animId = requestAnimationFrame(loop);
+                try { // b62: кадр защищён — см. nx3dLoopBail
                 const now = performance.now();
                 const dt = Math.min(0.05, (now - grid3d.lastT) / 1000);
                 grid3d.lastT = now;
@@ -5382,6 +5407,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     gridStep(grid.bet);
                 }
                 renderer.render(scene, camera);
+                } catch (e) { nx3dLoopBail('grid', e, () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; }); }
             };
             loop();
         }
@@ -6262,6 +6288,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
             renderer.setSize(w, h);
             container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'battle', () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; });
 
             const scene = new THREE.Scene();
             scene.fog = new THREE.Fog(0x070a18, 14, 30);
@@ -6435,6 +6462,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function battle3dTick() {
             if (!battle3d) return;
             battle3d.raf = requestAnimationFrame(battle3dTick);
+            try { // b62: кадр защищён — см. nx3dLoopBail
             const now = performance.now();
             const B = battle3d;
 
@@ -6547,6 +6575,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
 
             B.renderer.render(B.scene, B.camera);
+            } catch (e) { nx3dLoopBail('battle', e, () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; }); }
         }
 
         function otherSide(side) { return side === 'player' ? 'enemy' : 'player'; }
@@ -7260,6 +7289,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
             renderer.setSize(w, h);
             container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'durak', () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; });
 
             const scene = new THREE.Scene();
             scene.fog = new THREE.Fog(0x050a08, 14, 26);
@@ -7417,6 +7447,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function durak3dTick() {
             if (!durak3d) return;
             durak3d.raf = requestAnimationFrame(durak3dTick);
+            try { // b62: кадр защищён — см. nx3dLoopBail
             const now = performance.now();
             const D = durak3d;
             D.tableGroup.children.forEach(ch => {
@@ -7448,6 +7479,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 D.trumpGlow.material.opacity = 0.35 + Math.sin(now / 400) * 0.18;
             }
             D.renderer.render(D.scene, D.camera);
+            } catch (e) { nx3dLoopBail('durak', e, () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; }); }
         }
 
         // b47: формат больших чисел баланса: 1000 → 1k, 1 000 000 → 1m, 1e9 → 1b
@@ -7865,7 +7897,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             carouselUpdate(false);
             carouselBindStage(stage);
             carouselStartAuto();
-            requestAnimationFrame(() => fitPackLabels(ring));
+            requestAnimationFrame(() => { try { fitPackLabels(ring); } catch (e) {} });
             renderStoreShowcase();
         }
 
@@ -8109,8 +8141,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const modal = document.getElementById('modal-unbox');
                 if (modal && !modal.classList.contains('hidden')) return;
                 // по очереди на один пак вперёд; следующий шаг — ещё через 15 секунд
-                packCarousel.idx = (packCarousel.idx + 1) % state.packs.length;
-                carouselUpdate(true);
+                // b62: тик автовращения под предохранителем (поворот экрана/гонка DOM)
+                try {
+                    packCarousel.idx = (packCarousel.idx + 1) % state.packs.length;
+                    carouselUpdate(true);
+                } catch (e) {
+                    try { console.error('carouselAuto', e); } catch (e2) {}
+                    carouselStopAuto();
+                }
             }, CAROUSEL_AUTO_MS);
         }
         function carouselStopAuto() {
@@ -8123,7 +8161,33 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const tab = document.getElementById('tab-store');
             if (tab && tab.classList.contains('hidden')) return;
             clearTimeout(window._carouselResizeT);
-            window._carouselResizeT = setTimeout(() => renderStore(), 220);
+            // b62: перерисовка витрины при повороте экрана — под предохранителем:
+            // исключение здесь раньше превращалось в тост «Script error.»
+            window._carouselResizeT = setTimeout(() => {
+                try { renderStore(); } catch (e) { try { console.error('renderStore@resize', e); } catch (e2) {} }
+            }, 220);
+        });
+        // b62: после поворота проверяем, не сбросил ли WebKit подложку холстов фольги —
+        // сброшенная фольга = карта открыта (иначе награда зависла бы до «Стереть всё»)
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                try {
+                    const m = document.getElementById('modal-unboxing');
+                    if (!m || m.classList.contains('hidden')) return;
+                    currentUnboxingCards.forEach((_, idx) => {
+                        const st = scratchState[idx];
+                        if (!st || st.revealed) return;
+                        const canvas = document.getElementById('scratch-canvas-' + idx);
+                        if (!canvas) return;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) { revealCardFully(idx); return; }
+                        const d = ctx.getImageData(0, 0, Math.min(8, canvas.width), Math.min(8, canvas.height)).data;
+                        let opaque = false;
+                        for (let i = 3; i < d.length; i += 4) { if (d[i] !== 0) { opaque = true; break; } }
+                        if (!opaque) revealCardFully(idx);
+                    });
+                } catch (e) {}
+            }, 400);
         });
 
         function buyPack(packId) {
@@ -10777,7 +10841,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <div class="booster-sparkles"></div>
                     <div class="booster-gloss"></div>
                 </div>`;
-            requestAnimationFrame(() => fitPackLabels(box));
+            requestAnimationFrame(() => { try { fitPackLabels(box); } catch (e) {} });
             const nm = document.getElementById('pack-style-name');
             if (nm) nm.innerText = `${PACK_COLORS[packFormColor].name} • ${PACK_SHIMMERS[packFormShimmer].name}`;
         }
@@ -11128,9 +11192,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b62') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b62');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b62', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b63') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b63');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b63', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
