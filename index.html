@@ -446,6 +446,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             box-shadow: 0 1px 2px rgba(0, 0, 0, .35);
             pointer-events: none;
         }
+        /* b44: на мини-паках витрины шов тоньше, чем на крупном паке карусели, —
+           пропорции упаковки читаются лучше на маленьком размере */
+        #store-showcase .booster-crimp { height: 9.5%; }
+        #store-showcase .booster-notch { top: 10.2%; }
+        #store-showcase .booster-tearline { top: 10.6%; }
+        #store-showcase .booster-label { bottom: 9.9%; }
         /* Тень среза под зубцами запайки */
         .booster-crimp-top::after, .booster-crimp-bottom::after {
             content: ''; position: absolute; left: 0; right: 0; height: 3px;
@@ -688,7 +694,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b37</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b45</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -856,9 +862,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <div id="store-showcase-wrap" class="space-y-3">
                 <div class="flex flex-wrap items-center justify-between gap-2 px-1">
                     <h3 class="text-sm sm:text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-boxes-stacked text-emerald-400"></i>Витрина паков</h3>
-                    <span class="text-[10px] sm:text-[11px] text-slate-500">клик по обложке — пак в карусель, кнопка — открыть пак</span>
+                    <span class="text-[10px] sm:text-[11px] text-slate-500">компактный каталог: клик по упаковке — пак в карусель, «Открыть» — вскрытие</span>
                 </div>
-                <div id="store-showcase" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5"></div>
+                <div id="store-showcase" class="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-2.5"></div>
             </div>
         </section>
 
@@ -1043,6 +1049,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <button type="button" id="cloud-push-btn" onclick="cloudPushNow()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition" title="Опубликовать свои паки в облако сейчас"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Опубликовать</button>
                         <button type="button" onclick="cloudDisconnect()" class="px-3 py-2.5 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-xl text-xs font-semibold text-slate-300 transition" title="Отключиться от комнаты"><i class="fa-solid fa-xmark mr-1"></i>Отключить</button>
                     </div>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="cloud-media-base" placeholder="Зеркало артов и музыки: URL папки с теми же файлами (если основной хост не отвечает)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-fuchsia-500">
+                    <button type="button" onclick="saveMediaBase()" class="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-semibold text-slate-200 transition shrink-0" title="Загружать арты и музыку с зеркала вместо основного хоста"><i class="fa-solid fa-images mr-1"></i>Сохранить зеркало</button>
                 </div>
                 <p class="text-[10px] text-slate-500 leading-relaxed"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Все игроки сайта автоматически подключены к главной комнате <span class="text-emerald-300">7j8uytui</span> — вводить код не нужно.</b> Регистрация не нужна, но у комнаты есть логин и пароль: «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья уже в главной комнате автоматически (или вводят её код → «Подключить») и сразу видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». <b class="text-slate-300">Изменения отправляются в комнату автоматически</b> сразу после сохранения — даже если создатель тут же закрыл игру: правки допубликуются при следующем запуске. Участники получают обновления сами, примерно каждые 20 секунд (или мгновенно при возврате на вкладку) — без перезагрузки страницы. С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
                 <details class="text-[10px] text-slate-500">
@@ -1517,7 +1527,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b37</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b45</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -1703,6 +1713,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             url: '',
             play(url) {
                 this.stop();
+                url = mediaUrl(url); // b38: трек тоже может лежать на зеркале
                 if (!url) return;
                 try {
                     this.audio = new Audio(url);
@@ -1806,7 +1817,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (!this.timer) { try { a.volume = 0; a.pause(); } catch (e) {} if (cb) cb(); }
             },
             play(url) {
-                const u = String(url || '').trim();
+                const u = String(mediaUrl(url) || '').trim(); // b38
                 if (!u) return false;
                 if (!SoundFX.enabled) { this.lastErr = '\u{1F507} звук выключен — включите динамик в шапке'; updateUnboxMusicUI(); return false; }
                 const a = this._mk(); if (!a) return false;
@@ -2199,15 +2210,25 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // Безопасная загрузка картинки (CORS): успех -> onLoad, ошибка -> тихо молчим
-        function loadImgSafe(src, onLoad) {
+                function loadImgSafe(src, onLoad) {
             if (!src) return;
-            try {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => { try { onLoad(img); } catch (e) {} };
-                img.onerror = () => {};
-                img.src = src;
-            } catch (e) { /* окружение без Image — остаётся заглушка */ }
+            // b38: зеркало → оригинал; ошибка не оставляет чёрный пак, а зовёт заглушку
+            const first = mediaUrl(src);
+            const cands = [first];
+            if (first !== src) cands.push(src);
+            let i = 0;
+            const tryNext = () => {
+                if (i >= cands.length) return; // текстура нарисуется без арта
+                const url = cands[i++];
+                try {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => { try { onLoad(img); } catch (e) {} };
+                    img.onerror = () => { tryNext(); };
+                    img.src = url;
+                } catch (e) { tryNext(); }
+            };
+            tryNext();
         }
 
         // Рисует изображение «cover»: заполняет весь холст без искажений
@@ -2457,7 +2478,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             });
         }
 
-        function makePackTexture(pack, onImage) {
+                function makePackTexture(pack, onImage) {
             const W = 512, H = 768;
             const cv = document.createElement('canvas');
             cv.width = W; cv.height = H;
@@ -2466,223 +2487,93 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b13: цвет упаковки и перелив — выбраны в Студии, хранятся в паке
             const pal = PACK_COLORS[pack && pack.color] || PACK_COLORS.silver;
             const shim = PACK_SHIMMERS[pack && pack.shimmer] ? pack.shimmer : 'holo';
+            const TOP_H = 92, BOT_H = 176, BOT_Y = H - BOT_H;
 
-            const drawCrimpBand = (y0, y1) => {
-                // b16: запайка полупрозрачна — обложка видна под швом
-                g.save(); g.globalAlpha = 0.6;
-                const grad = g.createLinearGradient(0, y0, 0, y1);
-                grad.addColorStop(0, pal.crimp[0]); grad.addColorStop(0.5, pal.crimp[1]); grad.addColorStop(1, pal.crimp[2]);
-                g.fillStyle = grad; g.fillRect(0, y0, W, y1 - y0);
-                g.fillStyle = pal.crimpStripe;
-                for (let x = 0; x < W; x += 7) g.fillRect(x, y0, 3, y1 - y0);
+            // b43: подложка — глубокий градиент плюс тонкая гильоширная графика и монограмма
+            const drawBase = () => {
+                const bg = g.createLinearGradient(0, 0, W, H);
+                bg.addColorStop(0, pal.bgA); bg.addColorStop(0.5, '#0b1220'); bg.addColorStop(1, pal.bgB);
+                g.fillStyle = bg; g.fillRect(0, 0, W, H);
+                g.save(); g.translate(W / 2, H * 0.44); g.globalAlpha = 0.10; g.strokeStyle = pal.accentText || '#e2e8f0';
+                for (let r = 40; r < 620; r += 26) { g.lineWidth = (r % 52 === 14) ? 2 : 1; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke(); }
+                g.restore();
+                g.fillStyle = pal.disc; g.beginPath(); g.arc(W / 2, H * 0.42, 70, 0, Math.PI * 2); g.fill();
+                g.fillStyle = pal.discText; g.font = 'bold 64px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText('N', W / 2, H * 0.42 + 4);
+            };
+            // b43: арт во всю витринную зону (между плашками) с виньеткой по краям
+            const drawArt = img => {
+                g.save();
+                g.beginPath(); g.rect(0, TOP_H, W, BOT_Y - TOP_H); g.clip();
+                coverDrawImage(g, img, W, H);
+                const vg = g.createLinearGradient(0, TOP_H, 0, BOT_Y);
+                vg.addColorStop(0, 'rgba(2,6,23,.55)'); vg.addColorStop(0.22, 'rgba(2,6,23,0)');
+                vg.addColorStop(0.78, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.6)');
+                g.fillStyle = vg; g.fillRect(0, TOP_H, W, BOT_Y - TOP_H);
+                const hg = g.createLinearGradient(0, 0, W, 0);
+                hg.addColorStop(0, 'rgba(2,6,23,.5)'); hg.addColorStop(0.14, 'rgba(2,6,23,0)');
+                hg.addColorStop(0.86, 'rgba(2,6,23,0)'); hg.addColorStop(1, 'rgba(2,6,23,.5)');
+                g.fillStyle = hg; g.fillRect(0, TOP_H, W, BOT_Y - TOP_H);
                 g.restore();
             };
-
-            const SW = 62; // b16: сварная кромка полупрозрачна — обложка идёт вовсю упаковку
-            const drawSideFoil = () => {
+            // b43: премиальная типографика — лого-плашка сверху, титул с чипами снизу, рамка
+            const drawLayout = () => {
+                const tg = g.createLinearGradient(0, 0, 0, TOP_H);
+                tg.addColorStop(0, 'rgba(2,6,23,.94)'); tg.addColorStop(1, 'rgba(2,6,23,.58)');
+                g.fillStyle = tg; g.fillRect(0, 0, W, TOP_H);
+                g.fillStyle = pal.crimp[1]; g.fillRect(0, TOP_H, W, 3);
+                g.textBaseline = 'middle';
+                g.textAlign = 'left'; g.fillStyle = '#f8fafc'; g.font = '700 25px Inter, sans-serif';
+                g.fillText('N E X U S   T C G', 26, TOP_H / 2 + 1);
+                g.textAlign = 'right'; g.fillStyle = pal.crimpLight || '#e2e8f0'; g.font = '600 19px Inter, sans-serif';
+                g.fillText('SET • 26', W - 26, TOP_H / 2 + 1);
+                const bgd = g.createLinearGradient(0, BOT_Y, 0, H);
+                bgd.addColorStop(0, 'rgba(2,6,23,0)'); bgd.addColorStop(0.38, 'rgba(2,6,23,.9)'); bgd.addColorStop(1, 'rgba(2,6,23,.97)');
+                g.fillStyle = bgd; g.fillRect(0, BOT_Y, W, BOT_H);
+                g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+                g.save();
+                g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 16; g.shadowOffsetY = 3;
+                g.fillStyle = '#ffffff'; g.font = '800 46px Inter, sans-serif';
+                wrapCanvasText(g, pack.title, W / 2, BOT_Y + 78, W - 72, 50);
+                g.restore();
+                const chip = (txt, x, w, col) => {
+                    roundRectCanvas(g, x, H - 66, w, 36, 18);
+                    g.fillStyle = 'rgba(15,23,42,.82)'; g.fill();
+                    g.strokeStyle = col; g.lineWidth = 1.5; roundRectCanvas(g, x, H - 66, w, 36, 18); g.stroke();
+                    g.fillStyle = col; g.font = '700 17px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+                    g.fillText(txt, x + w / 2, H - 47);
+                };
+                chip('БУСТЕР • 3 КАРТЫ', W / 2 - 152, 196, pal.crimpLight || '#e2e8f0');
+                const shimName = (PACK_SHIMMERS[shim] && PACK_SHIMMERS[shim].name) || shim;
+                chip(String(shimName).toUpperCase(), W / 2 + 60, 92, pal.crimp[1]);
+                g.strokeStyle = 'rgba(248,250,252,.20)'; g.lineWidth = 2;
+                g.strokeRect(10, 10, W - 20, H - 20);
+            };
+            // b43: мелкая печатная искра только для режима sparkle — остальные переливы даёт env-блик
+            const drawGlitter = () => {
+                if (shim !== 'sparkle') return;
+                let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
                 g.save(); g.globalAlpha = 0.5;
-                const gl = g.createLinearGradient(0, 0, SW, 0);
-                gl.addColorStop(0, pal.side[0]); gl.addColorStop(0.4, pal.side[1]); gl.addColorStop(0.75, pal.side[2]); gl.addColorStop(1, pal.side[3]);
-                g.fillStyle = gl; g.fillRect(0, 18, SW, H - 36);
-                const gr2 = g.createLinearGradient(W - SW, 0, W, 0);
-                gr2.addColorStop(0, pal.side[3]); gr2.addColorStop(0.25, pal.side[2]); gr2.addColorStop(0.6, pal.side[1]); gr2.addColorStop(1, pal.side[0]);
-                g.fillStyle = gr2; g.fillRect(W - SW, 18, SW, H - 36);
-                g.fillStyle = pal.sideStripe;
-                for (let x = 2; x < SW; x += 7) { g.fillRect(x, 18, 3, H - 36); g.fillRect(W - SW + x, 18, 3, H - 36); }
-                g.fillStyle = pal.sideShade;
-                g.fillRect(SW - 4, 22, 4, H - 44); g.fillRect(W - SW, 22, 4, H - 44);
+                for (let i = 0; i < 90; i++) {
+                    const x = rnd() * W, y = TOP_H + rnd() * (BOT_Y - TOP_H);
+                    const r = .4 + rnd() * 1.1, al = .2 + rnd() * .5;
+                    g.fillStyle = `rgba(255,255,255,${al.toFixed(2)})`;
+                    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+                }
                 g.restore();
             };
-
-            const drawPrint = (withImage) => {
-                drawCrimpBand(0, 26);
-                g.fillStyle = 'rgba(30,41,59,.55)'; g.fillRect(0, 24, W, 5);
-                drawCrimpBand(H - 26, H);
-                g.fillStyle = 'rgba(30,41,59,.55)'; g.fillRect(0, H - 29, W, 5);
-                if (!withImage) {
-                    const grad = g.createLinearGradient(0, 26, W, H - 26);
-                    grad.addColorStop(0, pal.bgA); grad.addColorStop(0.5, '#0f172a'); grad.addColorStop(1, pal.bgB);
-                    g.fillStyle = grad; g.fillRect(0, 26, W, H - 52);
-                    g.save(); g.translate(W / 2, H * 0.42);
-                    g.fillStyle = pal.rays;
-                    for (let i = 0; i < 12; i++) { g.rotate(Math.PI / 6); g.beginPath(); g.moveTo(0, 0); g.lineTo(-40, -500); g.lineTo(40, -500); g.closePath(); g.fill(); }
-                    g.restore();
-                    g.fillStyle = pal.disc;
-                    g.beginPath(); g.arc(W / 2, H * 0.40, 74, 0, Math.PI * 2); g.fill();
-                    g.fillStyle = pal.discText; g.font = 'bold 68px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-                    g.fillText('N', W / 2, H * 0.40 + 4);
-                }
-                const bg2 = g.createLinearGradient(0, H - 26, 0, H * 0.5);
-                bg2.addColorStop(0, 'rgba(2,6,23,.96)'); bg2.addColorStop(1, 'rgba(2,6,23,0)');
-                g.fillStyle = bg2; g.fillRect(0, H * 0.5, W, H * 0.5 - 26);
-                g.fillStyle = 'rgba(2,6,23,.55)';
-                roundRectCanvas(g, W / 2 - 92, 96, 184, 46, 23); g.fill();
-                g.fillStyle = pal.accentText; g.font = 'bold 25px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-                g.fillText('NEXUS TCG', W / 2, 120);
-                g.fillStyle = '#ffffff'; g.font = 'bold 46px Inter, sans-serif';
-                wrapCanvasText(g, pack.title, W / 2, H - 170, W - 80, 52); // b16: имя во всю ширину пака
-                g.fillStyle = pal.accentText; g.font = '600 23px Inter, sans-serif';
-                g.fillText('БУСТЕР ПАК • 3 КАРТЫ', W / 2, H - 112);
-                // b13: перелив — радужные полосы / белые искры / metallic-блик / матовый (без overlay)
-                if (shim === 'holo') {
-                    pal.holoStripes.forEach((col, i) => {
-                        g.save(); g.translate(70 + i * 105, 0); g.rotate(0.3);
-                        g.fillStyle = col; g.fillRect(0, -80, 34, H + 160); g.restore();
-                    });
-                } else if (shim === 'sparkle') {
-                    // реалистичная фольга: мелкая разноразмерная искра + редкие крестовые блики
-                    let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-                    for (let i = 0; i < 70; i++) {
-                        const x = rnd() * W, y = 26 + rnd() * (H - 52);
-                        const r = .5 + rnd() * 1.5, al = .35 + rnd() * .6;
-                        const t = rnd();
-                        g.fillStyle = t < .25 ? `rgba(210,230,255,${al.toFixed(2)})` : (t < .5 ? `rgba(255,244,224,${al.toFixed(2)})` : `rgba(255,255,255,${al.toFixed(2)})`);
-                        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-                    }
-                    for (let i = 0; i < 6; i++) {
-                        const x = 20 + rnd() * (W - 40), y = 40 + rnd() * (H - 80), L = 6 + rnd() * 10, al = .5 + rnd() * .4;
-                        // мягкое гало вокруг звёздочки — блик выглядит живым, не жёстким
-                        const hg = g.createRadialGradient(x, y, .5, x, y, 8);
-                        hg.addColorStop(0, `rgba(255,255,255,${(al * .45).toFixed(2)})`); hg.addColorStop(1, 'rgba(255,255,255,0)');
-                        g.fillStyle = hg; g.fillRect(x - 8, y - 8, 16, 16);
-                        // тонкие лучики-звёздочки с затухающими концами (не «плюсики»)
-                        let gr = g.createLinearGradient(x - L, y, x + L, y);
-                        gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, `rgba(255,255,255,${al.toFixed(2)})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
-                        g.fillStyle = gr; g.fillRect(x - L, y - .6, L * 2, 1.2);
-                        gr = g.createLinearGradient(x, y - L, x, y + L);
-                        gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, `rgba(255,255,255,${al.toFixed(2)})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
-                        g.fillStyle = gr; g.fillRect(x - .6, y - L, 1.2, L * 2);
-                        g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.arc(x, y, 1.2, 0, Math.PI * 2); g.fill();
-                    }
-                } else if (shim === 'metal') {
-                    g.save(); g.globalAlpha = 0.5; g.fillStyle = pal.sheen;
-                    for (let i = 0; i < 3; i++) {
-                        g.save(); g.translate(90 + i * 150, 0); g.rotate(0.3); g.fillRect(0, -80, 30 + i * 10, H + 160); g.restore();
-                    }
-                    g.restore();
-                } else if (shim === 'gold') {
-                    g.save(); g.globalAlpha = 0.55;
-                    const gg = g.createLinearGradient(0, 0, W, H);
-                    gg.addColorStop(0, 'rgba(255,214,110,0)'); gg.addColorStop(.45, 'rgba(255,236,170,.8)'); gg.addColorStop(.55, 'rgba(255,196,70,.7)'); gg.addColorStop(1, 'rgba(255,214,110,0)');
-                    g.fillStyle = gg; g.fillRect(0, 0, W, H); g.restore();
-                } else if (shim === 'aurora' || shim === 'oil') {
-                    const cols = shim === 'aurora' ? ['rgba(80,255,190,.20)', 'rgba(120,170,255,.18)', 'rgba(200,120,255,.18)'] : ['rgba(140,60,255,.18)', 'rgba(60,255,190,.16)', 'rgba(255,140,60,.15)'];
-                    cols.forEach((col, i) => { g.save(); g.translate(40 + i * 150, 0); g.rotate(0.3); g.fillStyle = col; g.fillRect(0, -80, 60, H + 160); g.restore(); });
-                } else if (shim === 'prism') {
-                    const cols = ['rgba(255,80,120,.25)', 'rgba(80,220,255,.25)', 'rgba(255,220,120,.25)'];
-                    cols.forEach((col, i) => { g.save(); g.translate(60 + i * 140, 0); g.rotate(-0.25); g.fillStyle = col; g.fillRect(0, -80, 26, H + 160); g.restore(); });
-                } else if (shim === 'laser') {
-                    g.save(); g.globalAlpha = .8; g.fillStyle = 'rgba(255,255,255,.85)';
-                    g.translate(W * .5, 0); g.rotate(.3); g.fillRect(-3, -80, 6, H + 160); g.restore();
-                    g.save(); g.globalAlpha = .5; g.fillStyle = 'rgba(140,255,240,.6)';
-                    g.translate(W * .25, 0); g.rotate(.3); g.fillRect(-2, -80, 4, H + 160); g.restore();
-                } else if (shim === 'frost') {
-                    g.save(); g.globalAlpha = .5;
-                    const fg = g.createLinearGradient(0, 0, W, H);
-                    fg.addColorStop(0, 'rgba(200,240,255,.7)'); fg.addColorStop(.5, 'rgba(255,255,255,.5)'); fg.addColorStop(1, 'rgba(180,230,255,.6)');
-                    g.fillStyle = fg; g.fillRect(0, 0, W, H); g.restore();
-                } else if (shim === 'carbon') {
-                    g.save(); g.globalAlpha = .5; g.strokeStyle = 'rgba(255,255,255,.16)'; g.lineWidth = 2;
-                    for (let x = -H; x < W + H; x += 12) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + H, H); g.stroke(); g.beginPath(); g.moveTo(x + H, 0); g.lineTo(x, H); g.stroke(); }
-                    g.globalAlpha = .4; const cg = g.createLinearGradient(0, 0, W, H);
-                    cg.addColorStop(.3, 'rgba(200,220,255,0)'); cg.addColorStop(.5, 'rgba(200,220,255,.5)'); cg.addColorStop(.7, 'rgba(200,220,255,0)');
-                    g.fillStyle = cg; g.fillRect(0, 0, W, H); g.restore();
-                } else if (shim === 'uv') {
-                    g.save(); const ug = g.createRadialGradient(W / 2, H * .6, 40, W / 2, H * .6, H * .7);
-                    ug.addColorStop(0, 'rgba(60,0,140,.4)'); ug.addColorStop(1, 'rgba(60,0,140,0)');
-                    g.fillStyle = ug; g.fillRect(0, 0, W, H);
-                    g.globalAlpha = .55; g.translate(W / 2, 0); g.rotate(.3);
-                    g.fillStyle = 'rgba(0,255,255,.5)'; g.fillRect(-40, -80, 22, H + 160);
-                    g.fillStyle = 'rgba(255,0,220,.45)'; g.fillRect(30, -80, 22, H + 160);
-                    g.restore();
-                } else if (shim === 'crackle') {
-                    g.save(); g.globalAlpha = .6; g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1.4;
-                    let sd = 23; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-                    for (let i = 0; i < 9; i++) {
-                        let x = rnd() * W, y = rnd() * H; g.beginPath(); g.moveTo(x, y);
-                        for (let k = 0; k < 4; k++) { x += (rnd() - .5) * 90; y += (rnd() - .3) * 80; g.lineTo(x, y); }
-                        g.stroke();
-                    }
-                    g.restore();
-                } else if (shim === 'hologrid') {
-                    g.save(); g.globalAlpha = .5;
-                    g.strokeStyle = 'rgba(0,255,240,.5)'; g.lineWidth = 1.5;
-                    for (let y = 20; y < H; y += 26) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-                    g.strokeStyle = 'rgba(255,0,200,.4)';
-                    for (let x = 20; x < W; x += 26) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
-                    g.restore();
-                } else if (shim === 'plasma') {
-                    g.save(); g.globalAlpha = .5;
-                    [[W * .3, H * .3, 150, 'rgba(255,120,220,.5)'], [W * .7, H * .6, 170, 'rgba(80,220,255,.45)'], [W * .55, H * .2, 130, 'rgba(180,255,140,.35)']].forEach(b => {
-                        const pg = g.createRadialGradient(b[0], b[1], 10, b[0], b[1], b[2]);
-                        pg.addColorStop(0, b[3]); pg.addColorStop(1, 'rgba(0,0,0,0)');
-                        g.fillStyle = pg; g.fillRect(0, 0, W, H);
-                    });
-                    g.restore();
-                } else if (shim === 'galaxy') {
-                    // туманности, диагональная полоса Млечного Пути и звёздная пыль
-                    [[W * .32, H * .3, 150, 'rgba(120,80,220,.30)'], [W * .7, H * .62, 170, 'rgba(40,120,220,.25)'], [W * .5, H * .45, 190, 'rgba(255,255,255,.10)']].forEach(b => {
-                        const rg = g.createRadialGradient(b[0], b[1], 8, b[0], b[1], b[2]);
-                        rg.addColorStop(0, b[3]); rg.addColorStop(1, 'rgba(0,0,0,0)');
-                        g.fillStyle = rg; g.fillRect(0, 0, W, H);
-                    });
-                    g.save(); g.translate(W / 2, H / 2); g.rotate(-0.5);
-                    const mw = g.createLinearGradient(0, -70, 0, 70);
-                    mw.addColorStop(0, 'rgba(190,170,255,0)'); mw.addColorStop(.5, 'rgba(210,200,255,.16)'); mw.addColorStop(1, 'rgba(190,170,255,0)');
-                    g.fillStyle = mw; g.fillRect(-W, -70, W * 2, 140); g.restore();
-                    let sd = 31; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-                    for (let i = 0; i < 130; i++) {
-                        const x = rnd() * W, y = rnd() * H, r = .3 + rnd() * 1.1, al = .25 + rnd() * .7, t = rnd();
-                        g.fillStyle = t < .3 ? `rgba(200,215,255,${al.toFixed(2)})` : (t < .55 ? `rgba(255,235,210,${al.toFixed(2)})` : `rgba(255,255,255,${al.toFixed(2)})`);
-                        g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-                    }
-                    for (let i = 0; i < 4; i++) {
-                        const x = 24 + rnd() * (W - 48), y = 30 + rnd() * (H - 60), L = 5 + rnd() * 7, al = .55 + rnd() * .35;
-                        const hg = g.createRadialGradient(x, y, .5, x, y, 7);
-                        hg.addColorStop(0, `rgba(210,225,255,${(al * .4).toFixed(2)})`); hg.addColorStop(1, 'rgba(210,225,255,0)');
-                        g.fillStyle = hg; g.fillRect(x - 7, y - 7, 14, 14);
-                        let gr = g.createLinearGradient(x - L, y, x + L, y);
-                        gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, `rgba(255,255,255,${al.toFixed(2)})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
-                        g.fillStyle = gr; g.fillRect(x - L, y - .5, L * 2, 1);
-                        gr = g.createLinearGradient(x, y - L, x, y + L);
-                        gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(.5, `rgba(255,255,255,${al.toFixed(2)})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
-                        g.fillStyle = gr; g.fillRect(x - .5, y - L, 1, L * 2);
-                    }
-                } else if (SHIM_BANDS[shim]) {
-                    g.save(); g.globalAlpha = 0.55;
-                    SHIM_BANDS[shim].forEach((col, i) => {
-                        g.save(); g.translate(70 + i * 130, 0); g.rotate(0.3);
-                        g.fillStyle = col; g.fillRect(0, -80, 34 + i * 8, H + 160); g.restore();
-                    });
-                    g.restore();
-                    if (shim === 'galaxy') {
-                        let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
-                        g.fillStyle = 'rgba(255,255,255,.85)';
-                        for (let i = 0; i < 36; i++) {
-                            const x = rnd() * W, y = 26 + rnd() * (H - 52), r = .8 + rnd() * 1.6;
-                            g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
-                        }
-                    }
-                }
-                // b16: полупрозрачные боковые сварки поверх обложки;
-                // рамки-«окна» больше нет — печать вовсю упаковку
-                drawSideFoil();
-            };
-
-            drawPrint(false);
-            tex.needsUpdate = true;
-            loadImgSafe(pack.image, img => {
-                const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-                if (!iw || !ih) return;
-                // b16: обложка вовсю упаковку — cover на весь холст, без полей и клипа
-                const sc = Math.max(W / iw, H / ih);
-                const dw = iw * sc, dh = ih * sc;
-                g.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
-                drawPrint(true);
-                tex.needsUpdate = true;
-                if (onImage) onImage(cv);
-            });
-            tex.userData = { cv };
+            drawBase();
+            drawLayout();
+            if (pack && pack.image) {
+                loadImgSafe(pack.image, img => {
+                    drawBase();
+                    drawArt(img);
+                    drawGlitter();
+                    drawLayout();
+                    tex.needsUpdate = true;
+                    if (onImage) onImage();
+                });
+            }
             return tex;
         }
 
@@ -2743,6 +2634,34 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return tex;
         }
 
+        // b43: студийный env-куб: два софтбокса на тёмном градиенте. Фольга отражает их —
+        // блик живой, движется с углом обзора, вместо «напечатанных» полос голограммы.
+        let studioEnvTex = null;
+        function makeStudioEnv() {
+            if (studioEnvTex) return studioEnvTex;
+            const S = 128;
+            const face = () => {
+                const cv = document.createElement('canvas'); cv.width = cv.height = S;
+                const g = cv.getContext('2d');
+                const grd = g.createLinearGradient(0, 0, 0, S);
+                grd.addColorStop(0, '#3a4450'); grd.addColorStop(0.5, '#161b25'); grd.addColorStop(1, '#05070c');
+                g.fillStyle = grd; g.fillRect(0, 0, S, S);
+                g.fillStyle = 'rgba(255,255,255,.9)';
+                g.beginPath(); g.ellipse(S * 0.30, S * 0.22, S * 0.22, S * 0.09, -0.4, 0, Math.PI * 2); g.fill();
+                g.fillStyle = 'rgba(190,215,255,.55)';
+                g.beginPath(); g.ellipse(S * 0.76, S * 0.52, S * 0.14, S * 0.30, 0.3, 0, Math.PI * 2); g.fill();
+                return cv;
+            };
+            const faces = [face(), face(), face(), face(), face(), face()];
+            const tg = faces[2].getContext('2d'); tg.fillStyle = 'rgba(255,255,255,.8)'; tg.fillRect(0, 0, S, S);
+            const bg2 = faces[3].getContext('2d'); bg2.fillStyle = '#04060a'; bg2.fillRect(0, 0, S, S);
+            const cube = new THREE.CubeTexture(faces);
+            cube.needsUpdate = true;
+            try { cube.encoding = THREE.sRGBEncoding; } catch (e) {}
+            studioEnvTex = cube;
+            return cube;
+        }
+        let PACK3D_ANISO = 4; // b39: выставляется из renderer.capabilities при открытии пака
         let foilBumpTex = null;
         function makeFoilBump() {
             if (foilBumpTex) return foilBumpTex;
@@ -2759,11 +2678,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 rg.addColorStop(0, light ? 'rgba(255,255,255,.5)' : 'rgba(0,0,0,.45)');
                 rg.addColorStop(1, 'rgba(128,128,128,0)');
                 g.fillStyle = rg;
-                g.fillRect(x - r, y - r, r * 2, r * 2);
+                // b39: блоб рисуется во всех 9 смещениях кратных S — тайл становится бесшовным,
+                // исчезают светящиеся линии на стыках повторов (repeat 2×3)
+                for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) g.fillRect(x - r + ox, y - r + oy, r * 2, r * 2);
             }
             foilBumpTex = new THREE.CanvasTexture(cv);
             foilBumpTex.wrapS = foilBumpTex.wrapT = THREE.RepeatWrapping;
             foilBumpTex.repeat.set(2, 3);
+            foilBumpTex.anisotropy = PACK3D_ANISO; // b39
             return foilBumpTex;
         }
 
@@ -2792,75 +2714,81 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return sparkTexShared;
         }
 
-        function makeCrimpTexture(flip, pal) {
+                function makeCrimpTexture(flip, pal) {
             pal = pal || PACK_COLORS.silver; // b13: цвет шва = цвет упаковки
             const W = 512, H = 128;
             const cv = document.createElement('canvas');
             cv.width = W; cv.height = H;
             const g = cv.getContext('2d');
-            // фольга шва в цвете упаковки
+            // фольга шва в цвете упаковки; b40: текстура ПОЛНОСТЬЮ непрозрачна —
+            // силуэт зубцов и засечки задаёт геометрия меша, поэтому здесь нет alpha-вырезов
+            // и, как следствие, нет шиммера alphaTest и «пробитых» полос на mip-уровнях
             const grad = g.createLinearGradient(0, 0, 0, H);
             grad.addColorStop(0, pal.crimp[0]); grad.addColorStop(0.5, pal.crimp[1]); grad.addColorStop(1, pal.crimp[2]);
             g.fillStyle = grad; g.fillRect(0, 0, W, H);
             g.fillStyle = pal.crimpStripe;
             for (let x = 0; x < W; x += 7) g.fillRect(x, 0, 3, H);
-            // линия отрыва и засечки — только на верхнем шве (на нижнем их нет)
+            // линия отрыва — только на верхнем шве
             if (!flip) {
                 g.strokeStyle = 'rgba(30,41,59,.8)'; g.lineWidth = 4; g.setLineDash([14, 10]);
                 g.beginPath(); g.moveTo(0, H - 22); g.lineTo(W, H - 22); g.stroke();
                 g.setLineDash([]);
-                g.fillStyle = '#0b1220';
-                g.beginPath(); g.moveTo(0, H - 34); g.lineTo(18, H - 22); g.lineTo(0, H - 10); g.closePath(); g.fill();
-                g.beginPath(); g.moveTo(W, H - 34); g.lineTo(W - 18, H - 22); g.lineTo(W, H - 10); g.closePath(); g.fill();
             }
-            // лёгкие горизонтальные ridge-линии шва (как у настоящего приварного шва)
+            // лёгкие горизонтальные ridge-линии сварного шва
             g.strokeStyle = pal.ridge; g.lineWidth = 2;
             for (let y = 18; y < H; y += 22) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-            // зубчатый край вырезается через alpha ПРЯМО на нужной стороне:
-            // верхний шов (!flip) — зубцы сверху, нижний шов (flip) — зубцы снизу. Без поворотов канваса.
-            g.globalCompositeOperation = 'destination-out';
-            // глубина alpha-выреза чуть МЕНЬШЕ геометрической (0.197/0.45), чтобы край
-            // силуэта задавался вершинами меша, а текстура не оставляла дыр у зигзага
-            const teeth = 15, step = W / teeth, depth = 44;
-            g.beginPath();
-            if (!flip) {
-                g.moveTo(0, 0);
-                for (let i = 0; i < teeth; i++) {
-                    g.lineTo(i * step + step / 2, depth);
-                    g.lineTo((i + 1) * step, 0);
-                }
-                g.lineTo(W, -4); g.lineTo(0, -4);
-            } else {
-                g.moveTo(0, H);
-                for (let i = 0; i < teeth; i++) {
-                    g.lineTo(i * step + step / 2, H - depth);
-                    g.lineTo((i + 1) * step, H);
-                }
-                g.lineTo(W, H + 4); g.lineTo(0, H + 4);
-            }
-            g.closePath();
-            g.fill();
-            g.globalCompositeOperation = 'source-over';
-            return new THREE.CanvasTexture(cv);
+            const tex = new THREE.CanvasTexture(cv);
+            // b39/b40: без mipmaps + анизотропия — кромки не мерцают при повороте
+            tex.generateMipmaps = false;
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.anisotropy = PACK3D_ANISO;
+            tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+            return tex;
         }
 
         // СИЛУЭТНЫЕ зубцы шва: зигзаг запечён прямо в вершины меша (widthSegments=30 =
         // 2 вершины на зубец: остриё и впадина). Теперь треугольники снизу и сверху
         // видны ВСЕГДА — даже если alpha-вырез текстуры не сработает на конкретном GPU.
-        function makeSealGeometry(teethDown) {
-            const geo = new THREE.BoxGeometry(2.05, 0.45, 0.07, 30, 4, 1);
-            const p = geo.attributes.position;
-            const teeth = 15, depth = 0.197, half = 0.225, W = 2.05;
-            const edge = teethDown ? -half : half;
-            for (let i = 0; i < p.count; i++) {
-                const y = p.getY(i);
-                if (Math.abs(y - edge) > 1e-6) continue;
-                const x = p.getX(i);
-                const u = Math.round(((x + W / 2) / W) * teeth * 2) / 2; // 0, .5, 1, 1.5…
-                const frac = u - Math.floor(u);
-                const notch = depth * (1 - Math.abs(2 * frac - 1)); // 0 на остриях, depth в серединах
-                p.setY(i, y + (teethDown ? notch : -notch));
+                function makeSealGeometry(teethDown) {
+            // b40: СИЛУЭТНЫЙ меш. Зигзаг зубцов и боковые засечки («дырокол») запечены в контур
+            // THREE.Shape, поэтому край антиалиасится MSAA, не зависит от альфы текстуры и не даёт
+            // артефактов на стыках вершинных колонок (прежний BoxGeometry с колонками мерцал).
+            const W = 2.05, H = 0.45, teeth = 15, depth = 0.197;
+            const half = H / 2;
+            const edge = teethDown ? -half : half;   // внешний край с зубцами
+            const inner = teethDown ? half : -half;  // внутренний прямой край (к телу)
+            const sgn = teethDown ? -1 : 1;
+            const shape = new THREE.Shape();
+            const step = W / teeth;
+            shape.moveTo(-W / 2, inner);
+            shape.lineTo(-W / 2, edge);
+            for (let i = 0; i < teeth; i++) {
+                shape.lineTo(-W / 2 + step * (i + 0.5), edge - sgn * depth);
+                shape.lineTo(-W / 2 + step * (i + 1), edge);
             }
+            shape.lineTo(W / 2, inner);
+            shape.closePath();
+            // засечки-вырубки у линии отрыва — настоящие отверстия контура
+            const notch = cx => {
+                // b41: отверстие обязано лежать ВНУТРИ контура: иначе триангулятор ShapeGeometry
+                // рождает из «дырки» мусорные треугольники (та самая золотая соринка между зубцов)
+                const p = new THREE.Path();
+                const hy = inner + sgn * 0.13;
+                p.moveTo(cx - 0.075, hy - sgn * 0.055);
+                p.lineTo(cx + 0.075, hy - sgn * 0.055);
+                p.lineTo(cx, hy + sgn * 0.055);
+                p.closePath();
+                return p;
+            };
+            shape.holes.push(notch(-W / 2 + 0.13), notch(W / 2 - 0.13));
+            const geo = new THREE.ShapeGeometry(shape, 10);
+            // честные UV 0..1 по габаритам шва (ShapeGeometry даёт uv в координатах формы)
+            const pos = geo.attributes.position, uv = geo.attributes.uv;
+            for (let i = 0; i < uv.count; i++) {
+                uv.setXY(i, (pos.getX(i) + W / 2) / W, (pos.getY(i) + H / 2) / H);
+            }
+            uv.needsUpdate = true;
             geo.computeVertexNormals();
             return geo;
         }
@@ -2883,6 +2811,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const h = container.clientHeight || Math.round(window.innerHeight * 0.62);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
             renderer.setSize(w, h);
+            // b39: анизотропия из возможностей GPU — текстуры не мерцают под углом (мобильные GPU)
+            try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) { PACK3D_ANISO = 4; }
+            // b40: цветоуправление как в «взрослом» рендере: sRGB на выходе + плёночный тонмаппинг —
+            // цвета фольги становятся насыщенными и предсказуемыми, блики не выжигаются
+            try { renderer.outputEncoding = THREE.sRGBEncoding; } catch (e) {}
+            try { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
             container.appendChild(renderer.domElement);
 
             const scene = new THREE.Scene();
@@ -2898,12 +2832,30 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const group = new THREE.Group();
             scene.add(group);
 
+            // b42: мягкое радиальное свечение за паком — сцена выглядит как студийная съёмка,
+            // пакет не висит в чёрной пустоте
+            try {
+                const glowCv = document.createElement('canvas'); glowCv.width = glowCv.height = 256;
+                const gg = glowCv.getContext('2d');
+                const rgd = gg.createRadialGradient(128, 128, 8, 128, 128, 126);
+                rgd.addColorStop(0, 'rgba(45,212,191,0.28)'); rgd.addColorStop(0.45, 'rgba(14,116,144,0.14)'); rgd.addColorStop(1, 'rgba(2,6,23,0)');
+                gg.fillStyle = rgd; gg.fillRect(0, 0, 256, 256);
+                const glowTex = new THREE.CanvasTexture(glowCv);
+                const glow = new THREE.Mesh(new THREE.PlaneGeometry(15, 12),
+                    new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false }));
+                glow.position.z = -4; glow.renderOrder = -1;
+                scene.add(glow);
+            } catch (e) {}
+
             const bump = makeFoilBump();
+            if (bump.anisotropy !== PACK3D_ANISO) { bump.anisotropy = PACK3D_ANISO; bump.needsUpdate = true; } // b39
             // b13: цвет упаковки + режим перелива влияют на текстуры И материалы
             const pal = PACK_COLORS[pack && pack.color] || PACK_COLORS.silver;
             const shim = PACK_SHIMMERS[pack && pack.shimmer] ? pack.shimmer : 'holo';
             const shimM = ({ holo: [0.36, 0.4], sparkle: [0.2, 0.7], metal: [0.24, 0.85], matte: [0.78, 0.12], gold: [0.22, 0.9], aurora: [0.3, 0.5], prism: [0.28, 0.6], oil: [0.32, 0.55], laser: [0.18, 0.75], frost: [0.4, 0.35], pearl: [0.3, 0.45], chrome: [0.15, 0.95], copper: [0.25, 0.88], neon: [0.3, 0.6], flame: [0.35, 0.5], ocean: [0.3, 0.55], galaxy: [0.3, 0.45], rose: [0.32, 0.5], emerald: [0.32, 0.5], sunset: [0.34, 0.45], carbon: [0.5, 0.35], uv: [0.3, 0.55], crackle: [0.25, 0.6], hologrid: [0.3, 0.5], plasma: [0.28, 0.5], sparkle: [0.22, 0.65] })[shim] || [0.35, 0.5];
             const bodyTex = makePackTexture(pack);
+            bodyTex.anisotropy = PACK3D_ANISO; // b39
+            bodyTex.encoding = THREE.sRGBEncoding; // b40
             const bodyMat = new THREE.MeshStandardMaterial({ map: bodyTex, roughness: shimM[0], metalness: shimM[1], bumpMap: bump, bumpScale: shim === 'matte' ? 0.05 : 0.02 });
             const sideMat = new THREE.MeshStandardMaterial({ color: pal.mat, roughness: shim === 'matte' ? 0.7 : 0.3, metalness: shim === 'matte' ? 0.2 : 0.8, bumpMap: bump, bumpScale: 0.03 });
             // пакет-подушка: сплющен в плоские приварные швы сверху и снизу, надут посередине
@@ -2912,29 +2864,63 @@ Check your Browserslist config to be sure that your targets are set up correctly
             for (let i = 0; i < pa.count; i++) {
                 const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i);
                 const t = Math.min(1, Math.abs(y) / 1.5);
-                const pinch = t < 0.86 ? 1 : 1 - ((t - 0.86) / 0.14) * 0.86;
+                // b39: к торцам толщина падает в НОЛЬ — тело не protrude сквозь приварной шов,
+                // иначе пересечение поверхностей давало z-fighting (мигающие полосы на шве)
+                const pinch = t < 0.86 ? 1 : Math.max(0, 1 - (t - 0.86) / 0.14);
                 const bulge = Math.max(0, (1 - (x / 1.025) * (x / 1.025)) * (1 - (y / 1.58) * (y / 1.58))) * pinch;
                 pa.setZ(i, z * pinch + (z >= 0 ? 1 : -1) * bulge * 0.2);
             }
             bodyGeo.computeVertexNormals();
             const body = new THREE.Mesh(bodyGeo, [sideMat, sideMat, sideMat, sideMat, bodyMat, bodyMat]);
             group.add(body);
+            // b43: фольга отражает студийные софтбоклы — интенсивность зависит от режима перелива
+            const env = makeStudioEnv();
+            const bodyEnv = shim === 'matte' ? 0.28 : (0.5 + shimM[1] * 0.7);
+            scene.traverse(o => {
+                if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial) return;
+                o.material.envMap = env;
+                o.material.envMapIntensity = o.material === bodyMat ? bodyEnv : (o.material === sideMat ? 0.55 : 0.85);
+                o.material.needsUpdate = true;
+            });
 
             // приварные швы сверху и снизу: той же ширины, что тело, с крупными зубцами — как на референсе
             const crimpTex = makeCrimpTexture(false, pal);
             const crimpTexB = makeCrimpTexture(true, pal);
-            const sealMat = (tex) => new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, roughness: 0.42, metalness: 0.55, bumpMap: bump, bumpScale: 0.02, side: THREE.DoubleSide });
-            const topSideMat = new THREE.MeshStandardMaterial({ color: pal.mat, roughness: shim === 'matte' ? 0.72 : 0.35, metalness: shim === 'matte' ? 0.18 : 0.75 });
-            const top = new THREE.Mesh(makeSealGeometry(false), [topSideMat, topSideMat, topSideMat, topSideMat, sealMat(crimpTex), sealMat(crimpTex)]);
-            top.position.y = 1.7;
+            crimpTex.encoding = THREE.sRGBEncoding; crimpTexB.encoding = THREE.sRGBEncoding; // b40
+            // b40: шов = группа из двух непрозрачных силуэтных плосностей (спереди и сзади тела).
+            // Тело пака целиком помещается между ними, поэтому протыкиваний и z-fighting нет,
+            // а задняя плоскость повёрнута, чтобы фольга с изнанки не выглядела зеркальной.
+            const sealFrontMat = (tex) => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.42, metalness: 0.55, bumpMap: bump, bumpScale: 0.02, side: THREE.FrontSide });
+            const sealBackMat = (tex) => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.45, bumpMap: bump, bumpScale: 0.02, side: THREE.FrontSide });
+            const buildSeal = (teethDown, tex) => {
+                const grp = new THREE.Group();
+                const geo = makeSealGeometry(teethDown);
+                // b42: лёгкая волна фольги по шву — кримп выглядит как настоящий привар,
+                // а не как плоская открытка (амплитуда подобрана так, чтобы платы не встречались)
+                const sp = geo.attributes.position;
+                for (let i = 0; i < sp.count; i++) {
+                    const x = sp.getX(i);
+                    sp.setZ(i, sp.getZ(i) + Math.sin(x * 7.7) * 0.012 + Math.sin(x * 23.0) * 0.004);
+                }
+                sp.needsUpdate = true;
+                geo.computeVertexNormals();
+                const f = new THREE.Mesh(geo, sealFrontMat(tex)); f.position.z = 0.06;
+                const b = new THREE.Mesh(geo, sealBackMat(tex)); b.position.z = -0.06; b.rotation.y = Math.PI;
+                grp.add(f); grp.add(b);
+                return grp;
+            };
+            const top = buildSeal(false, crimpTex);
+            top.position.y = 1.675;
             group.add(top);
-            const bottom = new THREE.Mesh(makeSealGeometry(true), [topSideMat, topSideMat, topSideMat, topSideMat, sealMat(crimpTexB), sealMat(crimpTexB)]);
-            bottom.position.y = -1.7;
+            const bottom = buildSeal(true, crimpTexB);
+            bottom.position.y = -1.675;
             group.add(bottom);
 
             // Карты вылетают из горловины
             const cardMeshes = cards.map((c, i) => {
-                const mat = new THREE.MeshStandardMaterial({ map: cardBackTexShared(pack), roughness: 0.35, metalness: 0.25, side: THREE.DoubleSide });
+                const backTex = cardBackTexShared(pack); backTex.anisotropy = PACK3D_ANISO; // b39
+                backTex.encoding = THREE.sRGBEncoding; // b40
+                const mat = new THREE.MeshStandardMaterial({ map: backTex, roughness: 0.35, metalness: 0.25, side: THREE.DoubleSide });
                 const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.25), mat);
                 m.position.set(0, 1.35, 0.2);
                 m.scale.setScalar(0.01);
@@ -2942,6 +2928,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 m.userData = { targetX: (i - 1) * 2.15, targetRotZ: (i - 1) * -0.12, delay: i * 0.2, whooshed: false };
                 scene.add(m);
                 return m;
+            });
+
+            // b43: env и на швы, и на рубашки карт — единый студийный свет на всей сцене
+            scene.traverse(o => {
+                if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial || o.material.envMap) return;
+                o.material.envMap = env;
+                o.material.envMapIntensity = o.material.map === sharedBackTex ? 0.55 : 0.85;
+                o.material.needsUpdate = true;
             });
 
             // Искры фольги на линии разрыва
@@ -3028,7 +3022,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b26</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b45</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -3044,12 +3038,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (B.tearStart) {
                 const tt = (now - B.tearStart) / 1000;
                 const k = Math.min(1, tt / 0.85);
-                top.position.y = 1.7 + (1 - Math.pow(1 - k, 2)) * 2.7;
+                top.position.y = 1.675 + (1 - Math.pow(1 - k, 2)) * 2.7;
                 top.position.x = k * 1.5;
                 top.rotation.z = -k * 2.3;
                 top.rotation.x = k * 1.2;
                 const op = Math.max(0, 1 - tt / 0.8);
-                top.material.forEach(m => { m.opacity = op; });
+                // b40: шов теперь группа меша — гасим прозрачность обходом
+                top.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.material.opacity = op; o.material.depthWrite = op > 0.35; } });
                 top.visible = op > 0;
             }
 
@@ -3169,8 +3164,78 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return out;
         }
 
-        function sdwPackPlaceholder() {
-            if (FB_CACHE['pack']) return FB_CACHE['pack'];
+        // ------------------- b38: МЕДИА-ЗЕРКАЛО -------------------
+        // Стандартные арты и музыка лежали одним каталогом на archive.org. Хост лёг (или коллекцию
+        // удалили), копий в Wayback Machine нет — витрины стали «чёрными». Игра больше не зависит
+        // от одного хоста: создатель может один раз указать зеркало (любой хост, куда залит тот же
+        // набор файлов), оно сохраняется локально и разъезжается на всех игроков через комнату.
+        const MEDIA_DEAD_BASE = 'https://archive.org/download/poster-set/';
+        function mediaBase() { try { return String(LS.getItem('nexus_media_base') || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; } }
+        function mediaBaseSet(v, fromRoom) {
+            try {
+                if (v) LS.setItem('nexus_media_base', String(v).trim().replace(/\/+$/, '')); else LS.removeItem('nexus_media_base');
+                if (fromRoom) LS.setItem('nexus_media_base_room', '1'); else LS.removeItem('nexus_media_base_room');
+            } catch (e) {}
+        }
+        function mediaBaseFromRoom() { try { return LS.getItem('nexus_media_base_room') === '1'; } catch (e) { return false; } }
+        // Единая точка перезаписи ссылок: всё, что смотрит на мёртвый каталог, уходит на зеркало
+        function mediaUrl(u) {
+            const s = String(u == null ? '' : u);
+            if (!s) return s;
+            const b = mediaBase();
+            if (b && s.indexOf(MEDIA_DEAD_BASE) === 0) return b + '/' + s.slice(MEDIA_DEAD_BASE.length);
+            return s;
+        }
+        function saveMediaBase() {
+            const inp = document.getElementById('cloud-media-base');
+            mediaBaseSet(String((inp && inp.value) || '').trim(), false); // b38: ручная настройка важнее комнатной до публикации
+            const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase();
+            refreshVisibleTabs();
+            try { renderStudio(); } catch (e) {}
+            showToast(mediaBase()
+                ? 'Зеркало медиа сохранено: арты и музыка будут грузиться с ' + mediaBase()
+                : 'Зеркало отключено: вернулись оригинальные ссылки', 'success');
+        }
+        function mediaPlaceholderFor(el) {
+            try {
+                const id = el.getAttribute && el.getAttribute('data-card-id');
+                if (id) {
+                    const card = state.cards.find(c => c.id === id);
+                    return (card && sdwPlaceholder(card)) || sdwSvgPlaceholder(card);
+                }
+                return sdwPackPlaceholder(el.alt || '');
+            } catch (e) { return ''; }
+        }
+        // Цепочка для любой картинки: мёртвый хост → зеркало (если задано) → читаемая заглушка.
+        // Вызывается и из делегированного обработчика ошибок, и из inline-onerror.
+        function imgErrorChain(el) {
+            try {
+                const u = String(el.src || '');
+                if (!u || u.indexOf('data:') === 0) return false;
+                const b = mediaBase();
+                if (!el.__nxMir && b && u.indexOf(MEDIA_DEAD_BASE) === 0) {
+                    el.__nxMir = 1; el.onerror = null; el.style.display = '';
+                    el.src = b + '/' + u.slice(MEDIA_DEAD_BASE.length);
+                    return true;
+                }
+                if (!el.__nxPh) {
+                    el.__nxPh = 1; el.onerror = null; el.style.display = '';
+                    const ph = mediaPlaceholderFor(el);
+                    if (ph) { el.src = ph; return true; }
+                }
+            } catch (e) {}
+            return false;
+        }
+        // Делегированный обработчик: ловит ошибки ВСЕХ <img> (capture), включая те,
+        // у которых inline-onerror прятал элемент — вместо чёрной дыры будет заглушка с названием
+        document.addEventListener('error', ev => {
+            const el = ev && ev.target;
+            if (!el || el.tagName !== 'IMG') return;
+            imgErrorChain(el);
+        }, true);
+        function sdwPackPlaceholder(title) {
+            const fbKey = 'pack:' + (title || '');
+            if (FB_CACHE[fbKey]) return FB_CACHE[fbKey];
             let out = '';
             try {
                 const W = 300, H = 400;
@@ -3182,15 +3247,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 grad.addColorStop(0, '#14532d'); grad.addColorStop(0.5, '#0f172a'); grad.addColorStop(1, '#1e3a8a');
                 g.fillStyle = grad; g.fillRect(0, 0, W, H);
                 g.textAlign = 'center'; g.textBaseline = 'middle';
-                g.font = '70px sans-serif'; g.fillText('🐶', W / 2, 150);
+                g.font = '70px sans-serif'; g.fillText('🃏', W / 2, 150);
                 g.fillStyle = '#ecfdf5'; g.font = 'bold 30px Inter, sans-serif';
-                wrapCanvasText(g, 'SCOOPY-DOO! WORLD OF MYSTERY', W / 2, 260, W - 40, 32);
+                wrapCanvasText(g, title ? String(title).toUpperCase() : 'ПАК БЕЗ АРТА', W / 2, 260, W - 40, 32);
                 g.fillStyle = '#6ee7b7'; g.font = '14px Inter, sans-serif';
-                g.fillText('DeAgostini • сканы Scoobypedia', W / 2, 330);
+                g.fillText('источник арта не отвечает', W / 2, 330);
                 out = cv.toDataURL('image/jpeg', 0.82);
             } catch (e) { out = ''; }
-            if (!out) out = sdwSvgPlaceholder({ name: 'SCOOPY-DOO', rarity: 'legendary' });
-            FB_CACHE['pack'] = out;
+            if (!out) out = sdwSvgPlaceholder({ name: title || 'ПАК БЕЗ АРТА', rarity: 'legendary' });
+            FB_CACHE[fbKey] = out;
             return out;
         }
 
@@ -4278,7 +4343,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const st = getCardStats(c);
                 return `
                     <div class="relative bg-slate-950 border-2 ${getRarityClass(c.rarity)} rounded-xl p-1.5 w-[88px] shrink-0">
-                        <img src="${c.image}" alt="${c.name}" class="w-full h-20 object-cover rounded-lg" onerror="this.onerror=null;imgFallback(this);" data-card-id="${c.id}">
+                        <img src="${mediaUrl(c.image)}" alt="${c.name}" class="w-full h-20 object-cover rounded-lg" onerror="imgErrorChain(this);" data-card-id="${c.id}">
                         <p class="text-[10px] font-bold text-white truncate mt-1">${c.name}</p>
                         <p class="text-[10px] text-slate-400 font-mono"><span class="text-amber-400">⚔${st.atk}</span> <span class="text-rose-400">❤${st.hp}</span></p>
                         <button onclick="removeFromDeck('${c.id}')" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center transition shadow" title="Убрать из колоды"><i class="fa-solid fa-xmark"></i></button>
@@ -4301,7 +4366,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     const copies = cardCopies(c.id); // b18
                     return `
                         <div onclick="addToDeck('${c.id}')" class="relative cursor-pointer rounded-lg border ${getRarityClass(c.rarity)} bg-slate-950 p-1 overflow-hidden transition hover:scale-105 ${inDeck ? 'opacity-40' : ''}" title="${inDeck ? 'Уже в колоде' : 'Добавить в колоду'}">
-                            <img src="${c.image}" alt="${c.name}" class="w-full h-14 object-cover rounded" onerror="this.onerror=null;imgFallback(this);" data-card-id="${c.id}">
+                            <img src="${mediaUrl(c.image)}" alt="${c.name}" class="w-full h-14 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}">
                             <p class="text-[9px] font-bold text-white truncate mt-0.5">${c.name}</p>
                             <p class="text-[9px] font-mono text-slate-400"><span class="text-amber-400">⚔${st.atk}</span> <span class="text-rose-400">❤${st.hp}</span></p>
                             ${copies > 1 ? `<span class="absolute top-0.5 left-0.5 text-[9px] bg-amber-500/90 text-slate-950 rounded px-1 font-black">×${copies}</span>` : ''}
@@ -5243,7 +5308,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap justify-center gap-3">
                             ${reserves.map(x => `
                                 <button onclick="onSwapTo(${x.i})" class="bg-slate-950 border-2 ${getRarityClass(x.f.rarity)} rounded-xl p-2 w-24 hover:scale-105 transition text-left">
-                                    <img src="${x.f.image}" class="w-full h-16 object-cover rounded-lg" onerror="this.onerror=null;imgFallback(this);" data-card-id="${x.f.cardId || ''}">
+                                    <img src="${mediaUrl(x.f.image)}" class="w-full h-16 object-cover rounded-lg" onerror="imgErrorChain(this);" data-card-id="${x.f.cardId || ''}">
                                     <p class="text-[10px] font-bold text-white truncate mt-1">${x.f.name}</p>
                                     <p class="text-[10px] font-mono"><span class="text-amber-400">⚔${x.f.atk}</span> <span class="text-rose-400">❤${x.f.hp}</span></p>
                                 </button>`).join('')}
@@ -5269,7 +5334,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const hpPct = Math.max(0, Math.round(f.hp / f.maxHp * 100));
             const hpColor = hpPct > 50 ? (isP ? 'bg-emerald-500' : 'bg-rose-500') : hpPct > 25 ? 'bg-amber-500' : 'bg-red-600';
             const visual = f.image
-                ? `<img src="${f.image}" alt="${f.name}" class="w-20 h-28 object-cover rounded-xl shadow-lg shrink-0" onerror="this.onerror=null;imgFallback(this);" data-card-id="${f.cardId || ''}">`
+                ? `<img src="${mediaUrl(f.image)}" alt="${f.name}" class="w-20 h-28 object-cover rounded-xl shadow-lg shrink-0" onerror="imgErrorChain(this);" data-card-id="${f.cardId || ''}">`
                 : `<div class="w-20 h-28 rounded-xl bg-gradient-to-br ${f.grad} flex items-center justify-center shadow-lg shrink-0"><i class="fa-solid ${f.icon} text-3xl text-white/90"></i></div>`;
             return `
                 <div class="relative flex items-center space-x-4 bg-slate-900/90 border ${isP ? 'border-emerald-500/30' : 'border-rose-500/30'} rounded-2xl p-4 pop-in">
@@ -6255,8 +6320,26 @@ Check your Browserslist config to be sure that your targets are set up correctly
             packCarousel.idx = ((packCarousel.idx % n) + n) % n;
         }
 
+        // b44: зигзаг-силуэт для мини-паков витрины: 15 зубцов сверху и снизу, как у 3D-пака.
+        // Генерируется один раз — clip-path одинаков для всех плиток.
+        const PACK_CLIP_POLY = (function () {
+            const teeth = 15, pts = [];
+            const step = 100 / teeth;
+            for (let i = 0; i < teeth; i++) {
+                pts.push((i * step).toFixed(2) + '% 0%');
+                pts.push((i * step + step / 2).toFixed(2) + '% 3.6%');
+            }
+            pts.push('100% 0%', '100% 100%');
+            for (let i = teeth - 1; i >= 0; i--) {
+                pts.push((i * step + step / 2).toFixed(2) + '% 96.4%');
+                pts.push((i * step).toFixed(2) + '% 100%');
+            }
+            pts.push('0% 100%');
+            return 'polygon(' + pts.join(',') + ')';
+        })();
+
         // ============ ВИТРИНА МАГАЗИНА: все паки плитками под каруселью ============
-        function renderStoreShowcase() {
+                        function renderStoreShowcase() {
             const wrap = document.getElementById('store-showcase');
             const box = document.getElementById('store-showcase-wrap');
             if (!wrap || !box) return;
@@ -6268,34 +6351,51 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const scards = document.getElementById('store-stat-cards');
             if (scards) scards.textContent = state.cards.length;
 
+            // b45: витрина — компактный каталог строками: мини-упаковка слева, суть по центру,
+            // цена/карты и действия справа. Плотность как в магазине, без гигантских плиток.
             wrap.innerHTML = state.packs.map((pack, i) => {
                 const packCards = state.cards.filter(c => c.packId === pack.id);
                 const cardsInPack = packCards.length;
                 const rarStat = albumRarityStats(packCards);
                 const active = i === packCarousel.idx;
+                const shimName = String((PACK_SHIMMERS[pack.shimmer] && PACK_SHIMMERS[pack.shimmer].name) || pack.shimmer || 'holo');
+                const pal = PACK_COLORS[pack.color] || PACK_COLORS.silver;
                 return `
-                    <div class="album-in h-full" style="animation-delay:${Math.min(i, 8) * 60}ms">
-                        <div data-sc-idx="${i}" class="group relative h-full flex flex-col rounded-2xl border ${active ? 'border-emerald-500/50' : 'border-slate-800/80'} bg-slate-900/70 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-950/50">
-                            <div class="relative pack-aspect overflow-hidden shrink-0 cursor-pointer" onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });" title="Показать пак в карусели">
-                                <img src="${pack.image}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.07]" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
-                                <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
-                                <div class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"></div>
-                                <span data-sc-badge class="absolute top-2 left-2 sm:top-2.5 sm:left-2.5 inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/90 text-slate-950 shadow-lg ${active ? '' : 'hidden'}"><i class="fa-solid fa-compact-disc"></i>в карусели</span>
-                                <span class="absolute top-2 right-2 sm:top-2.5 sm:right-2.5 inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-slate-950/70 text-slate-200 border border-slate-700/70 backdrop-blur-sm"><i class="fa-solid fa-clone text-teal-300"></i>${cardsInPack}</span>
-                                <span class="absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 inline-flex items-center gap-1.5 text-[10px] sm:text-[11px] font-black px-2 py-1 rounded-lg bg-amber-400/90 text-slate-950 shadow-lg"><i class="fa-solid fa-coins"></i>${pack.price}</span>
-                            </div>
-                            <div class="p-3 pt-2.5 sm:p-4 sm:pt-3.5 flex flex-col gap-2.5 sm:gap-3 flex-1">
-                                <div>
-                                    <h3 class="font-bold text-white text-sm sm:text-base leading-snug transition-colors group-hover:text-emerald-300">${pack.title}</h3>
-                                    <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 sm:mt-1 line-clamp-2">${pack.description || ''}</p>
+                    <div class="album-in" style="animation-delay:${Math.min(i, 10) * 40}ms">
+                        <div data-sc-idx="${i}" class="group relative flex items-stretch gap-2.5 sm:gap-3 rounded-xl border ${active ? 'border-emerald-500/50 bg-emerald-500/[.04]' : 'border-slate-800/80 bg-slate-900/60'} p-2 sm:p-2.5 transition-all duration-200 hover:border-emerald-500/40 hover:bg-slate-900/90 hover:shadow-lg hover:shadow-black/40">
+                            <div class="relative w-14 sm:w-[76px] shrink-0 cursor-pointer" style="${packCssVars(pack)};aspect-ratio:.62"
+                                 onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });"
+                                 title="Показать пак в карусели">
+                                <div class="relative w-full h-full booster shadow-lg shadow-black/50 transition-transform duration-300 group-hover:scale-[1.04]" style="clip-path:${PACK_CLIP_POLY};">
+                                    <div class="booster-foil"></div>
+                                    <div class="booster-crimp booster-crimp-top"></div>
+                                    <div class="booster-crimp booster-crimp-bottom"></div>
+                                    <div class="booster-window">
+                                        <img src="${mediaUrl(pack.image)}" alt="${pack.title}" class="w-full h-full object-cover" onerror="this.onerror=null;imgErrorChain(this);">
+                                    </div>
+                                    <div class="booster-round"></div>
+                                    <div class="booster-gloss"></div>
                                 </div>
-                                ${rarStat.length ? `
-                                <div class="flex flex-wrap gap-1 sm:gap-1.5">
-                                    ${rarStat.map(x => `<span class="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold font-mono border" style="color:${RAR_COLORS[x.r] || '#94a3b8'};border-color:${(RAR_COLORS[x.r] || '#94a3b8')}44;background:${(RAR_COLORS[x.r] || '#94a3b8')}14" title="${RARITY_LABELS_RU[x.r] || x.r}: ${x.all} шт."><i class="fa-solid fa-circle text-[6px]"></i>${x.all}</span>`).join('')}
-                                </div>` : ''}
-                                <div class="mt-auto pt-2 sm:pt-2.5 border-t border-slate-800/70 flex items-center gap-2">
-                                    <button onclick="buyPack('${pack.id}')" class="flex-1 min-w-0 px-3 py-2 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-bold transition shadow-lg shadow-emerald-950/40 truncate"><i class="fa-solid fa-box-open mr-1"></i>Открыть пак</button>
-                                    <button onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });" title="Показать в карусели" class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-700/70 text-slate-300 hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-compact-disc text-xs"></i></button>
+                            </div>
+                            <div class="flex-1 min-w-0 flex flex-col gap-0.5 sm:gap-1 py-0.5">
+                                <div class="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                                    <h3 class="font-bold text-white text-[13px] sm:text-sm leading-tight truncate transition-colors group-hover:text-emerald-300">${pack.title}</h3>
+                                    <span class="hidden sm:inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0" style="color:${pal.swatch};border-color:${pal.swatch}55;background:${pal.swatch}12" title="Перелив фольги"><i class="fa-solid fa-wand-magic-sparkles"></i>${shimName}</span>
+                                    <span data-sc-badge class="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-500/90 text-slate-950 shrink-0 ${active ? '' : 'hidden'}"><i class="fa-solid fa-compact-disc"></i>в карусели</span>
+                                </div>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400 leading-snug line-clamp-1 sm:line-clamp-2">${pack.description || ''}</p>
+                                <div class="flex flex-wrap items-center gap-1 mt-auto pt-0.5">
+                                    ${rarStat.length ? rarStat.map(x => `<span class="inline-flex items-center gap-1 rounded px-1 py-px text-[8px] sm:text-[9px] font-bold font-mono border" style="color:${RAR_COLORS[x.r] || '#94a3b8'};border-color:${(RAR_COLORS[x.r] || '#94a3b8')}44;background:${(RAR_COLORS[x.r] || '#94a3b8')}14" title="${RARITY_LABELS_RU[x.r] || x.r}: ${x.all} шт."><i class="fa-solid fa-circle text-[5px]"></i>${x.all}</span>`).join('') : '<span class="text-[9px] text-slate-600">карт пока нет</span>'}
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end justify-between gap-1.5 shrink-0 pl-0.5">
+                                <div class="flex items-center gap-1 sm:gap-1.5">
+                                    <span class="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-slate-950/75 text-slate-200 border border-slate-700/70" title="Карточек в паке"><i class="fa-solid fa-clone text-teal-300"></i>${cardsInPack}</span>
+                                    <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-lg bg-amber-400/95 text-slate-950 shadow" title="Цена вскрытия"><i class="fa-solid fa-coins"></i>${pack.price}</span>
+                                </div>
+                                <div class="flex items-center gap-1 sm:gap-1.5">
+                                    <button onclick="buyPack('${pack.id}')" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] sm:text-[11px] font-bold transition shadow-md shadow-emerald-950/40 whitespace-nowrap"><i class="fa-solid fa-box-open mr-1"></i>Открыть</button>
+                                    <button onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });" title="Показать в карусели" class="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/70 text-slate-300 hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-compact-disc text-[10px] sm:text-xs"></i></button>
                                 </div>
                             </div>
                         </div>
@@ -6397,7 +6497,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <div class="booster-notch nr"></div>
                                 <div class="booster-tearline"></div>
                                 <div class="booster-window">
-                                    <img src="${pack.image}" alt="${pack.title}" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                                    <img src="${mediaUrl(pack.image)}" alt="${pack.title}" class="w-full h-full object-cover" onerror="this.onerror=null;imgErrorChain(this);">
                                     <div class="booster-label">${pack.title}</div>
                                 </div>
                                 <div class="booster-round"></div>
@@ -6773,7 +6873,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 return `
                 <div class="relative w-full card-aspect rounded-2xl overflow-hidden shadow-2xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} flex flex-col justify-between p-4 group select-none" style="position:relative;overflow:hidden;">
                     <!-- Revealed Card Face -->
-                    <img src="${card.image}" alt="${card.name}" data-card-id="${card.id}" onerror="this.onerror=null;imgFallback(this);" class="absolute inset-0 w-full h-full object-cover z-0">
+                    <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0">
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/5 to-slate-950/15 z-10"></div>
 
                     ${Z.top}
@@ -7182,7 +7282,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (compact) {
                 return `
                     <div onclick="inspectCard('${card.id}')" class="relative w-full card-aspect rounded-xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-1.5 sm:p-2 flex flex-col justify-between cursor-pointer shadow-lg hover:scale-[1.03] transition overflow-hidden group">
-                        <img src="${card.image}" alt="${card.name}" data-card-id="${card.id}" onerror="this.onerror=null;imgFallback(this);" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                        <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
                         <div class="relative z-10 flex justify-between items-start gap-1">
                             <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
@@ -7210,7 +7310,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, statsHtml);
             return `
                 <div onclick="inspectCard('${card.id}')" class="relative w-full card-aspect rounded-2xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-3 sm:p-4 flex flex-col justify-between cursor-pointer shadow-xl hover:scale-[1.02] transition overflow-hidden group">
-                    <img src="${card.image}" alt="${card.name}" data-card-id="${card.id}" onerror="this.onerror=null;imgFallback(this);" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                    <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
 
                     ${Z.top}
@@ -7244,7 +7344,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return `
                 <div onclick="inspectCard('${card.id}')" class="group flex items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-800/80 bg-slate-900/60 p-2 cursor-pointer transition hover:border-emerald-500/40 hover:bg-slate-900">
                     <div class="relative w-9 sm:w-11 shrink-0 rounded-lg overflow-hidden border-2 shadow" style="aspect-ratio:9/16;border-color:${rarColor}">
-                        <img src="${card.image}" alt="${card.name}" onerror="this.onerror=null;imgFallback(this);" class="absolute inset-0 w-full h-full object-cover">
+                        <img src="${mediaUrl(card.image)}" alt="${card.name}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover">
                     </div>
                     <span class="font-mono text-[10px] text-slate-500 w-9 sm:w-10 shrink-0">#${localNum}</span>
                     <div class="flex-1 min-w-0">
@@ -7463,7 +7563,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="album-in h-full" style="animation-delay:${Math.min(i, 8) * 70}ms">
                     <div onclick="openAlbum('${pack.id}')" class="group relative h-full flex flex-col rounded-2xl border border-slate-800/80 bg-slate-900/70 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:border-emerald-500/40 hover:shadow-2xl hover:shadow-emerald-950/50">
                         <div class="relative pack-aspect overflow-hidden shrink-0">
-                            <img src="${pack.image}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.07]" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                            <img src="${mediaUrl(pack.image)}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.07]" onerror="this.onerror=null;imgErrorChain(this);">
                             <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
                             <div class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"></div>
                             <div class="absolute top-1.5 right-1.5 origin-top-right scale-[0.78] sm:scale-100 sm:top-2.5 sm:right-2.5">${albumRingHTML(progressPct, 46, 4)}</div>
@@ -7511,7 +7611,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="album-in" style="animation-delay:${Math.min(i, 10) * 40}ms">
                     <div onclick="openAlbum('${pack.id}')" class="group flex items-center gap-3 sm:gap-4 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-2.5 sm:p-3 cursor-pointer transition-all duration-300 hover:border-emerald-500/40 hover:bg-slate-900 hover:shadow-xl hover:shadow-emerald-950/40">
                         <div class="relative w-14 sm:w-16 shrink-0 rounded-xl overflow-hidden shadow-md" style="aspect-ratio:0.53">
-                            <img src="${pack.image}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                            <img src="${mediaUrl(pack.image)}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" onerror="this.onerror=null;imgErrorChain(this);">
                             <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
                             ${done ? '<span class="absolute inset-0 flex items-center justify-center bg-slate-950/40"><i class="fa-solid fa-check text-amber-300 text-sm drop-shadow"></i></span>' : ''}
                         </div>
@@ -7610,7 +7710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                         <i class="fa-solid fa-arrow-left"></i>
                                     </button>
                                     <div class="w-12 h-[4.5rem] sm:w-14 sm:h-24 rounded-xl overflow-hidden border border-slate-700/70 shadow-lg shrink-0">
-                                        <img src="${pack.image}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                                        <img src="${mediaUrl(pack.image)}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;imgErrorChain(this);">
                                     </div>
                                     <div class="min-w-0 flex-1">
                                         <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300/80">Альбом</div>
@@ -7813,7 +7913,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             renderEl.style.transform = '';
             renderEl.className = `w-full card-aspect rounded-2xl border-2 shadow-2xl relative flex flex-col justify-between p-4 overflow-hidden transition-transform duration-100 ${getRarityClass(card.rarity)} ${cardHoloClass(card)}`;
             renderEl.innerHTML = `
-                <img src="${card.image}" alt="${card.name}" data-card-id="${card.id}" onerror="this.onerror=null;imgFallback(this);" class="absolute inset-0 w-full h-full object-cover z-0">
+                <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/5 to-slate-950/20 z-10"></div>
 
                 ${Z.top}
@@ -8337,7 +8437,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 packs: state.packs.filter(p => !STANDARD_IDS[p.id]).map(p => Object.assign({}, p)),
                 cards: state.cards.filter(c => !STANDARD_IDS[c.id]).map(c => Object.assign({}, c)),
                 tombs: cloudTombsUnion(),
-                stdMod: cloudStdModUnion() // b37: курирование стандартного набора создателем
+                stdMod: cloudStdModUnion(), // b37: курирование стандартного набора создателем
+                mediaBase: mediaBase()     // b38: зеркало артов/музыки — настройка комнаты
             };
         }
         function cloudLimit() { return CLOUD.db ? 4000000 : 900000; }
@@ -8550,6 +8651,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 });
                 if (archived) cloudGuestArchiveSave(archive);
             }
+            // b38: зеркало медиа — настройка комнаты, но с приоритетами, чтобы свежая локальная
+            // настройка создателя не затиралась старым пустым значением из комнаты при слиянии:
+            // участник всегда следует комнате; создатель принимает комнатное значение, только если
+            // у него своего нет или своё получено из комнаты (иное он сейчас опубликует сам).
+            if (typeof remote.mediaBase === 'string') {
+                const rb = String(remote.mediaBase).trim().replace(/\/+$/, '');
+                const local = mediaBase();
+                const apply = cloudGuest()
+                    ? (rb !== local && (rb || mediaBaseFromRoom()))
+                    : (rb !== local && (rb || mediaBaseFromRoom()) && (!local || mediaBaseFromRoom()));
+                if (apply) { mediaBaseSet(rb, true); sum.media = 1; changed = true; }
+            }
             // b37: правки стандартного набора из комнаты (скрыть/вернуть)
             const remoteMod = cloudStdModPrune(remote.stdMod);
             try { LS.setItem(STD_MOD_REMOTE_KEY, JSON.stringify(remoteMod)); } catch (e) {}
@@ -8641,6 +8754,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     const m = cloudMerge(remote);
                     if (m) {
                         saveState(); refreshVisibleTabs();
+                        if (m.media) { // b38: приехало новое зеркало — обновляем поле и экран
+                            const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase();
+                        }
                         // b25: участник ВИДИТ, что изменения создателя прилетели (раньше слияние было молчаливым)
                         // b27: в т.ч. явно показываем удаления, сделанные создателем комнаты
                         if (!manual) {
@@ -8890,6 +9006,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room || CLOUD_DEFAULT_ROOM; // b26: код главной комнаты всегда подсказан
             const dbi = document.getElementById('cloud-db'); if (dbi) dbi.value = CLOUD.db;
+            const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase(); // b38
             const cb = document.getElementById('cloud-auto'); if (cb) cb.checked = cloudAuto();
             if (CLOUD.connected()) cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest'; // b23
             cloudStatus();
@@ -9035,7 +9152,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
                         <div class="flex items-center justify-between p-3">
                             <div class="flex items-center space-x-3 truncate">
-                                <img src="${p.image}" class="w-8 h-12 object-cover rounded" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                                <img src="${mediaUrl(p.image)}" class="w-8 h-12 object-cover rounded" onerror="this.onerror=null;imgErrorChain(this);">
                                 <div class="truncate">
                                     <h5 class="font-bold text-white text-sm truncate">${p.title}</h5>
                                     <p class="text-[10px] text-slate-400">${p.price} монет • <span class="inline-block w-2 h-2 rounded-full align-middle border border-black/60" style="background:${(PACK_COLORS[p.color] || PACK_COLORS.silver).swatch}"></span> ${(PACK_COLORS[p.color] || PACK_COLORS.silver).name} • ${(PACK_SHIMMERS[p.shimmer] || PACK_SHIMMERS.holo).name}${p.musicUrl ? ' • <i class="fa-solid fa-music text-fuchsia-400"></i> ' + (p.musicUrl.split('/').pop() || 'трек') : (p.musicOff ? ' • <i class="fa-solid fa-volume-xmark text-slate-600"></i> без музыки' : '')}</p>
@@ -9100,7 +9217,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return `
                 <div class="flex items-center justify-between bg-slate-950 p-3 rounded-xl border border-slate-800">
                     <div class="flex items-center space-x-3 truncate">
-                        <img src="${c.image}" class="w-8 h-12 object-cover rounded" onerror="this.onerror=null;imgFallback(this);" data-card-id="${c.id}">
+                        <img src="${mediaUrl(c.image)}" class="w-8 h-12 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}">
                         <div class="truncate">
                             <h5 class="font-bold text-white text-sm truncate">${c.name}</h5>
                             <p class="text-[10px] text-slate-400">${rarLabel} • <span class="text-amber-400">⚔${st.atk}</span> <span class="text-rose-400">❤${st.hp}</span></p>
@@ -9202,7 +9319,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <div class="booster-crimp booster-crimp-top"></div>
                     <div class="booster-crimp booster-crimp-bottom"></div>
                     <div class="booster-window">
-                        <img src="${image}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;this.src=sdwPackPlaceholder();">
+                        <img src="${mediaUrl(image)}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;imgErrorChain(this);">
                         <div class="booster-label">${title}</div>
                     </div>
                     <div class="booster-round"></div>
@@ -9456,7 +9573,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 </div>`;
             const z = cardTextZones(L, badge, nameHtml, descHtml, statsHtml);
             box.className = `relative z-10 w-full card-aspect rounded-xl overflow-hidden border-2 shadow-xl flex flex-col justify-between p-2.5 ${getRarityClass(rarity)} ${cardHoloClass(fake)}`;
-            box.innerHTML = `${image ? `<img src="${image}" alt="" onerror="this.style.display='none'" class="absolute inset-0 w-full h-full object-cover z-0">` : ''}
+            box.innerHTML = `${image ? `<img src="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)" class="absolute inset-0 w-full h-full object-cover z-0">` : ''}
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
                 ${z.top}${z.bottom}${cardShineOverlay(fake, 25)}`;
             applyCardAura(document.getElementById('card-preview-aura'), fake, 'aura-preview');
@@ -9517,6 +9634,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (canClaimDaily()) {
                 setTimeout(openDailyModal, 700);
             }
+            // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
+            try {
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b45') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b45');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b45', 'success'), 1200);
+                }
+            } catch (e) {}
             // Облачная синхронизация общего каталога паков
             cloudInit();
         };
