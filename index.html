@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" onclick="nxShowDiag()" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b63</div>
+    <div id="build-badge" onclick="nxShowDiag()" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b64</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1677,7 +1677,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b63</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b64</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -2113,7 +2113,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); return; }
             SoundFX.play('click');
             PackMusic.play(url);
-            setTimeout(() => { if (!PackMusic.session) PackMusic.stop(); }, 8000);
+            setTimeout(() => { try { if (!PackMusic.session) PackMusic.stop(); } catch (e) {} }, 8000);
         }
         function stopPackMusicPreview() { PackMusic.stop(); }
 
@@ -2159,7 +2159,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); updateStudioMusicUI(); return; }
             SoundFX.play('click');
             PackMusic.play(url);
-            setTimeout(() => { if (!PackMusic.session) PackMusic.stop(); }, 8000);
+            setTimeout(() => { try { if (!PackMusic.session) PackMusic.stop(); } catch (e) {} }, 8000);
             showToast('\u{1F3B5} Проверяем трек… 8 секунд', 'success');
         }
 
@@ -2274,7 +2274,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); return; }
             try { SoundFX.play('click'); } catch (e) {}
             PackMusic.play(url);
-            setTimeout(() => { if (!PackMusic.session) PackMusic.stop(); }, 8000);
+            setTimeout(() => { try { if (!PackMusic.session) PackMusic.stop(); } catch (e) {} }, 8000);
         }
 
         // ---- форма пака: стереть поле mp3 + подсказка, какой трек возьмётся ----
@@ -3250,7 +3250,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b63</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b64</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -11049,7 +11049,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const url = inp ? String(inp.value || '').trim() : '';
             if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); return; }
             CardMusic.play(url);
-            setTimeout(() => { if (CardMusic.url === url) CardMusic.stop(); }, 8000);
+            setTimeout(() => { try { if (CardMusic.url === url) CardMusic.stop(); } catch (e) {} }, 8000);
             showToast('\u{1F3B5} Слушаем трек… 8 секунд', 'success');
         }
         function stopCardMusicPreview() { CardMusic.stop(); }
@@ -11146,14 +11146,17 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b63',
+                build: '02.10-b64',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
                 orient: (screen.orientation && screen.orientation.type) || (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'),
                 tab: (['store', 'albums', 'battle', 'rewards', 'studio'].find(t => { const el = document.getElementById('tab-' + t); return el && !el.classList.contains('hidden'); }) || '?'),
                 modals: ['modal-unboxing', 'modal-inspect', 'modal-export', 'modal-reset', 'modal-pack3d', 'modal-daily'].filter(id => { const m = document.getElementById(id); return m && !m.classList.contains('hidden'); }),
-                trail: NX_TRAIL.slice()
+                trail: NX_TRAIL.slice(),
+                // b64: даже когда браузер маскирует текст ошибки, объект ошибки иногда
+                // доступен — его стек точно указывает на место сбоя
+                stack: window._nxLastStack || undefined
             };
             try {
                 const log = JSON.parse(localStorage.getItem('nexus_errlog') || '[]');
@@ -11166,7 +11169,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b63:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b64:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -11194,12 +11197,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 let detail = String(ev.message || 'неизвестная');
                 if (ev.lineno) detail += ' (строка ' + ev.lineno + (ev.colno ? ':' + ev.colno : '') + ')';
                 if (ev.error && ev.error.stack) { try { console.error('NX ERROR STACK:', ev.error.stack); } catch (e) {} }
+                window._nxLastStack = (ev.error && ev.error.stack) || undefined; // b64: для чёрного ящика
                 nxErrorToast(detail);
             } catch (e) {}
         }, true);
         window.addEventListener('unhandledrejection', function(ev) {
             try {
                 const r = ev.reason;
+                window._nxLastStack = (r && r.stack) || undefined; // b64
                 nxErrorToast(String((r && r.message) || r || 'неизвестная (promise)'));
             } catch (e) {}
         });
@@ -11239,9 +11244,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b63') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b63');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b63', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b64') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b64');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b64', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
