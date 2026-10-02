@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" onclick="nxShowDiag()" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b64</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b64</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -11164,7 +11164,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 while (log.length > 5) log.shift();
                 localStorage.setItem('nexus_errlog', JSON.stringify(log));
             } catch (e) {}
+            try { nxBadgeMark(); } catch (e) {}
             return rec;
+        }
+        // b65: тихий индикатор: если за сессию были ошибки — надпись сборки розовеет.
+        // Ничего не всплывает; тап по надписи = диагностика.
+        function nxBadgeMark() {
+            const b = document.getElementById('build-badge');
+            if (b && !b.dataset.err) {
+                b.dataset.err = '1';
+                b.style.color = 'rgba(251,113,133,.8)';
+                b.title = 'Были ошибки — тап: диагностика';
+            }
         }
         function nxShowDiag() {
             try {
@@ -11174,20 +11185,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 alert(txt);
             } catch (e) {}
         }
-        let nxErrLast = null, nxErrToast = null;
+        // b65: всплывающие уведомления об ошибках УБРАНЫ — они только пугали и
+        // заслоняли экран. Любая пойманная ошибка теперь молча пишется в «чёрный ящик»
+        // (localStorage nexus_errlog + консоль), а надпись сборки внизу подсвечивается,
+        // если за сессию были ошибки: тап по ней покажет диагностику.
         function nxErrorToast(text) {
             try { nxDiag(text); } catch (e) {}
-            const now = Date.now();
-            if (nxErrLast && nxErrLast.msg === text && now - nxErrLast.t < 6000) {
-                nxErrLast.t = now; nxErrLast.n++;
-                if (nxErrToast && nxErrToast.isConnected) {
-                    const sp = nxErrToast.querySelector('span');
-                    if (sp) sp.textContent = '⚠️ Ошибка: ' + text + ' — сообщите разработчику (×' + nxErrLast.n + ')';
-                }
-                return;
-            }
-            nxErrLast = { msg: text, t: now, n: 1 };
-            nxErrToast = showToast('⚠️ Ошибка: ' + text + ' — сообщите разработчику', 'error');
+            try { console.error('NX ERROR:', text); } catch (e) {}
         }
         window.addEventListener('error', function(ev) {
             try {
@@ -11208,6 +11212,34 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 nxErrorToast(String((r && r.message) || r || 'неизвестная (promise)'));
             } catch (e) {}
         });
+        // b65: тап по надписи сборки внизу экрана = показать «чёрный ящик» (журнал
+        // ошибок с ориентацией экрана, вкладкой и открытыми модалками на момент сбоя).
+        // Всплывающих тостов об ошибках больше нет вовсе.
+        (function () {
+            const b = document.getElementById('build-badge');
+            if (!b) return;
+            b.style.pointerEvents = 'auto';
+            b.addEventListener('click', function () {
+                let txt = '';
+                try {
+                    const log = JSON.parse(localStorage.getItem('nexus_errlog') || '[]');
+                    if (!log.length) {
+                        txt = 'Сборка 02.10-b64. Журнал ошибок пуст.';
+                    } else {
+                        txt = 'Сборка 02.10-b64. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                            '• ' + String(r.at || '').slice(11, 19) +
+                            ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
+                            (r.tab ? ' вкладка:' + r.tab : '') +
+                            (r.modals && r.modals.length ? ' модалки:' + r.modals.join(',') : '') +
+                            (r.trail && r.trail.length ? '\n   было: ' + r.trail.slice(-3).join(' → ') : '') +
+                            '\n   ' + (r.msg || '') +
+                            (r.stack ? '\n   стек: ' + String(r.stack).split('\n').slice(0, 3).join(' | ') : '')
+                        ).join('\n');
+                    }
+                } catch (e) { txt = 'Журнал недоступен: ' + String(e && e.message || e); }
+                try { alert(txt); } catch (e) {}
+            });
+        })();
 
         window.onload = function() {
           // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
