@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b65</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b66</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1677,7 +1677,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b65</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b66</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -11146,7 +11146,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b65',
+                build: '02.10-b66',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -11182,7 +11182,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b65:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b66:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -11209,6 +11209,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     try {
                         const n = parseInt(localStorage.getItem('nexus_ext_masked') || '0', 10) + 1;
                         localStorage.setItem('nexus_ext_masked', String(n));
+                        // b66: запоминаем адрес внешнего скрипта, если браузер его отдаёт
+                        if (ev.filename && !localStorage.getItem('nexus_ext_src')) {
+                            localStorage.setItem('nexus_ext_src', String(ev.filename));
+                        }
                     } catch (e) {}
                     return;
                 }
@@ -11238,13 +11242,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 let txt = '';
                 try {
                     const log = JSON.parse(localStorage.getItem('nexus_errlog') || '[]');
-                    let ext = 0;
+                    let ext = 0, extSrc = '';
                     try { ext = parseInt(localStorage.getItem('nexus_ext_masked') || '0', 10) || 0; } catch (e) {}
-                    const extLine = ext ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' : '';
+                    try { extSrc = localStorage.getItem('nexus_ext_src') || ''; } catch (e) {}
+                    const extLine = ext
+                        ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
+                        : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b65. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b66. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b65. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b66. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -11264,8 +11271,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
           // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
           // игра продолжит работу и покажет ПОДРОБНОСТЬ (со стеком в консоли), а не молчаливый «Script error.»
           try {
-            // b65: счётчик внешних маскированных событий — за текущую сессию
-            try { localStorage.setItem('nexus_ext_masked', '0'); } catch (e) {}
+            // b66: при смене сборки старый журнал очищается — записи прошлых версий
+            // не путают; счётчик внешних событий живёт одну сессию
+            try {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b66') {
+                    localStorage.removeItem('nexus_errlog');
+                    localStorage.removeItem('nexus_ext_src');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b66');
+                }
+                localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
+            } catch (e) {}
             initHiddenTab(); // скрытый раздел: прячем кнопки навигации и вешаем жест на «Награды»
             // b47: шахта — офлайн-добыча за прошлый период и запуск тика
             try {
@@ -11297,9 +11312,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b65') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b65');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b65', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b66') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b66');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b66', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
