@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b63</div>
+    <div id="build-badge" onclick="nxShowDiag()" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b63</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -2340,6 +2340,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // предел памяти на планшете) — останавливаем цикл и показываем ОДИН тост,
         // вместо исключений на каждом кадре rAF
         function nx3dLoopBail(tag, e, stopFn) {
+            nxTrail('bail:' + tag);
             try { stopFn && stopFn(); } catch (e2) {}
             try { console.error('3d loop ' + tag, e); } catch (e2) {}
             try { nxErrorToast('3D-цикл остановлен (' + tag + '): ' + String((e && e.message) || e)); } catch (e2) {}
@@ -2350,13 +2351,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
             try {
                 renderer.domElement.addEventListener('webglcontextlost', function (ev) {
                     ev.preventDefault();
+                    nxTrail('ctxlost:' + tag);
                     try { onLost && onLost(); } catch (e) {}
                     try { nxErrorToast('браузер освободил 3D-контекст (' + tag + ') — сцена переведена в плоский режим'); } catch (e) {}
                 }, false);
             } catch (e) {}
         }
-        window.addEventListener('resize', () => { clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 200); });
-        window.addEventListener('orientationchange', () => { clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 350); });
+        window.addEventListener('resize', () => { nxTrail('resize ' + window.innerWidth + 'x' + window.innerHeight); clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 200); });
+        window.addEventListener('orientationchange', () => { nxTrail('orientchange'); clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 350); });
         function nx3dFitZ(camera, halfW, halfH, desktopZ) {
             const a = camera.aspect || 1;
             if (a >= 1) return desktopZ; // десктоп: оставляем авторскую дистанцию
@@ -2998,6 +3000,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function openPack3D(pack, cards) {
+            nxTrail('3d-open');
             const modal = document.getElementById('modal-pack3d');
             const container = document.getElementById('pack3d-container');
             modal.classList.remove('hidden');
@@ -3027,6 +3030,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             try {
                 renderer.domElement.addEventListener('webglcontextlost', function (ev) {
                     ev.preventDefault();
+                    nxTrail('ctxlost:pack3d');
                     if (pack3d) { try { finishPack3D(); } catch (e) {} }
                     else {
                         try { modal.classList.add('hidden'); container.innerHTML = ''; showUnboxingUI(pack, cards); } catch (e) {}
@@ -3346,6 +3350,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function finishPack3D() {
             if (!pack3d) return;
+            nxTrail('3d-finish');
             const { pack, cards, renderer, animId, clickHandler, scene } = pack3d;
             cancelAnimationFrame(animId);
             try { renderer.domElement.removeEventListener('click', clickHandler); } catch (e) {}
@@ -7622,6 +7627,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function switchTab(tabId) {
+            nxTrail('tab:' + tabId);
             // скрытый раздел недоступен, пока не открыт жестом
             if (tabId === HIDDEN_TAB && !isHiddenTabUnlocked()) {
                 applyHiddenTabVisibility();
@@ -8191,6 +8197,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         });
 
         function buyPack(packId) {
+            nxTrail('buy:' + packId);
             const pack = state.packs.find(p => p.id === packId);
             if (!pack) return;
             if (state.coins < pack.price) {
@@ -8269,6 +8276,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function showUnboxingUI(pack, cards) {
+            nxTrail('unbox2d');
             currentUnboxingCards = cards;
 
             document.getElementById('unboxing-title').innerText = `Вскрытие пака: ${pack.title}`;
@@ -11125,8 +11133,47 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // b62: единый репортёр ошибок. На локальных файлах (file://) браузеры маскируют
         // текст исключения в «Script error.», поэтому добавляем номер строки и стек в консоль,
         // а одинаковые ошибки не складываем стопкой тостов, а считаем повторы (×N).
+        // b63: «чёрный ящик»: последние 12 событий перед ошибкой (вкладки, повороты,
+        // вскрытия) + контекст (ориентация, размеры, открытые модалки) пишутся в
+        // localStorage. Тап по надписи сборки внизу экрана — показать/скопировать
+        // диагностику, чтобы прислать разработчику точный контекст сбоя.
+        const NX_TRAIL = [];
+        function nxTrail(tag) {
+            try {
+                NX_TRAIL.push(Math.round((Date.now() % 86400000) / 1000) + 's ' + tag);
+                if (NX_TRAIL.length > 12) NX_TRAIL.shift();
+            } catch (e) {}
+        }
+        function nxDiag(msg) {
+            const rec = {
+                build: '02.10-b63',
+                at: new Date().toISOString(),
+                msg: String(msg || ''),
+                vw: window.innerWidth, vh: window.innerHeight,
+                orient: (screen.orientation && screen.orientation.type) || (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'),
+                tab: (['store', 'albums', 'battle', 'rewards', 'studio'].find(t => { const el = document.getElementById('tab-' + t); return el && !el.classList.contains('hidden'); }) || '?'),
+                modals: ['modal-unboxing', 'modal-inspect', 'modal-export', 'modal-reset', 'modal-pack3d', 'modal-daily'].filter(id => { const m = document.getElementById(id); return m && !m.classList.contains('hidden'); }),
+                trail: NX_TRAIL.slice()
+            };
+            try {
+                const log = JSON.parse(localStorage.getItem('nexus_errlog') || '[]');
+                log.push(rec);
+                while (log.length > 5) log.shift();
+                localStorage.setItem('nexus_errlog', JSON.stringify(log));
+            } catch (e) {}
+            return rec;
+        }
+        function nxShowDiag() {
+            try {
+                const log = localStorage.getItem('nexus_errlog') || '[]';
+                const txt = 'Диагностика сборка 02.10-b63:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
+                alert(txt);
+            } catch (e) {}
+        }
         let nxErrLast = null, nxErrToast = null;
         function nxErrorToast(text) {
+            try { nxDiag(text); } catch (e) {}
             const now = Date.now();
             if (nxErrLast && nxErrLast.msg === text && now - nxErrLast.t < 6000) {
                 nxErrLast.t = now; nxErrLast.n++;
