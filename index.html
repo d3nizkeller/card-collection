@@ -688,7 +688,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 30.09-b26</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b35</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1517,7 +1517,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 30.09-b26</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b35</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -3597,6 +3597,25 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 }
             });
             try { LS.setItem('nexus_restore_b31', '1'); } catch (e) {}
+            if (added) saveState();
+        })();
+        // b34: стандартный набор мог быть вырезан из сохранений надгробиями b27–b32 (они жили
+        // вечно и удаляли даже встроенные паки). Надгробия очищены лечением b33 и чисткой комнат,
+        // поэтому ещё раз досеваем недостающие стандартные паки/карты — иначе у части игроков
+        // магазин навсегда оставался бы «однопаковым», как у создателя комнаты.
+        (function migrateRestoreStandardB34() {
+            try { if (LS.getItem('nexus_restore_b34') === '1') return; } catch (e) { return; }
+            let added = false;
+            STANDARD_PACKS.forEach(p => {
+                if (!state.packs.some(x => x.id === p.id)) { state.packs.push(Object.assign({}, p)); added = true; }
+            });
+            STANDARD_CARDS.forEach(c => {
+                if (!state.cards.some(x => x.id === c.id)) {
+                    state.cards.push({ id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image });
+                    added = true;
+                }
+            });
+            try { LS.setItem('nexus_restore_b34', '1'); } catch (e) {}
             if (added) saveState();
         })();
         resolveMediaRefs();
@@ -8346,6 +8365,35 @@ Check your Browserslist config to be sure that your targets are set up correctly
             res.tooBig = res.size > limit;
             return res;
         }
+        // b35: доверие к каталогу комнаты. textdb пишет кто угодно, поэтому «зеркало» участника
+        // (удаление того, чего нет в комнате) включаем, только если пароль комнаты не исчезал:
+        // если в комнате был auth, а в ответе его нет — каталог мог подменить чужой запрос.
+        function cloudRoomAuthSeenSave(remote) {
+            try {
+                if (remote && remote.auth && remote.auth.hash) {
+                    LS.setItem('nexus_cloud_authseen_' + CLOUD.room, JSON.stringify({ login: remote.auth.login, hash: String(remote.auth.hash) }));
+                }
+            } catch (e) {}
+        }
+        function cloudRoomTrust(remote) {
+            if (!remote || !remote.v) return false;
+            if (!Array.isArray(remote.packs) || !Array.isArray(remote.cards)) return false;
+            let seen = null;
+            try { seen = JSON.parse(LS.getItem('nexus_cloud_authseen_' + CLOUD.room) || 'null'); } catch (e) {}
+            if (seen && seen.hash && !(remote.auth && remote.auth.hash)) return false; // пароль комнаты «исчез» — не верим
+            return true;
+        }
+        // b35: то, что у участника убрано как «не входящее в комнату», не исчезает бесследно —
+        // складывается в локальный архив (до 100 паков / 300 карт), чтобы контент можно было вернуть.
+        function cloudGuestArchive() {
+            try {
+                const a = JSON.parse(LS.getItem('nexus_guest_archive') || 'null');
+                return (a && Array.isArray(a.packs) && Array.isArray(a.cards)) ? a : { packs: [], cards: [] };
+            } catch (e) { return { packs: [], cards: [] }; }
+        }
+        function cloudGuestArchiveSave(a) {
+            try { LS.setItem('nexus_guest_archive', JSON.stringify({ packs: (a.packs || []).slice(-100), cards: (a.cards || []).slice(-300) })); } catch (e) {}
+        }
         function cloudRemoteTombsCache() {
             try { return cloudTombPrune(JSON.parse(LS.getItem('nexus_cloud_remote_tombs') || '[]')); } catch (e) { return []; }
         }
@@ -8407,6 +8455,33 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (i < 0) { rc.fromRoom = 1; state.cards.push(rc); sum.add++; changed = true; }
                 else if ((rc.updatedAt || 0) > (state.cards[i].updatedAt || 0)) { rc.fromRoom = 1; state.cards[i] = rc; sum.upd++; changed = true; }
             });
+            // b35: ЗЕРКАЛО КОМНАТЫ У УЧАСТНИКА. Участник не публикует ничего своего, поэтому для
+            // него каталог комнаты — источник истины по ВСЕМУ пользовательскому контенту: чего нет
+            // в комнате, того нет и у него (иначе устройства игроков навсегда расходились бы с
+            // комнатой: «у создателя 1 пак, у игроков 5»). Свои локальные паки, созданные до входа
+            // в комнату, не уничтожаем бесследно — складываем в локальный архив nexus_guest_archive.
+            // На создателя правило не действует: его локальный каталог и есть каталог комнаты.
+            if (cloudGuest() && cloudRoomTrust(remote)) {
+                sum.mirror = 0;
+                const archive = cloudGuestArchive();
+                let archived = false;
+                const inRoomP = {}, inRoomC = {};
+                (remote.packs || []).forEach(rp => { if (rp && rp.id) inRoomP[rp.id] = 1; });
+                (remote.cards || []).forEach(rc => { if (rc && rc.id) inRoomC[rc.id] = 1; });
+                state.packs.slice().forEach(p => {
+                    if (!p || !p.id || STANDARD_IDS[p.id] || inRoomP[p.id]) return;
+                    archive.packs.push(p); archived = true;
+                    dropPack(p.id); sum.mirror++; changed = true;
+                });
+                state.cards.slice().forEach(c => {
+                    if (!c || !c.id || STANDARD_IDS[c.id] || inRoomC[c.id]) return;
+                    archive.cards.push(c); archived = true;
+                    dropCardRefs(c.id);
+                    const ci = state.cards.indexOf(c);
+                    if (ci >= 0) { state.cards.splice(ci, 1); sum.del++; sum.mirror++; changed = true; }
+                });
+                if (archived) cloudGuestArchiveSave(archive);
+            }
             // b33: надгробия — единственный источник удалений (создатель удалил → у всех удалено)
             tombs.forEach(t => {
                 const isPack = state.packs.some(p => p.id === t.id && !STANDARD_IDS[p.id] && (p.updatedAt || 0) < t.at);
@@ -8464,6 +8539,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             CLOUD.fetch().then(remote => {
                 const prevRole = cloudRole;
                 cloudResolveRole(remote); // b23: кто я в комнате — создатель или участник
+                cloudRoomAuthSeenSave(remote); // b35: запоминаем пароль комнаты для проверки доверия
                 // b32/b33: кешируем надгробия комнаты — при публикации объединяются с локальными
                 try { if (remote && Array.isArray(remote.tombs)) LS.setItem('nexus_cloud_remote_tombs', JSON.stringify(cloudTombPrune(remote.tombs))); } catch (e) {}
                 if (remote && remote.v) {
@@ -8477,11 +8553,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             if (m.del) bits.push(`🗑 удалено создателем: ${m.del}`);
                             if (m.add) bits.push(`новых: ${m.add}`);
                             if (m.upd) bits.push(`обновлено: ${m.upd}`);
+                            if (m.mirror) bits.push(`не из комнаты: ${m.mirror} (сохранено в архив)`);
                             showToast('☁️ Обновление из комнаты ' + cloudEsc(CLOUD.room) + (bits.length ? ': ' + bits.join(', ') : ': изменения применены'), 'success');
                         }
                     }
                 }
                 CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
+                cloudOwnerReconcile(remote); // b35: контент создателя доезжает до комнаты даже без правок
                 if (CLOUD.promptAuth) { // b24: только что подключились — при необходимости сразу просим пароль
                     CLOUD.promptAuth = false;
                     if (CLOUD.needAuth && cloudRole === 'owner' && !cloudAuthFormMode) cloudAuthOpen('set');
@@ -8540,6 +8618,26 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 clearTimeout(cloudPushT); cloudPushT = null;
                 if (CLOUD.flush(fit.cat)) cloudDirtyClear(); // beacon принят браузером — считаем доставленным
             } catch (e) {}
+        }
+        // b35: СВЕРКА СОЗДАТЕЛЯ. Раньше каталог уезжал в комнату только после правки в Студии,
+        // поэтому устройство с готовым контентом и пустой комнатой молча расходилось с игроками.
+        // Теперь после каждого получения данных сравниваем локальный каталог с комнатным:
+        // всё своё, чего в комнате нет, помечаем к публикации (публикация объединяет, а не затирает).
+        function cloudOwnerReconcile(remote) {
+            if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady()) return;
+            const inRoomP = {}, inRoomC = {};
+            ((remote && Array.isArray(remote.packs)) ? remote.packs : []).forEach(x => { if (x && x.id) inRoomP[x.id] = 1; });
+            ((remote && Array.isArray(remote.cards)) ? remote.cards : []).forEach(x => { if (x && x.id) inRoomC[x.id] = 1; });
+            let diff = 0;
+            state.packs.forEach(p => { if (p && p.id && !STANDARD_IDS[p.id] && !inRoomP[p.id]) diff++; });
+            state.cards.forEach(c => { if (c && c.id && !STANDARD_IDS[c.id] && !inRoomC[c.id]) diff++; });
+            if (!diff) return;
+            cloudDirtySet();
+            cloudStatus();
+            if (cloudAuto() && !cloudPushT && !cloudPushBusy) {
+                clearTimeout(cloudPushT);
+                cloudPushT = setTimeout(() => { cloudPushT = null; cloudPushNow({ quiet: true }); }, 1500);
+            }
         }
         // b25: получили данные из облака — если остались неопубликованные правки, отправляем их следом
         function cloudAfterPull() {
