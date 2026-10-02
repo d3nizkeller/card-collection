@@ -556,7 +556,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             position: absolute; inset: 0;
             display: flex; align-items: center; justify-content: center; text-align: center;
             font-weight: 900; color: rgba(255, 255, 255, .55);
-            letter-spacing: .25em; font-size: 16px; line-height: 1.8;
+            letter-spacing: .18em; font-size: 12px; line-height: 1.8;
             text-shadow: 0 2px 8px #000;
         }
         .pack3d-rim { position: absolute; background: var(--pk-rim, linear-gradient(90deg, #868c9c, #e6e9f0, #868c9c)); }
@@ -691,10 +691,19 @@ Check your Browserslist config to be sure that your targets are set up correctly
         @media (max-width: 400px) {
             .carousel-stage { height: 300px; }
         }
+        /* b53: анимации сеточного слота */
+        @keyframes gridDrop { from { transform: translateY(-46px) scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+        @keyframes gridWin { 0%,100% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.08); filter: brightness(1.7); } }
+        @keyframes gridBurst { to { transform: scale(1.28) rotate(5deg); opacity: 0; } }
+        @keyframes gridChainPop { 0% { transform: scale(.6); opacity: 0; } 25% { transform: scale(1.15); opacity: 1; } 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
+        .grid-anim-drop { animation: gridDrop .45s cubic-bezier(.2,.9,.3,1.25) both; }
+        .grid-anim-win { animation: gridWin .45s ease-in-out 2; }
+        .grid-anim-burst { animation: gridBurst .35s ease-in forwards; }
+        .grid-chain.go { animation: gridChainPop 1.1s ease-out both; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b46</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b57</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -771,7 +780,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <nav class="hidden lg:flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                     <button onclick="switchTab('store')" id="nav-store" class="px-3 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-600 text-white shadow">Магазин</button>
                     <button onclick="switchTab('albums')" id="nav-albums" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Альбомы</button>
-                    <button onclick="switchTab('battle')" id="nav-battle" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Бой</button>
+                    <button onclick="switchTab('battle')" id="nav-battle" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Игры</button>
                     <button onclick="switchTab('rewards')" id="nav-rewards" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Награды</button>
                     <button onclick="switchTab('studio')" id="nav-studio" style="display:none" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Студия</button>
                 </nav>
@@ -787,7 +796,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <i class="fa-solid fa-book-open text-[15px] mb-0.5"></i> Альбомы
             </button>
             <button onclick="switchTab('battle')" id="mob-nav-battle" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
-                <i class="fa-solid fa-hand-fist text-[15px] mb-0.5"></i> Бой
+                <i class="fa-solid fa-gamepad text-[15px] mb-0.5"></i> Игры
             </button>
             <button onclick="switchTab('rewards')" id="mob-nav-rewards" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-gift text-[15px] mb-0.5"></i> Награды
@@ -882,11 +891,144 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="flex flex-wrap items-center gap-2">
                     <button onclick="setBattleMode('arena')" id="mode-arena-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-rose-600 text-white shadow"><i class="fa-solid fa-hand-fist mr-1.5"></i>Арена</button>
                     <button onclick="setBattleMode('durak')" id="mode-durak-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-diamond mr-1.5"></i>Дурак</button>
+                    <button onclick="setBattleMode('miner')" id="mode-miner-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-helmet-safety mr-1.5"></i>Шахта</button>
+                    <button onclick="setBattleMode('slots')" id="mode-slots-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-lemon mr-1.5"></i>Слоты</button>
+                    <button onclick="setBattleMode('grid')" id="mode-grid-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-border-all mr-1.5"></i>Сетка</button>
+                </div>
+                <!-- b49: 3D-игровой автомат: на барабанах крутятся карты сайта -->
+                <div id="lobby-slots" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-lemon text-fuchsia-400 mr-2"></i>Игровые автоматы: Слоты</h2>
+                                <p class="text-sm text-slate-400 mt-1">На 3D-барабанах крутятся карты сайта. Три одинаковых — джекпот по редкости (×8…×30), две одинаковые — ×2. Ставка и выигрыш идут в общий баланс.</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Баланс</p>
+                                <p id="slots-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
+                            </div>
+                        </div>
+                        <!-- b56: банк джекпота -->
+                        <div class="mt-3 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-slate-950/70 to-amber-500/10 px-3 py-2 flex flex-wrap items-center gap-2 justify-between">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-amber-300"><i class="fa-solid fa-crown mr-1"></i>Джекпот</span>
+                            <span id="slots-jackpot" class="font-mono text-lg sm:text-xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,.45)]">0</span>
+                            <span class="text-[9px] text-slate-500">три символа JACKPOT подряд на барабанах — весь банк ваш; банк кормят 2% каждой ставки и +25% ставки с каждого проигрыша</span>
+                        </div>
+                        <div id="slots-container" class="relative mt-4 rounded-xl overflow-hidden bg-slate-950/70 border border-slate-800" style="height:520px"></div>
+                        <div id="slots-fallback" class="hidden grid grid-cols-3 gap-2 mt-4"></div>
+                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
+                            <span id="slots-bets" class="inline-flex items-center gap-1.5"></span>
+                            <button id="slots-spin" onclick="slotsSpin()" class="ml-auto px-5 py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
+                            <span id="slots-last">Последний выигрыш: —</span>
+                            <span id="slots-stats" class="ml-auto font-mono text-slate-500">спинов: 0 • побед: 0</span>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Выплаты: пара — ×2; три обычных — ×8, редких — ×12, эпических — ×18, легендарных — ×30 от ставки. Три символа JACKPOT подряд — весь банк джекпота.</p>
+                    </div>
+                </div>
+                <!-- b53: сеточный слот 5×4 с каскадами, как в референсе, но с нашими вертикальными картами -->
+                <div id="lobby-grid" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-b from-violet-950/60 via-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-violet-500/30 relative overflow-hidden">
+                        <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-violet-500/20 to-transparent"></div>
+                        <div class="relative flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-border-all text-violet-400 mr-2"></i>Сеточный слот: Коллекция карт</h2>
+                                <p class="text-[11px] text-violet-200/90 mt-1 font-black uppercase tracking-wider">Выиграйте до ×360 от ставки: 8+ одинаковых карт где угодно на поле</p>
+                                <p class="text-xs text-slate-400 mt-1">Выигрышные ячейки взрываются и досыпаются каскадом — каждая цепь усиливает выплату: ×1.5, ×2, ×3, ×5, ×8.</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Баланс</p>
+                                <p id="grid-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
+                            </div>
+                        </div>
+                        <!-- b56: банк джекпота -->
+                        <div class="mt-3 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-slate-950/70 to-amber-500/10 px-3 py-2 flex flex-wrap items-center gap-2 justify-between">
+                            <span class="text-[10px] font-black uppercase tracking-wider text-amber-300"><i class="fa-solid fa-crown mr-1"></i>Джекпот</span>
+                            <span id="grid-jackpot" class="font-mono text-lg sm:text-xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,.45)]">0</span>
+                            <span class="text-[9px] text-slate-500">3+ карт JACKPOT где угодно на поле — весь банк ваш; банк кормят 2% каждой ставки и +25% ставки с каждого проигрыша</span>
+                        </div>
+                        <div id="grid3d-box" class="relative mt-4 rounded-xl border-2 border-amber-500/40 bg-violet-950/40 overflow-hidden shadow-inner shadow-black/60 hidden" style="height:560px">
+                            <div id="grid3d-container" class="absolute inset-0"></div>
+                            <div id="grid-chain-3d" class="grid-chain pointer-events-none absolute inset-x-0 top-1/3 z-20 text-center text-2xl sm:text-3xl font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,.9)] opacity-0"></div>
+                        </div>
+                        <div id="grid-dom-frame" class="relative mt-4 rounded-xl border-2 border-amber-500/40 bg-violet-950/40 p-2 sm:p-3 shadow-inner shadow-black/60">
+                            <div id="grid-chain" class="grid-chain pointer-events-none absolute inset-x-0 top-1/3 z-20 text-center text-2xl sm:text-3xl font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,.9)] opacity-0"></div>
+                            <div id="grid-wrap" class="grid grid-cols-5 gap-1.5 sm:gap-2"></div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
+                            <span id="grid-bets" class="inline-flex items-center gap-1.5"></span>
+                            <button id="grid-spin" onclick="gridSpin()" class="ml-auto px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
+                            <span id="grid-last">Последний выигрыш: —</span>
+                            <span id="grid-stats" class="ml-auto font-mono text-slate-500">спинов: 0 • побед: 0</span>
+                        </div>
+                        <!-- b55: правила игры прямо под полем — чтобы всё было понятно -->
+                        <details class="mt-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-[11px] leading-relaxed text-slate-300" open>
+                            <summary class="cursor-pointer font-black text-slate-100 text-xs uppercase tracking-wider"><i class="fa-solid fa-book-open text-violet-400 mr-1"></i>Правила игры</summary>
+                            <ul class="list-disc pl-5 mt-2 space-y-1">
+                                <li>Ставка списывается из общего баланса при каждом спине, выигрыш возвращается туда же.</li>
+                                <li>Выигрыш — <b class="text-white">8 и более одинаковых карт где угодно</b> на поле 5×4, линии не нужны.</li>
+                                <li>Выплата за группу: 8–9 карт — ×2, 10–11 — ×5, 12+ — ×15 от ставки, и всё это умножается на редкость: обычная ×1, редкая ×1.5, эпическая ×2, легендарная ×3.</li>
+                                <li>Выигрышные карты мигают, взрываются, и сверху падают новые — это каскад: каждая следующая цепь умножает выплату на ×1.5, ×2, ×3, ×5, ×8.</li>
+                                <li>Несколько групп одинаковых карт в одном спине складываются.</li>
+                                <li>Максимальная выплата за спин — ×360 от ставки.</li>
+                                <li><b class="text-amber-300">Джекпот:</b> 3+ золотых карт JACKPOT где угодно на поле — весь банк ваш. Банк пополняется на 2% с каждой ставки в Слотах и Сетке, а каждый проигрышный спин добавляет в него ещё +25% ставки — чем дольше не везёт, тем ближе джекпот.</li>
+                            </ul>
+                        </details>
+                    </div>
+                </div>
+                <!-- b47: idle-шахта: монеты капают в баланс, улучшение кирки за монеты -->
+                <div id="lobby-miner" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-helmet-safety text-amber-400 mr-2"></i>Шахта «Коллекционер карт»</h2>
+                                <p class="text-sm text-slate-400 mt-1">Пассивная добыча: монеты капают в общий баланс каждую секунду — даже офлайн (до 2 часов). Улучшение кирки покупается за те же монеты: +1 монета/сек за уровень.</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Баланс</p>
+                                <p id="miner-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mt-4">
+                            <div class="rounded-xl bg-slate-950/60 border border-slate-800 p-2.5">
+                                <p class="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Добыча</p>
+                                <p id="miner-rate" class="text-lg font-black text-emerald-300 font-mono">1/сек</p>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/60 border border-slate-800 p-2.5">
+                                <p class="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Кирка</p>
+                                <p id="miner-lvl" class="text-lg font-black text-sky-300 font-mono">ур. 1</p>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/60 border border-slate-800 p-2.5">
+                                <p class="text-[9px] uppercase tracking-wider text-slate-500 font-bold">Всего добыто</p>
+                                <p id="miner-mined" class="text-lg font-black text-slate-200 font-mono">0</p>
+                            </div>
+                            <div class="rounded-xl bg-slate-950/60 border border-slate-800 p-2.5">
+                                <p class="text-[9px] uppercase tracking-wider text-slate-500 font-bold">До улучшения</p>
+                                <p id="miner-next" class="text-lg font-black text-amber-200 font-mono">0</p>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex items-center justify-between text-[10px] text-slate-500 font-bold mb-1">
+                                <span>Прогресс до улучшения</span>
+                                <span id="miner-prog-label" class="font-mono">0 / 100</span>
+                            </div>
+                            <div class="h-2 rounded-full bg-slate-800 overflow-hidden"><div id="miner-prog" class="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500" style="width:0%"></div></div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                            <button id="miner-btn" onclick="minerUpgrade()" class="px-4 py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — 100</button>
+                            <span class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Каждый уровень: +1 монета/сек. Цена растёт ×1.9.</span>
+                        </div>
+                    </div>
                 </div>
                 <div id="lobby-arena" class="space-y-6">
                 <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between gap-4 md:items-center">
                     <div>
-                        <h2 class="text-2xl font-black text-white tracking-tight">Арена Nexus</h2>
+                        <h2 class="text-2xl font-black text-white tracking-tight">Арена «Коллекционер карт»</h2>
                         <p class="text-sm text-slate-400 mt-1">Соберите колоду из 3–5 карт и сражайтесь с противниками за монеты!</p>
                         <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Статы карт зависят от редкости: обычные слабее, легендарные — мощнее всех.</p>
                     </div>
@@ -1527,7 +1669,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b46</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b57</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -2526,8 +2668,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 g.fillStyle = tg; g.fillRect(0, 0, W, TOP_H);
                 g.fillStyle = pal.crimp[1]; g.fillRect(0, TOP_H, W, 3);
                 g.textBaseline = 'middle';
-                g.textAlign = 'left'; g.fillStyle = '#f8fafc'; g.font = '700 25px Inter, sans-serif';
-                g.fillText('N E X U S   T C G', 26, TOP_H / 2 + 1);
+                g.textAlign = 'left'; g.fillStyle = '#f8fafc'; g.font = '700 20px Inter, sans-serif';
+                g.fillText('КОЛЛЕКЦИОНЕР КАРТ', 26, TOP_H / 2 + 1);
                 g.textAlign = 'right'; g.fillStyle = pal.crimpLight || '#e2e8f0'; g.font = '600 19px Inter, sans-serif';
                 g.fillText('SET • 26', W - 26, TOP_H / 2 + 1);
                 const bgd = g.createLinearGradient(0, BOT_Y, 0, H);
@@ -3025,7 +3167,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b46</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b57</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -3516,7 +3658,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'wins_25', icon: 'fa-medal', title: 'Гладиатор', desc: 'Выиграйте 25 боёв', reward: 600, check: s => s.stats.battlesWon >= 25, prog: s => [s.stats.battlesWon, 25] },
             { id: 'flawless', icon: 'fa-star', title: 'Безупречная победа', desc: 'Выиграйте бой, не потеряв ни одного бойца', reward: 250, check: s => s.stats.flawlessWins >= 1, prog: s => [Math.min(s.stats.flawlessWins, 1), 1] },
             { id: 'battle_streak3', icon: 'fa-fire', title: 'На волне побед', desc: 'Выиграйте 3 боя подряд на Арене', reward: 250, check: s => (s.stats.bestBattleStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestBattleStreak || 0, 3), 3] },
-            { id: 'champion_down', icon: 'fa-crown', title: 'Убийца королей', desc: 'Победите Чемпиона Nexus', reward: 800, check: s => (s.stats.championWins || 0) >= 1, prog: s => [Math.min(s.stats.championWins || 0, 1), 1] },
+            { id: 'champion_down', icon: 'fa-crown', title: 'Убийца королей', desc: 'Победите Чемпиона «Коллекционер карт»', reward: 800, check: s => (s.stats.championWins || 0) >= 1, prog: s => [Math.min(s.stats.championWins || 0, 1), 1] },
             { id: 'durak_win', icon: 'fa-diamond', title: 'Не дурак!', desc: 'Выиграйте партию в «Дурака»', reward: 150, check: s => (s.stats.durakWins || 0) >= 1, prog: s => [Math.min(s.stats.durakWins || 0, 1), 1] },
             { id: 'durak_streak3', icon: 'fa-fire', title: 'Серийный победитель', desc: '3 победы в «Дурака» подряд', reward: 200, check: s => (s.stats.bestDurakStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestDurakStreak || 0, 3), 3] }
         ];
@@ -4268,7 +4410,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'opp-2', name: 'Уличный дуэлянт', icon: 'fa-user-ninja', tier: 2, reward: 150, deckSize: 4, mult: 0.9, desc: 'Быстрый боец неоновых трущоб.', names: ['Уличный самурай', 'Клинок Неона', 'Подворотневый боец', 'Граффити-призрак'] },
             { id: 'opp-3', name: 'Кибер-рыцарь', icon: 'fa-shield-halved', tier: 3, reward: 250, deckSize: 5, mult: 1.05, desc: 'Бронированный воин цифрового ордена.', names: ['Кибер-оруженосец', 'Хром-страж', 'Рыцарь Сети', 'Лазерный копейщик', 'Бастион Файрвола'] },
             { id: 'opp-4', name: 'Мастер теней', icon: 'fa-hat-wizard', tier: 4, reward: 400, deckSize: 5, mult: 1.2, desc: 'Повелитель иллюзий и запретных техник.', names: ['Теневой клон', 'Сумеречная иллюзия', 'Ночной охотник', 'Тёмный ритуалист', 'Шёпот Бездны'] },
-            { id: 'opp-5', name: 'Чемпион Nexus', icon: 'fa-crown', tier: 5, reward: 700, deckSize: 6, mult: 1.4, desc: 'Непобеждённый чемпион Арены Nexus.', names: ['Титан Нексус', 'Аватар Вечности', 'Омега-страж', 'Корона Абсолюта', 'Сингулярность', 'Вечный Колосс'] }
+            { id: 'opp-5', name: 'Чемпион «Коллекционер карт»', icon: 'fa-crown', tier: 5, reward: 700, deckSize: 6, mult: 1.4, desc: 'Непобеждённый чемпион Арены «Коллекционер карт».', names: ['Титан Коллекции', 'Аватар Вечности', 'Омега-страж', 'Корона Абсолюта', 'Сингулярность', 'Вечный Колосс'] }
         ];
         const ENEMY_GRADIENTS = ['from-rose-500 to-orange-500', 'from-purple-500 to-fuchsia-500', 'from-blue-500 to-cyan-500', 'from-emerald-500 to-lime-500', 'from-amber-500 to-yellow-500', 'from-red-600 to-rose-500'];
         const STAT_RANGES = {
@@ -4306,12 +4448,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function setBattleMode(m) {
             battleMode = m;
-            const la = document.getElementById('lobby-arena'), ld = document.getElementById('lobby-durak');
+            const la = document.getElementById('lobby-arena'), ld = document.getElementById('lobby-durak'), lm = document.getElementById('lobby-miner'), lsl = document.getElementById('lobby-slots'), lg = document.getElementById('lobby-grid');
             if (la) la.classList.toggle('hidden', m !== 'arena');
             if (ld) ld.classList.toggle('hidden', m !== 'durak');
-            const ba = document.getElementById('mode-arena-btn'), bd = document.getElementById('mode-durak-btn');
+            if (lm) lm.classList.toggle('hidden', m !== 'miner');
+            if (lsl) lsl.classList.toggle('hidden', m !== 'slots');
+            if (lg) lg.classList.toggle('hidden', m !== 'grid');
+            const ba = document.getElementById('mode-arena-btn'), bd = document.getElementById('mode-durak-btn'), bm = document.getElementById('mode-miner-btn');
             if (ba) ba.className = m === 'arena' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-rose-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             if (bd) bd.className = m === 'durak' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-emerald-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            if (bm) bm.className = m === 'miner' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-amber-500 text-slate-950 shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            const bs = document.getElementById('mode-slots-btn');
+            if (bs) bs.className = m === 'slots' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-fuchsia-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            const bgd = document.getElementById('mode-grid-btn');
+            if (bgd) bgd.className = m === 'grid' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-violet-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            if (m === 'miner') renderMiner();
+            if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
+            if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
             if (m === 'durak') {
                 const w = document.getElementById('durak-wins-label'), l = document.getElementById('durak-loss-label');
                 if (w) w.innerText = state.stats.durakWins || 0;
@@ -4327,6 +4480,989 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
         }
 
+        // ============ b47: ШАХТА «КОЛЛЕКЦИОНЕР КАРТ» (idle-добыча во вкладке «Бой») ============
+        // Привязка к балансу прямая: добыча капает в state.coins каждую секунду,
+        // улучшение кирки покупается за те же монеты. 1 уровень = +1 монета/сек.
+        const MINER_KEY = 'nexus_miner';
+        const MINER_OFFLINE_CAP = 2 * 3600; // офлайн-прогресс ограничен 2 часами
+        function minerLoad() {
+            try {
+                const m = JSON.parse(LS.getItem(MINER_KEY) || 'null');
+                if (m && m.lvl >= 1) return { lvl: Math.floor(m.lvl), mined: Math.floor(m.mined || 0), last: m.last || Date.now() };
+            } catch (e) {}
+            return { lvl: 1, mined: 0, last: Date.now() };
+        }
+        let miner = minerLoad();
+        let minerTickT = null, minerTickN = 0;
+        function minerSave() { miner.last = Date.now(); try { LS.setItem(MINER_KEY, JSON.stringify(miner)); } catch (e) {} }
+        function minerRate() { return miner.lvl; } // 1 сек = 1 монета × уровень
+        function minerCost() { return Math.floor(100 * Math.pow(1.9, miner.lvl - 1)); }
+        function minerDur(sec) {
+            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+            return h ? (h + ' ч ' + m + ' мин') : (m + ' мин ' + (sec % 60) + ' сек');
+        }
+        function minerOffline() {
+            const sec = Math.min(MINER_OFFLINE_CAP, Math.max(0, Math.floor((Date.now() - miner.last) / 1000)));
+            if (sec > 5) {
+                const gain = sec * minerRate();
+                state.coins += gain; miner.mined += gain;
+                return { sec: sec, gain: gain };
+            }
+            return null;
+        }
+        function minerTick() {
+            const r = minerRate();
+            state.coins += r; miner.mined += r;
+            updateCoinDisplay();
+            if (++minerTickN % 5 === 0) { minerSave(); saveState(); }
+        }
+        function minerStart() {
+            if (minerTickT) return;
+            minerTickT = setInterval(minerTick, 1000);
+            try {
+                window.addEventListener('pagehide', minerSave);
+                document.addEventListener('visibilitychange', () => { if (document.hidden) minerSave(); });
+            } catch (e) {}
+        }
+        function minerUpgrade() {
+            const c = minerCost();
+            if (state.coins < c) { showToast('Не хватает монет: улучшение стоит ' + fmtCoins(c), 'error'); return; }
+            state.coins -= c;
+            miner.lvl += 1;
+            minerSave(); saveState();
+            try { SoundFX.play('coin'); } catch (e) {}
+            updateCoinDisplay();
+            showToast('⛏ Кирка ' + miner.lvl + ' уровня: теперь ' + fmtCoins(minerRate()) + ' монет/сек', 'success');
+        }
+        function renderMiner() {
+            const b = document.getElementById('miner-balance'); if (b) b.textContent = fmtCoins(state.coins);
+            const r = document.getElementById('miner-rate'); if (r) r.textContent = fmtCoins(minerRate()) + '/сек';
+            const l = document.getElementById('miner-lvl'); if (l) l.textContent = 'ур. ' + miner.lvl;
+            const m = document.getElementById('miner-mined'); if (m) m.textContent = fmtCoins(miner.mined);
+            const c = minerCost();
+            const nx = document.getElementById('miner-next'); if (nx) nx.textContent = fmtCoins(Math.max(0, c - state.coins));
+            const bar = document.getElementById('miner-prog'); if (bar) bar.style.width = Math.min(100, (state.coins / c) * 100).toFixed(1) + '%';
+            const pl = document.getElementById('miner-prog-label'); if (pl) pl.textContent = fmtCoins(Math.min(state.coins, c)) + ' / ' + fmtCoins(c);
+            const btn = document.getElementById('miner-btn');
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — ' + fmtCoins(c);
+                btn.disabled = state.coins < c;
+                btn.classList.toggle('opacity-40', state.coins < c);
+                btn.classList.toggle('cursor-not-allowed', state.coins < c);
+            }
+        }
+        // ============ b56: ДЖЕКПОТ (общий банк для Слотов и Сетки) ============
+        const JACKPOT_KEY = 'nexus_jackpot';
+        const JACKPOT_SEED = 1000;
+        const JACKPOT_FEED = 0.02; // 2% с каждой ставки обеих игр
+        function jackpotLoad() {
+            try {
+                const j = JSON.parse(LS.getItem(JACKPOT_KEY) || 'null');
+                if (j && j.pool >= 1) return { pool: Math.floor(j.pool), wins: Math.floor(j.wins || 0) };
+            } catch (e) {}
+            return { pool: JACKPOT_SEED, wins: 0 };
+        }
+        let jackpot = jackpotLoad();
+        function jackpotSave() { try { LS.setItem(JACKPOT_KEY, JSON.stringify(jackpot)); } catch (e) {} }
+        function jackpotFeed(bet) {
+            jackpot.pool += Math.max(1, Math.round((bet || 0) * JACKPOT_FEED));
+            jackpotSave();
+            jackpotRender();
+        }
+        // b57: каждый ПРОИГРЫШНЫЙ спин пополняет банк на четверть ставки —
+        // джекпот растёт тем быстрее, чем дольше не везёт (классический прогрессив)
+        function jackpotOnLoss(bet) {
+            const add = Math.max(1, Math.round((bet || 0) * 0.25));
+            jackpot.pool += add;
+            jackpotSave();
+            jackpotRender();
+            return add;
+        }
+        function jackpotWin() {
+            const prize = Math.round(jackpot.pool);
+            jackpot.wins = (jackpot.wins || 0) + 1;
+            jackpot.pool = JACKPOT_SEED;
+            jackpotSave();
+            state.coins += prize;
+            state.stats.jackpots = (state.stats.jackpots || 0) + 1;
+            slots.winFlash = performance.now();
+            grid.winFlashT = performance.now();
+            saveState(); updateCoinDisplay();
+            try { SoundFX.play('legendary'); } catch (e) {}
+            showToast('👑 JACKPOT! Весь банк ваш: +' + fmtCoins(prize) + ' монет', 'success');
+            jackpotRender();
+            return prize;
+        }
+        function jackpotRender() {
+            const a = document.getElementById('slots-jackpot');
+            const b = document.getElementById('grid-jackpot');
+            if (a) a.textContent = fmtCoins(jackpot.pool);
+            if (b) b.textContent = fmtCoins(jackpot.pool);
+        }
+        // взвешенный выбор символа: JACKPOT редок (вес 2 против 10)
+        function slotsWeightedRand() {
+            const syms = slots.symbols;
+            if (!syms.length) return 0;
+            let tot = 0;
+            for (let i = 0; i < syms.length; i++) tot += syms[i].jackpot ? 2 : 10;
+            let r = Math.random() * tot;
+            for (let i = 0; i < syms.length; i++) { r -= syms[i].jackpot ? 2 : 10; if (r <= 0) return i; }
+            return syms.length - 1;
+        }
+
+        // ============ b49: СЛОТЫ «Коллекционер карт» (3D-барабаны с картами сайта) ============
+        const SLOTS_BETS = [25, 50, 100, 250];
+        const SLOTS_MULT = { common: 8, rare: 12, epic: 18, legendary: 30 };
+        const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 50, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
+        function slotsSymbols() {
+            const seen = {};
+            const pool = [];
+            state.cards.forEach(c => {
+                if (!c || !c.id || seen[c.id]) return;
+                seen[c.id] = 1;
+                pool.push(c);
+            });
+            pool.sort((a, b) => (b.image ? 1 : 0) - (a.image ? 1 : 0));
+            const syms = pool.slice(0, 5).map(c => ({ id: c.id, name: c.name || c.id, rarity: c.rarity || 'common', image: c.image || '' }));
+            while (syms.length < 3) syms.push({ id: 'sym-' + syms.length, name: 'Джокер', rarity: 'legendary', image: '' });
+            syms.push({ id: 'sym-jackpot', name: 'JACKPOT', rarity: 'legendary', image: '', jackpot: true }); // b56
+            return syms;
+        }
+                function slotsSymbolCanvas(sym, SW, SH) {
+            // b51/b55: символ — вытянутый вертикальный бустер; размеры параметризованы:
+            // классические слоты 224×512, сетка 256×400 — пропорции плоскости и текстуры
+            // совпадают, поэтому карты нигде не растянуты
+            const W = (Number.isFinite(+SW) && +SW > 8) ? +SW : 224; // b55: защита от случайных аргументов (map передаёт index/array)
+            const H = (Number.isFinite(+SH) && +SH > 8) ? +SH : 512;
+            const CR = Math.max(26, Math.round(H * 0.09));
+            const PL = Math.max(52, Math.round(H * 0.165));
+            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const col = (typeof RAR_COLORS !== 'undefined' && RAR_COLORS[sym.rarity]) || '#94a3b8';
+            if (sym.jackpot) {
+                // b56: золотой символ джекпота
+                const rg = g.createRadialGradient(W / 2, H * 0.42, 8, W / 2, H * 0.42, H * 0.6);
+                rg.addColorStop(0, '#fff7cf'); rg.addColorStop(0.35, '#fbbf24'); rg.addColorStop(1, '#78350f');
+                g.fillStyle = rg; g.fillRect(0, 0, W, H);
+                g.fillStyle = '#7c2d12'; g.font = 'bold ' + Math.round(H * 0.17) + 'px Inter, sans-serif';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText('★', W / 2, H * 0.38);
+                g.fillStyle = '#431407'; g.font = '900 ' + Math.round(H * 0.07) + 'px Inter, sans-serif';
+                g.fillText('JACKPOT', W / 2, H * 0.6);
+                g.strokeStyle = '#fef3c7'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
+                const texJ = new THREE.CanvasTexture(cv);
+                try { texJ.encoding = THREE.sRGBEncoding; texJ.anisotropy = PACK3D_ANISO; } catch (e) {}
+                return texJ;
+            }
+            const bg = g.createLinearGradient(0, 0, W, H);
+            bg.addColorStop(0, '#0b1220'); bg.addColorStop(1, col + '40');
+            g.fillStyle = bg; g.fillRect(0, 0, W, H);
+            g.fillStyle = 'rgba(226,232,240,.14)';
+            g.fillRect(0, 0, 9, H); g.fillRect(W - 9, 0, 9, H);
+            const crimp = (y0) => {
+                const gr = g.createLinearGradient(0, y0, 0, y0 + CR);
+                gr.addColorStop(0, 'rgba(226,232,240,.78)'); gr.addColorStop(0.5, 'rgba(148,163,184,.72)'); gr.addColorStop(1, 'rgba(71,85,105,.78)');
+                g.fillStyle = gr; g.fillRect(0, y0, W, CR);
+                g.fillStyle = 'rgba(15,23,42,.35)';
+                for (let x = 0; x < W; x += 8) g.fillRect(x, y0, 3, CR);
+            };
+            crimp(0); crimp(H - CR);
+            const artTop = CR, artH = H - CR * 2 - PL;
+            if (sym.image) {
+                loadImgSafe(sym.image, img => {
+                    g.save();
+                    g.beginPath(); g.rect(9, artTop, W - 18, artH); g.clip();
+                    // b52: подложка-cover затемняется, поверх — картинка ЦЕЛИКОМ (contain)
+                    coverDrawImage(g, img, W, artH);
+                    g.fillStyle = 'rgba(2,6,23,.62)'; g.fillRect(9, artTop, W - 18, artH);
+                    const iw = img.width || 1, ih = img.height || 1;
+                    const sc = Math.min((W - 26) / iw, (artH - 14) / ih);
+                    const dw = iw * sc, dh = ih * sc;
+                    g.drawImage(img, (W - dw) / 2, artTop + (artH - dh) / 2, dw, dh);
+                    g.restore();
+                    const vg = g.createLinearGradient(0, artTop + artH - Math.round(H * 0.2), 0, artTop + artH);
+                    vg.addColorStop(0, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.85)');
+                    g.fillStyle = vg; g.fillRect(9, artTop + artH - Math.round(H * 0.2), W - 18, Math.round(H * 0.2));
+                    tex.needsUpdate = true;
+                });
+            } else {
+                g.fillStyle = col; g.font = 'bold ' + Math.round(H * 0.21) + 'px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText(String(sym.name).slice(0, 1).toUpperCase(), W / 2, artTop + artH / 2);
+            }
+            g.fillStyle = 'rgba(2,6,23,.92)'; g.fillRect(9, H - CR - PL, W - 18, PL);
+            g.fillStyle = col; g.fillRect(9, H - CR - PL - 3, W - 18, 3);
+            g.fillStyle = '#f8fafc'; g.font = 'bold ' + Math.round(H * 0.052) + 'px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            wrapCanvasText(g, sym.name, W / 2, H - CR - PL / 2, W - 30, Math.round(H * 0.056));
+            g.strokeStyle = col; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
+            const tex = new THREE.CanvasTexture(cv);
+            try { tex.encoding = THREE.sRGBEncoding; tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+            return tex;
+        }
+
+        function slotsEnsure() {
+            const container = document.getElementById('slots-container');
+            if (!container) return;
+            if (slots.ready || slots.fallback) return;
+            // b49: символы собираем ДО попытки создать WebGL — они нужны и фолбэку
+            slots.symbols = slotsSymbols();
+            slots.symKey = slots.symbols.map(sl => sl.id).join(',');
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { slots.fallback = true; slotsRenderFallback(); return; }
+            slots.renderer = renderer;
+            try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) {}
+            try { renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
+            const w = container.clientWidth || 640, h = container.clientHeight || 340;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setSize(w, h);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 60); // b52: шире кадр — маркиза целиком
+            camera.position.set(0, 0.3, 7.9);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.7, 40); l1.position.set(2.5, 3, 5); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.5, 40); l2.position.set(-3, -2, 4); scene.add(l2);
+            const env = makeStudioEnv();
+            // b51: пропорции вертикальной машины объявлены до корпуса: символы-паки вытянутые
+            const N = slots.symbols.length;
+            const H = 2.4, AW = 1.02; // b52: вытянутые вертикальные бустеры
+            const R = H / (2 * Math.sin(Math.PI / N));
+            // корпус автомата
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
+            // b50: корпус под вертикальные барабаны (размеры выводятся из радиуса R ниже,
+            // здесь задаются относительно SH/AR — см. после создания барабанов)
+            const addFrame = (w, h, d, x, y, z) => { const msh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat); msh.position.set(x, y, z); scene.add(msh); return msh; };
+            // b51: фон — радиальное свечение с звёздами за автоматом
+            const bgCv = document.createElement('canvas'); bgCv.width = 512; bgCv.height = 384;
+            const bgx = bgCv.getContext('2d');
+            const bgr = bgx.createRadialGradient(256, 168, 24, 256, 190, 340);
+            bgr.addColorStop(0, '#4c1d95'); bgr.addColorStop(0.45, '#1e1b4b'); bgr.addColorStop(1, '#020617');
+            bgx.fillStyle = bgr; bgx.fillRect(0, 0, 512, 384);
+            for (let i = 0; i < 110; i++) {
+                const x = (i * 97 + 13) % 512, y = (i * 61 + 7) % 384, rr = (i % 3) * 0.5 + 0.5;
+                bgx.globalAlpha = 0.2 + (i % 5) * 0.13;
+                bgx.fillStyle = '#ffffff';
+                bgx.beginPath(); bgx.arc(x, y, rr, 0, Math.PI * 2); bgx.fill();
+            }
+            bgx.globalAlpha = 1;
+            const bgTex = new THREE.CanvasTexture(bgCv);
+            try { bgTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(13.5, 9.8), new THREE.MeshBasicMaterial({ map: bgTex }));
+            bgMesh.position.set(0, 0.25, -(R + 1.5)); scene.add(bgMesh);
+            // b51: боковой неон и глянцевый пол
+            const neonL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), new THREE.MeshBasicMaterial({ color: 0xe879f9 }));
+            neonL.position.set(-2.66, 0, -R * 0.3); scene.add(neonL);
+            const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+            neonR.position.set(2.66, 0, -R * 0.3); scene.add(neonR);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(11.5, 4.4), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(0, -(H / 2 + 1.05), -R / 2 + 0.4); scene.add(floor);
+            const back = addFrame(4.5, H + 1.7, 0.4, 0, 0, -(R + 0.45));
+            const top = addFrame(4.5, 0.5, R + 0.9, 0, H / 2 + 0.55, -R / 2);
+            const bot = addFrame(4.5, 0.5, R + 0.9, 0, -(H / 2 + 0.55), -R / 2);
+            // b52: радиальное свечение прямо за барабанами — машина «светится изнутри»
+            const gc = document.createElement('canvas'); gc.width = gc.height = 256;
+            const gx = gc.getContext('2d');
+            const gr2 = gx.createRadialGradient(128, 128, 10, 128, 128, 126);
+            gr2.addColorStop(0, 'rgba(232,121,249,.5)'); gr2.addColorStop(0.5, 'rgba(124,58,237,.25)'); gr2.addColorStop(1, 'rgba(2,6,23,0)');
+            gx.fillStyle = gr2; gx.fillRect(0, 0, 256, 256);
+            const glowPlane = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 5.2),
+                new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+            glowPlane.position.set(0, 0.1, -(R * 0.55)); scene.add(glowPlane);
+            // маркиза с названием
+            const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
+            const mg = mq.getContext('2d');
+            const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
+            mgrad.addColorStop(0, '#4a044e'); mgrad.addColorStop(0.5, '#86198f'); mgrad.addColorStop(1, '#4a044e');
+            mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
+            mg.fillStyle = '#fde68a'; mg.font = '900 52px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+            mg.fillText('★ КОЛЛЕКЦИОНЕР КАРТ • СЛОТЫ ★', 512, 68);
+            const mqTex = new THREE.CanvasTexture(mq);
+            try { mqTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const mqMesh = new THREE.Mesh(new THREE.PlaneGeometry(4.15, 0.46), new THREE.MeshBasicMaterial({ map: mqTex }));
+            mqMesh.position.set(0, 1.95, 0.0); scene.add(mqMesh);
+            // барабаны: керн + плоскости-символы по окружности.
+            // b50: грани ВЕРТИКАЛЬНЫЕ (портретный мини-пак): высота символа H фиксирована,
+            // радиус барабана выводится из числа символов, ширина грани — вдоль оси.
+            const texs = slots.symbols.map(sl => slotsSymbolCanvas(sl)); // b55: не передавать index/array из map()
+            const coreGeo = new THREE.CylinderGeometry(R - 0.05, R - 0.05, AW, 32, 1, false);
+            coreGeo.rotateZ(Math.PI / 2);
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0x0a0f1a, roughness: 0.6, metalness: 0.3 });
+            const planeGeo = new THREE.PlaneGeometry(AW, 2 * R * Math.sin(Math.PI / N) * 0.96);
+            slots.reels = [];
+            for (let ri = 0; ri < 3; ri++) {
+                const grp = new THREE.Group();
+                const core = new THREE.Mesh(coreGeo, coreMat);
+                grp.add(core);
+                for (let i = 0; i < N; i++) {
+                    const th = (i + 0.5) / N * Math.PI * 2;
+                    const m = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ map: texs[i], roughness: 0.34, metalness: 0.22, envMap: env, envMapIntensity: 0.55, side: THREE.FrontSide }));
+                    m.position.set(0, R * Math.sin(th), R * Math.cos(th));
+                    m.rotation.x = -th;
+                    grp.add(m);
+                }
+                grp.position.x = (ri - 1) * (AW + 0.24);
+                grp.rotation.x = (0.5 / N) * Math.PI * 2; // символ 0 по линии выплаты
+                grp.userData = { phase: 'idle', speed: 0, t0: 0, dur: 0, from: 0, delta: 0, final: 0, target: 0 };
+                scene.add(grp);
+                slots.reels.push(grp);
+            }
+            // b51: золотой багет вокруг окна барабанов
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const trimX = 3 * (AW + 0.24) / 2 + 0.10;
+            const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.09, H + 0.24, 0.1), goldMat); tv1.position.set(-trimX, 0, R + 0.04); scene.add(tv1);
+            const tv2 = tv1.clone(); tv2.position.x = trimX; scene.add(tv2);
+            const th1 = new THREE.Mesh(new THREE.BoxGeometry(trimX * 2 + 0.09, 0.09, 0.1), goldMat); th1.position.set(0, H / 2 + 0.12, R + 0.04); scene.add(th1);
+            const th2 = th1.clone(); th2.position.y = -(H / 2 + 0.12); scene.add(th2);
+            // b52: золотые шарики по углам багета — нарядная фурнитура
+            const capGeo = new THREE.SphereGeometry(0.085, 12, 12);
+            [[-trimX, H / 2 + 0.12], [trimX, H / 2 + 0.12], [-trimX, -(H / 2 + 0.12)], [trimX, -(H / 2 + 0.12)]].forEach(pt => {
+                const cap = new THREE.Mesh(capGeo, goldMat);
+                cap.position.set(pt[0], pt[1], R + 0.05);
+                scene.add(cap);
+            });
+            // b51: линия выплаты с мягким свечением
+            const line = new THREE.Mesh(new THREE.BoxGeometry(trimX * 2 + 0.8, 0.035, 0.03), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+            line.position.set(0, 0, R + 0.16); scene.add(line);
+            const lineGlow = new THREE.Mesh(new THREE.BoxGeometry(trimX * 2 + 0.8, 0.12, 0.012), new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+            lineGlow.position.set(0, 0, R + 0.15); scene.add(lineGlow);
+            // b51: лампочки маркизы — бегущий блик в цикле рендера
+            slots.bulbs = [];
+            const bulbGeo = new THREE.SphereGeometry(0.045, 10, 10);
+            for (let i = 0; i < 15; i++) {
+                const bm = new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xffc94d, emissiveIntensity: 1, roughness: 0.4 });
+                const b = new THREE.Mesh(bulbGeo, bm);
+                b.position.set(-2.05 + i * (4.1 / 14), H / 2 + 1.38, 0.46);
+                scene.add(b); slots.bulbs.push(b);
+            }
+            // b52: маркиза — «корона» над верхней балкой: своя подложка, ничего не перекрывает
+            const mqBack = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.56, 0.14), new THREE.MeshStandardMaterial({ color: 0x2a0a33, roughness: 0.5, metalness: 0.6, envMap: env, envMapIntensity: 0.6 }));
+            mqBack.position.set(0, H / 2 + 1.02, 0.42); scene.add(mqBack);
+            mqMesh.position.set(0, H / 2 + 1.02, 0.5);
+            // b52: парящие искры вокруг автомата
+            const spN = 42;
+            const spGeo = new THREE.BufferGeometry();
+            const spPos = new Float32Array(spN * 3);
+            for (let i = 0; i < spN; i++) {
+                spPos[i * 3] = (Math.random() - 0.5) * 7.4;
+                spPos[i * 3 + 1] = (Math.random() - 0.5) * 4.8;
+                spPos[i * 3 + 2] = -(R * 0.4) + Math.random() * (R * 0.9);
+            }
+            spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3));
+            const spMat = new THREE.PointsMaterial({ color: 0xffe6a9, size: 0.06, map: makeSparkTexture(), transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
+            slots.sparks = new THREE.Points(spGeo, spMat);
+            scene.add(slots.sparks);
+            slots.lineGlow = lineGlow;
+            slots.winFlash = 0;
+            camera.position.set(0, 0.3, R + 5.6); // b52: весь автомат с лампочками в кадре
+            camera.lookAt(0, 0.1, 0);
+            slots.scene = scene; slots.camera = camera;
+            slots.ready = true;
+            slots.lastT = performance.now();
+            const loop = () => {
+                slots.animId = requestAnimationFrame(loop);
+                const now = performance.now();
+                const dt = Math.min(0.05, (now - slots.lastT) / 1000);
+                slots.lastT = now;
+                // b51/b52: бегущий блик лампочек; на выигрыше — ускоренное мигание всей иллюминации
+                const wf = slots.winFlash && (now - slots.winFlash < 1200);
+                if (slots.bulbs && slots.bulbs.length) {
+                    const tb = now / 1000;
+                    const boost = wf ? 1.7 : 1;
+                    const spd = wf ? 14 : 5;
+                    for (let i = 0; i < slots.bulbs.length; i++) {
+                        slots.bulbs[i].material.emissiveIntensity = (0.5 + 1.1 * (0.5 + 0.5 * Math.sin(tb * spd + i * 0.85))) * boost;
+                    }
+                }
+                if (slots.sparks) {
+                    const pa = slots.sparks.geometry.attributes.position.array;
+                    for (let i = 1; i < pa.length; i += 3) { pa[i] += dt * 0.35; if (pa[i] > 2.5) pa[i] = -2.5; }
+                    slots.sparks.geometry.attributes.position.needsUpdate = true;
+                }
+                if (slots.lineGlow) slots.lineGlow.material.opacity = wf ? 0.35 + 0.5 * Math.abs(Math.sin(now / 80)) : 0.3;
+                let allDone = true;
+                slots.reels.forEach(grp => {
+                    const u = grp.userData;
+                    if (u.phase === 'spin') {
+                        grp.rotation.x += u.speed * dt;
+                        if (now - u.t0 > u.dur) {
+                            u.phase = 'stop';
+                            u.t0 = now;
+                            u.from = grp.rotation.x;
+                            const theta = u.target;
+                            const twoPi = Math.PI * 2;
+                            // докручиваем ВПЕРЁД по ходу вращения до нужного символа + ещё оборот
+                            let k = (theta - u.from) % twoPi;
+                            if (k < 0) k += twoPi;
+                            k += twoPi;
+                            u.delta = k;
+                            u.final = u.from + k;
+                            u.dur = 700;
+                        }
+                        allDone = false;
+                    } else if (u.phase === 'stop') {
+                        const k = Math.min(1, (now - u.t0) / u.dur);
+                        const e = 1 - Math.pow(1 - k, 3);
+                        grp.rotation.x = u.from + u.delta * e;
+                        if (k >= 1) { u.phase = 'idle'; grp.rotation.x = u.final; }
+                        else allDone = false;
+                    }
+                });
+                if (slots.spinning && allDone) {
+                    slots.spinning = false;
+                    slotsFinish(slots.lastResult, slots.bet);
+                }
+                renderer.render(scene, camera);
+            };
+            loop();
+        }
+        function slotsTheta(i) { const N = slots.symbols.length || 1; return (i + 0.5) / N * Math.PI * 2; }
+        function slotsSpin() {
+            if (slots.spinning) return;
+            const bet = slots.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet), 'error'); return; }
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            state.coins -= bet;
+            state.stats.slotsSpins = (state.stats.slotsSpins || 0) + 1;
+            jackpotFeed(bet); // b56: 2% ставки в банк
+            saveState(); updateCoinDisplay(); renderSlotsUI();
+            const N = slots.symbols.length;
+            const res = [0, 1, 2].map(() => slotsWeightedRand()); // b56: JACKPOT редок
+            slots.lastResult = res;
+            try { SoundFX.play('click'); } catch (e) {}
+            if (!slots.ready || slots.fallback) {
+                slotsRenderFallback(res);
+                setTimeout(() => slotsFinish(res, bet), 700);
+                return;
+            }
+            slots.spinning = true;
+            slots.reels.forEach((grp, i) => {
+                const u = grp.userData;
+                u.phase = 'spin';
+                u.speed = 7.5 + i * 1.4;
+                u.t0 = performance.now();
+                u.dur = 900 + i * 450;
+                u.target = slotsTheta(res[i]) + Math.PI * 2 * 0; // финальный угол (mod 2π приводится в stop)
+            });
+        }
+        function slotsFinish(res, bet) {
+            const syms = res.map(i => slots.symbols[i] || { rarity: 'common', name: '?' });
+            // b56: три JACKPOT подряд = весь банк
+            if (res[0] === res[1] && res[1] === res[2] && syms[0] && syms[0].jackpot) {
+                jackpotWin();
+                renderSlotsUI();
+                return;
+            }
+            let mult = 0, kind = '';
+            if (res[0] === res[1] && res[1] === res[2]) { mult = SLOTS_MULT[syms[0].rarity] || 8; kind = 'джекпот'; }
+            else if (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]) { mult = 2; kind = 'пара'; }
+            const win = bet * mult;
+            slots.lastWin = win;
+            if (win > 0) {
+                state.coins += win;
+                state.stats.slotsWins = (state.stats.slotsWins || 0) + 1;
+                slots.winFlash = performance.now(); // b52: иллюминация празднует
+                try { SoundFX.play(mult >= 8 ? 'legendary' : 'coin'); } catch (e) {}
+                showToast('🎰 ' + kind + '! Выигрыш +' + fmtCoins(win) + ' монет', 'success');
+            } else {
+                jackpotOnLoss(bet); // b57: джекпот растёт с каждым проигрышем
+                showToast('Мимо — банк джекпота вырос до ' + fmtCoins(jackpot.pool), 'refund');
+            }
+            saveState(); updateCoinDisplay(); renderSlotsUI();
+        }
+        function slotsSetBet(b) {
+            if (SLOTS_BETS.indexOf(b) < 0) return;
+            slots.bet = b;
+            renderSlotsUI();
+        }
+        function slotsRenderFallback(res) {
+            const box = document.getElementById('slots-fallback');
+            const cont = document.getElementById('slots-container');
+            if (cont) cont.classList.add('hidden');
+            if (!box) return;
+            box.classList.remove('hidden');
+            const syms = (res || [0, 0, 0]).map(i => slots.symbols[i] || { name: '?', rarity: 'common', image: '' });
+            box.innerHTML = syms.map(s => {
+                const col = (typeof RAR_COLORS !== 'undefined' && RAR_COLORS[s.rarity]) || '#94a3b8';
+                const img = s.image ? `<img src="${mediaUrl(s.image)}" alt="${s.name}" class="w-full h-full object-cover" onerror="imgErrorChain(this)">` : '';
+                return `<div class="relative aspect-square rounded-xl border-2 overflow-hidden bg-slate-950" style="border-color:${col}">${img}<span class="absolute bottom-0 inset-x-0 text-[10px] font-bold text-white bg-slate-950/80 px-1 py-0.5 truncate">${s.name}</span></div>`;
+            }).join('');
+        }
+        function renderSlotsUI() {
+            jackpotRender(); // b56
+            const b = document.getElementById('slots-balance'); if (b) b.textContent = fmtCoins(state.coins);
+            const bets = document.getElementById('slots-bets');
+            if (bets) {
+                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="slotsSetBet(${v})" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ${slots.bet === v ? 'bg-fuchsia-600/90 border-fuchsia-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
+            }
+            const spin = document.getElementById('slots-spin');
+            if (spin) {
+                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(slots.bet);
+                spin.disabled = state.coins < slots.bet || slots.spinning;
+                spin.classList.toggle('opacity-40', state.coins < slots.bet);
+            }
+            const lw = document.getElementById('slots-last');
+            if (lw) lw.innerHTML = slots.lastWin > 0 ? ('Последний выигрыш: <b class="text-emerald-300">+' + fmtCoins(slots.lastWin) + '</b>') : 'Последний выигрыш: —';
+            const st = document.getElementById('slots-stats');
+            if (st) st.textContent = 'спинов: ' + (state.stats.slotsSpins || 0) + ' • побед: ' + (state.stats.slotsWins || 0);
+        }
+        // ============ b53/b54: СЕТОЧНЫЙ СЛОТ 5×4 — каскады и цепи; с b54 поле в 3D ============
+        // Пять вертикальных барабанов по четыре карты: поток символов при вращении,
+        // поочерёдная остановка, подсветка и взрывы выигрышных ячеек, каскадное падение новых.
+        // Без WebGL — прежний DOM-фолбэк с теми же правилами и выплатой.
+        const GRID_CHAIN = [1, 1.5, 2, 3, 5, 8];
+        const GRID_COLS = 5, GRID_ROWS = 4;
+        const grid = { cells: [], spinning: false, bet: 50, lastWin: 0, chain: 0, total: 0, phase3d: '' };
+        const grid3d = { renderer: null, scene: null, camera: null, reels: [], ready: false, failed: false, animId: null, lastT: 0, bursts: [], hl: {}, drops: [], cellW: 0.98, cellH: 1.5 };
+        function gridRandSym() {
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            return slots.symbols[slotsWeightedRand()]; // b56: взвешенно (JACKPOT редок)
+        }
+        function gridPay(count, rarity) {
+            if (count < 8) return 0;
+            const base = count >= 12 ? 15 : (count >= 10 ? 5 : 2);
+            const rm = ({ common: 1, rare: 1.5, epic: 2, legendary: 3 })[rarity] || 1;
+            return Math.round(base * rm);
+        }
+        function gridGroups() {
+            const m = {};
+            grid.cells.forEach((s, i) => {
+                if (!m[s.id]) m[s.id] = { id: s.id, rarity: s.rarity, name: s.name, jackpot: !!s.jackpot, idxs: [] };
+                m[s.id].idxs.push(i);
+            });
+            return Object.keys(m).map(k => ({ id: m[k].id, rarity: m[k].rarity, name: m[k].name, jackpot: !!m[k].jackpot, count: m[k].idxs.length, idxs: m[k].idxs }));
+        }
+        // ---------------- DOM-фолбэк (без WebGL) ----------------
+        function gridCellHTML(sym, i, mark, anim) {
+            const col = (typeof RAR_COLORS !== 'undefined' && RAR_COLORS[sym.rarity]) || '#94a3b8';
+            const won = !!(mark && mark.has && mark.has(i));
+            const img = sym.image
+                ? `<img src="${mediaUrl(sym.image)}" alt="${sym.name}" class="absolute inset-0 w-full h-full object-cover" onerror="imgErrorChain(this)">`
+                : `<div class="absolute inset-0 flex items-center justify-center" style="background:linear-gradient(160deg,#0b1220,${col}44)"><span style="color:${col};font-size:26px;font-weight:900">${String(sym.name).slice(0, 1).toUpperCase()}</span></div>`;
+            return `<div class="relative rounded-md overflow-hidden border-2 ${won ? 'grid-anim-' + anim : (anim === 'drop' ? 'grid-anim-drop' : '')}" style="border-color:${won ? '#fbbf24' : col + '88'};aspect-ratio:.52;${won ? 'box-shadow:0 0 14px ' + col + 'aa;' : ''}">
+                ${img}
+                <div class="absolute inset-x-0 bottom-0 text-[8px] sm:text-[9px] font-bold text-white bg-slate-950/85 px-1 py-0.5 text-center truncate">${sym.name}</div>
+            </div>`;
+        }
+        function gridRenderCells(mark, anim) {
+            const wrap = document.getElementById('grid-wrap');
+            if (!wrap) return;
+            wrap.innerHTML = grid.cells.map((s, i) => gridCellHTML(s, i, mark, anim)).join('');
+        }
+        // ---------------- 3D-сцена ----------------
+        const gridTexCache = {};
+        function gridTexFor(sym) {
+            if (!gridTexCache[sym.id]) gridTexCache[sym.id] = slotsSymbolCanvas(sym, 256, 400); // b55: пропорция как у плоскости
+            return gridTexCache[sym.id];
+        }
+        function grid3dEnsure() {
+            if (grid3d.ready || grid3d.failed) return;
+            const container = document.getElementById('grid3d-container');
+            if (!container) return;
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { grid3d.failed = true; return; }
+            grid3d.renderer = renderer;
+            try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) {}
+            try { renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
+            const w = container.clientWidth || 900, h = container.clientHeight || 540;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setSize(w, h);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 80);
+            camera.position.set(0, 0, 10.6); // b54: весь автомат с лампочками и полом в кадре
+            scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.65, 50); l1.position.set(3, 3.5, 6); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.5, 50); l2.position.set(-4, -2.5, 5); scene.add(l2);
+            const env = makeStudioEnv();
+            const CW = grid3d.cellW, CH = grid3d.cellH;
+            const WW = GRID_COLS * CW, WH = GRID_ROWS * CH;
+            // фон: радиальное свечение со звёздами
+            const bgCv = document.createElement('canvas'); bgCv.width = 512; bgCv.height = 384;
+            const bgx = bgCv.getContext('2d');
+            const bgr = bgx.createRadialGradient(256, 170, 24, 256, 190, 340);
+            bgr.addColorStop(0, '#4c1d95'); bgr.addColorStop(0.45, '#1e1b4b'); bgr.addColorStop(1, '#020617');
+            bgx.fillStyle = bgr; bgx.fillRect(0, 0, 512, 384);
+            for (let i = 0; i < 110; i++) {
+                const x = (i * 97 + 13) % 512, y = (i * 61 + 7) % 384, rr = (i % 3) * 0.5 + 0.5;
+                bgx.globalAlpha = 0.2 + (i % 5) * 0.13;
+                bgx.fillStyle = '#ffffff';
+                bgx.beginPath(); bgx.arc(x, y, rr, 0, Math.PI * 2); bgx.fill();
+            }
+            bgx.globalAlpha = 1;
+            const bgTex = new THREE.CanvasTexture(bgCv);
+            try { bgTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(17, 12), new THREE.MeshBasicMaterial({ map: bgTex }));
+            bgMesh.position.set(0, 0.2, -4.5); scene.add(bgMesh);
+            // неон по бокам и глянцевый пол
+            const neonL = new THREE.Mesh(new THREE.BoxGeometry(0.08, WH + 2.2, 0.08), new THREE.MeshBasicMaterial({ color: 0xe879f9 }));
+            neonL.position.set(-(WW / 2 + 0.55), 0, -1); scene.add(neonL);
+            const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.08, WH + 2.2, 0.08), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+            neonR.position.set(WW / 2 + 0.55, 0, -1); scene.add(neonR);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(15, 5), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(0, -(WH / 2 + 1.15), 0.5); scene.add(floor);
+            // корпус и золотой багет вокруг окна
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
+            const back = new THREE.Mesh(new THREE.BoxGeometry(WW + 1.6, WH + 1.8, 0.4), frameMat);
+            back.position.set(0, 0, -2.2); scene.add(back);
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const bx = WW / 2 + 0.12, by = WH / 2 + 0.12;
+            const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, WH + 0.34, 0.12), goldMat); tv1.position.set(-bx, 0, 0.72); scene.add(tv1);
+            const tv2 = tv1.clone(); tv2.position.x = bx; scene.add(tv2);
+            const th1 = new THREE.Mesh(new THREE.BoxGeometry(bx * 2 + 0.12, 0.12, 0.12), goldMat); th1.position.set(0, by, 0.72); scene.add(th1);
+            const th2 = th1.clone(); th2.position.y = -by; scene.add(th2);
+            const capGeo = new THREE.SphereGeometry(0.11, 12, 12);
+            [[-bx, by], [bx, by], [-bx, -by], [bx, -by]].forEach(pt => {
+                const cap = new THREE.Mesh(capGeo, goldMat);
+                cap.position.set(pt[0], pt[1], 0.74);
+                scene.add(cap);
+            });
+            // маркиза над окном
+            const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
+            const mg = mq.getContext('2d');
+            const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
+            mgrad.addColorStop(0, '#4a044e'); mgrad.addColorStop(0.5, '#86198f'); mgrad.addColorStop(1, '#4a044e');
+            mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
+            mg.fillStyle = '#fde68a'; mg.font = '900 44px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+            mg.fillText('★ СЕТОЧНЫЙ СЛОТ • КОЛЛЕКЦИОНЕР КАРТ ★', 512, 68);
+            const mqTex = new THREE.CanvasTexture(mq);
+            try { mqTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const mqMesh = new THREE.Mesh(new THREE.PlaneGeometry(WW + 1.2, 0.52), new THREE.MeshBasicMaterial({ map: mqTex }));
+            mqMesh.position.set(0, WH / 2 + 0.62, 0.6); scene.add(mqMesh);
+            // лампочки маркизы
+            grid3d.bulbs = [];
+            const bulbGeo = new THREE.SphereGeometry(0.05, 10, 10);
+            for (let i = 0; i < 17; i++) {
+                const bm = new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xffc94d, emissiveIntensity: 1, roughness: 0.4 });
+                const b = new THREE.Mesh(bulbGeo, bm);
+                b.position.set(-(WW / 2 + 0.4) + i * ((WW + 0.8) / 16), WH / 2 + 0.98, 0.55);
+                scene.add(b); grid3d.bulbs.push(b);
+            }
+            // крышки, скрывающие служебные ряды барабанов
+            const coverMat = new THREE.MeshStandardMaterial({ color: 0x141024, roughness: 0.55, metalness: 0.5 });
+            const covT = new THREE.Mesh(new THREE.BoxGeometry(WW + 0.2, CH, 0.5), coverMat);
+            covT.position.set(0, WH / 2 + CH / 2 - 0.02, 0.1); scene.add(covT);
+            const covB = covT.clone(); covB.position.y = -(WH / 2 + CH / 2 - 0.02); scene.add(covB);
+            // барабаны: 6 плоскостей (ряды -1..4), поток символов вниз
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            const planeGeo = new THREE.PlaneGeometry(CH * 0.94 * 0.64, CH * 0.94); // b55: пропорция плоскости = пропорции текстуры 256×400
+            grid3d.reels = [];
+            for (let c = 0; c < GRID_COLS; c++) {
+                const grp = new THREE.Group();
+                const colSyms = [];
+                const meshes = [];
+                for (let r = -1; r < GRID_ROWS + 1; r++) {
+                    const sym = gridRandSym();
+                    colSyms.push(sym);
+                    const mat = new THREE.MeshStandardMaterial({ map: gridTexFor(sym), roughness: 0.35, metalness: 0.2, envMap: env, envMapIntensity: 0.5 });
+                    const msh = new THREE.Mesh(planeGeo, mat);
+                    msh.position.set(0, (1.5 - r) * CH, 0);
+                    grp.add(msh);
+                    meshes.push(msh);
+                }
+                grp.position.x = (c - 2) * CW;
+                grp.userData = { col: colSyms, meshes: meshes, yOff: 0, phase: 'idle', speed: 0, tStop: 0, from: 0, t0: 0 };
+                scene.add(grp);
+                grid3d.reels.push(grp);
+            }
+            grid3d.scene = scene; grid3d.camera = camera;
+            grid3d.ready = true;
+            grid3d.lastT = performance.now();
+            const loop = () => {
+                grid3d.animId = requestAnimationFrame(loop);
+                const now = performance.now();
+                const dt = Math.min(0.05, (now - grid3d.lastT) / 1000);
+                grid3d.lastT = now;
+                let allIdle = true;
+                grid3d.reels.forEach(grp => {
+                    const u = grp.userData;
+                    if (u.phase === 'spin') {
+                        allIdle = false;
+                        u.yOff += u.speed * dt;
+                        while (u.yOff >= CH) {
+                            u.yOff -= CH;
+                            for (let j = u.col.length - 1; j > 0; j--) u.col[j] = u.col[j - 1];
+                            u.col[0] = gridRandSym();
+                            for (let j = 0; j < u.meshes.length; j++) u.meshes[j].material.map = gridTexFor(u.col[j]);
+                        }
+                        for (let j = 0; j < u.meshes.length; j++) u.meshes[j].position.y = (1.5 - (j - 1)) * CH - u.yOff;
+                        if (now >= u.tStop) { u.phase = 'align'; u.t0 = now; u.from = u.yOff; }
+                    } else if (u.phase === 'align') {
+                        allIdle = false;
+                        const k = Math.min(1, (now - u.t0) / 320);
+                        const e = 1 - Math.pow(1 - k, 3);
+                        u.yOff = u.from * (1 - e);
+                        for (let j = 0; j < u.meshes.length; j++) u.meshes[j].position.y = (1.5 - (j - 1)) * CH - u.yOff;
+                        if (k >= 1) { u.yOff = 0; u.phase = 'idle'; }
+                    }
+                });
+                // подсветка выигрышных ячеек
+                const hlKeys = Object.keys(grid3d.hl);
+                for (let i = 0; i < hlKeys.length; i++) {
+                    const key = hlKeys[i], t0 = grid3d.hl[key];
+                    const msh = grid3dMeshByIdx(Number(key));
+                    if (!msh) { delete grid3d.hl[key]; continue; }
+                    if (now - t0 > 1200) { msh.material.emissiveIntensity = 0; msh.scale.set(1, 1, 1); delete grid3d.hl[key]; continue; }
+                    // b55: выигрышные карты МИГАЮТ:.square-волна свечением + пульс размером
+                    const on = Math.floor((now - t0) / 110) % 2 === 0;
+                    msh.material.emissive = new THREE.Color(0xfbbf24);
+                    msh.material.emissiveIntensity = on ? 1.6 : 0.12;
+                    const sc = on ? 1.07 : 1.0;
+                    msh.scale.set(sc, sc, 1);
+                }
+                // каскадное падение новых карт
+                for (let i = grid3d.drops.length - 1; i >= 0; i--) {
+                    const d = grid3d.drops[i];
+                    const k = Math.min(1, (now - d.t0) / 480);
+                    const c1 = 1.70158, c3 = c1 + 1;
+                    const eb = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+                    d.mesh.position.y = d.to + (d.from - d.to) * (1 - eb);
+                    if (k >= 1) { d.mesh.position.y = d.to; grid3d.drops.splice(i, 1); }
+                }
+                // искры выигрыша
+                for (let i = grid3d.bursts.length - 1; i >= 0; i--) {
+                    const b = grid3d.bursts[i];
+                    const t = (now - b.t0) / 750;
+                    if (t >= 1) { grid3d.scene.remove(b.points); b.points.geometry.dispose(); grid3d.bursts.splice(i, 1); continue; }
+                    const arr = b.points.geometry.attributes.position.array;
+                    for (let j = 0; j < b.vel.length; j++) {
+                        arr[j * 3] += b.vel[j].x * dt;
+                        arr[j * 3 + 1] += b.vel[j].y * dt - 2.2 * dt * t;
+                        arr[j * 3 + 2] += b.vel[j].z * dt;
+                    }
+                    b.points.geometry.attributes.position.needsUpdate = true;
+                    b.points.material.opacity = 1 - t;
+                }
+                // лампочки: бегущий блик, на выигрыше — праздник
+                if (grid3d.bulbs && grid3d.bulbs.length) {
+                    const wf = grid.winFlashT && (now - grid.winFlashT < 1200);
+                    const tb = now / 1000;
+                    for (let i = 0; i < grid3d.bulbs.length; i++) {
+                        grid3d.bulbs[i].material.emissiveIntensity = (0.5 + 1.1 * (0.5 + 0.5 * Math.sin(tb * (wf ? 14 : 5) + i * 0.8))) * (wf ? 1.7 : 1);
+                    }
+                }
+                if (grid.spinning && grid.phase3d === 'spinning' && allIdle) {
+                    grid.phase3d = 'stopped';
+                    grid.cells = grid3dVisibleCells();
+                    gridStep(grid.bet);
+                }
+                renderer.render(scene, camera);
+            };
+            loop();
+        }
+        function grid3dMeshByIdx(idx) {
+            const col = Math.floor(idx / GRID_ROWS), row = idx % GRID_ROWS;
+            const grp = grid3d.reels[col];
+            return grp ? grp.userData.meshes[row + 1] : null;
+        }
+        function grid3dVisibleCells() {
+            const out = [];
+            for (let c = 0; c < GRID_COLS; c++) {
+                const col = grid3d.reels[c].userData.col;
+                for (let r = 0; r < GRID_ROWS; r++) out[c * GRID_ROWS + r] = col[r + 1];
+            }
+            return out;
+        }
+        function grid3dStartSpin() {
+            grid3d.reels.forEach((grp, ci) => {
+                const u = grp.userData;
+                u.phase = 'spin';
+                u.speed = 7.5 + ci * 0.7;
+                u.tStop = performance.now() + 1000 + ci * 260;
+            });
+        }
+        function grid3dHighlight(idxSet) {
+            const now = performance.now();
+            idxSet.forEach(i => { grid3d.hl[String(i)] = now; });
+        }
+        function grid3dBurstAt(idxSet) {
+            idxSet.forEach(i => {
+                const msh = grid3dMeshByIdx(i);
+                if (!msh) return;
+                const P = 14;
+                const geo = new THREE.BufferGeometry();
+                const pos = new Float32Array(P * 3);
+                const vel = [];
+                const wp = new THREE.Vector3();
+                msh.getWorldPosition(wp);
+                for (let j = 0; j < P; j++) {
+                    pos[j * 3] = wp.x; pos[j * 3 + 1] = wp.y; pos[j * 3 + 2] = wp.z + 0.3;
+                    const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2.4;
+                    vel.push(new THREE.Vector3(Math.cos(a) * sp, Math.abs(Math.sin(a)) * sp + 0.8, 0.4 + Math.random() * 0.8));
+                }
+                geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                const mat = new THREE.PointsMaterial({ color: 0xffe6a9, size: 0.09, map: makeSparkTexture(), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+                const points = new THREE.Points(geo, mat);
+                grid3d.scene.add(points);
+                grid3d.bursts.push({ points: points, vel: vel, t0: performance.now() });
+            });
+        }
+        function grid3dApplyCells(idxSet) {
+            idxSet.forEach(i => {
+                const col = Math.floor(i / GRID_ROWS), row = i % GRID_ROWS;
+                const grp = grid3d.reels[col];
+                const sym = grid.cells[i];
+                grp.userData.col[row + 1] = sym;
+                const msh = grp.userData.meshes[row + 1];
+                msh.material.map = gridTexFor(sym);
+                msh.material.emissiveIntensity = 0;
+                msh.scale.set(1, 1, 1);
+                msh.material.needsUpdate = true;
+                grid3d.drops.push({ mesh: msh, t0: performance.now(), from: msh.position.y + CH_DROP(), to: msh.position.y });
+            });
+        }
+        function CH_DROP() { return grid3d.cellH * 1.35; }
+        // ---------------- общий цикл игры ----------------
+        function gridEnsure() {
+            grid3dEnsure();
+            const box = document.getElementById('grid3d-box');
+            const frame = document.getElementById('grid-dom-frame');
+            if (grid3d.ready) {
+                if (box) box.classList.remove('hidden');
+                if (frame) frame.classList.add('hidden');
+                if (grid.cells.length !== GRID_COLS * GRID_ROWS) grid.cells = grid3dVisibleCells();
+            } else {
+                if (box) box.classList.add('hidden');
+                if (frame) frame.classList.remove('hidden');
+                if (grid.cells.length !== GRID_COLS * GRID_ROWS) grid.cells = Array.from({ length: GRID_COLS * GRID_ROWS }, () => gridRandSym());
+                gridRenderCells(null, '');
+            }
+        }
+        function gridShowChainText(text) {
+            ['grid-chain', 'grid-chain-3d'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = text;
+                el.classList.remove('go');
+                void el.offsetWidth;
+                el.classList.add('go');
+            });
+        }
+        function gridShowChain(chain, add) {
+            ['grid-chain', 'grid-chain-3d'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = 'Цепь ×' + chain + '!  +' + fmtCoins(add);
+                el.classList.remove('go');
+                void el.offsetWidth;
+                el.classList.add('go');
+            });
+        }
+        function gridSetBet(b) {
+            if (SLOTS_BETS.indexOf(b) < 0) return;
+            grid.bet = b;
+            renderGridUI();
+        }
+        function gridSpin() {
+            if (grid.spinning) return;
+            const bet = grid.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet), 'error'); return; }
+            state.coins -= bet;
+            state.stats.gridSpins = (state.stats.gridSpins || 0) + 1;
+            jackpotFeed(bet); // b56: 2% ставки в банк
+            saveState(); updateCoinDisplay(); renderGridUI();
+            grid.spinning = true; grid.chain = 0; grid.total = 0; grid.lastBet = bet; // b57
+            try { SoundFX.play('click'); } catch (e) {}
+            if (grid3d.ready) {
+                grid.phase3d = 'spinning';
+                grid3dStartSpin();
+            } else {
+                grid.phase3d = '';
+                grid.cells = Array.from({ length: GRID_COLS * GRID_ROWS }, () => gridRandSym());
+                const all = new Set(grid.cells.map((_, i) => i));
+                gridRenderCells(all, 'drop');
+                setTimeout(() => gridStep(bet), 700);
+            }
+        }
+        function gridStep(bet) {
+            const groups = gridGroups();
+            // b56: 3+ карт JACKPOT где угодно на поле = весь банк
+            const jg = groups.find(gp => gp.jackpot && gp.count >= 3);
+            if (jg) {
+                const idxSet = new Set(jg.idxs);
+                const prize = jackpotWin();
+                grid.total += prize;
+                grid.chain = Math.max(grid.chain, 1);
+                gridShowChainText('👑 JACKPOT!  +' + fmtCoins(prize));
+                if (grid3d.ready) { grid3dHighlight(idxSet); grid3dBurstAt(idxSet); }
+                else gridRenderCells(idxSet, 'win');
+                setTimeout(() => gridEnd(), 1300);
+                return;
+            }
+            const wins = groups.filter(gp => !gp.jackpot && gridPay(gp.count, gp.rarity) > 0);
+            if (!wins.length || grid.chain >= GRID_CHAIN.length) { gridEnd(); return; }
+            const cm = GRID_CHAIN[grid.chain];
+            let add = 0;
+            wins.forEach(gp => { add += bet * gridPay(gp.count, gp.rarity) * cm; });
+            add = Math.round(add);
+            grid.total += add;
+            grid.chain++;
+            grid.winFlashT = performance.now();
+            const idxSet = new Set();
+            wins.forEach(gp => gp.idxs.forEach(i => idxSet.add(i)));
+            gridShowChain(grid.chain, add);
+            try { SoundFX.play(grid.chain > 1 ? 'legendary' : 'coin'); } catch (e) {}
+            if (grid3d.ready) {
+                grid3dHighlight(idxSet);
+                setTimeout(() => {
+                    grid3dBurstAt(idxSet);
+                    setTimeout(() => {
+                        idxSet.forEach(i => { grid.cells[i] = gridRandSym(); });
+                        grid3dApplyCells(idxSet);
+                        setTimeout(() => gridStep(bet), 560);
+                    }, 220);
+                }, 700);
+            } else {
+                gridRenderCells(idxSet, 'win');
+                setTimeout(() => {
+                    gridRenderCells(idxSet, 'burst');
+                    setTimeout(() => {
+                        idxSet.forEach(i => { grid.cells[i] = gridRandSym(); });
+                        gridRenderCells(idxSet, 'drop');
+                        setTimeout(() => gridStep(bet), 650);
+                    }, 350);
+                }, 900);
+            }
+        }
+        function gridEnd() {
+            grid.spinning = false;
+            grid.phase3d = '';
+            if (grid.total > 0) {
+                state.coins += grid.total;
+                state.stats.gridWins = (state.stats.gridWins || 0) + 1;
+                grid.lastWin = grid.total;
+                grid.winFlashT = performance.now();
+                try { SoundFX.play('coin'); } catch (e) {}
+                showToast('🏆 Сетка: +' + fmtCoins(grid.total) + ' монет' + (grid.chain > 1 ? ' (цепей: ' + grid.chain + ')' : ''), 'success');
+            } else {
+                grid.lastWin = 0;
+                jackpotOnLoss(grid.lastBet || grid.bet); // b57
+                showToast('Сетка тихая — банк джекпота вырос до ' + fmtCoins(jackpot.pool), 'refund');
+            }
+            saveState(); updateCoinDisplay(); renderGridUI();
+        }
+        function renderGridUI() {
+            jackpotRender(); // b56
+            const b = document.getElementById('grid-balance'); if (b) b.textContent = fmtCoins(state.coins);
+            const bets = document.getElementById('grid-bets');
+            if (bets) {
+                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="gridSetBet(${v})" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ${grid.bet === v ? 'bg-violet-600/90 border-violet-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
+            }
+            const spin = document.getElementById('grid-spin');
+            if (spin) {
+                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(grid.bet);
+                spin.disabled = state.coins < grid.bet || grid.spinning;
+                spin.classList.toggle('opacity-40', state.coins < grid.bet);
+            }
+            const lw = document.getElementById('grid-last');
+            if (lw) lw.innerHTML = grid.lastWin > 0 ? ('Последний выигрыш: <b class="text-emerald-300">+' + fmtCoins(grid.lastWin) + '</b>') : 'Последний выигрыш: —';
+            const st = document.getElementById('grid-stats');
+            if (st) st.textContent = 'спинов: ' + (state.stats.gridSpins || 0) + ' • побед: ' + (state.stats.gridWins || 0);
+        }
         function renderBattleTab() {
             const lobby = document.getElementById('battle-lobby');
             const arena = document.getElementById('battle-arena');
@@ -4347,6 +5483,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 dview.classList.add('hidden');
                 lobby.classList.remove('hidden');
                 renderLobby();
+                renderMiner(); // b47
+                renderSlotsUI(); // b49
+                renderGridUI(); // b53
                 setBattleMode(battleMode);
             }
         }
@@ -6159,10 +7298,25 @@ Check your Browserslist config to be sure that your targets are set up correctly
             D.renderer.render(D.scene, D.camera);
         }
 
+        // b47: формат больших чисел баланса: 1000 → 1k, 1 000 000 → 1m, 1e9 → 1b
+        function fmtCoins(n) {
+            n = Math.floor(Number(n) || 0);
+            if (n < 1000) return String(n);
+            const units = [[1e9, 'b'], [1e6, 'm'], [1e3, 'k']];
+            for (let i = 0; i < units.length; i++) {
+                if (n >= units[i][0]) {
+                    const x = n / units[i][0];
+                    const t = x >= 100 ? Math.floor(x) : Math.floor(x * 10) / 10;
+                    return String(t).replace(/\.0$/, '') + units[i][1];
+                }
+            }
+            return String(n);
+        }
         function updateCoinDisplay() {
-            document.getElementById('coin-balance').innerText = state.coins;
+            document.getElementById('coin-balance').innerText = fmtCoins(state.coins);
             const sc = document.getElementById('store-stat-coins');
-            if (sc) sc.textContent = state.coins;
+            if (sc) sc.textContent = fmtCoins(state.coins);
+            renderMiner(); // b47: баланс виден и в шахте
         }
 
         // ============ СКРЫТЫЙ РАЗДЕЛ («Студия») ============
@@ -6540,7 +7694,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <div class="booster-notch nl"></div>
                                 <div class="booster-notch nr"></div>
                                 <div class="booster-tearline"></div>
-                                <div class="pack3d-back-art">NEXUS<br>BOOSTER<br>★ ★ ★</div>
+                                <div class="pack3d-back-art">КОЛЛЕКЦИОНЕР<br>КАРТ<br>★ ★ ★</div>
                                 <div class="booster-round"></div>
                                 <div class="booster-edge"></div>
                                 <div class="booster-holo"></div>
@@ -7929,7 +9083,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </span>
                 </div>`;
             const nameHtml = `<h4 class="w-full font-bold text-white text-lg drop-shadow-md break-words ${L.text}">${card.name}</h4>`;
-            const descHtml = `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${card.description || 'Коллекционная карта Nexus TCG'}</p>`;
+            const descHtml = `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${card.description || 'Коллекционная карта «Коллекционер карт»'}</p>`;
             const statsHtml = `<div class="flex items-center space-x-2 pt-1.5 w-full ${L.justify}">
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-amber-300 bg-slate-950/80 border border-amber-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-bolt"></i><span>${st.atk}</span></span>
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-rose-300 bg-slate-950/80 border border-rose-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-heart"></i><span>${st.hp}</span></span>
@@ -9702,6 +10856,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         window.onload = function() {
             initHiddenTab(); // скрытый раздел: прячем кнопки навигации и вешаем жест на «Награды»
+            // b47: шахта — офлайн-добыча за прошлый период и запуск тика
+            try {
+                const off = minerOffline();
+                if (off) setTimeout(() => showToast('⛏ Шахта поработала без вас (' + minerDur(off.sec) + '): +' + fmtCoins(off.gain) + ' монет', 'refund'), 1000);
+            } catch (e) {}
+            minerStart();
             updateCoinDisplay();
             updateSoundIcon();
             if (typeof window.tailwind === 'undefined') {
@@ -9725,9 +10885,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b46') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b46');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b46', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b57') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b57');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b57', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
