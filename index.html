@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b66</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b67</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1601,7 +1601,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             </div>
             <p class="text-xs text-slate-400 text-center animate-pulse">Зажмите и водите мышкой или пальцем по карте, чтобы стереть фольгу!</p>
             
-            <div id="unboxing-cards-container" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6 w-full max-w-3xl justify-items-center py-2 sm:py-4">
+            <div id="unboxing-cards-container" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-4xl justify-items-center py-2 sm:py-4">
                 <!-- Scratch cards rendered here -->
             </div>
         </div>
@@ -1676,16 +1676,30 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </div>
 
     <!-- 3D Pack Opening Modal -->
-    <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b66</div>
-        <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
+    <style>
+    /* b67: on smartphones, opening a pack is FULLSCREEN: the 3D canvas is stretched
+       across the entire modal, and the hint and buttons are an overlay at the bottom — nothing gets cut off */
+    @media (max-width: 639px) {
+        #modal-pack3d { padding: 0; overflow: hidden; }
+        #pack3d-wrap { max-width: 100%; }
+        #pack3d-container { position: absolute; inset: 0; width: 100%; height: 100% !important; }
+        #pack3d-ui { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); z-index: 10; pointer-events: none; }
+        #pack3d-ui > * { pointer-events: auto; }
+        #pack3d-hint { background: rgba(2, 6, 23, .55); border-radius: 12px; padding: 4px 12px; backdrop-filter: blur(4px); }
+    }
+</style>
+<div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b67</div>
+        <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
+            <div id="pack3d-ui" class="flex flex-col items-center">
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
             <button id="pack3d-skip" onclick="finishPack3D()" class="mt-3 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition">
                 Пропустить анимацию <i class="fa-solid fa-arrow-right ml-1"></i>
             </button>
             <!-- b19: музыка вскрытия — вкл/выкл прямо во время анимации -->
             <button id="pack3d-music-btn" onclick="toggleUnboxMusic()" class="mt-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[11px] font-semibold rounded-xl transition hidden"><i class="fa-solid fa-music mr-1"></i><span id="pack3d-music-label">Музыка</span></button>
+            </div>
         </div>
     </div>
 
@@ -2749,7 +2763,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     g.fillStyle = col; g.font = '700 17px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
                     g.fillText(txt, x + w / 2, H - 47);
                 };
-                chip('БУСТЕР • 3 КАРТЫ', W / 2 - 152, 196, pal.crimpLight || '#e2e8f0');
+                chip('БУСТЕР • 4 КАРТЫ', W / 2 - 152, 196, pal.crimpLight || '#e2e8f0');
                 const shimName = (PACK_SHIMMERS[shim] && PACK_SHIMMERS[shim].name) || shim;
                 chip(String(shimName).toUpperCase(), W / 2 + 60, 92, pal.crimp[1]);
                 g.strokeStyle = 'rgba(248,250,252,.20)'; g.lineWidth = 2;
@@ -3040,12 +3054,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
-            camera.position.set(0, 0, 8.9);
+            // b67: мобильный вид (2×2) сидит дальше — вся четвёрка карт в кадре
+            const mobView = (w / (h || 1)) < 0.95;
+            camera.position.set(0, 0, mobView ? 10.2 : 9.6);
             if (!window._nx3dPack) { // b58: пак на телефоне не режется краями
                 window._nx3dPack = 1;
                 const rs = () => {
                     const c = document.getElementById('pack3d-container');
-                    if (c && pack3d && pack3d.renderer) nx3dResizeSimple(pack3d.renderer, pack3d.camera, c, [1.9, 2.35, 8.9]);
+                    if (c && pack3d && pack3d.renderer) nx3dResizeSimple(pack3d.renderer, pack3d.camera, c, pack3d.fit || [3.7, 2.35, 9.6]);
                 };
                 nx3dOnResize(rs);
                 nx3dObserve(container, rs); // b59
@@ -3145,6 +3161,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             group.add(bottom);
 
             // Карты вылетают из горловины
+            // b67: 4 карты — на телефоне сеткой 2×2 (весь экран), на широком экране линейкой
+            const mobLayout = (w / (h || 1)) < 0.95;
             const cardMeshes = cards.map((c, i) => {
                 const backTex = cardBackTexShared(pack); backTex.anisotropy = PACK3D_ANISO; // b39
                 backTex.encoding = THREE.sRGBEncoding; // b40
@@ -3153,7 +3171,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 m.position.set(0, 1.35, 0.2);
                 m.scale.setScalar(0.01);
                 m.visible = false;
-                m.userData = { targetX: (i - 1) * 2.15, targetRotZ: (i - 1) * -0.12, delay: i * 0.2, whooshed: false };
+                m.userData = {
+                    targetX: mobLayout ? (i % 2 === 0 ? -1.15 : 1.15) : (i - 1.5) * 1.95,
+                    targetY: mobLayout ? (i < 2 ? 1.42 : -1.42) : 0.05,
+                    targetRotZ: mobLayout ? (i % 2 === 0 ? 0.07 : -0.07) : (i - 1.5) * -0.1,
+                    mobScale: mobLayout ? 0.8 : 1,
+                    delay: i * 0.2, whooshed: false
+                };
                 scene.add(m);
                 return m;
             });
@@ -3187,6 +3211,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             pack3d = {
                 renderer, scene, camera, group, body, top, cardMeshes, points, pGeo, vel,
+                fit: mobLayout ? [2.0, 2.6, 10.2] : [3.7, 2.35, 9.6], // b67: рамка под 4 карты
                 phase: 'idle', startTime: performance.now(), burstStart: 0, tearStart: 0,
                 autoFinishAt: 0,
                 pack, cards, animId: null, clickHandler: null
@@ -3250,7 +3275,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b65</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b67</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -3312,9 +3337,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     const ease = 1 - Math.pow(1 - k, 3);
                     m.position.x = m.userData.targetX * ease;
                     // карты ВЫПАДАЮТ из горловины пакета сверху вниз
-                    m.position.y = (1 - ease) * 1.45 + 0.05 + Math.sin(ct * 2.2) * 0.09 * k;
+                    m.position.y = (1 - ease) * 1.45 + (m.userData.targetY != null ? m.userData.targetY : 0.05) + Math.sin(ct * 2.2) * 0.09 * k;
                     m.position.z = 0.4 + ease * 1.3;
-                    m.scale.setScalar(0.35 + ease * 0.7);
+                    m.scale.setScalar((0.35 + ease * 0.7) * (m.userData.mobScale || 1));
                     m.rotation.y = (1 - ease) * Math.PI * 2;
                     m.rotation.z = m.userData.targetRotZ * ease;
                 });
@@ -3323,7 +3348,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 group.position.y = -1.5;
                 group.scale.setScalar(0.82);
                 cardMeshes.forEach((m, i) => {
-                    m.position.y = 0.05 + Math.sin(now / 600 + i * 1.7) * 0.09;
+                    m.position.y = (m.userData.targetY != null ? m.userData.targetY : 0.05) + Math.sin(now / 600 + i * 1.7) * 0.09;
                     m.rotation.z = m.userData.targetRotZ + Math.sin(now / 900 + i * 2.3) * 0.025;
                 });
                 // сразу после вскрытия — автоматом к стиранию фольги (клик не обязателен)
@@ -8244,7 +8269,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         let currentUnboxingCards = [];
         let currentUnboxingPack = null; // b19: для музыки вскрытия
 
-        // Ролл 3 карт с учётом редкости и гаранта (общий для 3D и обычного вскрытия)
+        // b67: Ролл 4 карт с учётом редкости и гаранта (общий для 3D и обычного вскрытия)
         function rollPackCards(pack) {
             const packCards = state.cards.filter(c => c.packId === pack.id);
             if (packCards.length === 0) {
@@ -8256,13 +8281,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
 
             const rolled = [];
-            for (let i = 0; i < 3; i++) rolled.push(rollCardFromPack(packCards));
+            for (let i = 0; i < 4; i++) rolled.push(rollCardFromPack(packCards));
 
             // Гарант: каждый PITY_LIMIT-й пак без epic+ даёт гарантированный epic+
             const hasEpicPlusInPack = packCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             const gotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             if (state.pity.packsSinceEpic >= PITY_LIMIT - 1 && hasEpicPlusInPack && !gotEpicPlus) {
-                rolled[2] = rollCardFromPack(packCards, true);
+                rolled[3] = rollCardFromPack(packCards, true);
             }
             const finalGotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             state.pity.packsSinceEpic = finalGotEpicPlus ? 0 : state.pity.packsSinceEpic + 1;
@@ -11146,7 +11171,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b66',
+                build: '02.10-b67',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -11182,7 +11207,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b66:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b67:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -11249,9 +11274,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b66. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b67. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b66. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b67. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -11274,10 +11299,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b66') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b67') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b66');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b67');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -11312,9 +11337,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b66') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b66');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b66', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b67') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b67');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b67', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
