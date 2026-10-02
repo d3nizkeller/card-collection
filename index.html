@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
@@ -2096,7 +2097,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const pack = state.packs.find(p => p.id === packId);
             if (!pack) return;
             pack.musicOff = !!off;
+            pack.updatedAt = Date.now(); // b33: без метки времени правка не доходила до комнаты
             saveState();
+            cloudPublishSoon();          // b33: …и не публиковалась — галочка «выключить музыку» терялась
             renderStudio();
             updateUnboxMusicUI();
             showToast(off ? 'Музыка этого пака выключена' : 'Музыка этого пака включена', 'success');
@@ -3562,6 +3565,22 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 LS.setItem('nexus_heal_b30', '1');
             } catch (e) {}
         })();
+        // b33: ЛЕЧЕНИЕ синхронизации после b27–b32. В комнате и в localStorage накопились
+        // «надгробия» массовой зачистки — в том числе на паки стандартного набора. Из-за них
+        // общий каталог комнаты схлопнулся в пустой, а удалённое нельзя было вернуть:
+        // надгробия жили вечно и переиздавались при каждой публикации. Чистим их разово;
+        // следующая публикация создателя соберёт каталог заново (уже через слияние с комнатой)
+        // и заодно очистит саму комнату. Точечные удаления создателя продолжат работать —
+        // их надгробия создаются заново при каждом удалении и устаревают через 30 дней.
+        (function migrateHealCloudB33() {
+            try {
+                if (LS.getItem('nexus_heal_b33') === '1') return;
+                LS.removeItem('nexus_cloud_tombs');
+                LS.removeItem('nexus_cloud_remote_tombs');
+                LS.removeItem('nexus_cloud_dirty'); // не публикуем случайно пустой каталог
+                LS.setItem('nexus_heal_b33', '1');
+            } catch (e) {}
+        })();
         // b31: возврат встроенного стандартного набора в сохранения, из которых он был
         // вычищен миграциями b27/b28. Досевает только недостающие паки/карты,
         // пользовательский контент не трогает. Выполняется один раз.
@@ -3677,6 +3696,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     try {
                         const imported = JSON.parse(e.target.result);
                         if (imported && imported.packs && imported.cards) {
+                            // b33: у контента из файла обычно нет updatedAt, а без него облако считало
+                            // такие паки «старее» комнатных и затирало их при первом же получении данных —
+                            // то есть импорт не синхронизировался вовсе. Ставим свежую метку.
+                            const impTs = Date.now();
+                            const stampImported = arr => (Array.isArray(arr) ? arr : []).forEach(o => {
+                                if (o && typeof o === 'object' && !(o.updatedAt > 0)) o.updatedAt = impTs;
+                            });
+                            stampImported(imported.packs); stampImported(imported.cards);
                             state.coins = imported.coins || 1000;
                             state.packs = imported.packs;
                             state.cards = imported.cards;
@@ -3693,13 +3720,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             state.currentAlbumPackId = null;
                             resolveMediaRefs();
                             saveState();
+                            // b33: импорт отправляется в комнату — но не «вслепую», а через слияние
+                            // с текущим каталогом комнаты, поэтому чужие паки он не затирает.
+                            cloudPublishSoon();
                             updateCoinDisplay();
                             checkAlbumRewards();
                             ensureDailyMissions();
                             updateDailyDot();
                             switchTab('store');
                             checkAchievements();
-                            showToast('Данные успешно импортированы!', 'success');
+                            showToast('Данные успешно импортированы! Общий каталог комнаты обновится автоматически', 'success');
                         } else {
                             showToast('Неверный формат файла сохранения!', 'error');
                         }
@@ -3754,7 +3784,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         // b19: nexus_pack_music (ссылка на трек вскрытия) — пользовательская настройка, как и звук
                         // b28: надгробия удалений и метка полной очистки — данные синхронизации,
                         // сброс прогресса не должен их стирать, иначе удалённые паки вернутся из облака
-                        if (k && k.indexOf('nexus_') === 0 && k !== 'nexus_sound' && k !== PACK_MUSIC_KEY && k !== 'nexus_cloud_tombs' && k !== 'nexus_heal_b30' && k !== 'nexus_cloud_remote_tombs') doomed.push(k);
+                        // b33: ВЕСЬ облачный контекст (nexus_cloud_*) и метки миграций — это не прогресс.
+                        // Раньше сброс заодно удалял код комнаты, логин/пароль создателя и идентификатор
+                        // устройства: создатель превращался в «участника» собственной комнаты, а его
+                        // следующая публикация с пустым локальным каталогом стирала комнату у всех игроков.
+                        const keepSync = k === 'nexus_sound' || k === PACK_MUSIC_KEY ||
+                            k.indexOf('nexus_cloud_') === 0 || k.indexOf('nexus_heal_') === 0 || k.indexOf('nexus_restore_') === 0;
+                        if (k && k.indexOf('nexus_') === 0 && !keepSync) doomed.push(k);
                     }
                     doomed.forEach(k => LS.removeItem(k));
                 }
@@ -3775,6 +3811,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             state.currentAlbumPackId = null;
             resolveMediaRefs();
             saveState();
+            // b33: сброс прогресса — не повод отправлять в комнату пустой каталог
+            cloudDirtyClear();
+            cloudPushFailAt = 0;
             // 3) Интерфейс — как после первой загрузки
             closeResetModal();
             updateCoinDisplay();
@@ -3782,6 +3821,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             updateDailyDot();
             switchTab('store');
             showToast('Прогресс сброшен: игра снова как после установки', 'success');
+            // b33: общий каталог комнаты — не «прогресс», возвращаем его на экран
+            if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
         }
 
         function showToast(message, type = 'success') {
@@ -7870,6 +7911,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             })(),
             lastSync: 0,
             lastErr: '',
+            remotePacks: 0,   // b33: сколько паков/карт реально лежит в комнате (статус + страховки)
+            remoteCards: 0,
             ownerUnknown: false, // b23: в облаке ещё нет метки создателя (old payload / пустая комната)
             remoteAuth: null,    // b24: { login, hash, salt } — логин и хэш пароля комнаты из облака
             remoteFilled: false, // b24: в комнате уже есть опубликованный каталог
@@ -8037,12 +8080,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!CLOUD.connected()) {
                 cloudRole = null; CLOUD.ownerUnknown = false; CLOUD.needAuth = false;
                 CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = '';
+                CLOUD.remotePacks = 0; CLOUD.remoteCards = 0; // b33
                 return;
             }
             const auth = (remote && remote.auth && remote.auth.login && remote.auth.hash) ? remote.auth : null;
             CLOUD.remoteAuth = auth;
             CLOUD.remoteFilled = !!(remote && remote.v);
             CLOUD.remoteOwnerId = (remote && remote.ownerId) || '';
+            CLOUD.remotePacks = (remote && Array.isArray(remote.packs)) ? remote.packs.filter(p => p && p.id && !STANDARD_IDS[p.id]).length : 0; // b33
+            CLOUD.remoteCards = (remote && Array.isArray(remote.cards)) ? remote.cards.filter(c => c && c.id && !STANDARD_IDS[c.id]).length : 0; // b33
             CLOUD.needAuth = !auth;
             const devOk = !!CLOUD.remoteOwnerId && CLOUD.remoteOwnerId === cloudDeviceId();
             if (auth) {
@@ -8218,37 +8264,116 @@ Check your Browserslist config to be sure that your targets are set up correctly
             });
         }
         function cloudAuto() { try { return LS.getItem('nexus_cloud_auto') !== '0'; } catch (e) { return true; } }
-        function cloudTombs() { try { return JSON.parse(LS.getItem('nexus_cloud_tombs') || '[]'); } catch (e) { return []; } }
+        // ------------------- b33: НАДГРОБИЯ (tombstones) -------------------
+        // Надгробие = «создатель удалил этот пак/карту». ТОЛЬКО надгробие имеет право удалять
+        // контент у игроков: отсутствие пака в каталоге комнаты удалением больше не считается.
+        // (Раньше «нет в каталоге = удалено» + публикация своего каталога целиком означали, что
+        // любое устройство с неполными данными — после сброса прогресса, импорта сейва или входа
+        // с другого браузера — стирало комнату у всех игроков.)
+        const CLOUD_TOMB_TTL = 30 * 24 * 3600 * 1000; // надгробие старше 30 дней устаревает
+        const CLOUD_TOMB_MAX = 200;
+        // Надгробие действительно, если это не стандартный набор (он вшит в игру и не синхронизируется)
+        // и оно ещё не устарело. Устаревшие/мусорные надгробия раньше жили в комнате вечно и
+        // навсегда блокировали возвращение контента.
+        function cloudTombValid(t) {
+            return !!(t && t.id && !STANDARD_IDS[t.id] && t.at && (Date.now() - t.at) < CLOUD_TOMB_TTL);
+        }
+        function cloudTombPrune(list) {
+            const seen = {}, out = [];
+            (Array.isArray(list) ? list : []).forEach(t => {
+                if (!cloudTombValid(t) || seen[t.id]) return;
+                seen[t.id] = 1; out.push({ id: t.id, at: t.at });
+            });
+            out.sort((a, b) => a.at - b.at);
+            return out.slice(-CLOUD_TOMB_MAX);
+        }
+        function cloudTombs() {
+            try { return cloudTombPrune(JSON.parse(LS.getItem('nexus_cloud_tombs') || '[]')); } catch (e) { return []; }
+        }
         function cloudTombAdd(id) {
+            if (!id || STANDARD_IDS[id]) return; // b33: стандартный набор не синхронизируется — и надгробий на него не пишем
             const t = cloudTombs();
-            if (!t.some(x => x.id === id)) { t.push({ id: id, at: Date.now() }); try { LS.setItem('nexus_cloud_tombs', JSON.stringify(t.slice(-300))); } catch (e) {} }
+            const i = t.findIndex(x => x.id === id);
+            if (i >= 0) t[i].at = Date.now(); else t.push({ id: id, at: Date.now() });
+            try { LS.setItem('nexus_cloud_tombs', JSON.stringify(cloudTombPrune(t))); } catch (e) {}
         }
         function cloudCatalog() {
+            // b33: паки/карты кладём КОПИЯМИ — облачный каталог потом облегчается под лимит
+            // (выбрасываются тяжёлые base64-арты), и локальное состояние при этом не портится.
             return {
                 v: 1, updatedAt: Date.now(), ownerId: cloudDeviceId(), // b23: метка создателя комнаты
                 auth: cloudLocalAuth() || CLOUD.remoteAuth || null, // b24: логин + хэш пароля комнаты
-                packs: state.packs.filter(p => !STANDARD_IDS[p.id]),
-                cards: state.cards.filter(c => !STANDARD_IDS[c.id]),
+                packs: state.packs.filter(p => !STANDARD_IDS[p.id]).map(p => Object.assign({}, p)),
+                cards: state.cards.filter(c => !STANDARD_IDS[c.id]).map(c => Object.assign({}, c)),
                 tombs: cloudTombsUnion()
             };
         }
-        function cloudRemoteTombsCache() { try { return JSON.parse(LS.getItem('nexus_cloud_remote_tombs') || '[]'); } catch (e) { return []; } }
-        // b32: надгробия в публикуемом каталоге = объединение локальных и виденных в комнате:
-        // публикация создателя больше не может «забыть» удаления и вернуть удалённые паки участникам
+        function cloudLimit() { return CLOUD.db ? 4000000 : 900000; }
+        function cloudJsonLen(o) { try { return JSON.stringify(o).length; } catch (e) { return 0; } }
+        // b33: УПАКОВКА ПОД ЛИМИТ. Раньше превышение лимита отменяло публикацию ЦЕЛИКОМ:
+        // флаг «грязно» висел, автоповтор каждые 20 с получал тот же отказ, и комната
+        // переставала обновляться навсегда (одна карта с base64-артом блокировала весь пак).
+        // Теперь сначала выбрасываем самые тяжёлые data-URI арты (в локальном состоянии они
+        // остаются), затем урезаем очень длинные описания — и остальной контент продолжает
+        // синхронизироваться. Пользователю явно сообщаем, что именно не влезло.
+        function cloudFitCatalog(cat, limit) {
+            const res = { cat: cat, dropped: [], trimmed: 0, tooBig: false, size: cloudJsonLen(cat) };
+            if (res.size <= limit) return res;
+            const heavy = [];
+            (cat.cards || []).forEach(c => { if (c && typeof c.image === 'string' && c.image.indexOf('data:') === 0) heavy.push({ o: c, kind: 'карта', name: c.name || c.id, len: c.image.length }); });
+            (cat.packs || []).forEach(p => { if (p && typeof p.image === 'string' && p.image.indexOf('data:') === 0) heavy.push({ o: p, kind: 'пак', name: p.title || p.id, len: p.image.length }); });
+            heavy.sort((a, b) => b.len - a.len);
+            for (let i = 0; i < heavy.length && res.size > limit; i++) {
+                const h = heavy[i];
+                res.size -= h.len; // data-URI — чистый ASCII, в JSON его длина не меняется
+                h.o.image = '';
+                h.o.imgDropped = 1;  // метка: арт не влез в облако (у игрока будет заглушка)
+                res.dropped.push(h.kind + ' «' + h.name + '»');
+            }
+            if (res.size > limit) { // вторая очередь — неадекватно длинные описания
+                const texts = [];
+                (cat.cards || []).concat(cat.packs || []).forEach(o => {
+                    if (o && typeof o.description === 'string' && o.description.length > 600) texts.push(o);
+                });
+                texts.sort((a, b) => b.description.length - a.description.length);
+                for (let i = 0; i < texts.length && res.size > limit; i++) {
+                    const o = texts[i], cut = o.description.length - 600;
+                    o.description = o.description.slice(0, 600) + '…';
+                    res.size -= cut; res.trimmed++;
+                }
+            }
+            res.size = cloudJsonLen(cat); // точная перепроверка
+            res.tooBig = res.size > limit;
+            return res;
+        }
+        function cloudRemoteTombsCache() {
+            try { return cloudTombPrune(JSON.parse(LS.getItem('nexus_cloud_remote_tombs') || '[]')); } catch (e) { return []; }
+        }
+        // b32/b33: надгробия в публикуемом каталоге = объединение локальных и виденных в комнате
+        // (отфильтрованное и ограниченное по сроку/количеству) — публикация создателя не может
+        // «забыть» удаления и вернуть удалённые паки участникам.
         function cloudTombsUnion() {
-            const out = cloudTombs().slice();
-            cloudRemoteTombsCache().forEach(t => { if (t && t.id && !out.some(x => x.id === t.id)) out.push(t); });
-            return out.slice(-300);
+            return cloudTombPrune(cloudTombs().concat(cloudRemoteTombsCache()));
         }
         function cloudMerge(remote) {
             // b27: слияние возвращает сводку { add, upd, del }, чтобы показать пользователю,
             // что именно прилетело из комнаты (в т.ч. удаления создателя).
+            // b33: удаления выполняются ТОЛЬКО по надгробиям. Прежнее правило b32
+            // «чего нет в каталоге комнаты — то удалено» в связке с публикацией своего каталога
+            // целиком означало, что одно устройство с неполными данными (сброс прогресса, импорт
+            // сейва, вход с другого браузера, переполнение localStorage) стирало комнату у всех.
             const sum = { add: 0, upd: 0, del: 0 };
+            if (!remote || typeof remote !== 'object') return null;
             let changed = false;
             const tombs = cloudTombs();
-            (remote.tombs || []).forEach(t => { if (t && t.id && !tombs.some(x => x.id === t.id)) { tombs.push(t); changed = true; } });
-            try { LS.setItem('nexus_cloud_tombs', JSON.stringify(tombs.slice(-300))); } catch (e) {}
-            const killedAt = id => { const t = tombs.find(x => x.id === id); return t ? t.at : 0; };
+            const knownTomb = {};
+            tombs.forEach(t => { knownTomb[t.id] = 1; });
+            cloudTombPrune(remote.tombs).forEach(t => {
+                if (knownTomb[t.id]) return;
+                knownTomb[t.id] = 1; tombs.push(t); changed = true;
+            });
+            try { LS.setItem('nexus_cloud_tombs', JSON.stringify(cloudTombPrune(tombs))); } catch (e) {}
+            const killedAt = id => { const t = tombs.find(x => x.id === id); return t ? (t.at || 0) : 0; };
             // b27: удаляя карту создателем, чистим у пользователя всё, что на неё ссылается
             const dropCardRefs = id => {
                 if (Object.prototype.hasOwnProperty.call(state.collection, id)) { delete state.collection[id]; changed = true; }
@@ -8264,14 +8389,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (state.albumBonus && state.albumBonus[pid]) { delete state.albumBonus[pid]; changed = true; }
                 if (state.currentAlbumPackId === pid) state.currentAlbumPackId = null;
             };
-            (remote.packs || []).forEach(rp => {
+            (Array.isArray(remote.packs) ? remote.packs : []).forEach(rp => {
                 if (!rp || !rp.id || STANDARD_IDS[rp.id]) return;
                 if (killedAt(rp.id) > (rp.updatedAt || 0)) { dropPack(rp.id); return; }
                 const i = state.packs.findIndex(p => p.id === rp.id);
                 if (i < 0) { rp.fromRoom = 1; state.packs.push(rp); sum.add++; changed = true; }
                 else if ((rp.updatedAt || 0) > (state.packs[i].updatedAt || 0)) { rp.fromRoom = 1; state.packs[i] = rp; sum.upd++; changed = true; }
             });
-            (remote.cards || []).forEach(rc => {
+            (Array.isArray(remote.cards) ? remote.cards : []).forEach(rc => {
                 if (!rc || !rc.id || STANDARD_IDS[rc.id]) return;
                 if (killedAt(rc.id) > (rc.updatedAt || 0)) {
                     const ci0 = state.cards.findIndex(c => c.id === rc.id);
@@ -8282,27 +8407,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (i < 0) { rc.fromRoom = 1; state.cards.push(rc); sum.add++; changed = true; }
                 else if ((rc.updatedAt || 0) > (state.cards[i].updatedAt || 0)) { rc.fromRoom = 1; state.cards[i] = rc; sum.upd++; changed = true; }
             });
-            // b32: каталог комнаты — источник истины для контента, пришедшего из комнаты.
-            // Что создатель убрал из каталога (удалил у себя) — удаляется и у участников,
-            // даже если надгробие было потеряно. Свои локальные паки (без fromRoom) не трогаем.
-            if (Array.isArray(remote.packs)) {
-                const rpIds = {};
-                (remote.packs || []).forEach(rp => { if (rp && rp.id) rpIds[rp.id] = 1; });
-                state.packs.slice().forEach(p => {
-                    if (!p.fromRoom || STANDARD_IDS[p.id] || rpIds[p.id]) return;
-                    dropPack(p.id);
-                });
-            }
-            if (Array.isArray(remote.cards)) {
-                const rcIds = {};
-                (remote.cards || []).forEach(rc => { if (rc && rc.id) rcIds[rc.id] = 1; });
-                state.cards.slice().forEach(c => {
-                    if (!c.fromRoom || STANDARD_IDS[c.id] || rcIds[c.id]) return;
-                    dropCardRefs(c.id);
-                    const ci = state.cards.indexOf(c);
-                    if (ci >= 0) { state.cards.splice(ci, 1); sum.del++; changed = true; }
-                });
-            }
+            // b33: надгробия — единственный источник удалений (создатель удалил → у всех удалено)
             tombs.forEach(t => {
                 const isPack = state.packs.some(p => p.id === t.id && !STANDARD_IDS[p.id] && (p.updatedAt || 0) < t.at);
                 if (isPack) { dropPack(t.id); return; }
@@ -8331,7 +8436,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 : (cloudRole === 'owner'
                     ? ' • <span class="text-emerald-300"><i class="fa-solid fa-crown text-[9px]"></i> вы создатель' + (CLOUD.remoteAuth ? ' «' + cloudEsc(CLOUD.remoteAuth.login) + '» — можно редактировать' : ' — задайте логин и пароль комнаты') + '</span>'
                     : '');
-            el.innerHTML = 'Комната <b class="text-emerald-300">' + cloudEsc(CLOUD.room) + '</b> • ' + (CLOUD.db ? 'своя база Firebase' : 'простое хранилище (без регистрации)') + ' • синхронизация: ' + t + roleTxt +
+            // b33: сразу видно, что реально лежит в комнате и не ждут ли правки публикации
+            const cntTxt = CLOUD.lastSync ? ' • в комнате: ' + (CLOUD.remotePacks || 0) + ' паков, ' + (CLOUD.remoteCards || 0) + ' карт' : '';
+            const dirtyTxt = (!cloudGuest() && cloudDirty())
+                ? ' • <span class="text-amber-300"><i class="fa-solid fa-clock text-[9px]"></i> есть неопубликованные изменения</span>'
+                : '';
+            el.innerHTML = 'Комната <b class="text-emerald-300">' + cloudEsc(CLOUD.room) + '</b> • ' + (CLOUD.db ? 'своя база Firebase' : 'простое хранилище (без регистрации)') + ' • синхронизация: ' + t + cntTxt + dirtyTxt + roleTxt +
                 (CLOUD.lastErr ? ' • <span class="text-rose-300">ошибка: ' + cloudEsc(CLOUD.lastErr) + '</span>' : ' • <span class="text-emerald-300">онлайн</span>');
             // b23/b24: участнику — публикацию и автопубликацию отключаем
             const guest = cloudGuest();
@@ -8344,7 +8454,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             const autoCb = document.getElementById('cloud-auto');
             if (autoCb) { autoCb.disabled = guest; autoCb.classList.toggle('opacity-40', guest); }
-            if (guest && !CLOUD.remoteAuth) { /* b24: вход по логину/паролю — в панели cloud-auth */ }
         }
         let cloudPullBusy = false; // b25: не запускаем вторую загрузку, пока первая в пути
         function cloudPull(manual, done) {
@@ -8355,8 +8464,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             CLOUD.fetch().then(remote => {
                 const prevRole = cloudRole;
                 cloudResolveRole(remote); // b23: кто я в комнате — создатель или участник
-                // b32: кешируем надгробия комнаты — при публикации объединяются с локальными
-                try { if (remote && Array.isArray(remote.tombs)) LS.setItem('nexus_cloud_remote_tombs', JSON.stringify(remote.tombs.slice(-300))); } catch (e) {}
+                // b32/b33: кешируем надгробия комнаты — при публикации объединяются с локальными
+                try { if (remote && Array.isArray(remote.tombs)) LS.setItem('nexus_cloud_remote_tombs', JSON.stringify(cloudTombPrune(remote.tombs))); } catch (e) {}
                 if (remote && remote.v) {
                     const m = cloudMerge(remote);
                     if (m) {
@@ -8399,6 +8508,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function cloudPublishSoon() {
             if (!CLOUD.connected() || cloudGuest()) return; // b23: участники не публикуют
             cloudDirtySet(); // b25: изменение записано, но ещё не в облаке
+            cloudStatus();   // b33: сразу показываем, что есть неопубликованные изменения
             if (!cloudAuto()) { showToast('⚠️ Автопубликация выключена — нажмите «Опубликовать», чтобы отправить изменения в комнату', 'refund'); return; }
             clearTimeout(cloudPushT);
             cloudPushT = setTimeout(() => { cloudPushT = null; cloudPushNow(); }, 1500);
@@ -8418,31 +8528,91 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady()) return;
                 if (!cloudPushT && !cloudDirty()) return;
                 if (!cloudAuto() && !cloudPushT) return; // автопубликация выключена — ждём ручную кнопку
+                // b33: beacon не дожидается ответа, поэтому свериться с комнатой перед ним нельзя.
+                // Шлём аварийно, только если наша картина комнаты свежая и мы её НЕ уменьшаем —
+                // иначе закрытие вкладки с неполными данными стёрло бы комнату у всех игроков.
+                // Не успели — флаг dirty останется, и изменения уйдут при следующем запуске.
+                if (!CLOUD.lastSync || (Date.now() - CLOUD.lastSync) > 2 * 60 * 1000) return;
                 const cat = cloudCatalog();
-                const lim = CLOUD.db ? 4000000 : 900000;
-                if (JSON.stringify(cat).length > lim) return;
+                if ((cat.packs.length + cat.cards.length) < ((CLOUD.remotePacks || 0) + (CLOUD.remoteCards || 0))) return;
+                const fit = cloudFitCatalog(cat, cloudLimit());
+                if (fit.tooBig) return;
                 clearTimeout(cloudPushT); cloudPushT = null;
-                if (CLOUD.flush(cat)) cloudDirtyClear(); // beacon принят браузером — считаем доставленным
+                if (CLOUD.flush(fit.cat)) cloudDirtyClear(); // beacon принят браузером — считаем доставленным
             } catch (e) {}
         }
         // b25: получили данные из облака — если остались неопубликованные правки, отправляем их следом
         function cloudAfterPull() {
-            if (CLOUD.connected() && !cloudGuest() && cloudAuthReady() && cloudAuto() && cloudDirty() && !cloudPushT) cloudPushNow();
+            if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady() || !cloudAuto() || !cloudDirty() || cloudPushT) return;
+            if (cloudPushFailAt && (Date.now() - cloudPushFailAt) < 60000) return; // b33: после ошибки — пауза 60 с
+            cloudPushNow({ quiet: true });
         }
-        function cloudPushNow() {
-            if (!CLOUD.connected()) { showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
-            if (cloudGuest()) { showToast('⛔ Публиковать может только создатель комнаты', 'error'); return; }
+        let cloudPushBusy = false;    // b33: одна публикация за раз (параллельные перезаписывали друг друга)
+        let cloudPushFailAt = 0;      // b33: когда не получилось в последний раз — для паузы автоповторов
+        let cloudPushErrShown = false; // b33: одну и ту же ошибку не показываем каждые 20 секунд
+        function cloudPushNow(opts) {
+            const quiet = !!(opts && opts.quiet);
+            const fail = msg => {
+                cloudDirtySet(); cloudPushFailAt = Date.now(); // b25: не получилось — повторим позже
+                CLOUD.lastErr = msg; cloudStatus();
+                if (!quiet || !cloudPushErrShown) { cloudPushErrShown = true; showToast('Ошибка публикации: ' + msg, 'error'); }
+            };
+            if (!CLOUD.connected()) { if (!quiet) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
+            if (cloudGuest()) { if (!quiet) showToast('⛔ Публиковать может только создатель комнаты', 'error'); return; }
             if (!cloudAuthReady()) { // b24: комната без логина и пароля не публикуется
-                showToast('⛔ Сначала задайте логин и пароль комнаты — без них публикация отключена', 'error');
-                cloudStatus(); cloudAuthOpen('set');
+                if (!quiet) { showToast('⛔ Сначала задайте логин и пароль комнаты — без них публикация отключена', 'error'); cloudAuthOpen('set'); }
+                cloudStatus();
                 return;
             }
-            const cat = cloudCatalog();
-            const lim = CLOUD.db ? 4000000 : 900000;
-            if (JSON.stringify(cat).length > lim) { cloudStatus('Каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ): сократите описания паков и карт'); return; }
+            if (cloudPushBusy) return;
+            cloudPushBusy = true;
             cloudStatus('Публикация…');
-            CLOUD.push(cat).then(() => { cloudDirtyClear(); CLOUD.lastSync = Date.now(); CLOUD.lastErr = ''; cloudStatus(); showToast('Опубликовано в комнату ' + CLOUD.room, 'success'); })
-                .catch(e => { cloudDirtySet(); CLOUD.lastErr = String((e && e.message) || e); cloudStatus(); showToast('Ошибка публикации: ' + CLOUD.lastErr, 'error'); }); // b25: не получилось — повторим позже
+            // b33: СНАЧАЛА читаем комнату и сливаем её содержимое со своим состоянием, и только
+            // потом публикуем объединённый каталог. Публикация «вслепую» (как раньше) затирала
+            // комнату локальными данными: сброс прогресса, импорт сейва, второй браузер или
+            // переполнение localStorage на одном устройстве стирали контент у всех игроков.
+            CLOUD.fetch().then(remote => {
+                const prevRole = cloudRole;
+                cloudResolveRole(remote);
+                try { if (remote && Array.isArray(remote.tombs)) LS.setItem('nexus_cloud_remote_tombs', JSON.stringify(cloudTombPrune(remote.tombs))); } catch (e) {}
+                if (cloudGuest()) throw new Error('публиковать может только создатель комнаты');
+                if (remote && remote.v && cloudMerge(remote)) { saveState(); refreshVisibleTabs(); }
+                if (prevRole !== cloudRole) refreshVisibleTabs();
+                const cat = cloudCatalog();
+                // b33: страховка — всё, что есть в комнате и не удалено надгробием, обязано
+                // остаться в исходящем каталоге. Иначе публикацию отменяем, данные не теряются.
+                const tIds = {};
+                (cat.tombs || []).forEach(t => { tIds[t.id] = 1; });
+                const has = (arr, id) => arr.some(x => x && x.id === id);
+                let lost = 0;
+                ((remote && Array.isArray(remote.packs)) ? remote.packs : []).forEach(p => {
+                    if (!p || !p.id || STANDARD_IDS[p.id] || tIds[p.id] || has(cat.packs, p.id)) return;
+                    lost++;
+                });
+                ((remote && Array.isArray(remote.cards)) ? remote.cards : []).forEach(c => {
+                    if (!c || !c.id || STANDARD_IDS[c.id] || tIds[c.id] || has(cat.cards, c.id)) return;
+                    lost++;
+                });
+                if (lost > 0) throw new Error('отменено: не удалось объединить с комнатой (иначе потерялось бы объектов: ' + lost + ') — нажмите «Опубликовать» ещё раз');
+                const lim = cloudLimit();
+                const fit = cloudFitCatalog(cat, lim);
+                if (fit.tooBig) throw new Error('каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ) даже без тяжёлых артов: ' + Math.round(fit.size / 1000) + ' КБ — сократите описания паков и карт');
+                return CLOUD.push(fit.cat).then(() => {
+                    cloudDirtyClear(); CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
+                    cloudPushFailAt = 0; cloudPushErrShown = false;
+                    CLOUD.remotePacks = fit.cat.packs.length; CLOUD.remoteCards = fit.cat.cards.length;
+                    cloudStatus();
+                    if (fit.dropped.length) {
+                        showToast('⚠️ Опубликовано, но без тяжёлых base64-артов (не влезли в лимит облака): ' +
+                            fit.dropped.slice(0, 3).join(', ') + (fit.dropped.length > 3 ? ' и ещё ' + (fit.dropped.length - 3) : '') +
+                            ' — вставьте вместо них ссылки на картинки', 'refund');
+                    } else {
+                        showToast((quiet ? '☁️ ' : '') + 'Опубликовано в комнату ' + CLOUD.room + ': ' +
+                            fit.cat.packs.length + ' паков, ' + fit.cat.cards.length + ' карт', 'success');
+                    }
+                });
+            }).catch(e => fail(String((e && e.message) || e)))
+              .then(() => { cloudPushBusy = false; });
         }
         function cloudSaveDb() {
             const inp = document.getElementById('cloud-db');
@@ -8507,8 +8677,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (CLOUD.connected()) cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest'; // b23
             cloudStatus();
             if (CLOUD.connected()) cloudPull(false, cloudAfterPull); // b25: после получения — допубликовать оставшиеся правки
-            // b25: проверяем облако чаще (каждые 20 секунд вместо 60) — обновления прилетают быстрее
-            setInterval(() => cloudPull(false, cloudAfterPull), 20000);
+            // b25: проверяем облако чаще (каждые 20 секунд вместо 60) — обновления прилетают быстрее.
+            // b33: спрятанную вкладку не опрашиваем — данные подтянем сразу, когда пользователь вернётся.
+            setInterval(() => {
+                try { if (document.hidden) return; } catch (e) {}
+                cloudPull(false, cloudAfterPull);
+            }, 20000);
             // b25: закрывают вкладку/приложение — экстренно публикуем правки создателя;
             // вернулись на вкладку — сразу тянем свежие данные комнаты
             try {
@@ -8516,6 +8690,79 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 document.addEventListener('visibilitychange', () => {
                     if (document.hidden) cloudFlushPending();
                     else if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
+                });
+            } catch (e) {}
+            cloudTabSyncInit(); // b33: несколько вкладок одной игры
+        }
+
+        // ------------------- b33: НЕСКОЛЬКО ВКЛАДОК ОДНОВРЕМЕННО -------------------
+        // Раньше две открытые вкладки ничего не знали друг о друге: каждая держала свою копию
+        // state в памяти и при любом действии писала в localStorage «поверх» соседа. В итоге
+        // созданные паки и монеты то появлялись, то пропадали после переключения вкладок,
+        // а публикация в облако уходила из устаревшего состояния. Теперь изменение в одной
+        // вкладке мгновенно подхватывают остальные (событие storage).
+        let cloudTabT = null, cloudTabTries = 0;
+        function tabUserTyping() {
+            try {
+                const a = document.activeElement;
+                if (!a || !a.tagName) return false;
+                const t = a.tagName.toUpperCase();
+                return (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') && !a.disabled;
+            } catch (e) { return false; }
+        }
+        // Перечитать состояние из хранилища (то, что сделала соседняя вкладка) и перерисовать экран
+        function reloadStateFromStorage() {
+            try {
+                const cv = parseInt(LS.getItem('nexus_coins'), 10);
+                if (!isNaN(cv)) state.coins = cv;
+                const p = JSON.parse(LS.getItem('nexus_packs') || 'null');
+                const c = JSON.parse(LS.getItem('nexus_cards') || 'null');
+                if (Array.isArray(p)) state.packs = p;
+                if (Array.isArray(c)) state.cards = c;
+                state.collection = JSON.parse(LS.getItem('nexus_collection') || '{}') || {};
+                state.stats = Object.assign({}, defaultStats, JSON.parse(LS.getItem('nexus_stats') || '{}'));
+                state.stats.oppWins = Object.assign({}, state.stats.oppWins || {});
+                state.daily = Object.assign({ lastClaimDate: null, streak: 0, lastDurakWinDate: null }, JSON.parse(LS.getItem('nexus_daily') || '{}'));
+                state.missions = JSON.parse(LS.getItem('nexus_missions') || 'null') || { date: null, list: [] };
+                state.achievements = JSON.parse(LS.getItem('nexus_achievements') || '{}') || {};
+                state.pity = Object.assign({ packsSinceEpic: 0 }, JSON.parse(LS.getItem('nexus_pity') || '{}'));
+                const d = JSON.parse(LS.getItem('nexus_deck') || '[]'); state.deck = Array.isArray(d) ? d : [];
+                const h = JSON.parse(LS.getItem('nexus_history') || '[]'); state.history = Array.isArray(h) ? h : [];
+                state.albumBonus = JSON.parse(LS.getItem('nexus_album_bonus') || '{}') || {};
+                resolveMediaRefs();
+                updateCoinDisplay();
+                refreshVisibleTabs();
+                cloudStatus();
+            } catch (e) { /* сосед ещё пишет — подхватим на следующем событии */ }
+        }
+        function cloudTabSyncInit() {
+            try {
+                window.addEventListener('storage', ev => {
+                    const k = (ev && ev.key) ? String(ev.key) : '';
+                    if (k.indexOf('nexus_') !== 0) return;
+                    if (k === 'nexus_cloud_room' || k === 'nexus_cloud_db' || k === 'nexus_cloud_off') {
+                        // соседняя вкладка переключила комнату или базу — повторяем за ней
+                        CLOUD.db = String(LS.getItem('nexus_cloud_db') || '').trim().replace(/\/+$/, '');
+                        const r = LS.getItem('nexus_cloud_room');
+                        CLOUD.room = r ? String(r) : (cloudOptOut() ? '' : CLOUD_DEFAULT_ROOM);
+                        const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room || CLOUD_DEFAULT_ROOM;
+                        const dbi = document.getElementById('cloud-db'); if (dbi) dbi.value = CLOUD.db;
+                        cloudRole = CLOUD.connected() ? ((cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest') : null;
+                        CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = '';
+                        cloudStatus();
+                        if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
+                        refreshVisibleTabs();
+                        return;
+                    }
+                    if (k.indexOf('nexus_cloud_') === 0) { cloudStatus(); return; } // dirty/надгробия/пароль — достаточно статуса
+                    clearTimeout(cloudTabT);
+                    const apply = () => {
+                        // не перерисовываем экран, пока пользователь печатает в форме
+                        if (tabUserTyping() && cloudTabTries++ < 40) { cloudTabT = setTimeout(apply, 500); return; }
+                        cloudTabTries = 0;
+                        reloadStateFromStorage();
+                    };
+                    cloudTabT = setTimeout(apply, 200);
                 });
             } catch (e) {}
         }
