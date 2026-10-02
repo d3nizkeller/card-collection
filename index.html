@@ -688,7 +688,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b36</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b37</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1517,7 +1517,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b36</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b37</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -3489,6 +3489,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
         const STANDARD_IDS = {};
         STANDARD_PACKS.forEach(p => { STANDARD_IDS[p.id] = 1; });
         STANDARD_CARDS.forEach(c => { STANDARD_IDS[c.id] = 1; });
+        // b37: ключи курирования стандартного набора — объявлены здесь, потому что
+        // загрузочная миграция (фиксация решений создателя) работает раньше облачного раздела
+        const STD_MOD_KEY = 'nexus_std_mod';
+        const STD_MOD_REMOTE_KEY = 'nexus_std_mod_remote';
 
         let state = {
             coins: parseInt(LS.getItem('nexus_coins')) || 1000,
@@ -3599,24 +3603,32 @@ Check your Browserslist config to be sure that your targets are set up correctly
             try { LS.setItem('nexus_restore_b31', '1'); } catch (e) {}
             if (added) saveState();
         })();
-        // b34: стандартный набор мог быть вырезан из сохранений надгробиями b27–b32 (они жили
-        // вечно и удаляли даже встроенные паки). Надгробия очищены лечением b33 и чисткой комнат,
-        // поэтому ещё раз досеваем недостающие стандартные паки/карты — иначе у части игроков
-        // магазин навсегда оставался бы «однопаковым», как у создателя комнаты.
+        // b34/b37: стандартный набор мог быть вырезан из сохранений надгробиями b27–b32 (они жили
+        // вечно и удаляли даже встроенные паки) — такие устройства досеваем. НО с b37 отсутствие
+        // стандартного пака может быть и осознанным решением создателя («убрал лишнее»): на
+        // устройстве-создателе комнаты фиксируем это в stdMod (и оно уедет в комнату), а на
+        // устройстве-участнике просто досеваем стандарт. Дальше досев выполняется при каждом
+        // запуске (reseedStandard) с уважением к stdMod.
         (function migrateRestoreStandardB34() {
-            try { if (LS.getItem('nexus_restore_b34') === '1') return; } catch (e) { return; }
-            let added = false;
-            STANDARD_PACKS.forEach(p => {
-                if (!state.packs.some(x => x.id === p.id)) { state.packs.push(Object.assign({}, p)); added = true; }
-            });
-            STANDARD_CARDS.forEach(c => {
-                if (!state.cards.some(x => x.id === c.id)) {
-                    state.cards.push({ id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image });
-                    added = true;
+            let ownerish = false;
+            try {
+                const roomCode = String(LS.getItem('nexus_cloud_room') || '').trim();
+                ownerish = !!roomCode && (LS.getItem('nexus_cloud_owner_room') === roomCode || !!LS.getItem('nexus_cloud_auth_' + roomCode));
+            } catch (e) {}
+            // b37: фиксация текущей курировки отдельным флагом (не зависит от nexus_restore_b34,
+            // который мог сработать раньше на устройствах, пострадавших от старых надгробий)
+            try {
+                if (LS.getItem('nexus_stdmod_init') !== '1') {
+                    LS.setItem('nexus_stdmod_init', '1');
+                    if (ownerish) {
+                        const mark = [];
+                        STANDARD_PACKS.forEach(p => { if (!state.packs.some(x => x.id === p.id)) mark.push({ id: p.id, off: 1, at: Date.now() }); });
+                        STANDARD_CARDS.forEach(c => { if (!state.cards.some(x => x.id === c.id) && !mark.some(m => m.id === c.packId)) mark.push({ id: c.id, off: 1, at: Date.now() }); });
+                        if (mark.length) cloudStdModSave(cloudStdMod().concat(mark));
+                    }
                 }
-            });
-            try { LS.setItem('nexus_restore_b34', '1'); } catch (e) {}
-            if (added) saveState();
+            } catch (e) {}
+            try { if (reseedStandard()) saveState(); } catch (e) {}
         })();
         resolveMediaRefs();
 
@@ -8324,7 +8336,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 auth: cloudLocalAuth() || CLOUD.remoteAuth || null, // b24: логин + хэш пароля комнаты
                 packs: state.packs.filter(p => !STANDARD_IDS[p.id]).map(p => Object.assign({}, p)),
                 cards: state.cards.filter(c => !STANDARD_IDS[c.id]).map(c => Object.assign({}, c)),
-                tombs: cloudTombsUnion()
+                tombs: cloudTombsUnion(),
+                stdMod: cloudStdModUnion() // b37: курирование стандартного набора создателем
             };
         }
         function cloudLimit() { return CLOUD.db ? 4000000 : 900000; }
@@ -8393,6 +8406,61 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function cloudGuestArchiveSave(a) {
             try { LS.setItem('nexus_guest_archive', JSON.stringify({ packs: (a.packs || []).slice(-100), cards: (a.cards || []).slice(-300) })); } catch (e) {}
+        }
+        // ------------------- b37: КУРИРОВАНИЕ СТАНДАРТНОГО НАБОРА -------------------
+        // Стандартный набор встроен в игру и не возится в каталоге комнаты целиком, НО решения
+        // создателя «убрать/вернуть» стандартный пак или карту обязаны синхронизироваться.
+        // Для этого в комнате живёт список правок stdMod: [{ id, off, at }]; по каждому id
+        // побеждает последняя по времени запись (возврат перезаписывает удаление и наоборот).
+        function cloudStdModPrune(list) {
+            const byId = {};
+            (Array.isArray(list) ? list : []).forEach(e => {
+                if (!e || !e.id || !STANDARD_IDS[e.id] || !e.at) return;
+                const cur = byId[e.id];
+                if (!cur || e.at > cur.at) byId[e.id] = { id: e.id, off: e.off ? 1 : 0, at: e.at };
+            });
+            return Object.keys(byId).map(k => byId[k]).sort((a, b) => a.at - b.at).slice(-100);
+        }
+        function cloudStdMod() { try { return cloudStdModPrune(JSON.parse(LS.getItem(STD_MOD_KEY) || '[]')); } catch (e) { return []; } }
+        function cloudStdModSave(list) { try { LS.setItem(STD_MOD_KEY, JSON.stringify(cloudStdModPrune(list))); } catch (e) {} }
+        function cloudStdModRemote() { try { return cloudStdModPrune(JSON.parse(LS.getItem(STD_MOD_REMOTE_KEY) || '[]')); } catch (e) { return []; } }
+        function cloudStdModUnion() { return cloudStdModPrune(cloudStdMod().concat(cloudStdModRemote())); }
+        function cloudStdDisabled() { return cloudStdMod().filter(e => e.off).map(e => e.id); }
+        function cloudStdSetOff(id, off) {
+            if (!id || !STANDARD_IDS[id]) return;
+            const list = cloudStdMod();
+            list.push({ id: id, off: off ? 1 : 0, at: Date.now() });
+            cloudStdModSave(list);
+        }
+        function cloudStdFindPack(id) { return STANDARD_PACKS.find(p => p.id === id) || null; }
+        function cloudStdFindCard(id) { return STANDARD_CARDS.find(c => c.id === id) || null; }
+        function cloudStdCardClone(c) { return { id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image }; }
+        // Досев стандартного набора при КАЖДОМ запуске — кроме скрытых куратором позиций
+        function reseedStandard() {
+            const off = {};
+            cloudStdDisabled().forEach(id => { off[id] = 1; });
+            let added = false;
+            STANDARD_PACKS.forEach(p => {
+                if (off[p.id]) return;
+                if (!state.packs.some(x => x.id === p.id)) { state.packs.push(Object.assign({}, p)); added = true; }
+            });
+            STANDARD_CARDS.forEach(c => {
+                if (off[c.id] || off[c.packId]) return;
+                if (!state.cards.some(x => x.id === c.id)) { state.cards.push(cloudStdCardClone(c)); added = true; }
+            });
+            return added;
+        }
+        // Вернуть скрытую позицию стандарта: снятие off + досев + публикация
+        function restoreStandard(id) {
+            if (cloudGuard()) return; // b23
+            if (!id || !STANDARD_IDS[id]) return;
+            cloudStdSetOff(id, 0);
+            reseedStandard();
+            saveState();
+            refreshVisibleTabs();
+            cloudPublishSoon();
+            cloudPushUrgent();
+            showToast('Возвращено в стандартный набор и опубликовано в комнату', 'success');
         }
         function cloudRemoteTombsCache() {
             try { return cloudTombPrune(JSON.parse(LS.getItem('nexus_cloud_remote_tombs') || '[]')); } catch (e) { return []; }
@@ -8481,6 +8549,33 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     if (ci >= 0) { state.cards.splice(ci, 1); sum.del++; sum.mirror++; changed = true; }
                 });
                 if (archived) cloudGuestArchiveSave(archive);
+            }
+            // b37: правки стандартного набора из комнаты (скрыть/вернуть)
+            const remoteMod = cloudStdModPrune(remote.stdMod);
+            try { LS.setItem(STD_MOD_REMOTE_KEY, JSON.stringify(remoteMod)); } catch (e) {}
+            if (remoteMod.length) {
+                const localMod = cloudStdMod();
+                const latest = {};
+                localMod.forEach(e => { latest[e.id] = e; });
+                let modChanged = false;
+                remoteMod.forEach(e => {
+                    const l = latest[e.id];
+                    if (l && l.at >= e.at) return; // у нас уже есть решение свежее
+                    if (e.off) {
+                        if (state.packs.some(p => p.id === e.id)) { dropPack(e.id); sum.del++; modChanged = true; }
+                        else if (state.cards.some(c => c.id === e.id)) {
+                            dropCardRefs(e.id);
+                            const ci = state.cards.findIndex(c => c.id === e.id);
+                            if (ci >= 0) { state.cards.splice(ci, 1); sum.del++; modChanged = true; }
+                        }
+                    } else if (state.packs.some(p => p.id === e.id) === false && cloudStdFindPack(e.id)) {
+                        state.packs.push(Object.assign({}, cloudStdFindPack(e.id))); sum.add++; modChanged = true;
+                    } else if (state.cards.some(c => c.id === e.id) === false && cloudStdFindCard(e.id)) {
+                        state.cards.push(cloudStdCardClone(cloudStdFindCard(e.id))); sum.add++; modChanged = true;
+                    }
+                });
+                cloudStdModSave(localMod.concat(remoteMod));
+                if (modChanged) { reseedStandard(); changed = true; }
             }
             // b33: надгробия — единственный источник удалений (создатель удалил → у всех удалено)
             tombs.forEach(t => {
@@ -8634,6 +8729,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b36: обратный конфликт — в комнате снова лежит то, что мы удалили (надгробие есть
             // локально). Так бывает, когда другое устройство-создатель перезаписало комнату своим
             // старым каталогом поверх нашего удаления. Публикуем удаление заново.
+            // b37: локальные правки стандарта, которых ещё нет в комнате, тоже требуют публикации
+            const roomModKeys = {};
+            ((remote && Array.isArray(remote.stdMod)) ? remote.stdMod : []).forEach(e => { if (e && e.id) roomModKeys[e.id + '@' + e.at] = 1; });
+            cloudStdMod().forEach(e => { if (!roomModKeys[e.id + '@' + e.at]) diff++; });
             const tombsR = cloudTombs();
             const killedAtR = id => { const t = tombsR.find(x => x.id === id); return t ? (t.at || 0) : 0; };
             ((remote && Array.isArray(remote.packs)) ? remote.packs : []).forEach(x => {
@@ -8912,7 +9011,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b20: у каждого пака в списке — раскрывающийся редактор ссылки mp3,
             // а также СВОИ карточки прямо под паком (не нужно искать в общей базе)
             const packsList = document.getElementById('studio-packs-list');
-            packsList.innerHTML = state.packs.length === 0 ? `<p class="text-xs text-slate-500">Нет паков</p>` :
+            // b37: создатель видит скрытые позиции стандарта и может вернуть их в комнату
+            let stdModHtml = '';
+            if (!locked) {
+                const offIds = cloudStdDisabled();
+                if (offIds.length) {
+                    stdModHtml = '<div class="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">' +
+                        '<p class="text-[11px] font-bold text-amber-200 mb-2"><i class="fa-solid fa-eye-slash mr-1"></i>Скрыто из стандартного набора (видно всем игрокам комнаты):</p>' +
+                        '<div class="flex flex-wrap gap-2">' +
+                        offIds.map(id => {
+                            const pp = cloudStdFindPack(id), cc = cloudStdFindCard(id);
+                            const title = pp ? pp.title : (cc ? cc.name : id);
+                            return '<button type="button" onclick="restoreStandard(\'' + id + '\')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-semibold transition"><i class="fa-solid fa-rotate-left mr-1"></i>' + cloudEsc(title) + '</button>';
+                        }).join('') +
+                        '</div></div>';
+                }
+            }
+            packsList.innerHTML = stdModHtml + (state.packs.length === 0 ? `<p class="text-xs text-slate-500">Нет паков</p>` :
                 state.packs.map(p => {
                     const pCards = state.cards.filter(c => c.packId === p.id);
                     const pOpen = studioOpenPacks.has(p.id);
@@ -8952,7 +9067,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             </label>
                         </div>
                     </div>
-                `;}).join('');
+                `;}).join(''));
 
             // Карточки без пака (остаток старых сохранений): отдельная раскрывающаяся
             // группа, чтобы их можно было отредактировать или удалить и они не потерялись
@@ -9351,6 +9466,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (cloudGuard()) return; // b23
             state.cards.filter(c => c.packId === packId).forEach(c => cloudTombAdd(c.id));
             cloudTombAdd(packId);
+            if (STANDARD_IDS[packId]) cloudStdSetOff(packId, 1); // b37: скрытие стандарта синхронизируется
             state.packs = state.packs.filter(p => p.id !== packId);
             state.cards = state.cards.filter(c => c.packId !== packId);
             saveState();
@@ -9363,6 +9479,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function deleteCard(cardId) {
             if (cloudGuard()) return; // b23
             cloudTombAdd(cardId);
+            if (STANDARD_IDS[cardId]) cloudStdSetOff(cardId, 1); // b37
             state.cards = state.cards.filter(c => c.id !== cardId);
             delete state.collection[cardId];
             state.deck = (state.deck || []).filter(id => id !== cardId);
