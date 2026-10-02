@@ -709,7 +709,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b59</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b61</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1676,7 +1676,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b59</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b61</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -3214,7 +3214,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b59</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b61</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -3707,7 +3707,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'battle_streak3', icon: 'fa-fire', title: 'На волне побед', desc: 'Выиграйте 3 боя подряд на Арене', reward: 250, check: s => (s.stats.bestBattleStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestBattleStreak || 0, 3), 3] },
             { id: 'champion_down', icon: 'fa-crown', title: 'Убийца королей', desc: 'Победите Чемпиона «Коллекционер карт»', reward: 800, check: s => (s.stats.championWins || 0) >= 1, prog: s => [Math.min(s.stats.championWins || 0, 1), 1] },
             { id: 'durak_win', icon: 'fa-diamond', title: 'Не дурак!', desc: 'Выиграйте партию в «Дурака»', reward: 150, check: s => (s.stats.durakWins || 0) >= 1, prog: s => [Math.min(s.stats.durakWins || 0, 1), 1] },
-            { id: 'durak_streak3', icon: 'fa-fire', title: 'Серийный победитель', desc: '3 победы в «Дурака» подряд', reward: 200, check: s => (s.stats.bestDurakStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestDurakStreak || 0, 3), 3] }
+            { id: 'durak_streak3', icon: 'fa-fire', title: 'Серийный победитель', desc: '3 победы в «Дурака» подряд', reward: 200, check: s => (s.stats.bestDurakStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestDurakStreak || 0, 3), 3] },
+            // b61: награды по играм
+            { id: 'slots_win_1', icon: 'fa-lemon', title: 'Первый спин', desc: 'Выиграйте в автомате «Слоты»', reward: 100, check: s => (s.stats.slotsWins || 0) >= 1, prog: s => [Math.min(s.stats.slotsWins || 0, 1), 1] },
+            { id: 'slots_win_10', icon: 'fa-lemon', title: 'Мастер слотов', desc: '10 выигрышей в автомате «Слоты»', reward: 300, check: s => (s.stats.slotsWins || 0) >= 10, prog: s => [Math.min(s.stats.slotsWins || 0, 10), 10] },
+            { id: 'slots_jackpot', icon: 'fa-crown', title: 'Охотник за джекпотом', desc: 'Сорвите джекпот на любом из автоматов', reward: 1000, check: s => (s.stats.jackpots || 0) >= 1, prog: s => [Math.min(s.stats.jackpots || 0, 1), 1] },
+            { id: 'grid_win_1', icon: 'fa-border-all', title: 'Первый каскад', desc: 'Выиграйте в «Сеточном слоте»', reward: 100, check: s => (s.stats.gridWins || 0) >= 1, prog: s => [Math.min(s.stats.gridWins || 0, 1), 1] },
+            { id: 'grid_win_10', icon: 'fa-border-all', title: 'Мастер сетки', desc: '10 выигрышей в «Сеточном слоте»', reward: 300, check: s => (s.stats.gridWins || 0) >= 10, prog: s => [Math.min(s.stats.gridWins || 0, 10), 10] },
+            { id: 'grid_chain3', icon: 'fa-link', title: 'Цепь цепей', desc: 'Цепь из 3+ каскадов за один спин в Сетке', reward: 500, check: s => (s.stats.bestGridChain || 0) >= 3, prog: s => [Math.min(s.stats.bestGridChain || 0, 3), 3] },
+            { id: 'miner_lvl5', icon: 'fa-helmet-safety', title: 'Бригадир', desc: 'Прокачайте кирку в «Шахте» до 5 уровня', reward: 400, check: s => (s.stats.minerLvl || 0) >= 5, prog: s => [Math.min(s.stats.minerLvl || 0, 5), 5] },
+            { id: 'miner_lvl10', icon: 'fa-gem', title: 'Хозяин шахты', desc: 'Прокачайте кирку до 10 уровня', reward: 800, check: s => (s.stats.minerLvl || 0) >= 10, prog: s => [Math.min(s.stats.minerLvl || 0, 10), 10] }
         ];
 
         // Стандартный набор — паки и карты из авторского сохранения
@@ -4576,9 +4585,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (state.coins < c) { showToast('Не хватает монет: улучшение стоит ' + fmtCoins(c), 'error'); return; }
             state.coins -= c;
             miner.lvl += 1;
+            state.stats.minerLvl = miner.lvl; // b61: награды по играм видят уровень кирки
             minerSave(); saveState();
             try { SoundFX.play('coin'); } catch (e) {}
             updateCoinDisplay();
+            checkAchievements(); // b61
             showToast('⛏ Кирка ' + miner.lvl + ' уровня: теперь ' + fmtCoins(minerRate()) + ' монет/сек', 'success');
         }
         function renderMiner() {
@@ -4636,6 +4647,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             grid.winFlashT = performance.now();
             saveState(); updateCoinDisplay();
             try { SoundFX.play('legendary'); } catch (e) {}
+            launchConfetti(220); // b61: джекпот — полный салют
             showToast('👑 JACKPOT! Весь банк ваш: +' + fmtCoins(prize) + ' монет', 'success');
             jackpotRender();
             return prize;
@@ -4658,7 +4670,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // ============ b49: СЛОТЫ «Коллекционер карт» (3D-барабаны с картами сайта) ============
-        const SLOTS_BETS = [25, 50, 100, 250];
+        const SLOTS_BETS = [25, 50, 100, 250, 1000, 5000]; // b60: крупные ставки — до 5k
         const SLOTS_MULT = { common: 8, rare: 12, epic: 18, legendary: 30 };
         const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 50, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
         function slotsSymbols() {
@@ -5024,6 +5036,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 state.stats.slotsWins = (state.stats.slotsWins || 0) + 1;
                 slots.winFlash = performance.now(); // b52: иллюминация празднует
                 try { SoundFX.play(mult >= 8 ? 'legendary' : 'coin'); } catch (e) {}
+                launchConfetti(mult >= 8 ? 140 : 70); // b61: конфетти на выигрыш
+                checkAchievements(); // b61: награды по играм
                 showToast('🎰 ' + kind + '! Выигрыш +' + fmtCoins(win) + ' монет', 'success');
             } else {
                 jackpotOnLoss(bet); // b57: джекпот растёт с каждым проигрышем
@@ -5507,8 +5521,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (grid.total > 0) {
                 state.coins += grid.total;
                 state.stats.gridWins = (state.stats.gridWins || 0) + 1;
+                state.stats.bestGridChain = Math.max(state.stats.bestGridChain || 0, grid.chain); // b61
                 grid.lastWin = grid.total;
                 grid.winFlashT = performance.now();
+                launchConfetti(grid.chain > 1 ? 140 : 70); // b61
+                checkAchievements(); // b61
                 try { SoundFX.play('coin'); } catch (e) {}
                 showToast('🏆 Сетка: +' + fmtCoins(grid.total) + ' монет' + (grid.chain > 1 ? ' (цепей: ' + grid.chain + ')' : ''), 'success');
             } else {
@@ -10953,6 +10970,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (off) setTimeout(() => showToast('⛏ Шахта поработала без вас (' + minerDur(off.sec) + '): +' + fmtCoins(off.gain) + ' монет', 'refund'), 1000);
             } catch (e) {}
             minerStart();
+            state.stats.minerLvl = Math.max(state.stats.minerLvl || 0, miner.lvl); // b61
             updateCoinDisplay();
             updateSoundIcon();
             if (typeof window.tailwind === 'undefined') {
@@ -10976,9 +10994,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b59') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b59');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b59', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b61') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b61');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b61', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
