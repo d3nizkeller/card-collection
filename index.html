@@ -694,7 +694,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b45</div>
+    <div id="build-badge" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b46</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1527,7 +1527,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b45</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b46</div>
         <div class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <p id="pack3d-hint" class="text-sm font-semibold text-emerald-300 mt-3 animate-pulse text-center">✨ Вскрываем пак… ✨</p>
@@ -2082,6 +2082,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             pack.musicUrl = url;
             if (url) pack.musicOff = false;   // задали трек — значит играем
             pack.updatedAt = Date.now();
+            cloudStdTouch(pack); // b46
             saveState();
             cloudPublishSoon();
             renderStudio();
@@ -2096,6 +2097,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             pack.musicUrl = '';
             pack.musicOff = false;            // снова слушаем общий трек
             pack.updatedAt = Date.now();
+            cloudStdTouch(pack); // b46
             saveState();
             cloudPublishSoon();
             renderStudio();
@@ -2109,6 +2111,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!pack) return;
             pack.musicOff = !!off;
             pack.updatedAt = Date.now(); // b33: без метки времени правка не доходила до комнаты
+            cloudStdTouch(pack); // b46
             saveState();
             cloudPublishSoon();          // b33: …и не публиковалась — галочка «выключить музыку» терялась
             renderStudio();
@@ -3022,7 +3025,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b45</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b46</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -3558,6 +3561,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // загрузочная миграция (фиксация решений создателя) работает раньше облачного раздела
         const STD_MOD_KEY = 'nexus_std_mod';
         const STD_MOD_REMOTE_KEY = 'nexus_std_mod_remote';
+        // b46: списки полей для patch-записей правок стандарта. Объявлены здесь (а не в облачном
+        // разделе): загрузочная миграция работает раньше и иначе ловила бы TDZ-ошибку
+        const STD_PACK_FIELDS = ['title', 'description', 'image', 'price', 'color', 'shimmer', 'musicUrl', 'musicOff'];
+        const STD_CARD_FIELDS = ['name', 'description', 'rarity', 'image', 'layout', 'aura', 'atk', 'hp', 'musicUrl'];
 
         let state = {
             coins: parseInt(LS.getItem('nexus_coins')) || 1000,
@@ -3693,7 +3700,26 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     }
                 }
             } catch (e) {}
-            try { if (reseedStandard()) saveState(); } catch (e) {}
+            // b46: правки стандарта, сделанные ДО b46, фиксируем как patch-записи на устройстве-
+            // создателе — они уедут в комнату на ближайшей сверке и доедут до игроков
+            try {
+                if (LS.getItem('nexus_stdmod_edit_init') !== '1') {
+                    LS.setItem('nexus_stdmod_edit_init', '1');
+                    let ownerish2 = false;
+                    try {
+                        const rc2 = String(LS.getItem('nexus_cloud_room') || '').trim();
+                        ownerish2 = !!rc2 && (LS.getItem('nexus_cloud_owner_room') === rc2 || !!LS.getItem('nexus_cloud_auth_' + rc2));
+                    } catch (e) {}
+                    if (ownerish2) {
+                        state.packs.forEach(p => { if (STANDARD_IDS[p.id]) cloudStdTouch(p); });
+                        state.cards.forEach(c => { if (STANDARD_IDS[c.id]) cloudStdTouch(c); });
+                    }
+                }
+            } catch (e) {}
+            let rsChanged = false;
+            try { rsChanged = !!reseedStandard(); } catch (e) {}
+            try { if (applyStdPatches()) rsChanged = true; } catch (e) {}
+            try { if (rsChanged) saveState(); } catch (e) {}
         })();
         resolveMediaRefs();
 
@@ -8475,6 +8501,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     res.size -= cut; res.trimmed++;
                 }
             }
+            if (res.size > limit) { // b46: последнее средство — тяжёлые base64-арты внутри правок стандарта
+                (cat.stdMod || []).forEach(e => {
+                    if (e && e.patch && typeof e.patch.image === 'string' && e.patch.image.indexOf('data:') === 0 && res.size > limit) {
+                        res.size -= e.patch.image.length;
+                        e.patch.image = '';
+                        e.patch.imgDropped = 1;
+                        res.dropped.push('арт стандарта «' + e.id + '»');
+                    }
+                });
+            }
             res.size = cloudJsonLen(cat); // точная перепроверка
             res.tooBig = res.size > limit;
             return res;
@@ -8518,7 +8554,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             (Array.isArray(list) ? list : []).forEach(e => {
                 if (!e || !e.id || !STANDARD_IDS[e.id] || !e.at) return;
                 const cur = byId[e.id];
-                if (!cur || e.at > cur.at) byId[e.id] = { id: e.id, off: e.off ? 1 : 0, at: e.at };
+                if (!cur || e.at > cur.at) byId[e.id] = { id: e.id, off: e.off ? 1 : 0, at: e.at, patch: (e.patch && typeof e.patch === 'object') ? e.patch : undefined };
             });
             return Object.keys(byId).map(k => byId[k]).sort((a, b) => a.at - b.at).slice(-100);
         }
@@ -8536,6 +8572,45 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function cloudStdFindPack(id) { return STANDARD_PACKS.find(p => p.id === id) || null; }
         function cloudStdFindCard(id) { return STANDARD_CARDS.find(c => c.id === id) || null; }
         function cloudStdCardClone(c) { return { id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image }; }
+        function cloudStdDiff(id, item) {
+            const isPack = !!cloudStdFindPack(id);
+            const base = isPack ? cloudStdFindPack(id) : cloudStdFindCard(id);
+            if (!base || !item) return null;
+            const fields = isPack ? STD_PACK_FIELDS : STD_CARD_FIELDS;
+            const patch = {};
+            let any = false;
+            fields.forEach(f => {
+                const b = base[f] === undefined ? null : base[f];
+                const v = item[f] === undefined ? null : item[f];
+                if (JSON.stringify(b) !== JSON.stringify(v)) { patch[f] = v; any = true; }
+            });
+            return any ? patch : {};
+        }
+        // вызывается после каждой правки стандартного пака/карты в Студии
+        function cloudStdTouch(item) {
+            if (!item || !item.id || !STANDARD_IDS[item.id]) return;
+            const patch = cloudStdDiff(item.id, item);
+            if (!patch) return;
+            const list = cloudStdMod();
+            list.push({ id: item.id, off: 0, at: Date.now(), patch: patch });
+            cloudStdModSave(list);
+        }
+        // применить локальные patch-записи к состоянию (идемпотентно)
+        function applyStdPatches() {
+            const mod = cloudStdMod();
+            let changed = false;
+            mod.forEach(e => {
+                if (!e.patch) return;
+                const it = state.packs.find(p => p.id === e.id) || state.cards.find(c => c.id === e.id);
+                if (!it) return;
+                Object.keys(e.patch).forEach(k => {
+                    if (e.patch[k] === null) delete it[k];
+                    else it[k] = e.patch[k];
+                    changed = true;
+                });
+            });
+            return changed;
+        }
         // Досев стандартного набора при КАЖДОМ запуске — кроме скрытых куратором позиций
         function reseedStandard() {
             const off = {};
@@ -8681,14 +8756,26 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             const ci = state.cards.findIndex(c => c.id === e.id);
                             if (ci >= 0) { state.cards.splice(ci, 1); sum.del++; modChanged = true; }
                         }
-                    } else if (state.packs.some(p => p.id === e.id) === false && cloudStdFindPack(e.id)) {
-                        state.packs.push(Object.assign({}, cloudStdFindPack(e.id))); sum.add++; modChanged = true;
-                    } else if (state.cards.some(c => c.id === e.id) === false && cloudStdFindCard(e.id)) {
-                        state.cards.push(cloudStdCardClone(cloudStdFindCard(e.id))); sum.add++; modChanged = true;
+                    } else {
+                        if (state.packs.some(p => p.id === e.id) === false && cloudStdFindPack(e.id)) {
+                            state.packs.push(Object.assign({}, cloudStdFindPack(e.id))); sum.add++; modChanged = true;
+                        } else if (state.cards.some(c => c.id === e.id) === false && cloudStdFindCard(e.id)) {
+                            state.cards.push(cloudStdCardClone(cloudStdFindCard(e.id))); sum.add++; modChanged = true;
+                        }
+                    }
+                    // b46: правка полей стандартного пака/карты (patch поверх базы и локального состояния)
+                    if (e.patch && typeof e.patch === 'object') {
+                        const it = state.packs.find(p => p.id === e.id) || state.cards.find(c => c.id === e.id);
+                        if (it) {
+                            Object.keys(e.patch).forEach(k => {
+                                if (e.patch[k] === null) delete it[k]; else it[k] = e.patch[k];
+                            });
+                            modChanged = true;
+                        }
                     }
                 });
                 cloudStdModSave(localMod.concat(remoteMod));
-                if (modChanged) { reseedStandard(); changed = true; }
+                if (modChanged) { reseedStandard(); applyStdPatches(); changed = true; }
             }
             // b33: надгробия — единственный источник удалений (создатель удалил → у всех удалено)
             tombs.forEach(t => {
@@ -9361,6 +9448,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     pack.musicUrl = musicUrl;   // b19
                     pack.musicOff = !musicOn;   // b19
                     pack.updatedAt = Date.now();
+                    cloudStdTouch(pack); // b46: правка стандартного пака уезжает в комнату
                     showToast('Бустер пак обновлен!', 'success');
                 }
             } else {
@@ -9455,6 +9543,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     if (musicUrl) card.musicUrl = musicUrl; else delete card.musicUrl;
                     if (atk > 0) card.atk = atk; else delete card.atk;
                     if (hp > 0) card.hp = hp; else delete card.hp;
+                    cloudStdTouch(card); // b46: правка стандартной карты уезжает в комнату
                     showToast('Карточка обновлена!', 'success');
                 }
             } else {
@@ -9636,9 +9725,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b45') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b45');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b45', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b46') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b46');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b46', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
