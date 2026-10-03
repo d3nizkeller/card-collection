@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b82</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b90</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -902,7 +902,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="setBattleMode('slots')" id="mode-slots-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-lemon mr-1.5"></i>Слоты</button>
                     <button onclick="setBattleMode('grid')" id="mode-grid-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-border-all mr-1.5"></i>Сетка</button>
                 <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-1.5"></i>Мины</button>
-                <button onclick="setBattleMode('plinko')" id="mode-plinko-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-circle-nodes mr-1.5"></i>Плинко</button>
                 <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-1.5"></i>Колесо</button>
                 </div>
                 <!-- b49: 3D-игровой автомат: на барабанах крутятся карты сайта -->
@@ -930,6 +929,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-2 mt-4">
                             <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
                             <span id="slots-bets" class="inline-flex items-center gap-1.5"></span>
+                            <button id="slots-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
                             <button id="slots-spin" onclick="slotsSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
@@ -980,6 +980,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-2 mt-4">
                             <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
                             <span id="grid-bets" class="inline-flex items-center gap-1.5"></span>
+                            <button id="grid-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
                             <button id="grid-spin" onclick="gridSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
@@ -1029,39 +1030,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <li>Выбери ставку и нажми <b>«Крутить»</b> — или просто тапни по самому колесу.</li>
                                 <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> — весь общий банк сайта.</li>
                                 <li>Пустой сектор: ставка сгорает и докидывает <b>25%</b> в общий джекпот; 2% каждой ставки капают в банк всегда.</li>
-                            </ol>
-                        </div>
-                </div>
-                <!-- b77: Плинко 3D -->
-                <div id="lobby-plinko" class="space-y-6 hidden">
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-circle-nodes text-teal-300 mr-2"></i>Плинко</h2>
-                                <p class="text-sm text-slate-400 mt-1">Шар падает сквозь колышки и попадает в корзину множителя (до ×4). Крайние корзины — золотой JACKPOT: срывают весь общий банк сайта! Каждая ставка кормит банк 2%, проигрыш докидывает четверть ставки. Бросать можно несколько шаров подряд.</p>
-                                                    </div>
-                            <div class="text-right shrink-0">
-                                <p class="text-[10px] uppercase font-black text-slate-500">бросков</p>
-                                <p id="plinko-drops" class="font-mono text-lg font-black text-teal-300">0</p>
-                            </div>
-                        </div>
-                        <div class="wheel-lights mt-4" aria-hidden="true"></div>
-                        <div id="plinko-container" class="relative rounded-xl overflow-hidden border border-teal-400/40" style="height:460px"></div>
-                        <div class="wheel-lights" aria-hidden="true"></div>
-                        <div id="plinko-fallback" class="hidden mt-4 justify-center"></div>
-                        <div class="flex flex-wrap items-center gap-2 mt-4">
-                            <div id="plinko-bets" class="flex flex-wrap gap-1.5"></div>
-                            <button id="plinko-drop" onclick="plinkoDrop()" class="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-sm font-black transition shadow-lg shadow-teal-950/40"><i class="fa-solid fa-circle-nodes mr-1"></i>Бросить шар</button>
-                        </div>
-                        <p id="plinko-result" class="text-xs text-slate-400 mt-2">Выбери ставку и бросай шары — можно несколько подряд!</p>
-                    </div>
-<div class="rules-card">
-                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
-                            <ol class="rules-list">
-                                <li>Выбери ставку и жми <b>«Бросить шар»</b>: на доске могут лететь до <b>10 шаров</b> одновременно.</li>
-                                <li>Шар отскакивает от колышков и падает в корзину: множитель <b>×0.4…×4</b> применяется к ставке.</li>
-                                <li>Крайние золотые корзины — <b>JACKPOT</b>: срывают весь общий банк сайта.</li>
-                                <li>2% ставки кормят джекпот всегда; выпадение ниже ставки докидывает в банк четверть ставки.</li>
                             </ol>
                         </div>
                 </div>
@@ -1780,6 +1748,20 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </div>
 
     <!-- Reset Progress Modal (b17) -->
+    <!-- b85: выбор своих карт для Слотов и Сетки -->
+    <div id="modal-slotcards" class="fixed inset-0 z-[65] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-700 rounded-2xl p-4 sm:p-6 max-w-2xl w-full shadow-2xl relative">
+            <button onclick="closeSlotCardPicker()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            <h3 class="text-lg font-bold text-white"><i class="fa-solid fa-layer-group text-teal-400 mr-2"></i>Карты для Слотов и Сетки</h3>
+            <p class="text-xs text-slate-400 mt-1">Выберите до <b class="text-teal-300">5 карт</b> из своей коллекции — они будут крутиться на барабанах и поле. Не выбрали — работают стандартные карты сайта.</p>
+            <div id="slotcards-list" class="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-4 max-h-[50vh] overflow-y-auto pr-1"></div>
+            <div class="flex flex-wrap gap-2 mt-4">
+                <button onclick="saveSlotCards()" class="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl transition"><i class="fa-solid fa-check mr-1"></i>Сохранить выбор</button>
+                <button onclick="resetSlotCards()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl transition"><i class="fa-solid fa-rotate-left mr-1"></i>Стандартные карты</button>
+                <button onclick="closeSlotCardPicker()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl transition">Отмена</button>
+            </div>
+        </div>
+    </div>
     <div id="modal-reset" class="fixed inset-0 z-[60] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-slate-900 border border-red-800/50 rounded-2xl p-4 sm:p-6 max-w-md w-full shadow-2xl relative space-y-4">
             <button onclick="closeResetModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
@@ -1840,7 +1822,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     }
     /* b75: сцена Колеса Фортуны — праздничный фон: софиты, мерцающие искры,
        гирлянды лампочек по периметру мигают в противофазе */
-    #wheel-container, #plinko-container {
+    #wheel-container {
         background:
             radial-gradient(ellipse 60% 45% at 50% 30%, rgba(251, 191, 36, .18), transparent 70%),
             radial-gradient(ellipse 45% 40% at 16% 82%, rgba(217, 70, 239, .16), transparent 65%),
@@ -1849,7 +1831,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         box-shadow: 0 0 26px rgba(251, 191, 36, .22), inset 0 0 60px rgba(2, 6, 23, .8);
         animation: wheelGlow 2.6s ease-in-out infinite;
     }
-    #wheel-container::after, #plinko-container::after {
+    #wheel-container::after {
         content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3;
         background-image:
             radial-gradient(1.6px 1.6px at 12% 22%, rgba(255, 255, 255, .9), transparent 55%),
@@ -1926,7 +1908,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     }
 </style>
 <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b82</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b90</div>
         <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <div id="pack3d-ui" class="flex flex-col items-center">
@@ -2565,6 +2547,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function launchConfetti(count = 100) {
             const container = document.getElementById('confetti-container');
             if (!container) return;
+            // b86: защита от лавины конфетти: не больше 240 живых кусочков на экране
+            const alive = container.childElementCount;
+            if (alive >= 240) return;
+            count = Math.min(count, 240 - alive);
             const colors = ['#34d399', '#fbbf24', '#f472b6', '#60a5fa', '#a78bfa', '#f87171', '#22d3ee', '#facc15'];
             for (let i = 0; i < count; i++) {
                 const el = document.createElement('div');
@@ -3512,7 +3498,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b82</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b90</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -4488,6 +4474,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const toastIcon = type === 'refund' ? 'fa-coins' : type === 'error' ? 'fa-circle-xmark' : type === 'music' ? 'fa-music' : 'fa-check-circle';
             toast.innerHTML = `<i class="fa-solid ${toastIcon}"></i><span>${message}</span>`;
             container.appendChild(toast);
+            // b86: не больше 4 живых тостов — залпы событий не заваливают экран и DOM
+            while (container.childElementCount > 4) container.removeChild(container.firstChild);
             setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
             setTimeout(() => {
                 toast.classList.add('translate-y-2', 'opacity-0');
@@ -4843,8 +4831,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (lg) lg.classList.toggle('hidden', m !== 'grid');
             const lw = document.getElementById('lobby-wheel');
             if (lw) lw.classList.toggle('hidden', m !== 'wheel');
-            const lp = document.getElementById('lobby-plinko');
-            if (lp) lp.classList.toggle('hidden', m !== 'plinko');
             const lmn = document.getElementById('lobby-mines');
             if (lmn) lmn.classList.toggle('hidden', m !== 'mines');
             const ba = document.getElementById('mode-arena-btn'), bd = document.getElementById('mode-durak-btn'), bm = document.getElementById('mode-miner-btn');
@@ -4857,15 +4843,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (bgd) bgd.className = m === 'grid' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-violet-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             const bwheel = document.getElementById('mode-wheel-btn');
             if (bwheel) bwheel.className = m === 'wheel' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-amber-500 text-slate-950 shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
-            const bpl = document.getElementById('mode-plinko-btn');
-            if (bpl) bpl.className = m === 'plinko' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-teal-500 text-slate-950 shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             const bmn = document.getElementById('mode-mines-btn');
             if (bmn) bmn.className = m === 'mines' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-rose-500 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             if (m === 'miner') renderMiner();
             if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
             if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
-            if (m === 'plinko') { plinkoEnsure(); renderPlinkoUI(); } // b77
             if (m === 'mines') { renderMinesUI(); } // b79
             if (m === 'durak') {
                 const w = document.getElementById('durak-wins-label'), l = document.getElementById('durak-loss-label');
@@ -5113,6 +5096,105 @@ Check your Browserslist config to be sure that your targets are set up correctly
         const SLOTS_BETS = [100, 250, 1000, 5000, 10000, 20000, 50000]; // b70: ставки до 50k, мелкие 25/50 убраны
         const SLOTS_MULT = { common: 8, rare: 12, epic: 18, legendary: 30 };
         const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 100, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
+        // b85: пользователь сам выбирает, какие карты крутить в Слотах и Сетке.
+        // Нет выбора — стандартный набор (первые 5 карт с артами).
+        const SLOT_CARDS_KEY = 'nexus_slot_cards';
+        function getSlotCardIds() {
+            try { const a = JSON.parse(LS.getItem(SLOT_CARDS_KEY) || '[]'); return Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; } catch (e) { return []; }
+        }
+        function setSlotCardIds(ids) {
+            try { LS.setItem(SLOT_CARDS_KEY, JSON.stringify(ids.slice(0, 5))); } catch (e) {}
+        }
+        function slotCardsLabels() {
+            const ids = getSlotCardIds();
+            const txt = ids.length ? 'Карты: мои (' + ids.length + ')' : 'Карты: стандарт';
+            const a = document.getElementById('slots-cards-btn');
+            const b = document.getElementById('grid-cards-btn');
+            if (a) a.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
+            if (b) b.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
+        }
+        function slotsApplySymbols() {
+            const oldSyms = slots.symbols || [];
+            slots.symbols = slotsSymbols();
+            slots.symKey = slots.symbols.map(sl => sl.id).join(',');
+            if (slots.ready && !slots.fallback && slots.reels && slots.reels.length && slots.symbols.length === oldSyms.length) {
+                for (let i = 0; i < slots.symbols.length; i++) {
+                    let nt = null;
+                    try { nt = slotsSymbolCanvas(slots.symbols[i]); } catch (e) { continue; }
+                    for (let ri = 0; ri < slots.reels.length; ri++) {
+                        const mesh = slots.reels[ri].children[i + 1];
+                        if (!mesh || !mesh.material) continue;
+                        try { if (mesh.material.map && mesh.material.map !== nt) mesh.material.map.dispose(); } catch (e) {}
+                        mesh.material.map = nt;
+                        mesh.material.needsUpdate = true;
+                    }
+                }
+            } else if (slots.ready || slots.fallback) {
+                // изменилось число символов — пересоздаём машину при следующем входе
+                try { if (slots.renderer) { slots.renderer.dispose(); slots.renderer.forceContextLoss && slots.renderer.forceContextLoss(); } } catch (e) {}
+                slots.ready = false; slots.fallback = false; slots.reels = [];
+                const c = document.getElementById('slots-container'); if (c) c.innerHTML = '';
+            }
+            if (slots.fallback) { try { slotsRenderFallback(); } catch (e) {} }
+            gridTexCacheReset();
+            slotCardsLabels();
+        }
+        function gridTexCacheReset() {
+            try { for (const k in gridTexCache) { if (gridTexCache[k] && gridTexCache[k].dispose) gridTexCache[k].dispose(); delete gridTexCache[k]; } } catch (e) {}
+        }
+        let slotCardPick = [];
+        function openSlotCardPicker() {
+            slotCardPick = getSlotCardIds().slice();
+            renderSlotCardList();
+            const m = document.getElementById('modal-slotcards');
+            if (m) m.classList.remove('hidden');
+        }
+        function renderSlotCardList() {
+            const box = document.getElementById('slotcards-list');
+            if (box) {
+                const cards = (state.cards || []).filter(c => c && c.id);
+                if (!cards.length) {
+                    box.innerHTML = '<p class="col-span-3 sm:col-span-5 text-xs text-slate-400">У вас пока нет карт — создайте их в Студии или откройте паки. Пока работают стандартные карты сайта.</p>';
+                } else {
+                    box.innerHTML = cards.map(c => {
+                        const on = slotCardPick.indexOf(c.id) >= 0;
+                        const rar = RAR_COLORS[c.rarity] || '#e2e8f0';
+                        return '<button type="button" onclick="toggleSlotCard(\'' + c.id + '\')" class="rounded-xl border p-2 text-left transition ' + (on ? 'border-teal-400 bg-teal-900/40' : 'border-slate-700 bg-slate-800/60 hover:bg-slate-700/60') + '">' +
+                            '<p class="text-[11px] font-bold text-white truncate">' + (c.name || c.id) + '</p>' +
+                            '<p class="text-[9px] font-bold uppercase mt-0.5" style="color:' + rar + '">' + (RARITY_LABELS_RU[c.rarity] || c.rarity || '') + '</p>' +
+                            '<p class="text-[9px] text-slate-400 mt-0.5">' + (on ? '<i class="fa-solid fa-check mr-1"></i>выбрана' : 'выбрать') + '</p>' +
+                            '</button>';
+                    }).join('');
+                }
+            }
+        }
+        function toggleSlotCard(id) {
+            const i = slotCardPick.indexOf(id);
+            if (i >= 0) slotCardPick.splice(i, 1);
+            else {
+                if (slotCardPick.length >= 5) { showToast('Можно выбрать не больше 5 карт', 'error'); return; }
+                slotCardPick.push(id);
+            }
+            renderSlotCardList();
+        }
+        function closeSlotCardPicker() { const m = document.getElementById('modal-slotcards'); if (m) m.classList.add('hidden'); }
+        function saveSlotCards() {
+            setSlotCardIds(slotCardPick);
+            slotsApplySymbols();
+            closeSlotCardPicker();
+            showToast(slotCardPick.length ? '🃏 Ваши карты установлены в Слоты и Сетку (' + slotCardPick.length + ')' : '🃏 Выбор сохранён', 'success');
+            try { renderSlotsUI(); } catch (e) {}
+            try { renderGridUI(); } catch (e) {}
+        }
+        function resetSlotCards() {
+            setSlotCardIds([]);
+            slotCardPick = [];
+            slotsApplySymbols();
+            closeSlotCardPicker();
+            showToast('🃏 Возвращены стандартные карты сайта', 'success');
+            try { renderSlotsUI(); } catch (e) {}
+            try { renderGridUI(); } catch (e) {}
+        }
         function slotsSymbols() {
             const seen = {};
             const pool = [];
@@ -5122,11 +5204,22 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 pool.push(c);
             });
             pool.sort((a, b) => (b.image ? 1 : 0) - (a.image ? 1 : 0));
-            const syms = pool.slice(0, 5).map(c => ({ id: c.id, name: c.name || c.id, rarity: c.rarity || 'common', image: c.image || '' }));
+            // b85: приоритет — выбор пользователя; нет выбора — стандартные первые 5
+            const byId = {};
+            pool.forEach(c => { byId[c.id] = c; });
+            let src = [];
+            getSlotCardIds().forEach(id => { if (byId[id] && src.length < 5 && src.indexOf(byId[id]) < 0) src.push(byId[id]); });
+            if (!src.length) src = pool.slice(0, 5);
+            const used = {};
+            src.forEach(c => { used[c.id] = 1; });
+            const rest = pool.filter(c => !used[c.id]);
+            while (src.length < 5 && rest.length) src.push(rest.shift());
+            const syms = src.slice(0, 5).map(c => ({ id: c.id, name: c.name || c.id, rarity: c.rarity || 'common', image: c.image || '' }));
             while (syms.length < 3) syms.push({ id: 'sym-' + syms.length, name: 'Джокер', rarity: 'legendary', image: '' });
             syms.push({ id: 'sym-jackpot', name: 'JACKPOT', rarity: 'legendary', image: '', jackpot: true }); // b56
             return syms;
         }
+
                 function slotsSymbolCanvas(sym, SW, SH) {
             // b51/b55: символ — вытянутый вертикальный бустер; размеры параметризованы:
             // классические слоты 224×512, сетка 256×400 — пропорции плоскости и текстуры
@@ -5507,6 +5600,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }).join('');
         }
         function renderSlotsUI() {
+            slotCardsLabels();
             jackpotRender(); // b56
             const b = document.getElementById('slots-balance'); if (b) b.textContent = fmtCoins(state.coins);
             const bets = document.getElementById('slots-bets');
@@ -5982,6 +6076,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             saveState(); updateCoinDisplay(); renderGridUI();
         }
         function renderGridUI() {
+            slotCardsLabels();
             jackpotRender(); // b56
             const b = document.getElementById('grid-balance'); if (b) b.textContent = fmtCoins(state.coins);
             const bets = document.getElementById('grid-bets');
@@ -7152,296 +7247,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     cont.innerHTML = `<div class="w-full h-full flex flex-col sm:flex-row items-center justify-center gap-4 p-4" style="display:flex;align-items:center;justify-content:center;gap:16px;padding:16px;width:100%;height:100%;">${fighterHTML(e, 'enemy')}${fighterHTML(p, 'player')}</div>`;
                 }
             }
-        }
-
-        // ============ b77: ПЛИНКО (3D) ============
-        // Шар падает сквозь пирамиду колышков; корзины множителей, крайние — JACKPOT
-        // (срывает общий банк сайта). Ставка кормит банк 2%, проигрыш — +25% ставки.
-        const PLINKO_ROWS = 10;
-        const PLINKO_DX = 0.62, PLINKO_TOP = 3.4, PLINKO_STEP = 0.56, PLINKO_ROW_MS = 165;
-        const PLINKO_MULT = [
-            { jp: true, label: 'JACKPOT' }, { m: 4, label: '×4' }, { m: 2, label: '×2' },
-            { m: 1.4, label: '×1.4' }, { m: 0.8, label: '×0.8' }, { m: 0.4, label: '×0.4' },
-            { m: 0.8, label: '×0.8' }, { m: 1.4, label: '×1.4' }, { m: 2, label: '×2' },
-            { m: 4, label: '×4' }, { jp: true, label: 'JACKPOT' }
-        ];
-        const plinko = { renderer: null, scene: null, camera: null, balls: [], bins: [], ready: false, fallback: false, bet: 100, animId: null, lastT: 0 };
-        function plinkoBinColor(i) {
-            const e = Math.min(i, PLINKO_MULT.length - 1 - i);
-            return [0xfbbf24, 0xd946ef, 0x8b5cf6, 0x14b8a6, 0x0ea5e9, 0x334155][e] || 0x334155;
-        }
-        function plinkoMakeDrop() {
-            let k = 0;
-            const pts = [{ x: 0, y: PLINKO_TOP + 0.6 }];
-            for (let r = 0; r < PLINKO_ROWS; r++) {
-                pts.push({ x: (k - r / 2) * PLINKO_DX, y: PLINKO_TOP - r * PLINKO_STEP });
-                if (Math.random() < 0.5) k += 1;
-            }
-            pts.push({ x: (k - PLINKO_ROWS / 2) * PLINKO_DX, y: PLINKO_TOP - PLINKO_ROWS * PLINKO_STEP - 0.62 });
-            return { pts: pts, bin: k, t0: 0, mesh: null };
-        }
-        function plinkoEnsure() {
-            if (plinko.ready) return;
-            if (typeof THREE === 'undefined' || !webglAvailable()) { plinkoBuildFallback(); plinko.fallback = true; plinko.ready = true; plinkoLoop(); return; }
-            const container = document.getElementById('plinko-container');
-            if (!container) return;
-            let renderer;
-            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
-            catch (e) { plinkoBuildFallback(); plinko.fallback = true; plinko.ready = true; plinkoLoop(); return; }
-            const w = container.clientWidth || 640, h = container.clientHeight || 460;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-            renderer.setSize(w, h);
-            container.innerHTML = '';
-            container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'plinko', () => { plinko.fallback = true; plinko.renderer = null; plinkoBuildFallback(); if (!plinko.animId) plinkoLoop(); });
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
-            camera.position.set(0, 0.2, 8.5);
-            scene.add(new THREE.AmbientLight(0xffffff, 0.85));
-            const l1 = new THREE.PointLight(0xccfbf1, 0.6, 40); l1.position.set(3, 4, 6); scene.add(l1);
-            const l2 = new THREE.PointLight(0xf0abfc, 0.35, 40); l2.position.set(-4, -2, 5); scene.add(l2);
-            // b78: праздничный фон доски — софит, мерцающие звёзды, летающие паки
-            try {
-                const gc = document.createElement('canvas'); gc.width = gc.height = 256;
-                const gg = gc.getContext('2d');
-                if (gg) {
-                    const rg = gg.createRadialGradient(128, 128, 10, 128, 128, 126);
-                    rg.addColorStop(0, 'rgba(45,212,191,.26)');
-                    rg.addColorStop(0.5, 'rgba(251,191,36,.10)');
-                    rg.addColorStop(1, 'rgba(2,6,23,0)');
-                    gg.fillStyle = rg; gg.fillRect(0, 0, 256, 256);
-                }
-                const glow = new THREE.Mesh(new THREE.PlaneGeometry(12, 9),
-                    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false }));
-                glow.position.set(0, 0.4, -2.6);
-                scene.add(glow);
-                const N = 70, pos = new Float32Array(N * 3);
-                for (let i = 0; i < N; i++) {
-                    pos[i * 3] = (Math.random() - 0.5) * 13;
-                    pos[i * 3 + 1] = (Math.random() - 0.5) * 8.5;
-                    pos[i * 3 + 2] = -3 + Math.random() * 1.5;
-                }
-                const sg = new THREE.BufferGeometry();
-                sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-                plinko.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x99f6e4, size: 0.07, transparent: true, opacity: 0.8, depthWrite: false }));
-                scene.add(plinko.stars);
-                plinko.fliers = [];
-                const packsSrc = (state.packs && state.packs.length) ? state.packs : [{ color: 'silver', shimmer: 'holo' }];
-                for (let i = 0; i < 6; i++) {
-                    const pk = packsSrc[i % packsSrc.length];
-                    const tex = makePackTexture(pk);
-                    try { tex.anisotropy = PACK3D_ANISO; } catch (e) {}
-                    const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
-                    const sideM = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6, metalness: 0.4, transparent: true, opacity: 0.5 });
-                    const m = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.18, 0.1), [sideM, sideM, sideM, sideM, face, face]);
-                    m.userData = {
-                        ang: Math.random() * Math.PI * 2,
-                        spd: 0.1 + Math.random() * 0.14,
-                        rx: 4.9 + Math.random() * 1.6,
-                        ry: 1.8 + Math.random() * 1.6,
-                        z: -1.8 - Math.random() * 1.1,
-                        rs: (Math.random() - 0.5) * 1.1
-                    };
-                    scene.add(m);
-                    plinko.fliers.push(m);
-                }
-            } catch (e) {}
-            // пирамида колышков
-            const pegGeo = new THREE.SphereGeometry(0.07, 10, 10);
-            const pegMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.6, emissive: 0x475569, emissiveIntensity: 0.4 });
-            for (let r = 0; r < PLINKO_ROWS; r++) {
-                for (let i = 0; i <= r; i++) {
-                    const peg = new THREE.Mesh(pegGeo, pegMat);
-                    peg.position.set((i - r / 2) * PLINKO_DX, PLINKO_TOP - r * PLINKO_STEP, 0);
-                    scene.add(peg);
-                }
-            }
-            // корзины множителей
-            const binY = PLINKO_TOP - PLINKO_ROWS * PLINKO_STEP - 0.62;
-            PLINKO_MULT.forEach((mu, i) => {
-                const col = plinkoBinColor(i);
-                const box = new THREE.Mesh(new THREE.BoxGeometry(PLINKO_DX * 0.92, 0.5, 0.3),
-                    new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.35, emissive: col, emissiveIntensity: 0.25 }));
-                box.position.set((i - PLINKO_ROWS / 2) * PLINKO_DX, binY, 0);
-                scene.add(box);
-                const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
-                const g = cv.getContext('2d');
-                if (g) {
-                    g.font = mu.jp ? '900 20px system-ui, sans-serif' : '900 30px system-ui, sans-serif';
-                    g.textAlign = 'center'; g.textBaseline = 'middle';
-                    g.fillStyle = '#0f172a';
-                    g.fillText(mu.label, 64, 34);
-                }
-                const lab = new THREE.Mesh(new THREE.PlaneGeometry(PLINKO_DX * 0.9, 0.45),
-                    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }));
-                lab.position.set((i - PLINKO_ROWS / 2) * PLINKO_DX, binY, 0.17);
-                scene.add(lab);
-                plinko.bins.push(box);
-            });
-            plinko.renderer = renderer; plinko.scene = scene; plinko.camera = camera;
-            plinko.ballGeo = new THREE.SphereGeometry(0.15, 14, 14);
-            plinko.ballMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.25, metalness: 0.5, emissive: 0xf59e0b, emissiveIntensity: 0.5 });
-            plinko.ready = true;
-            if (!window._nx3dPlinko) {
-                window._nx3dPlinko = 1;
-                const rs = () => {
-                    const c = document.getElementById('plinko-container');
-                    if (c && plinko.renderer) nx3dResizeSimple(plinko.renderer, plinko.camera, c, [3.6, 3.55, 8.5]);
-                };
-                nx3dOnResize(rs);
-                nx3dObserve(container, rs);
-                rs();
-            }
-            plinko.lastT = performance.now();
-            plinkoLoop();
-        }
-        function plinkoLoop() {
-            plinko.animId = requestAnimationFrame(plinkoLoop);
-            try { // b77: кадр под предохранителем — см. nx3dLoopBail
-                const now = performance.now();
-                for (let bi = plinko.balls.length - 1; bi >= 0; bi--) {
-                    const b = plinko.balls[bi];
-                    const t = (now - b.t0) / PLINKO_ROW_MS;
-                    const seg = Math.floor(t);
-                    if (seg >= b.pts.length - 1) {
-                        if (b.mesh) { plinko.scene && plinko.scene.remove(b.mesh); }
-                        plinko.balls.splice(bi, 1);
-                        plinkoFlashBin(b.bin);
-                        plinkoAward(b.bin, b.bet);
-                        continue;
-                    }
-                    const loc = t - seg;
-                    const e = loc * loc * (3 - 2 * loc);
-                    const p0 = b.pts[seg], p1 = b.pts[seg + 1];
-                    const x = p0.x + (p1.x - p0.x) * e;
-                    const y = p0.y + (p1.y - p0.y) * loc + Math.sin(loc * Math.PI) * 0.09;
-                    if (plinko.fallback) { b.fx = x; b.fy = y; }
-                    else if (b.mesh) b.mesh.position.set(x, y, 0.1);
-                }
-                if (plinko.stars) plinko.stars.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(now / 650));
-                if (plinko.fliers && plinko.fliers.length && !plinko.fallback) {
-                    const dtf = Math.min(0.05, (now - plinko.lastT) / 1000);
-                    for (let i = 0; i < plinko.fliers.length; i++) {
-                        const f = plinko.fliers[i], u = f.userData;
-                        u.ang += u.spd * dtf;
-                        f.position.set(Math.cos(u.ang) * u.rx, 0.4 + Math.sin(u.ang * 0.9) * u.ry, u.z);
-                        f.rotation.y += u.rs * dtf;
-                        f.rotation.z = Math.sin(u.ang * 0.7) * 0.25;
-                    }
-                }
-                if (plinko.fallback) { plinkoDrawFallback(); }
-                else if (plinko.renderer) {
-                    // корзины гасят вспышку
-                    for (let i = 0; i < plinko.bins.length; i++) {
-                        const m = plinko.bins[i].material;
-                        if (m.emissiveIntensity > 0.25) m.emissiveIntensity = Math.max(0.25, m.emissiveIntensity - 0.04);
-                    }
-                    plinko.renderer.render(plinko.scene, plinko.camera);
-                }
-                plinko.lastT = now;
-            } catch (e) {
-                // b77: одиночный сбой кадра не убивает игру: гасим цикл только после 30 сбоев подряд
-                plinko.errs = (plinko.errs || 0) + 1;
-                if (plinko.errs > 30) nx3dLoopBail('plinko', e, () => { cancelAnimationFrame(plinko.animId); plinko.animId = 0; });
-            }
-        }
-        function plinkoFlashBin(i) {
-            if (!plinko.fallback && plinko.bins[i]) plinko.bins[i].material.emissiveIntensity = 1.6;
-            try { SoundFX.play('coin'); } catch (e) {}
-        }
-        function plinkoBuildFallback() {
-            const box = document.getElementById('plinko-fallback');
-            if (!box) return;
-            box.classList.remove('hidden');
-            if (!box.dataset.built) {
-                box.dataset.built = '1';
-                box.innerHTML = '<canvas id="plinko-fb-canvas" width="360" height="440" style="max-width:100%;border-radius:12px;background:#070a14;border:1px solid #1e293b;"></canvas>';
-            }
-        }
-        function plinkoDrawFallback() {
-            const cv = document.getElementById('plinko-fb-canvas');
-            if (!cv) return;
-            const g = cv.getContext('2d');
-            if (!g) return;
-            const W = cv.width, H = cv.height;
-            const sx = W / ((PLINKO_ROWS + 2.4) * PLINKO_DX);
-            const sy = H / (PLINKO_ROWS * PLINKO_STEP + 2.6);
-            const px = x => W / 2 + x * sx;
-            const py = y => (PLINKO_TOP + 1.1 - y) * sy;
-            g.clearRect(0, 0, W, H);
-            g.fillStyle = '#94a3b8';
-            for (let r = 0; r < PLINKO_ROWS; r++) for (let i = 0; i <= r; i++) {
-                g.beginPath(); g.arc(px((i - r / 2) * PLINKO_DX), py(PLINKO_TOP - r * PLINKO_STEP), 2.4, 0, 7); g.fill();
-            }
-            const binY = PLINKO_TOP - PLINKO_ROWS * PLINKO_STEP - 0.62;
-            PLINKO_MULT.forEach((mu, i) => {
-                const c = plinkoBinColor(i);
-                g.fillStyle = '#' + c.toString(16).padStart(6, '0');
-                const bx = px((i - PLINKO_ROWS / 2) * PLINKO_DX) - sx * PLINKO_DX * 0.46;
-                g.fillRect(bx, py(binY) - 12, sx * PLINKO_DX * 0.92, 26);
-                g.fillStyle = '#0f172a'; g.font = '900 9px system-ui, sans-serif'; g.textAlign = 'center';
-                g.fillText(mu.label, px((i - PLINKO_ROWS / 2) * PLINKO_DX), py(binY) + 4);
-            });
-            plinko.balls.forEach(b => {
-                if (b.fx == null) return;
-                g.fillStyle = '#fde68a';
-                g.beginPath(); g.arc(px(b.fx), py(b.fy), 5, 0, 7); g.fill();
-            });
-        }
-        function plinkoSetBet(b) {
-            if (SLOTS_BETS.indexOf(b) < 0) return;
-            plinko.bet = b;
-            renderPlinkoUI();
-        }
-        function renderPlinkoUI() {
-            const bets = document.getElementById('plinko-bets');
-            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="plinkoSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (plinko.bet === v ? 'bg-teal-500 border-teal-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
-            const btn = document.getElementById('plinko-drop');
-            if (btn) {
-                btn.innerHTML = '<i class="fa-solid fa-circle-nodes mr-1"></i>Бросить шар — ' + fmtCoins(plinko.bet);
-                btn.disabled = state.coins < plinko.bet;
-                btn.classList.toggle('opacity-40', state.coins < plinko.bet);
-            }
-            const d = document.getElementById('plinko-drops');
-            if (d) d.textContent = state.stats.plinkoDrops || 0;
-        }
-        function plinkoDrop() {
-            const bet = plinko.bet;
-            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
-            plinkoEnsure();
-            if (plinko.balls.length >= 10) return; // не более 10 шаров на доске
-            state.coins -= bet;
-            updateCoinDisplay(); saveState();
-            jackpotFeed(bet); // b77: Плинко кормит общий джекпот
-            state.stats.plinkoDrops = (state.stats.plinkoDrops || 0) + 1;
-            const drop = plinkoMakeDrop();
-            drop.bet = bet;
-            drop.t0 = performance.now() + 30;
-            if (!plinko.fallback) {
-                drop.mesh = new THREE.Mesh(plinko.ballGeo, plinko.ballMat);
-                drop.mesh.position.set(drop.pts[0].x, drop.pts[0].y, 0.1);
-                plinko.scene.add(drop.mesh);
-            }
-            plinko.balls.push(drop);
-            try { SoundFX.play('click'); } catch (e) {}
-            renderPlinkoUI();
-        }
-        function plinkoAward(bin, bet) {
-            const mu = PLINKO_MULT[bin] || { m: 0 };
-            let win = 0;
-            if (mu.jp) {
-                win = jackpotWin(); // крайняя корзина — весь общий банк сайта
-            } else {
-                win = Math.round(bet * mu.m);
-                if (win < bet) jackpotOnLoss(bet);
-                if (win > 0) state.coins += win;
-            }
-            saveState(); updateCoinDisplay();
-            if (mu.jp) showToast('🎯 ПЛИНКО-JACKPOT! Общий банк сайта ваш: +' + fmtCoins(win), 'success');
-            else if (mu.m >= 2) { showToast('🎯 Корзина ' + mu.label + ': +' + fmtCoins(win) + ' монет', 'success'); launchConfetti(mu.m >= 4 ? 100 : 50); }
-            const res = document.getElementById('plinko-result');
-            if (res) res.innerHTML = 'Последняя корзина: <b class="text-teal-300">' + mu.label + '</b>' + (win > 0 ? ' — +' + fmtCoins(win) + ' монет' : '');
-            renderPlinkoUI();
         }
 
         // ============ b79: МИНЫ ============
@@ -12299,7 +12104,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b82',
+                build: '02.10-b90',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -12335,7 +12140,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b82:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b90:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -12402,9 +12207,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b82. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b90. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b82. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b90. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -12427,10 +12232,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b82') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b90') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b82');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b90');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -12465,9 +12270,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b82') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b82');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b82', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b90') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b90');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b90', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
