@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b67</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b68</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1579,7 +1579,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- Unboxing Modal -->
     <div id="modal-unboxing" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
-        <div class="max-w-4xl w-full flex flex-col items-center space-y-3 sm:space-y-6">
+        <div id="unboxing-wrap" class="max-w-4xl w-full flex flex-col items-center space-y-3 sm:space-y-6">
             <div class="flex flex-wrap justify-between w-full max-w-xl items-center gap-2 px-1 sm:px-4">
                 <h3 class="text-base sm:text-xl font-bold text-white" id="unboxing-title">Вскрытие пака</h3>
                 <div class="flex space-x-3">
@@ -1687,9 +1687,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
         #pack3d-ui > * { pointer-events: auto; }
         #pack3d-hint { background: rgba(2, 6, 23, .55); border-radius: 12px; padding: 4px 12px; backdrop-filter: blur(4px); }
     }
+    /* b68: экран стирания фольги на телефоне гарантированно влезает: шапка с кнопками
+       «Стереть всё»/«Закрыть» всегда видна сверху, а сетка карт 2×2 скроллится
+       в оставшейся области (раньше flex-центрирование обрезало верх экрана) */
+    @media (max-width: 639px) {
+        #modal-unboxing { justify-content: flex-start; padding: 8px; overflow: hidden; }
+        #unboxing-wrap { height: 100%; min-height: 0; }
+        #unboxing-wrap > * { flex-shrink: 0; }
+        #unboxing-cards-container { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; width: 100%; padding-bottom: 12px; -webkit-overflow-scrolling: touch; }
+    }
 </style>
 <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b67</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b68</div>
         <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <div id="pack3d-ui" class="flex flex-col items-center">
@@ -3275,7 +3284,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b67</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b68</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -11171,7 +11180,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b67',
+                build: '02.10-b68',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -11207,7 +11216,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b67:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b68:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -11274,9 +11283,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b67. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b68. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b67. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b68. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -11299,10 +11308,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b67') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b68') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b67');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b68');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -11337,9 +11346,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b67') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b67');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b67', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b68') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b68');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b68', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
