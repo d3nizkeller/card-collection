@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b73</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b82</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -901,6 +901,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="setBattleMode('miner')" id="mode-miner-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-helmet-safety mr-1.5"></i>Шахта</button>
                     <button onclick="setBattleMode('slots')" id="mode-slots-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-lemon mr-1.5"></i>Слоты</button>
                     <button onclick="setBattleMode('grid')" id="mode-grid-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-border-all mr-1.5"></i>Сетка</button>
+                <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-1.5"></i>Мины</button>
+                <button onclick="setBattleMode('plinko')" id="mode-plinko-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-circle-nodes mr-1.5"></i>Плинко</button>
+                <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-1.5"></i>Колесо</button>
                 </div>
                 <!-- b49: 3D-игровой автомат: на барабанах крутятся карты сайта -->
                 <div id="lobby-slots" class="space-y-6 hidden">
@@ -909,7 +912,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-lemon text-fuchsia-400 mr-2"></i>Игровые автоматы: Слоты</h2>
                                 <p class="text-sm text-slate-400 mt-1">На 3D-барабанах крутятся карты сайта. Три одинаковых — джекпот по редкости (×8…×30), две одинаковые — ×2. Ставка и выигрыш идут в общий баланс.</p>
-                            </div>
+                                                    </div>
                             <div class="text-right shrink-0">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Баланс</p>
                                 <p id="slots-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
@@ -935,6 +938,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         </div>
                         <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Выплаты: пара — ×2; три обычных — ×8, редких — ×12, эпических — ×18, легендарных — ×30 от ставки. Три символа JACKPOT подряд — весь банк джекпота.</p>
                     </div>
+<div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Выбери ставку (100–50k) и нажми <b>«Крутить»</b> (на телефоне — тап по самой машине).</li>
+                                <li>На 3D-барабанах крутятся карты сайта: <b>три одинаковые</b> — джекпот-множитель по редкости карты (<b>×8…×30</b>), <b>две одинаковые</b> — <b>×2</b>.</li>
+                                <li>2% каждой ставки кормят общий джекпот сайта. Выигрыш сразу падает в баланс.</li>
+                            </ol>
+                        </div>
                 </div>
                 <!-- b53: сеточный слот 5×4 с каскадами, как в референсе, но с нашими вертикальными картами -->
                 <div id="lobby-grid" class="space-y-6 hidden">
@@ -945,7 +956,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-border-all text-violet-400 mr-2"></i>Сеточный слот: Коллекция карт</h2>
                                 <p class="text-[11px] text-violet-200/90 mt-1 font-black uppercase tracking-wider">Выиграйте до ×360 от ставки: 8+ одинаковых карт где угодно на поле</p>
                                 <p class="text-xs text-slate-400 mt-1">Выигрышные ячейки взрываются и досыпаются каскадом — каждая цепь усиливает выплату: ×1.5, ×2, ×3, ×5, ×8.</p>
-                            </div>
+                                                    </div>
                             <div class="text-right shrink-0">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Баланс</p>
                                 <p id="grid-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
@@ -975,22 +986,122 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <span id="grid-last">Последний выигрыш: —</span>
                             <span id="grid-stats" class="ml-auto font-mono text-slate-500">спинов: 0 • побед: 0</span>
                         </div>
-                        <!-- b55: правила игры прямо под полем — чтобы всё было понятно -->
-                        <details class="mt-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-[11px] leading-relaxed text-slate-300" open>
-                            <summary class="cursor-pointer font-black text-slate-100 text-xs uppercase tracking-wider"><i class="fa-solid fa-book-open text-violet-400 mr-1"></i>Правила игры</summary>
-                            <ul class="list-disc pl-5 mt-2 space-y-1">
-                                <li>Ставка списывается из общего баланса при каждом спине, выигрыш возвращается туда же.</li>
-                                <li>Выигрыш — <b class="text-white">8 и более одинаковых карт где угодно</b> на поле 5×4, линии не нужны.</li>
-                                <li>Выплата за группу: 8–9 карт — ×2, 10–11 — ×5, 12+ — ×15 от ставки, и всё это умножается на редкость: обычная ×1, редкая ×1.5, эпическая ×2, легендарная ×3.</li>
-                                <li>Выигрышные карты мигают, взрываются, и сверху падают новые — это каскад: каждая следующая цепь умножает выплату на ×1.5, ×2, ×3, ×5, ×8.</li>
-                                <li>Несколько групп одинаковых карт в одном спине складываются.</li>
-                                <li>Максимальная выплата за спин — ×360 от ставки.</li>
-                                <li><b class="text-amber-300">Джекпот:</b> 3+ золотых карт JACKPOT где угодно на поле — весь банк ваш. Банк пополняется на 2% с каждой ставки в Слотах и Сетке, а каждый проигрышный спин добавляет в него ещё +25% ставки — чем дольше не везёт, тем ближе джекпот.</li>
-                            </ul>
-                        </details>
                     </div>
+<div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Выбери ставку и нажми <b>«Спин»</b>: поле 5×5 заполняется картами сайта.</li>
+                                <li><b>8+ одинаковых карт</b> где угодно на поле — выигрыш (до <b>×360</b> от ставки).</li>
+                                <li>Выигравшие ячейки взрываются и досыпаются каскадом: каждая цепь усиливает выплату (×1.5…×8).</li>
+                                <li>2% ставки кормят общий джекпот; проигрышный спин докидывает в него четверть ставки.</li>
+                                <li>Выплата за группу: <b>8–9 карт — ×2, 10–11 — ×5, 12+ — ×15</b> от ставки, умноженные на редкость карты (×1…×3).</li>
+                                <li>Несколько групп одинаковых карт в одном спине складываются; ставка списывается и выигрыш возвращается в общий баланс.</li>
+                            </ol>
+                        </div>
                 </div>
                 <!-- b47: idle-шахта: монеты капают в баланс, улучшение кирки за монеты -->
+                <!-- b74: Колесо Фортуны 3D с призами -->
+                <div id="lobby-wheel" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-dharmachakra text-amber-300 mr-2"></i>Колесо Фортуны</h2>
+                                <p class="text-sm text-slate-400 mt-1">3D-колесо с призами: множители ставки до ×5, случайная карта сайта, кирка +1 и золотой сектор JACKPOT — срывает весь общий банк сайта! Каждая ставка кормит банк 2%, пустой сектор докидывает четверть ставки. Крутить можно тапом по самому колесу — кнопка не обязательна!</p>
+                                                    </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-[10px] uppercase font-black text-slate-500">спинов</p>
+                                <p id="wheel-spins" class="font-mono text-lg font-black text-amber-300">0</p>
+                            </div>
+                        </div>
+                        <div class="wheel-lights mt-4" aria-hidden="true"></div>
+                        <div id="wheel-container" class="relative rounded-xl overflow-hidden border border-amber-500/40" style="height:420px"></div>
+                        <div class="wheel-lights" aria-hidden="true"></div>
+                        <div id="wheel-fallback" class="hidden mt-4 flex-col items-center"></div>
+                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                            <div id="wheel-bets" class="flex flex-wrap gap-1.5"></div>
+                            <button id="wheel-spin" onclick="wheelSpin()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-dharmachakra mr-1"></i>Крутить</button>
+                        </div>
+                        <p id="wheel-result" class="text-xs text-slate-400 mt-2">Выбери ставку и крути колесо!</p>
+                    </div>
+<div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Выбери ставку и нажми <b>«Крутить»</b> — или просто тапни по самому колесу.</li>
+                                <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> — весь общий банк сайта.</li>
+                                <li>Пустой сектор: ставка сгорает и докидывает <b>25%</b> в общий джекпот; 2% каждой ставки капают в банк всегда.</li>
+                            </ol>
+                        </div>
+                </div>
+                <!-- b77: Плинко 3D -->
+                <div id="lobby-plinko" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-circle-nodes text-teal-300 mr-2"></i>Плинко</h2>
+                                <p class="text-sm text-slate-400 mt-1">Шар падает сквозь колышки и попадает в корзину множителя (до ×4). Крайние корзины — золотой JACKPOT: срывают весь общий банк сайта! Каждая ставка кормит банк 2%, проигрыш докидывает четверть ставки. Бросать можно несколько шаров подряд.</p>
+                                                    </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-[10px] uppercase font-black text-slate-500">бросков</p>
+                                <p id="plinko-drops" class="font-mono text-lg font-black text-teal-300">0</p>
+                            </div>
+                        </div>
+                        <div class="wheel-lights mt-4" aria-hidden="true"></div>
+                        <div id="plinko-container" class="relative rounded-xl overflow-hidden border border-teal-400/40" style="height:460px"></div>
+                        <div class="wheel-lights" aria-hidden="true"></div>
+                        <div id="plinko-fallback" class="hidden mt-4 justify-center"></div>
+                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                            <div id="plinko-bets" class="flex flex-wrap gap-1.5"></div>
+                            <button id="plinko-drop" onclick="plinkoDrop()" class="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-sm font-black transition shadow-lg shadow-teal-950/40"><i class="fa-solid fa-circle-nodes mr-1"></i>Бросить шар</button>
+                        </div>
+                        <p id="plinko-result" class="text-xs text-slate-400 mt-2">Выбери ставку и бросай шары — можно несколько подряд!</p>
+                    </div>
+<div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Выбери ставку и жми <b>«Бросить шар»</b>: на доске могут лететь до <b>10 шаров</b> одновременно.</li>
+                                <li>Шар отскакивает от колышков и падает в корзину: множитель <b>×0.4…×4</b> применяется к ставке.</li>
+                                <li>Крайние золотые корзины — <b>JACKPOT</b>: срывают весь общий банк сайта.</li>
+                                <li>2% ставки кормят джекпот всегда; выпадение ниже ставки докидывает в банк четверть ставки.</li>
+                            </ol>
+                        </div>
+                </div>
+                <!-- b79: Мины -->
+                <div id="lobby-mines" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-bomb text-rose-400 mr-2"></i>Мины</h2>
+                                <p class="text-sm text-slate-400 mt-1">Открывайте плитки: под каждой ваш пак или мина. Каждый пак растит множитель — заберите выигрыш в любой момент или рискуйте дальше. Мина сжигает ставку и кормит общий джекпот сайта (2% ставки при старте + четверть ставки при проигрыше).</p>
+                                                    </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-[10px] uppercase font-black text-slate-500">побед</p>
+                                <p id="mines-wins" class="font-mono text-lg font-black text-emerald-300">0</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                            <div id="mines-bets" class="flex flex-wrap gap-1.5"></div>
+                            <div id="mines-counts" class="flex flex-wrap gap-1.5 ml-2"></div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-3">
+                            <button id="mines-start" onclick="minesStart()" class="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white text-sm font-black transition shadow-lg shadow-rose-950/40"><i class="fa-solid fa-play mr-1"></i>Начать раунд</button>
+                            <button id="mines-cash" onclick="minesCashout()" class="hidden px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-black transition shadow-lg shadow-emerald-950/40"><i class="fa-solid fa-sack-coins mr-1"></i>Забрать</button>
+                            <span id="mines-mult" class="text-xs font-bold text-slate-300"></span>
+                        </div>
+                        <div class="wheel-lights mt-4" aria-hidden="true"></div>
+                        <div id="mines-board" class="grid grid-cols-5 gap-2 mt-2 mb-2 max-w-md mx-auto"></div>
+                        <div class="wheel-lights" aria-hidden="true"></div>
+                        <p id="mines-result" class="text-xs text-slate-400 mt-3">Выбери ставку и число мин — и открывай плитки!</p>
+                    </div>
+<div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Выбери ставку и число мин (<b>3 / 5 / 10</b>), нажми <b>«Начать раунд»</b>.</li>
+                                <li>Открывай плитки: под каждой ваш <b>пак</b> (множитель растёт — видно на кнопке «Забрать») или <b>мина</b> (раунд проигран).</li>
+                                <li>Жми <b>«Забрать»</b> в любой момент, чтобы зафиксировать выигрыш; открыли все безопасные плитки — автовыплата.</li>
+                                <li>Мина: ставка сгорает и докидывает <b>25%</b> в общий джекпот сайта; старт раунда кормит банк 2% ставки.</li>
+                            </ol>
+                        </div>
+                </div>
                 <div id="lobby-miner" class="space-y-6 hidden">
                     <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
                         <div class="flex flex-wrap items-start justify-between gap-3">
@@ -998,7 +1109,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-helmet-safety text-amber-400 mr-2"></i>Шахта «Коллекционер карт»</h2>
                                 <p class="text-sm text-slate-400 mt-1">Пассивная добыча: монеты капают в общий баланс каждую секунду — даже офлайн (до 24 часов). Улучшение кирки покупается за те же монеты: +1 монета/сек за уровень.</p>
                                 <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-hand-pointer text-teal-400 mr-1"></i>На телефоне: тап по машине в Слотах и Сетке = спин, кнопки крупные.</p>
-                            </div>
+                                                    </div>
                             <div class="text-right shrink-0">
                                 <p class="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Баланс</p>
                                 <p id="miner-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
@@ -1034,13 +1145,21 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <span class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Каждый уровень: +1 монета/сек. Цена растёт ×1.9.</span>
                         </div>
                     </div>
+<div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Шахта копает монеты <b>каждую секунду</b>: кирка уровня N даёт <b>N монет/сек</b>.</li>
+                                <li>Копка идёт даже <b>офлайн — до 24 часов</b>: вернётесь в игру, и она начислит монеты за пропущенное время.</li>
+                                <li>Кнопка <b>«Улучшить кирку»</b> покупает следующий уровень за монеты (цена растёт ×1.22 — дёшево).</li>
+                            </ol>
+                        </div>
                 </div>
                 <div id="lobby-arena" class="space-y-6">
                 <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between gap-4 md:items-center">
                     <div>
                         <h2 class="text-2xl font-black text-white tracking-tight">Арена «Коллекционер карт»</h2>
                         <p class="text-sm text-slate-400 mt-1">Соберите колоду из 3–5 карт и сражайтесь с противниками за монеты!</p>
-                        <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Статы карт зависят от редкости: обычные слабее, легендарные — мощнее всех.</p>
+                                                <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Статы карт зависят от редкости: обычные слабее, легендарные — мощнее всех.</p>
                     </div>
                     <div class="text-right bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-3">
                         <p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Сила колоды</p>
@@ -1091,6 +1210,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>
                     <div id="battle-history-list" class="space-y-2"></div>
                 </div>
+                <div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Соберите колоду из <b>3–5 своих карт</b> и нажмите <b>«Начать бой»</b>: статы карт зависят от редкости.</li>
+                                <li>В свой ход: <b>«Атака»</b> — точный урон по силе карты; <b>«Мощный удар»</b> — <b>×1.8</b> урона, но 40% шанс промаха; <b>«Защита»</b> — гасит удар противника и лечит <b>+3 HP</b>.</li>
+                                <li>Нокдаун противника выпускает следующего бойца: побеждает тот, кто уложил всю команду.</li>
+                                <li>Победа даёт монеты (серия побед и бой без потерь усиливают награду).</li>
+                            </ol>
+                        </div>
                 </div><!-- /lobby-arena -->
 
                 <!-- Durak lobby -->
@@ -1100,18 +1228,21 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <h2 class="text-2xl font-black text-white tracking-tight">Дурак <span class="text-emerald-400">♦</span> в 3D</h2>
                             <p class="text-sm text-slate-400 mt-1">Классическая карточная игра: 36 карт, козырь, бей или забирай. Не останься дураком!</p>
                             <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Победа: +150 монет • достижение «Не дурак!» • задания дня</p>
-                            <p id="durak-reward-note" class="text-xs text-emerald-400/90 mt-1 font-semibold"></p>
+                                                    <p id="durak-reward-note" class="text-xs text-emerald-400/90 mt-1 font-semibold"></p>
                         </div>
                         <button onclick="startDurak()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 shrink-0"><i class="fa-solid fa-play mr-2"></i>Играть в дурака</button>
                     </div>
-                    <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-2 text-sm text-slate-300">
-                        <h3 class="font-bold text-white mb-2"><i class="fa-solid fa-book text-teal-400 mr-2"></i>Коротко правила</h3>
-                        <p>• Ходите одной картой, подкидывайте карты тех же достоинств, что уже на столе (до 6 пар).</p>
-                        <p>• Отбивайтесь старшей картой той же масти или любым козырем по некозырной атаке.</p>
-                        <p>• Не можете отбиться — забираете все карты со стола. Кто остался с картами при пустой колоде — дурак.</p>
-                        <p>• Первым ходит игрок с младшим козырем.</p>
-                    </div>
                     <div class="text-center text-xs text-slate-500">Побед: <span id="durak-wins-label" class="text-emerald-400 font-bold">0</span> • Поражений: <span id="durak-loss-label" class="text-rose-400 font-bold">0</span></div>
+<div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Колода <b>36 карт</b>, по <b>6 карт</b> игрокам, нижняя карта колоды — <b>козырь</b>.</li>
+                                <li>Соперник атакует — бейте старшей картой той же масти или козырем; не можете побить — забираете карты со стола.</li>
+                                <li>После боя добор до 6 карт: у кого карты кончились — тот победил, оставшийся с картами — <b>дурак</b>.</li>
+                                <li>Победа: <b>+150 монет</b> (×2 за первую победу дня, бонусы за серию), идеальная победа без взятых карт — ещё щедрее.</li>
+                                <li>Подкидывать можно карты тех же достоинств, что уже лежат на столе (до 6 пар); первым ходит игрок с младшим козырем.</li>
+                            </ol>
+                        </div>
                 </div>
             </div>
 
@@ -1707,9 +1838,95 @@ Check your Browserslist config to be sure that your targets are set up correctly
         #unbox-foil-hint { font-size: 10px; line-height: 1.25; }
         #unboxing-title { font-size: 15px; }
     }
+    /* b75: сцена Колеса Фортуны — праздничный фон: софиты, мерцающие искры,
+       гирлянды лампочек по периметру мигают в противофазе */
+    #wheel-container, #plinko-container {
+        background:
+            radial-gradient(ellipse 60% 45% at 50% 30%, rgba(251, 191, 36, .18), transparent 70%),
+            radial-gradient(ellipse 45% 40% at 16% 82%, rgba(217, 70, 239, .16), transparent 65%),
+            radial-gradient(ellipse 45% 40% at 84% 82%, rgba(16, 185, 129, .14), transparent 65%),
+            radial-gradient(ellipse 90% 70% at 50% 55%, rgba(30, 41, 59, .9), rgba(7, 10, 20, .98));
+        box-shadow: 0 0 26px rgba(251, 191, 36, .22), inset 0 0 60px rgba(2, 6, 23, .8);
+        animation: wheelGlow 2.6s ease-in-out infinite;
+    }
+    #wheel-container::after, #plinko-container::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+        background-image:
+            radial-gradient(1.6px 1.6px at 12% 22%, rgba(255, 255, 255, .9), transparent 55%),
+            radial-gradient(1.2px 1.2px at 78% 14%, rgba(253, 230, 138, .9), transparent 55%),
+            radial-gradient(1.4px 1.4px at 30% 78%, rgba(255, 255, 255, .7), transparent 55%),
+            radial-gradient(1.2px 1.2px at 88% 64%, rgba(253, 230, 138, .8), transparent 55%),
+            radial-gradient(1.1px 1.1px at 55% 8%, rgba(255, 255, 255, .8), transparent 55%),
+            radial-gradient(1.3px 1.3px at 8% 55%, rgba(240, 171, 252, .8), transparent 55%);
+        animation: wheelTwinkle 1.8s ease-in-out infinite alternate;
+    }
+    @keyframes wheelGlow {
+        0%, 100% { border-color: rgba(251, 191, 36, .55); box-shadow: 0 0 22px rgba(251, 191, 36, .18), inset 0 0 60px rgba(2, 6, 23, .8); }
+        50% { border-color: rgba(251, 191, 36, .95); box-shadow: 0 0 40px rgba(251, 191, 36, .4), inset 0 0 60px rgba(2, 6, 23, .7); }
+    }
+    @keyframes wheelTwinkle { from { opacity: .35; } to { opacity: 1; } }
+    .wheel-lights {
+        position: relative; height: 16px; border-radius: 8px;
+        background: linear-gradient(rgba(15, 23, 42, .9), rgba(15, 23, 42, .75));
+        overflow: hidden;
+    }
+    .wheel-lights::before, .wheel-lights::after {
+        content: ''; position: absolute; inset: 0;
+        background-image: radial-gradient(circle at 9px 8px, #fde68a 3.6px, rgba(253, 230, 138, 0) 4.6px);
+        background-size: 30px 16px; background-repeat: repeat-x;
+    }
+    .wheel-lights::before { animation: wheelBlink 1s steps(2, start) infinite; }
+    .wheel-lights::after { background-position: 15px 0; animation: wheelBlink 1s steps(2, start) infinite reverse; }
+    @keyframes wheelBlink { 0% { opacity: 1; } 50% { opacity: .25; } 100% { opacity: 1; } }
+    /* b80: Мины — золотой праздничный фон: софиты, искры, пульс-рамка, гирлянды */
+    #lobby-mines > div {
+        background:
+            radial-gradient(ellipse 55% 40% at 50% 0%, rgba(251, 191, 36, .15), transparent 70%),
+            radial-gradient(ellipse 40% 35% at 12% 92%, rgba(251, 191, 36, .10), transparent 65%),
+            radial-gradient(ellipse 40% 35% at 88% 92%, rgba(244, 63, 94, .08), transparent 65%),
+            linear-gradient(160deg, rgba(41, 37, 20, .85), rgba(12, 10, 4, .94));
+        border-color: rgba(251, 191, 36, .35);
+    }
+    #mines-board {
+        position: relative;
+        padding: 10px;
+        border-radius: 16px;
+        background:
+            radial-gradient(ellipse 70% 55% at 50% 38%, rgba(251, 191, 36, .17), transparent 75%),
+            radial-gradient(ellipse 90% 80% at 50% 60%, rgba(69, 26, 3, .5), rgba(2, 6, 23, .92));
+        border: 1px solid rgba(251, 191, 36, .4);
+        box-shadow: 0 0 24px rgba(251, 191, 36, .18), inset 0 0 40px rgba(2, 6, 23, .7);
+        animation: wheelGlow 2.6s ease-in-out infinite;
+    }
+    #mines-board::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 5; border-radius: 16px;
+        background-image:
+            radial-gradient(1.5px 1.5px at 15% 18%, rgba(253, 230, 138, .95), transparent 55%),
+            radial-gradient(1.2px 1.2px at 82% 12%, rgba(255, 255, 255, .8), transparent 55%),
+            radial-gradient(1.4px 1.4px at 28% 84%, rgba(253, 230, 138, .8), transparent 55%),
+            radial-gradient(1.2px 1.2px at 90% 70%, rgba(255, 255, 255, .7), transparent 55%),
+            radial-gradient(1.1px 1.1px at 52% 6%, rgba(253, 230, 138, .8), transparent 55%);
+        animation: wheelTwinkle 1.6s ease-in-out infinite alternate;
+    }
+    #mines-board button { position: relative; }
+    /* b82: единообразные карточки правил для всех игр */
+    .rules-card { border: 1px solid rgba(148, 163, 184, .25); background: rgba(15, 23, 42, .65); border-radius: 14px; padding: 10px 14px; margin-top: 12px; }
+    .rules-title { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; }
+    .rules-list { margin: 6px 0 0; padding-left: 18px; list-style: decimal; }
+    .rules-list li { font-size: 12px; color: #cbd5e1; margin: 3px 0; line-height: 1.45; }
+    .rules-list b { color: #fbbf24; font-weight: 800; }
+    .mines-pack {
+        position: absolute; inset: 6% 27%;
+        background-size: 100% 100%, 100% 100%; background-position: center, center; background-repeat: no-repeat;
+        clip-path: var(--packclip, polygon(0 0, 100% 0, 100% 100%, 0 100%));
+        background-image:
+            linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, .4) 50%, transparent 58%),
+            linear-gradient(160deg, #fde68a, #f59e0b 35%, #b45309 70%, #78350f);
+        filter: drop-shadow(0 0 6px rgba(251, 191, 36, .55));
+    }
 </style>
 <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b73</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b82</div>
         <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <div id="pack3d-ui" class="flex flex-col items-center">
@@ -3295,7 +3512,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b73</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b82</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -4624,6 +4841,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (lm) lm.classList.toggle('hidden', m !== 'miner');
             if (lsl) lsl.classList.toggle('hidden', m !== 'slots');
             if (lg) lg.classList.toggle('hidden', m !== 'grid');
+            const lw = document.getElementById('lobby-wheel');
+            if (lw) lw.classList.toggle('hidden', m !== 'wheel');
+            const lp = document.getElementById('lobby-plinko');
+            if (lp) lp.classList.toggle('hidden', m !== 'plinko');
+            const lmn = document.getElementById('lobby-mines');
+            if (lmn) lmn.classList.toggle('hidden', m !== 'mines');
             const ba = document.getElementById('mode-arena-btn'), bd = document.getElementById('mode-durak-btn'), bm = document.getElementById('mode-miner-btn');
             if (ba) ba.className = m === 'arena' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-rose-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             if (bd) bd.className = m === 'durak' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-emerald-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
@@ -4632,9 +4855,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (bs) bs.className = m === 'slots' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-fuchsia-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             const bgd = document.getElementById('mode-grid-btn');
             if (bgd) bgd.className = m === 'grid' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-violet-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            const bwheel = document.getElementById('mode-wheel-btn');
+            if (bwheel) bwheel.className = m === 'wheel' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-amber-500 text-slate-950 shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            const bpl = document.getElementById('mode-plinko-btn');
+            if (bpl) bpl.className = m === 'plinko' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-teal-500 text-slate-950 shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            const bmn = document.getElementById('mode-mines-btn');
+            if (bmn) bmn.className = m === 'mines' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-rose-500 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             if (m === 'miner') renderMiner();
             if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
+            if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
+            if (m === 'plinko') { plinkoEnsure(); renderPlinkoUI(); } // b77
+            if (m === 'mines') { renderMinesUI(); } // b79
             if (m === 'durak') {
                 const w = document.getElementById('durak-wins-label'), l = document.getElementById('durak-loss-label');
                 if (w) w.innerText = state.stats.durakWins || 0;
@@ -6922,6 +7154,786 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
         }
 
+        // ============ b77: ПЛИНКО (3D) ============
+        // Шар падает сквозь пирамиду колышков; корзины множителей, крайние — JACKPOT
+        // (срывает общий банк сайта). Ставка кормит банк 2%, проигрыш — +25% ставки.
+        const PLINKO_ROWS = 10;
+        const PLINKO_DX = 0.62, PLINKO_TOP = 3.4, PLINKO_STEP = 0.56, PLINKO_ROW_MS = 165;
+        const PLINKO_MULT = [
+            { jp: true, label: 'JACKPOT' }, { m: 4, label: '×4' }, { m: 2, label: '×2' },
+            { m: 1.4, label: '×1.4' }, { m: 0.8, label: '×0.8' }, { m: 0.4, label: '×0.4' },
+            { m: 0.8, label: '×0.8' }, { m: 1.4, label: '×1.4' }, { m: 2, label: '×2' },
+            { m: 4, label: '×4' }, { jp: true, label: 'JACKPOT' }
+        ];
+        const plinko = { renderer: null, scene: null, camera: null, balls: [], bins: [], ready: false, fallback: false, bet: 100, animId: null, lastT: 0 };
+        function plinkoBinColor(i) {
+            const e = Math.min(i, PLINKO_MULT.length - 1 - i);
+            return [0xfbbf24, 0xd946ef, 0x8b5cf6, 0x14b8a6, 0x0ea5e9, 0x334155][e] || 0x334155;
+        }
+        function plinkoMakeDrop() {
+            let k = 0;
+            const pts = [{ x: 0, y: PLINKO_TOP + 0.6 }];
+            for (let r = 0; r < PLINKO_ROWS; r++) {
+                pts.push({ x: (k - r / 2) * PLINKO_DX, y: PLINKO_TOP - r * PLINKO_STEP });
+                if (Math.random() < 0.5) k += 1;
+            }
+            pts.push({ x: (k - PLINKO_ROWS / 2) * PLINKO_DX, y: PLINKO_TOP - PLINKO_ROWS * PLINKO_STEP - 0.62 });
+            return { pts: pts, bin: k, t0: 0, mesh: null };
+        }
+        function plinkoEnsure() {
+            if (plinko.ready) return;
+            if (typeof THREE === 'undefined' || !webglAvailable()) { plinkoBuildFallback(); plinko.fallback = true; plinko.ready = true; plinkoLoop(); return; }
+            const container = document.getElementById('plinko-container');
+            if (!container) return;
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { plinkoBuildFallback(); plinko.fallback = true; plinko.ready = true; plinkoLoop(); return; }
+            const w = container.clientWidth || 640, h = container.clientHeight || 460;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setSize(w, h);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'plinko', () => { plinko.fallback = true; plinko.renderer = null; plinkoBuildFallback(); if (!plinko.animId) plinkoLoop(); });
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
+            camera.position.set(0, 0.2, 8.5);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+            const l1 = new THREE.PointLight(0xccfbf1, 0.6, 40); l1.position.set(3, 4, 6); scene.add(l1);
+            const l2 = new THREE.PointLight(0xf0abfc, 0.35, 40); l2.position.set(-4, -2, 5); scene.add(l2);
+            // b78: праздничный фон доски — софит, мерцающие звёзды, летающие паки
+            try {
+                const gc = document.createElement('canvas'); gc.width = gc.height = 256;
+                const gg = gc.getContext('2d');
+                if (gg) {
+                    const rg = gg.createRadialGradient(128, 128, 10, 128, 128, 126);
+                    rg.addColorStop(0, 'rgba(45,212,191,.26)');
+                    rg.addColorStop(0.5, 'rgba(251,191,36,.10)');
+                    rg.addColorStop(1, 'rgba(2,6,23,0)');
+                    gg.fillStyle = rg; gg.fillRect(0, 0, 256, 256);
+                }
+                const glow = new THREE.Mesh(new THREE.PlaneGeometry(12, 9),
+                    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false }));
+                glow.position.set(0, 0.4, -2.6);
+                scene.add(glow);
+                const N = 70, pos = new Float32Array(N * 3);
+                for (let i = 0; i < N; i++) {
+                    pos[i * 3] = (Math.random() - 0.5) * 13;
+                    pos[i * 3 + 1] = (Math.random() - 0.5) * 8.5;
+                    pos[i * 3 + 2] = -3 + Math.random() * 1.5;
+                }
+                const sg = new THREE.BufferGeometry();
+                sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                plinko.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x99f6e4, size: 0.07, transparent: true, opacity: 0.8, depthWrite: false }));
+                scene.add(plinko.stars);
+                plinko.fliers = [];
+                const packsSrc = (state.packs && state.packs.length) ? state.packs : [{ color: 'silver', shimmer: 'holo' }];
+                for (let i = 0; i < 6; i++) {
+                    const pk = packsSrc[i % packsSrc.length];
+                    const tex = makePackTexture(pk);
+                    try { tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+                    const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+                    const sideM = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6, metalness: 0.4, transparent: true, opacity: 0.5 });
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.18, 0.1), [sideM, sideM, sideM, sideM, face, face]);
+                    m.userData = {
+                        ang: Math.random() * Math.PI * 2,
+                        spd: 0.1 + Math.random() * 0.14,
+                        rx: 4.9 + Math.random() * 1.6,
+                        ry: 1.8 + Math.random() * 1.6,
+                        z: -1.8 - Math.random() * 1.1,
+                        rs: (Math.random() - 0.5) * 1.1
+                    };
+                    scene.add(m);
+                    plinko.fliers.push(m);
+                }
+            } catch (e) {}
+            // пирамида колышков
+            const pegGeo = new THREE.SphereGeometry(0.07, 10, 10);
+            const pegMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.6, emissive: 0x475569, emissiveIntensity: 0.4 });
+            for (let r = 0; r < PLINKO_ROWS; r++) {
+                for (let i = 0; i <= r; i++) {
+                    const peg = new THREE.Mesh(pegGeo, pegMat);
+                    peg.position.set((i - r / 2) * PLINKO_DX, PLINKO_TOP - r * PLINKO_STEP, 0);
+                    scene.add(peg);
+                }
+            }
+            // корзины множителей
+            const binY = PLINKO_TOP - PLINKO_ROWS * PLINKO_STEP - 0.62;
+            PLINKO_MULT.forEach((mu, i) => {
+                const col = plinkoBinColor(i);
+                const box = new THREE.Mesh(new THREE.BoxGeometry(PLINKO_DX * 0.92, 0.5, 0.3),
+                    new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.35, emissive: col, emissiveIntensity: 0.25 }));
+                box.position.set((i - PLINKO_ROWS / 2) * PLINKO_DX, binY, 0);
+                scene.add(box);
+                const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64;
+                const g = cv.getContext('2d');
+                if (g) {
+                    g.font = mu.jp ? '900 20px system-ui, sans-serif' : '900 30px system-ui, sans-serif';
+                    g.textAlign = 'center'; g.textBaseline = 'middle';
+                    g.fillStyle = '#0f172a';
+                    g.fillText(mu.label, 64, 34);
+                }
+                const lab = new THREE.Mesh(new THREE.PlaneGeometry(PLINKO_DX * 0.9, 0.45),
+                    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }));
+                lab.position.set((i - PLINKO_ROWS / 2) * PLINKO_DX, binY, 0.17);
+                scene.add(lab);
+                plinko.bins.push(box);
+            });
+            plinko.renderer = renderer; plinko.scene = scene; plinko.camera = camera;
+            plinko.ballGeo = new THREE.SphereGeometry(0.15, 14, 14);
+            plinko.ballMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 0.25, metalness: 0.5, emissive: 0xf59e0b, emissiveIntensity: 0.5 });
+            plinko.ready = true;
+            if (!window._nx3dPlinko) {
+                window._nx3dPlinko = 1;
+                const rs = () => {
+                    const c = document.getElementById('plinko-container');
+                    if (c && plinko.renderer) nx3dResizeSimple(plinko.renderer, plinko.camera, c, [3.6, 3.55, 8.5]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs);
+                rs();
+            }
+            plinko.lastT = performance.now();
+            plinkoLoop();
+        }
+        function plinkoLoop() {
+            plinko.animId = requestAnimationFrame(plinkoLoop);
+            try { // b77: кадр под предохранителем — см. nx3dLoopBail
+                const now = performance.now();
+                for (let bi = plinko.balls.length - 1; bi >= 0; bi--) {
+                    const b = plinko.balls[bi];
+                    const t = (now - b.t0) / PLINKO_ROW_MS;
+                    const seg = Math.floor(t);
+                    if (seg >= b.pts.length - 1) {
+                        if (b.mesh) { plinko.scene && plinko.scene.remove(b.mesh); }
+                        plinko.balls.splice(bi, 1);
+                        plinkoFlashBin(b.bin);
+                        plinkoAward(b.bin, b.bet);
+                        continue;
+                    }
+                    const loc = t - seg;
+                    const e = loc * loc * (3 - 2 * loc);
+                    const p0 = b.pts[seg], p1 = b.pts[seg + 1];
+                    const x = p0.x + (p1.x - p0.x) * e;
+                    const y = p0.y + (p1.y - p0.y) * loc + Math.sin(loc * Math.PI) * 0.09;
+                    if (plinko.fallback) { b.fx = x; b.fy = y; }
+                    else if (b.mesh) b.mesh.position.set(x, y, 0.1);
+                }
+                if (plinko.stars) plinko.stars.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(now / 650));
+                if (plinko.fliers && plinko.fliers.length && !plinko.fallback) {
+                    const dtf = Math.min(0.05, (now - plinko.lastT) / 1000);
+                    for (let i = 0; i < plinko.fliers.length; i++) {
+                        const f = plinko.fliers[i], u = f.userData;
+                        u.ang += u.spd * dtf;
+                        f.position.set(Math.cos(u.ang) * u.rx, 0.4 + Math.sin(u.ang * 0.9) * u.ry, u.z);
+                        f.rotation.y += u.rs * dtf;
+                        f.rotation.z = Math.sin(u.ang * 0.7) * 0.25;
+                    }
+                }
+                if (plinko.fallback) { plinkoDrawFallback(); }
+                else if (plinko.renderer) {
+                    // корзины гасят вспышку
+                    for (let i = 0; i < plinko.bins.length; i++) {
+                        const m = plinko.bins[i].material;
+                        if (m.emissiveIntensity > 0.25) m.emissiveIntensity = Math.max(0.25, m.emissiveIntensity - 0.04);
+                    }
+                    plinko.renderer.render(plinko.scene, plinko.camera);
+                }
+                plinko.lastT = now;
+            } catch (e) {
+                // b77: одиночный сбой кадра не убивает игру: гасим цикл только после 30 сбоев подряд
+                plinko.errs = (plinko.errs || 0) + 1;
+                if (plinko.errs > 30) nx3dLoopBail('plinko', e, () => { cancelAnimationFrame(plinko.animId); plinko.animId = 0; });
+            }
+        }
+        function plinkoFlashBin(i) {
+            if (!plinko.fallback && plinko.bins[i]) plinko.bins[i].material.emissiveIntensity = 1.6;
+            try { SoundFX.play('coin'); } catch (e) {}
+        }
+        function plinkoBuildFallback() {
+            const box = document.getElementById('plinko-fallback');
+            if (!box) return;
+            box.classList.remove('hidden');
+            if (!box.dataset.built) {
+                box.dataset.built = '1';
+                box.innerHTML = '<canvas id="plinko-fb-canvas" width="360" height="440" style="max-width:100%;border-radius:12px;background:#070a14;border:1px solid #1e293b;"></canvas>';
+            }
+        }
+        function plinkoDrawFallback() {
+            const cv = document.getElementById('plinko-fb-canvas');
+            if (!cv) return;
+            const g = cv.getContext('2d');
+            if (!g) return;
+            const W = cv.width, H = cv.height;
+            const sx = W / ((PLINKO_ROWS + 2.4) * PLINKO_DX);
+            const sy = H / (PLINKO_ROWS * PLINKO_STEP + 2.6);
+            const px = x => W / 2 + x * sx;
+            const py = y => (PLINKO_TOP + 1.1 - y) * sy;
+            g.clearRect(0, 0, W, H);
+            g.fillStyle = '#94a3b8';
+            for (let r = 0; r < PLINKO_ROWS; r++) for (let i = 0; i <= r; i++) {
+                g.beginPath(); g.arc(px((i - r / 2) * PLINKO_DX), py(PLINKO_TOP - r * PLINKO_STEP), 2.4, 0, 7); g.fill();
+            }
+            const binY = PLINKO_TOP - PLINKO_ROWS * PLINKO_STEP - 0.62;
+            PLINKO_MULT.forEach((mu, i) => {
+                const c = plinkoBinColor(i);
+                g.fillStyle = '#' + c.toString(16).padStart(6, '0');
+                const bx = px((i - PLINKO_ROWS / 2) * PLINKO_DX) - sx * PLINKO_DX * 0.46;
+                g.fillRect(bx, py(binY) - 12, sx * PLINKO_DX * 0.92, 26);
+                g.fillStyle = '#0f172a'; g.font = '900 9px system-ui, sans-serif'; g.textAlign = 'center';
+                g.fillText(mu.label, px((i - PLINKO_ROWS / 2) * PLINKO_DX), py(binY) + 4);
+            });
+            plinko.balls.forEach(b => {
+                if (b.fx == null) return;
+                g.fillStyle = '#fde68a';
+                g.beginPath(); g.arc(px(b.fx), py(b.fy), 5, 0, 7); g.fill();
+            });
+        }
+        function plinkoSetBet(b) {
+            if (SLOTS_BETS.indexOf(b) < 0) return;
+            plinko.bet = b;
+            renderPlinkoUI();
+        }
+        function renderPlinkoUI() {
+            const bets = document.getElementById('plinko-bets');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="plinkoSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (plinko.bet === v ? 'bg-teal-500 border-teal-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
+            const btn = document.getElementById('plinko-drop');
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-circle-nodes mr-1"></i>Бросить шар — ' + fmtCoins(plinko.bet);
+                btn.disabled = state.coins < plinko.bet;
+                btn.classList.toggle('opacity-40', state.coins < plinko.bet);
+            }
+            const d = document.getElementById('plinko-drops');
+            if (d) d.textContent = state.stats.plinkoDrops || 0;
+        }
+        function plinkoDrop() {
+            const bet = plinko.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            plinkoEnsure();
+            if (plinko.balls.length >= 10) return; // не более 10 шаров на доске
+            state.coins -= bet;
+            updateCoinDisplay(); saveState();
+            jackpotFeed(bet); // b77: Плинко кормит общий джекпот
+            state.stats.plinkoDrops = (state.stats.plinkoDrops || 0) + 1;
+            const drop = plinkoMakeDrop();
+            drop.bet = bet;
+            drop.t0 = performance.now() + 30;
+            if (!plinko.fallback) {
+                drop.mesh = new THREE.Mesh(plinko.ballGeo, plinko.ballMat);
+                drop.mesh.position.set(drop.pts[0].x, drop.pts[0].y, 0.1);
+                plinko.scene.add(drop.mesh);
+            }
+            plinko.balls.push(drop);
+            try { SoundFX.play('click'); } catch (e) {}
+            renderPlinkoUI();
+        }
+        function plinkoAward(bin, bet) {
+            const mu = PLINKO_MULT[bin] || { m: 0 };
+            let win = 0;
+            if (mu.jp) {
+                win = jackpotWin(); // крайняя корзина — весь общий банк сайта
+            } else {
+                win = Math.round(bet * mu.m);
+                if (win < bet) jackpotOnLoss(bet);
+                if (win > 0) state.coins += win;
+            }
+            saveState(); updateCoinDisplay();
+            if (mu.jp) showToast('🎯 ПЛИНКО-JACKPOT! Общий банк сайта ваш: +' + fmtCoins(win), 'success');
+            else if (mu.m >= 2) { showToast('🎯 Корзина ' + mu.label + ': +' + fmtCoins(win) + ' монет', 'success'); launchConfetti(mu.m >= 4 ? 100 : 50); }
+            const res = document.getElementById('plinko-result');
+            if (res) res.innerHTML = 'Последняя корзина: <b class="text-teal-300">' + mu.label + '</b>' + (win > 0 ? ' — +' + fmtCoins(win) + ' монет' : '');
+            renderPlinkoUI();
+        }
+
+        // ============ b79: МИНЫ ============
+        // 25 плиток, m мин. Честный множитель: 1/P(все k открытий безопасны) × 0.97.
+        // Забрать выигрыш можно в любой момент; мина сжигает ставку (джекпот +25% ставки),
+        // старт раунда кормит общий джекпот сайта 2% ставки.
+        const MINES_TILES = 25;
+        // b81: плитки мин показывают ВАШИ паки: текстура пака из Студии/облака -> data-URL
+        const MINES_PACK_URL = {};
+        function minesPackUrl(pack, onReady) {
+            let key = 'default';
+            try { if (pack && pack.id) key = pack.id; } catch (e) {}
+            if (MINES_PACK_URL[key]) return MINES_PACK_URL[key];
+            try {
+                const src = (pack && pack.id) ? pack : { color: 'silver', shimmer: 'holo' };
+                let tex = null;
+                tex = makePackTexture(src, () => {
+                    try {
+                        MINES_PACK_URL[key] = tex.image.toDataURL('image/png');
+                        if (onReady) onReady();
+                    } catch (e) {}
+                });
+                const url = tex.image.toDataURL('image/png');
+                MINES_PACK_URL[key] = url;
+                return url;
+            } catch (e) { return ''; }
+        }
+        const MINES_COUNTS = [3, 5, 10];
+        const MINES_EDGE = 0.97;
+        const mines = { active: false, mines: [], picked: [], m: 5, bet: 100 };
+        function minesMult(k, m) {
+            if (k <= 0) return 1;
+            let p = 1;
+            for (let i = 0; i < k; i++) p *= (MINES_TILES - i) / (MINES_TILES - m - i);
+            return Math.floor(p * MINES_EDGE * 100) / 100;
+        }
+        function minesSetBet(b) { if (SLOTS_BETS.indexOf(b) < 0) return; mines.bet = b; renderMinesUI(); }
+        function minesSetCount(m) { if (MINES_COUNTS.indexOf(m) < 0) return; if (mines.active) return; mines.m = m; renderMinesUI(); }
+        function minesStart() {
+            if (mines.active) return;
+            const bet = mines.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            state.coins -= bet;
+            updateCoinDisplay(); saveState();
+            jackpotFeed(bet); // b79: мины тоже кормят общий джекпот
+            const idx = [];
+            for (let i = 0; i < MINES_TILES; i++) idx.push(i);
+            for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+            mines.mines = idx.slice(0, mines.m);
+            mines.picked = [];
+            mines.active = true;
+            // b81: каждая безопасная плитка прячет один из ваших паков
+            mines.tilePack = [];
+            for (let i = 0; i < MINES_TILES; i++) {
+                mines.tilePack.push((state.packs && state.packs.length) ? state.packs[Math.floor(Math.random() * state.packs.length)] : null);
+            }
+            state.stats.minesRounds = (state.stats.minesRounds || 0) + 1;
+            try { SoundFX.play('click'); } catch (e) {}
+            renderMinesUI();
+        }
+        function minesPick(i) {
+            if (!mines.active || mines.picked.indexOf(i) >= 0) return;
+            mines.picked.push(i);
+            if (mines.mines.indexOf(i) >= 0) { minesEnd(false); return; }
+            try { SoundFX.play('reveal'); } catch (e) {}
+            if (mines.picked.length === MINES_TILES - mines.m) { minesEnd(true); return; }
+            renderMinesUI();
+        }
+        function minesCashout() {
+            if (!mines.active || !mines.picked.length) return;
+            minesEnd(true);
+        }
+        function minesEnd(win) {
+            const bet = mines.bet;
+            const k = mines.picked.length;
+            const mult = minesMult(k, mines.m);
+            let winCoins = 0;
+            if (win && k > 0) winCoins = Math.floor(bet * mult);
+            if (winCoins > 0) {
+                state.coins += winCoins;
+                state.stats.minesWins = (state.stats.minesWins || 0) + 1;
+                showToast('💎 Мины: забрали +' + fmtCoins(winCoins) + ' (×' + mult + ')', 'success');
+                if (mult >= 3) launchConfetti(mult >= 8 ? 120 : 60);
+                try { SoundFX.play('coin'); } catch (e) {}
+            } else {
+                jackpotOnLoss(bet); // b79: проигрыш докидывает четверть ставки в общий банк
+                showToast('💥 Мина! Ставка сгорела — общий джекпот подрос', 'refund');
+                try { SoundFX.play('tear'); } catch (e) {}
+            }
+            mines.active = false;
+            saveState(); updateCoinDisplay();
+            checkAchievements();
+            const res = document.getElementById('mines-result');
+            if (res) res.innerHTML = winCoins > 0
+                ? 'Раунд окончен: <b class="text-amber-300">+' + fmtCoins(winCoins) + '</b> (×' + mult + ' за ' + k + ' пак.)'
+                : 'Раунд окончен: <b class="text-rose-300">мина</b> на плитке ' + (mines.picked[mines.picked.length - 1] + 1) + ' из 25';
+            renderMinesUI();
+        }
+        function renderMinesUI() {
+            const bets = document.getElementById('mines-bets');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="minesSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (mines.bet === v ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '>' + fmtCoins(v) + '</button>').join('');
+            const cnts = document.getElementById('mines-counts');
+            if (cnts) cnts.innerHTML = MINES_COUNTS.map(m => '<button type="button" onclick="minesSetCount(' + m + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (mines.m === m ? 'bg-slate-200 border-slate-100 text-slate-900' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '>' + m + ' мин</button>').join('');
+            const start = document.getElementById('mines-start');
+            if (start) {
+                start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Начать раунд — ' + fmtCoins(mines.bet);
+                start.classList.toggle('hidden', mines.active);
+                start.disabled = state.coins < mines.bet;
+                start.classList.toggle('opacity-40', state.coins < mines.bet);
+            }
+            const cash = document.getElementById('mines-cash');
+            if (cash) {
+                const k = mines.picked.length;
+                const mult = minesMult(k, mines.m);
+                cash.classList.toggle('hidden', !mines.active || k === 0);
+                cash.innerHTML = '<i class="fa-solid fa-sack-coins mr-1"></i>Забрать ' + fmtCoins(Math.floor(mines.bet * mult));
+            }
+            const ml = document.getElementById('mines-mult');
+            if (ml) {
+                const k = mines.picked.length;
+                ml.innerHTML = mines.active
+                    ? 'сейчас ×' + minesMult(k, mines.m) + ' → след. ×' + minesMult(k + 1, mines.m) + ' • мин: ' + mines.m
+                    : 'мин в раунде: ' + mines.m + ' • множитель растёт с каждым паком';
+            }
+            const w = document.getElementById('mines-wins');
+            if (w) w.textContent = state.stats.minesWins || 0;
+            const board = document.getElementById('mines-board');
+            if (board) {
+                let html = '';
+                for (let i = 0; i < MINES_TILES; i++) {
+                    const picked = mines.picked.indexOf(i) >= 0;
+                    const isMine = mines.mines.indexOf(i) >= 0;
+                    const ended = !mines.active && mines.picked.length > 0;
+                    const showGem = picked && !isMine;
+                    const showMine = (picked && isMine) || (ended && isMine);
+                    let cls = 'aspect-square rounded-xl border text-lg sm:text-xl font-black transition flex items-center justify-center ';
+                    let inner = '';
+                    let dis = '';
+                    if (showMine) { cls += 'bg-rose-600/25 border-rose-500/60 text-rose-300'; inner = '<i class="fa-solid fa-bomb"></i>'; dis = 'disabled'; }
+                    else if (showGem) {
+                        cls += 'bg-amber-500/20 border-amber-400/70 drop-shadow-[0_0_8px_rgba(251,191,36,.45)]';
+                        const purl = minesPackUrl(mines.tilePack && mines.tilePack[i], () => renderMinesUI());
+                        inner = '<span class="mines-pack" style="' + (purl ? 'background-image:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.28) 50%,transparent 58%),url(&quot;' + purl + '&quot;);' : '') + '"></span>';
+                        dis = 'disabled';
+                    }
+                    else if (mines.active) { cls += 'bg-slate-800/90 border-slate-600 hover:bg-slate-700 hover:border-teal-400/70 hover:scale-[1.04] text-slate-500 cursor-pointer'; inner = '<i class="fa-solid fa-circle text-[6px]"></i>'; }
+                    else { cls += 'bg-slate-800/50 border-slate-700/60 text-slate-600'; inner = '<i class="fa-solid fa-circle text-[6px]"></i>'; dis = 'disabled'; }
+                    html += '<button type="button" onclick="minesPick(' + i + ')" class="' + cls + '" ' + dis + '>' + inner + '</button>';
+                }
+                board.innerHTML = html;
+            }
+        }
+
+        // ============ b74: КОЛЕСО ФОРТУНЫ (3D) ============
+        // 16 секторов-призов: множители ставки, случайная карта сайта, кирка +1.
+        // Пустые сектора пополняют общий джекпот (как проигрышный спин).
+        const WHEEL_SECTORS = [
+            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
+            { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
+            { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
+            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
+            { t: 'mult', m: 2,   label: '×2',   color: 0x8b5cf6 },
+            { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
+            { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
+            { t: 'card',          label: 'КАРТА', color: 0xec4899 },
+            { t: 'jackpot',       label: 'JACKPOT', color: 0xfbbf24 },
+            { t: 'mult', m: 1.5, label: '×1.5', color: 0x14b8a6 },
+            { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
+            { t: 'mine',          label: 'КИРКА', color: 0xd97706 },
+            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
+            { t: 'mult', m: 3,   label: '×3',   color: 0xd946ef },
+            { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
+            { t: 'mult', m: 5,   label: '×5',   color: 0xeab308 }
+        ];
+        const WHEEL_STEP = Math.PI * 2 / WHEEL_SECTORS.length;
+        const wheel = { renderer: null, scene: null, camera: null, group: null, pointer: null, spinning: false, ready: false, fallback: false, a0: 0, a1: 0, t0: 0, dur: 4600, winIdx: 0, bet: 100, betNow: 0, animId: null, lastT: 0, fbAngle: 0 };
+
+        function wheelLabelTexture(text, hex) {
+            const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96;
+            const g = cv.getContext('2d');
+            if (g) {
+                g.clearRect(0, 0, 256, 96);
+                g.font = '900 44px system-ui, sans-serif';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillStyle = '#' + hex.toString(16).padStart(6, '0');
+                g.strokeStyle = 'rgba(2,6,23,.85)'; g.lineWidth = 8;
+                g.strokeText(text, 128, 48); g.fillText(text, 128, 48);
+            }
+            const tex = new THREE.CanvasTexture(cv);
+            return tex;
+        }
+
+        function wheelEnsure() {
+            if (wheel.ready || wheel.fallback) return;
+            if (typeof THREE === 'undefined' || !webglAvailable()) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
+            const container = document.getElementById('wheel-container');
+            if (!container) return;
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
+            const w = container.clientWidth || 640, h = container.clientHeight || 420;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setSize(w, h);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; wheel.fallback = true; wheelBuildFallback(); });
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
+            camera.position.set(0, 0, 8.6);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.7, 40); l1.position.set(3, 3, 6); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.4, 40); l2.position.set(-4, -2, 5); scene.add(l2);
+            // b75: фон 3D-сцены — софит за колесом и мерцающие звёзды вокруг
+            try {
+                const gc = document.createElement('canvas'); gc.width = gc.height = 256;
+                const gg = gc.getContext('2d');
+                if (gg) {
+                    const rg = gg.createRadialGradient(128, 128, 10, 128, 128, 126);
+                    rg.addColorStop(0, 'rgba(251,191,36,.30)');
+                    rg.addColorStop(0.5, 'rgba(217,70,239,.10)');
+                    rg.addColorStop(1, 'rgba(2,6,23,0)');
+                    gg.fillStyle = rg; gg.fillRect(0, 0, 256, 256);
+                }
+                const glow = new THREE.Mesh(new THREE.PlaneGeometry(11, 9),
+                    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false }));
+                glow.position.z = -2.5;
+                scene.add(glow);
+                const N = 70, pos = new Float32Array(N * 3);
+                for (let i = 0; i < N; i++) {
+                    pos[i * 3] = (Math.random() - 0.5) * 12;
+                    pos[i * 3 + 1] = (Math.random() - 0.5) * 8;
+                    pos[i * 3 + 2] = -3 + Math.random() * 1.5;
+                }
+                const sg = new THREE.BufferGeometry();
+                sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                wheel.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xfde68a, size: 0.07, transparent: true, opacity: 0.8, depthWrite: false }));
+                scene.add(wheel.stars);
+            } catch (e) {}
+
+            const group = new THREE.Group();
+            scene.add(group);
+            // секторы-сектора пирога + подписи призов
+            WHEEL_SECTORS.forEach((sec, i) => {
+                const a0 = i * WHEEL_STEP;
+                const geo = new THREE.CircleGeometry(3.05, 24, a0, WHEEL_STEP);
+                const mat = new THREE.MeshStandardMaterial({ color: sec.color, roughness: 0.55, metalness: 0.25, side: THREE.DoubleSide });
+                const mesh = new THREE.Mesh(geo, mat);
+                group.add(mesh);
+                const mid = a0 + WHEEL_STEP / 2;
+                const lt = wheelLabelTexture(sec.label, 0xf8fafc);
+                const lm = new THREE.MeshBasicMaterial({ map: lt, transparent: true, depthWrite: false });
+                const lp = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.56), lm);
+                lp.position.set(Math.cos(mid) * 2.05, Math.sin(mid) * 2.05, 0.06);
+                lp.rotation.z = mid;
+                group.add(lp);
+                // разделитель-искра между секторами
+                const div = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.035, 0.05), new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.3, metalness: 0.8 }));
+                div.position.set(Math.cos(a0) * 1.5, Math.sin(a0) * 1.5, 0.05);
+                div.rotation.z = a0;
+                group.add(div);
+            });
+            // обод, hub и лампочки
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(3.18, 0.14, 12, 72), new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.85 }));
+            rim.position.z = 0.02;
+            group.add(rim);
+            wheel.bulbs = [];
+            for (let i = 0; i < 16; i++) {
+                const a = i * Math.PI * 2 / 16;
+                const b = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfff7ed, emissive: 0xfbbf24, emissiveIntensity: 0.8, roughness: 0.4 }));
+                b.position.set(Math.cos(a) * 3.18, Math.sin(a) * 3.18, 0.16);
+                group.add(b); wheel.bulbs.push(b);
+            }
+            const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 32), new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.25, metalness: 0.9 }));
+            hub.rotation.x = Math.PI / 2;
+            hub.position.z = 0.12;
+            group.add(hub);
+            // указатель сверху
+            const pointer = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.75, 4), new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 0.5, roughness: 0.4 }));
+            pointer.rotation.z = Math.PI;
+            pointer.position.set(0, 3.55, 0.35);
+            scene.add(pointer);
+            wheel.pointer = pointer;
+            // b76: на фоне сцены летают мини-паки сайта — эллиптические орбиты за колесом
+            wheel.fliers = [];
+            try {
+                const packsSrc = (state.packs && state.packs.length) ? state.packs : [{ color: 'silver', shimmer: 'holo' }];
+                for (let i = 0; i < 6; i++) {
+                    const pk = packsSrc[i % packsSrc.length];
+                    const tex = makePackTexture(pk);
+                    try { tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+                    const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+                    const sideM = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6, metalness: 0.4, transparent: true, opacity: 0.55 });
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.25, 0.1), [sideM, sideM, sideM, sideM, face, face]);
+                    m.userData = {
+                        ang: Math.random() * Math.PI * 2,
+                        spd: 0.12 + Math.random() * 0.15,
+                        rx: 4.6 + Math.random() * 1.6,
+                        ry: 1.6 + Math.random() * 1.4,
+                        z: -1.7 - Math.random() * 1.2,
+                        rs: (Math.random() - 0.5) * 1.2
+                    };
+                    scene.add(m);
+                    wheel.fliers.push(m);
+                }
+            } catch (e) {}
+            // b76: тап по самому колесу = спин (кнопка не обязательна)
+            renderer.domElement.style.cursor = 'pointer';
+            renderer.domElement.addEventListener('click', () => wheelSpin());
+
+            wheel.renderer = renderer; wheel.scene = scene; wheel.camera = camera; wheel.group = group;
+            wheel.ready = true;
+            if (!window._nx3dWheel) {
+                window._nx3dWheel = 1;
+                const rs = () => {
+                    const c = document.getElementById('wheel-container');
+                    if (c && wheel.renderer) nx3dResizeSimple(wheel.renderer, wheel.camera, c, [3.6, 3.6, 8.6]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs);
+                rs();
+            }
+            wheel.lastT = performance.now();
+            const loop = () => {
+                wheel.animId = requestAnimationFrame(loop);
+                try { // b74: кадр под предохранителем — см. nx3dLoopBail
+                    const now = performance.now();
+                    if (wheel.spinning) {
+                        const t = Math.min(1, (now - wheel.t0) / wheel.dur);
+                        const ease = 1 - Math.pow(1 - t, 4);
+                        wheel.group.rotation.z = wheel.a0 + (wheel.a1 - wheel.a0) * ease;
+                        // указатель отщёлкивает на секторах
+                        const passed = Math.floor((wheel.group.rotation.z - wheel.a0) / WHEEL_STEP);
+                        wheel.pointer.rotation.x = Math.sin(passed * 1.7) * 0.25;
+                        if (t >= 1) {
+                            wheel.spinning = false;
+                            wheel.group.rotation.z = wheel.a1;
+                            wheelAward(wheel.winIdx);
+                        }
+                    } else {
+                        wheel.pointer.rotation.x *= 0.9;
+                    }
+                    if (wheel.bulbs && wheel.bulbs.length) {
+                        const tb = now / 1000;
+                        for (let i = 0; i < wheel.bulbs.length; i++) {
+                            wheel.bulbs[i].material.emissiveIntensity = 0.5 + 0.6 * (0.5 + 0.5 * Math.sin(tb * 6 + i * 0.8));
+                        }
+                    }
+                    if (wheel.stars) wheel.stars.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(now / 700));
+                    if (wheel.fliers && wheel.fliers.length) {
+                        const dt = Math.min(0.05, (now - wheel.lastT) / 1000);
+                        for (let i = 0; i < wheel.fliers.length; i++) {
+                            const f = wheel.fliers[i], u = f.userData;
+                            u.ang += u.spd * dt;
+                            f.position.set(Math.cos(u.ang) * u.rx, Math.sin(u.ang * 0.9) * u.ry, u.z);
+                            f.rotation.y += u.rs * dt;
+                            f.rotation.z = Math.sin(u.ang * 0.7) * 0.25;
+                        }
+                    }
+                    wheel.lastT = now;
+                    renderer.render(scene, camera);
+                } catch (e) {
+                    // b77: одиночный сбой кадра не убивает колесо: гасим после 30 сбоев подряд
+                    wheel.errs = (wheel.errs || 0) + 1;
+                    if (wheel.errs > 30) nx3dLoopBail('wheel', e, () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; });
+                }
+            };
+            loop();
+        }
+
+        function wheelBuildFallback() {
+            const box = document.getElementById('wheel-fallback');
+            if (!box || box.dataset.built) { if (box) box.classList.remove('hidden'); return; }
+            box.dataset.built = '1';
+            box.classList.remove('hidden');
+            const stops = WHEEL_SECTORS.map((sec, i) => {
+                const c = '#' + sec.color.toString(16).padStart(6, '0');
+                return c + ' ' + (i * 22.5) + 'deg ' + ((i + 1) * 22.5) + 'deg';
+            }).join(', ');
+            box.innerHTML = '<div style="position:relative;width:280px;height:280px;">' +
+                '<div id="wheel-fb-disc" onclick="wheelSpin()" style="cursor:pointer;width:280px;height:280px;border-radius:50%;border:6px solid #f59e0b;background:conic-gradient(' + stops + ');box-shadow:0 0 30px rgba(245,158,11,.35);"></div>' +
+                '<div style="position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:22px solid #ef4444;"></div>' +
+                '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:#fbbf24;box-shadow:inset 0 0 8px rgba(2,6,23,.5);"></div>' +
+                '</div>';
+        }
+
+        function wheelSetBet(b) {
+            if (SLOTS_BETS.indexOf(b) < 0) return;
+            wheel.bet = b;
+            renderWheelUI();
+        }
+
+        function renderWheelUI() {
+            const bets = document.getElementById('wheel-bets');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="wheelSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (wheel.bet === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
+            const spin = document.getElementById('wheel-spin');
+            if (spin) {
+                spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet);
+                spin.disabled = wheel.spinning || state.coins < wheel.bet;
+                spin.classList.toggle('opacity-40', wheel.spinning || state.coins < wheel.bet);
+            }
+            const sp = document.getElementById('wheel-spins');
+            if (sp) sp.textContent = state.stats.wheelSpins || 0;
+        }
+
+        function wheelSpin() {
+            if (wheel.spinning) return;
+            const bet = wheel.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            wheelEnsure();
+            state.coins -= bet;
+            updateCoinDisplay(); saveState();
+            jackpotFeed(bet); // b74: колесо тоже кормит общий джекпот
+            state.stats.wheelSpins = (state.stats.wheelSpins || 0) + 1;
+            const idx = Math.floor(Math.random() * WHEEL_SECTORS.length);
+            const jitter = (Math.random() - 0.5) * WHEEL_STEP * 0.6;
+            const mid = idx * WHEEL_STEP + WHEEL_STEP / 2;
+            wheel.winIdx = idx; wheel.betNow = bet;
+            try { SoundFX.play('whoosh'); } catch (e) {}
+            if (wheel.fallback) {
+                const disc = document.getElementById('wheel-fb-disc');
+                const midDeg = idx * 22.5 + 11.25 + (jitter * 180 / Math.PI);
+                const r0 = wheel.fbAngle;
+                let delta = (-(midDeg) - r0) % 360; if (delta < 0) delta += 360;
+                wheel.fbAngle = r0 + delta + 360 * 5;
+                wheel.spinning = true;
+                if (disc) {
+                    disc.style.transition = 'transform 4.6s cubic-bezier(.12,.8,.2,1)';
+                    disc.style.transform = 'rotate(' + wheel.fbAngle + 'deg)';
+                }
+                setTimeout(() => { wheel.spinning = false; wheelAward(idx); }, 4750);
+                renderWheelUI();
+                return;
+            }
+            if (!wheel.ready) return;
+            const a0 = wheel.group.rotation.z;
+            const need = Math.PI / 2 - (mid + jitter);
+            let delta = (need - a0) % (Math.PI * 2); if (delta < 0) delta += Math.PI * 2;
+            wheel.a0 = a0; wheel.a1 = a0 + delta + Math.PI * 2 * 5;
+            wheel.t0 = performance.now(); wheel.spinning = true;
+            renderWheelUI();
+        }
+
+        function wheelGrantCard() {
+            const packs = state.packs.filter(p => state.cards.some(c => c.packId === p.id));
+            if (!packs.length) return null;
+            const pack = packs[Math.floor(Math.random() * packs.length)];
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            const card = rollCardFromPack(packCards);
+            if (!card) return null;
+            state.collection[card.id] = (state.collection[card.id] || 0) + 1;
+            updateMissions('collect_new', 1);
+            checkAchievements();
+            return card;
+        }
+
+        function wheelAward(idx) {
+            const sec = WHEEL_SECTORS[idx];
+            const bet = wheel.betNow || wheel.bet;
+            let win = 0, paid = false;
+            if (sec.t === 'mult') {
+                win = Math.round(bet * sec.m);
+                if (sec.m === 0) jackpotOnLoss(bet); // b74: пусто — банк джекпота растёт
+            } else if (sec.t === 'card') {
+                const card = wheelGrantCard();
+                if (card) showToast('🎡 Приз: карта «' + card.name + '»! (' + (RARITY_LABELS_RU[card.rarity] || card.rarity) + ')', 'success');
+                else win = bet; // нет паков с картами — возвращаем ставку
+            } else if (sec.t === 'jackpot') {
+                // b75: колесо тоже борется за общий джекпот сайта — сектор срывает весь банк
+                // (jackpotWin сам начисляет монеты и показывает тост)
+                win = jackpotWin();
+                paid = true;
+            } else if (sec.t === 'mine') {
+                miner.lvl += 1;
+                state.stats.minerLvl = miner.lvl;
+                minerSave();
+                checkAchievements();
+                showToast('🎡 Приз: кирка +1 — уровень ' + miner.lvl + '!', 'success');
+            }
+            if (!paid && win > 0) {
+                state.coins += win;
+                showToast('🎡 ' + sec.label + ': +' + fmtCoins(win) + ' монет', 'success');
+                if ((sec.m || 0) >= 3) launchConfetti(sec.m >= 5 ? 140 : 70);
+            } else if (sec.t === 'mult' && sec.m === 0) {
+                showToast('🎡 Пусто — общий джекпот стал больше', 'refund');
+            }
+            saveState(); updateCoinDisplay();
+            const res = document.getElementById('wheel-result');
+            if (res) res.innerHTML = 'Выпало: <b class="text-amber-300">' + sec.label + '</b>' +
+                (sec.t === 'jackpot' ? ' — весь общий банк сайта ваш!' : (win > 0 ? ' — +' + fmtCoins(win) + ' монет' : ''));
+            renderWheelUI();
+        }
+
         // ============ ДУРАК (3D) ============
         const DURANK_SUITS = ['♠', '♥', '♦', '♣'];
         const DURANK_RANKS = ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
@@ -7846,6 +8858,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             pts.push('0% 100%');
             return 'polygon(' + pts.join(',') + ')';
         })();
+        // b80: силуэт зигзаг-пака доступен в CSS (мини-паки в Минах)
+        try { document.documentElement.style.setProperty('--packclip', PACK_CLIP_POLY); } catch (e) {}
 
         // ============ ВИТРИНА МАГАЗИНА: все паки плитками под каруселью ============
                         function renderStoreShowcase() {
@@ -11285,7 +12299,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b73',
+                build: '02.10-b82',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -11321,7 +12335,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b73:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b82:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -11388,9 +12402,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b73. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b82. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b73. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b82. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -11413,10 +12427,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b73') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b82') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b73');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b82');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -11451,9 +12465,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b73') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b73');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b73', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b82') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b82');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b82', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
