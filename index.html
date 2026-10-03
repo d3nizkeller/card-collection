@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b70</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b72</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -920,6 +920,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <span class="text-[10px] font-black uppercase tracking-wider text-amber-300"><i class="fa-solid fa-crown mr-1"></i>Джекпот</span>
                             <span id="slots-jackpot" class="font-mono text-lg sm:text-xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,.45)]">0</span>
                             <span class="text-[9px] text-slate-500">три символа JACKPOT подряд на барабанах — весь банк ваш; банк кормят 2% каждой ставки и +25% ставки с каждого проигрыша</span>
+                            <span id="slots-jackpot-note" class="w-full text-[9px] font-bold text-amber-200/80"></span>
                         </div>
                         <div id="slots-container" class="relative mt-4 rounded-xl overflow-hidden bg-slate-950/70 border border-slate-800" style="height:520px"></div>
                         <div id="slots-fallback" class="hidden grid grid-cols-3 gap-2 mt-4"></div>
@@ -955,6 +956,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <span class="text-[10px] font-black uppercase tracking-wider text-amber-300"><i class="fa-solid fa-crown mr-1"></i>Джекпот</span>
                             <span id="grid-jackpot" class="font-mono text-lg sm:text-xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,.45)]">0</span>
                             <span class="text-[9px] text-slate-500">3+ карт JACKPOT где угодно на поле — весь банк ваш; банк кормят 2% каждой ставки и +25% ставки с каждого проигрыша</span>
+                            <span id="grid-jackpot-note" class="w-full text-[9px] font-bold text-amber-200/80"></span>
                         </div>
                         <div id="grid3d-box" class="relative mt-4 rounded-xl border-2 border-amber-500/40 bg-violet-950/40 overflow-hidden shadow-inner shadow-black/60 hidden" style="height:560px">
                             <div id="grid3d-container" class="absolute inset-0"></div>
@@ -994,7 +996,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-helmet-safety text-amber-400 mr-2"></i>Шахта «Коллекционер карт»</h2>
-                                <p class="text-sm text-slate-400 mt-1">Пассивная добыча: монеты капают в общий баланс каждую секунду — даже офлайн (до 2 часов). Улучшение кирки покупается за те же монеты: +1 монета/сек за уровень.</p>
+                                <p class="text-sm text-slate-400 mt-1">Пассивная добыча: монеты капают в общий баланс каждую секунду — даже офлайн (до 24 часов). Улучшение кирки покупается за те же монеты: +1 монета/сек за уровень.</p>
                                 <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-hand-pointer text-teal-400 mr-1"></i>На телефоне: тап по машине в Слотах и Сетке = спин, кнопки крупные.</p>
                             </div>
                             <div class="text-right shrink-0">
@@ -1707,7 +1709,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     }
 </style>
 <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b70</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b72</div>
         <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <div id="pack3d-ui" class="flex flex-col items-center">
@@ -3293,7 +3295,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b70</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b72</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -4652,7 +4654,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // Привязка к балансу прямая: добыча капает в state.coins каждую секунду,
         // улучшение кирки покупается за те же монеты. 1 уровень = +1 монета/сек.
         const MINER_KEY = 'nexus_miner';
-        const MINER_OFFLINE_CAP = 2 * 3600; // офлайн-прогресс ограничен 2 часами
+        const MINER_OFFLINE_CAP = 24 * 3600; // b71: офлайн-добыча до 24 часов (было 2)
         function minerLoad() {
             try {
                 const m = JSON.parse(LS.getItem(MINER_KEY) || 'null');
@@ -4725,33 +4727,72 @@ Check your Browserslist config to be sure that your targets are set up correctly
         const JACKPOT_KEY = 'nexus_jackpot';
         const JACKPOT_SEED = 1000;
         const JACKPOT_FEED = 0.02; // 2% с каждой ставки обеих игр
+        // b71: ОБЩИЙ ДЖЕКПОТ САЙТА: каждый игрок копит банк своимCumulative-счётчиком
+        // взносов (led) и выигрышей (won); синхронизация сливает счётчики по правилу
+        // max-на-игрока (CRDT) — взносы не дублируются и не затираются чужими записями.
+        // Банк = сид + Σвзносов − Σвыигрышей. Хранится в отдельном облачном документе
+        // сайта, писать в который могут ВСЕ игроки (а не только создатель комнаты).
+        function jackpotClientId() {
+            let id = '';
+            try { id = LS.getItem('nexus_jackpot_cid') || ''; } catch (e) {}
+            if (!id) {
+                id = 'p' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+                try { LS.setItem('nexus_jackpot_cid', id); } catch (e) {}
+            }
+            return id;
+        }
+        const JACKPOT_CID = jackpotClientId();
         function jackpotLoad() {
             try {
                 const j = JSON.parse(LS.getItem(JACKPOT_KEY) || 'null');
-                if (j && j.pool >= 1) return { pool: Math.floor(j.pool), wins: Math.floor(j.wins || 0) };
+                if (j && j.led) return { led: j.led || {}, won: j.won || {}, wins: j.wins || {} };
+                // b71: миграция старого личного банка в собственный взнос игрока
+                if (j && j.pool >= 1) {
+                    const led = {}; const extra = Math.floor(j.pool) - JACKPOT_SEED;
+                    if (extra > 0) led[JACKPOT_CID] = extra;
+                    const wins = {}; if ((j.wins | 0) > 0) wins[JACKPOT_CID] = j.wins | 0;
+                    return { led: led, won: {}, wins: wins };
+                }
             } catch (e) {}
-            return { pool: JACKPOT_SEED, wins: 0 };
+            return { led: {}, won: {}, wins: {} };
         }
         let jackpot = jackpotLoad();
+        function jackpotPool() {
+            let c = 0, w = 0;
+            for (const k in jackpot.led) c += jackpot.led[k] || 0;
+            for (const k in jackpot.won) w += jackpot.won[k] || 0;
+            return Math.max(JACKPOT_SEED, Math.round(JACKPOT_SEED + c - w));
+        }
+        function jackpotPlayers() { return Object.keys(jackpot.led).length; }
         function jackpotSave() { try { LS.setItem(JACKPOT_KEY, JSON.stringify(jackpot)); } catch (e) {} }
+        function jackpotMerge(remote) {
+            if (!remote || typeof remote !== 'object') return false;
+            let ch = false;
+            const pick = (dst, src) => {
+                if (!src || typeof src !== 'object') return;
+                for (const k in src) { const v = Math.floor(src[k]) || 0; if (v > (dst[k] || 0)) { dst[k] = v; ch = true; } }
+            };
+            pick(jackpot.led, remote.led); pick(jackpot.won, remote.won); pick(jackpot.wins, remote.wins);
+            if (ch) { jackpotSave(); jackpotRender(); }
+            return ch;
+        }
         function jackpotFeed(bet) {
-            jackpot.pool += Math.max(1, Math.round((bet || 0) * JACKPOT_FEED));
-            jackpotSave();
-            jackpotRender();
+            const x = Math.max(1, Math.round((bet || 0) * JACKPOT_FEED));
+            jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + x;
+            jackpotSave(); jackpotRender(); jpSyncSoon();
         }
         // b57: каждый ПРОИГРЫШНЫЙ спин пополняет банк на четверть ставки —
         // джекпот растёт тем быстрее, чем дольше не везёт (классический прогрессив)
         function jackpotOnLoss(bet) {
             const add = Math.max(1, Math.round((bet || 0) * 0.25));
-            jackpot.pool += add;
-            jackpotSave();
-            jackpotRender();
+            jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + add;
+            jackpotSave(); jackpotRender(); jpSyncSoon();
             return add;
         }
         function jackpotWin() {
-            const prize = Math.round(jackpot.pool);
-            jackpot.wins = (jackpot.wins || 0) + 1;
-            jackpot.pool = JACKPOT_SEED;
+            const prize = jackpotPool();
+            jackpot.won[JACKPOT_CID] = (jackpot.won[JACKPOT_CID] || 0) + prize;
+            jackpot.wins[JACKPOT_CID] = (jackpot.wins[JACKPOT_CID] || 0) + 1;
             jackpotSave();
             state.coins += prize;
             state.stats.jackpots = (state.stats.jackpots || 0) + 1;
@@ -4760,16 +4801,71 @@ Check your Browserslist config to be sure that your targets are set up correctly
             saveState(); updateCoinDisplay();
             try { SoundFX.play('legendary'); } catch (e) {}
             launchConfetti(220); // b61: джекпот — полный салют
-            showToast('👑 JACKPOT! Весь банк ваш: +' + fmtCoins(prize) + ' монет', 'success');
-            jackpotRender();
+            showToast('👑 JACKPOT! Общий банк сайта ваш: +' + fmtCoins(prize) + ' монет', 'success');
+            jackpotRender(); jpSyncNow();
             return prize;
         }
         function jackpotRender() {
+            const pool = jackpotPool();
             const a = document.getElementById('slots-jackpot');
             const b = document.getElementById('grid-jackpot');
-            if (a) a.textContent = fmtCoins(jackpot.pool);
-            if (b) b.textContent = fmtCoins(jackpot.pool);
+            if (a) a.textContent = fmtCoins(pool);
+            if (b) b.textContent = fmtCoins(pool);
+            const note = 'общий банк сайта • копят игроки: ' + jackpotPlayers();
+            const na = document.getElementById('slots-jackpot-note');
+            const nb = document.getElementById('grid-jackpot-note');
+            if (na) na.textContent = note;
+            if (nb) nb.textContent = note;
         }
+
+        // ==== b71: синхронизация общего банка джекпота между всеми игроками ====
+        let jpT = null, jpBusy = false, jpLastAt = 0;
+        function jpPath() {
+            try { if (CLOUD.db) return CLOUD.db + '/nexus-jackpot.json'; } catch (e) {}
+            return 'https://textdb.dev/api/data/nexus-tcg-jackpot-site';
+        }
+        function jpFetch() {
+            const url = jpPath() + (CLOUD.db ? '' : '?nc=' + Date.now());
+            const opt = CLOUD.db ? { headers: { 'Accept': 'application/json' } } : { cache: 'no-store' };
+            return fetch(url, opt).then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            }).then(txt => {
+                txt = String(txt || '').trim();
+                if (!txt) return null;
+                try { return JSON.parse(txt); } catch (e) { return null; }
+            });
+        }
+        function jpPush(doc) {
+            // b71: textdb пишет через POST с text/plain (простой запрос без CORS-префлайта,
+            // как и публикация каталога); firebase — классический REST PUT
+            const isDb = !!CLOUD.db;
+            return fetch(jpPath(), {
+                method: isDb ? 'PUT' : 'POST',
+                headers: { 'Content-Type': isDb ? 'application/json' : 'text/plain' },
+                body: JSON.stringify(doc)
+            }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
+        }
+        function jpSyncNow() {
+            if (jpBusy) return;
+            jpBusy = true;
+            const cycle = depth => jpFetch().then(remote => {
+                jackpotMerge(remote && remote.jp ? remote.jp : remote);
+                const doc = {
+                    jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins },
+                    updatedAt: Date.now() + '-' + JACKPOT_CID
+                };
+                return jpPush(doc).then(() => jpFetch().then(chk => {
+                    // кто-то перезаписал документ между записью и чтением — повторим слияние
+                    if (chk && chk.updatedAt && chk.updatedAt !== doc.updatedAt && depth < 1) return cycle(depth + 1);
+                    jackpotMerge(chk && chk.jp ? chk.jp : chk);
+                }));
+            }).catch(() => { /* офлайн или облако недоступно — банк дождётся следующей синхронизации */ })
+              .then(() => { jpBusy = false; jpLastAt = Date.now(); });
+            cycle(0);
+        }
+        function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }
+
         // взвешенный выбор символа: JACKPOT редок (вес 2 против 10)
         function slotsWeightedRand() {
             const syms = slots.symbols;
@@ -11189,7 +11285,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b70',
+                build: '02.10-b72',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -11225,7 +11321,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b70:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b72:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -11292,9 +11388,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b70. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b72. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b70. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b72. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -11317,10 +11413,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b70') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b72') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b70');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b72');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -11355,13 +11451,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b70') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b70');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b70', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b72') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b72');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b72', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
             cloudInit();
+            // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
+            try { jpSyncNow(); setInterval(jpSyncNow, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) jpSyncNow(); }); } catch (e) {}
           } catch (e) {
             try { console.error('window.onload', e); } catch (e2) {}
             try { nxErrorToast(String((e && e.message) || e) + ' (при запуске)'); } catch (e2) {}
