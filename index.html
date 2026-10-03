@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b69</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b70</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -1028,7 +1028,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div class="h-2 rounded-full bg-slate-800 overflow-hidden"><div id="miner-prog" class="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500" style="width:0%"></div></div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-4">
-                            <button id="miner-btn" onclick="minerUpgrade()" class="px-4 py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — 100</button>
+                            <button id="miner-btn" onclick="minerUpgrade()" class="px-4 py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — 50</button>
                             <span class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Каждый уровень: +1 монета/сек. Цена растёт ×1.9.</span>
                         </div>
                     </div>
@@ -1707,7 +1707,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     }
 </style>
 <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b69</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b70</div>
         <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <div id="pack3d-ui" class="flex flex-col items-center">
@@ -3293,7 +3293,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b69</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b70</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -4664,7 +4664,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         let minerTickT = null, minerTickN = 0;
         function minerSave() { miner.last = Date.now(); try { LS.setItem(MINER_KEY, JSON.stringify(miner)); } catch (e) {} }
         function minerRate() { return miner.lvl; } // 1 сек = 1 монета × уровень
-        function minerCost() { return Math.floor(100 * Math.pow(1.9, miner.lvl - 1)); }
+        function minerCost() { return Math.floor(50 * Math.pow(1.4, miner.lvl - 1)); } // b70: шахта доступнее (было 100×1.9)
         function minerDur(sec) {
             const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
             return h ? (h + ' ч ' + m + ' мин') : (m + ' мин ' + (sec % 60) + ' сек');
@@ -4782,9 +4782,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // ============ b49: СЛОТЫ «Коллекционер карт» (3D-барабаны с картами сайта) ============
-        const SLOTS_BETS = [25, 50, 100, 250, 1000, 5000]; // b60: крупные ставки — до 5k
+        const SLOTS_BETS = [100, 250, 1000, 5000, 10000, 20000, 50000]; // b70: ставки до 50k, мелкие 25/50 убраны
         const SLOTS_MULT = { common: 8, rare: 12, epic: 18, legendary: 30 };
-        const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 50, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
+        const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 100, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
         function slotsSymbols() {
             const seen = {};
             const pool = [];
@@ -5202,7 +5202,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // Без WebGL — прежний DOM-фолбэк с теми же правилами и выплатой.
         const GRID_CHAIN = [1, 1.5, 2, 3, 5, 8];
         const GRID_COLS = 5, GRID_ROWS = 4;
-        const grid = { cells: [], spinning: false, bet: 50, lastWin: 0, chain: 0, total: 0, phase3d: '' };
+        const grid = { cells: [], spinning: false, bet: 100, lastWin: 0, chain: 0, total: 0, phase3d: '' };
         const grid3d = { renderer: null, scene: null, camera: null, reels: [], ready: false, failed: false, animId: null, lastT: 0, bursts: [], hl: {}, drops: [], cellW: 0.98, cellH: 1.5 };
         function gridRandSym() {
             if (!slots.symbols.length) slots.symbols = slotsSymbols();
@@ -11189,7 +11189,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b69',
+                build: '02.10-b70',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -11225,7 +11225,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b69:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b70:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -11292,9 +11292,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b69. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b70. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b69. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b70. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -11317,10 +11317,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b69') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b70') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b69');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b70');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -11355,9 +11355,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b69') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b69');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b69', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b70') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b70');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b70', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
