@@ -710,7 +710,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b94</div>
+    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b95</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -944,7 +944,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 <div class="rules-card">
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
-                                <li>Выбери ставку (100–50k) и нажми <b>«Крутить»</b> (на телефоне — тап по самой машине).</li>
+                                <li>Выбери ставку (100–1m) и нажми <b>«Крутить»</b> (на телефоне — тап по самой машине).</li>
                                 <li>На 3D-барабанах крутятся карты сайта: <b>три одинаковые</b> — джекпот-множитель по редкости карты (<b>×8…×30</b>), <b>две одинаковые</b> — <b>×2</b>.</li>
                                 <li>2% каждой ставки кормят общий джекпот сайта, проигрышный спин отдаёт банку 100% ставки. Выигрыш сразу падает в баланс.</li>
                             </ol>
@@ -1913,7 +1913,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     }
 </style>
 <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b94</div>
+        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b95</div>
         <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <div id="pack3d-ui" class="flex flex-col items-center">
@@ -3503,7 +3503,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b94</span>';
+            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b95</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -5157,7 +5157,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // ============ b49: СЛОТЫ «Коллекционер карт» (3D-барабаны с картами сайта) ============
-        const SLOTS_BETS = [100, 250, 1000, 5000, 10000, 20000, 50000]; // b70: ставки до 50k, мелкие 25/50 убраны
+        const SLOTS_BETS = [100, 1000, 5000, 10000, 20000, 50000, 100000, 1000000]; // b95: ставки до 1m, ставка 250 убрана
         const SLOTS_MULT = { common: 8, rare: 12, epic: 18, legendary: 30 };
         const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 100, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
         // b85: пользователь сам выбирает, какие карты крутить в Слотах и Сетке.
@@ -12226,7 +12226,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b94',
+                build: '02.10-b95',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -12262,7 +12262,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b94:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b95:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -12329,9 +12329,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b94. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b95. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b94. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b95. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -12354,10 +12354,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b94') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b95') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b94');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b95');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -12392,9 +12392,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
             try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b94') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b94');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b94', 'success'), 1200);
+                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b95') {
+                    sessionStorage.setItem('nexus_build_shown', '02.10-b95');
+                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b95', 'success'), 1200);
                 }
             } catch (e) {}
             // Облачная синхронизация общего каталога паков
