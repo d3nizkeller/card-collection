@@ -1893,6 +1893,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
     html { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
     input, textarea, [contenteditable="true"] { -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; }
     img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; }
+    img { background-color: #0b1220; }
     /* b67: on smartphones, opening a pack is FULLSCREEN: the 3D canvas is stretched
        across the entire modal, and the hint and buttons are an overlay at the bottom — nothing gets cut off */
     @media (max-width: 639px) {
@@ -3863,6 +3864,62 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (b && s.indexOf(MEDIA_DEAD_BASE) === 0) return b + '/' + s.slice(MEDIA_DEAD_BASE.length);
             return s;
         }
+        // ============ b130: МГНОВЕННЫЕ КАРТИНКИ — фоновая предзагрузка, пользователь не видит загрузку ============
+        const IMG_PRELOADED = new Set();
+        let imgQueue = [], imgRunning = 0;
+        const IMG_CONC = 4; // параллельно, чтобы не забивать канал
+        function imgPreloadOne(url) {
+            return new Promise(res => {
+                const im = new Image();
+                im.decoding = 'async';
+                const done = () => { IMG_PRELOADED.add(url); res(); };
+                im.onload = () => { try { if (im.decode) im.decode().then(done, done); else done(); } catch (e) { done(); } };
+                im.onerror = done;
+                im.src = url;
+            });
+        }
+        function imgPump() {
+            while (imgRunning < IMG_CONC && imgQueue.length) {
+                const u = imgQueue.shift();
+                imgRunning++;
+                imgPreloadOne(u).then(() => { imgRunning--; imgPump(); });
+            }
+        }
+        function preloadImages(urls) {
+            (urls || []).forEach(raw => {
+                if (!raw || typeof raw !== 'string') return;
+                const u = mediaUrl(raw);
+                if (!u || u.indexOf('http') !== 0 || IMG_PRELOADED.has(u) || imgQueue.indexOf(u) >= 0) return;
+                imgQueue.push(u);
+            });
+            imgPump();
+        }
+        function preloadAllGameImages() {
+            const urls = [], rest = [];
+            (state.packs || []).forEach(p => urls.push(p.image));          // постеры витрины — первыми
+            (state.cards || []).forEach(c => {                              // затем собранные карты, потом остальные
+                if (state.collection && state.collection[c.id]) urls.push(c.image); else rest.push(c.image);
+            });
+            preloadImages(urls.concat(rest));
+        }
+        function startImagePreload() {
+            const run = () => { try { preloadAllGameImages(); } catch (e) {} };
+            try {
+                if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 4000 });
+                else setTimeout(run, 2000);
+            } catch (e) { setTimeout(run, 2000); }
+        }
+        function injectPosterPreloads() {
+            try {
+                (state.packs || []).slice(0, 6).forEach(p => {
+                    if (!p.image) return;
+                    const l = document.createElement('link');
+                    l.rel = 'preload'; l.as = 'image'; l.href = mediaUrl(p.image);
+                    document.head.appendChild(l);
+                });
+            } catch (e) {}
+        }
+
         function saveMediaBase() {
             const inp = document.getElementById('cloud-media-base');
             mediaBaseSet(String((inp && inp.value) || '').trim(), false); // b38: ручная настройка важнее комнатной до публикации
@@ -10123,6 +10180,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             saveState();
             updatePityIndicator();
             updateMissions('open_pack', 1);
+            // b130: картинки выпавших карт грузятся сразу, пока идёт анимация вскрытия
+            try { preloadImages(rolled.map(c => c.image)); } catch (e) {}
 
             return rolled.map(c => ({ ...c, unboxedId: Math.random() }));
         }
@@ -13169,6 +13228,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             checkAchievements();
             // Выплатить бонусы за альбомы, собранные до этого момента (один раз)
             checkAlbumRewards();
+            // b130: мгновенные картинки — постеры приоритетно, остальной арт-кэш в фоне
+            injectPosterPreloads();
+            startImagePreload();
 
             // Показать попап ежедневной награды, если она доступна
             if (canClaimDaily()) {
