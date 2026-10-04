@@ -766,6 +766,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <span id="coin-balance" class="font-bold text-amber-300 tracking-wider text-sm sm:text-base">1000</span>
                 </div>
 
+                <!-- Player Name (for jackpot) -->
+                <div class="flex items-center space-x-1.5 bg-slate-900/90 border border-slate-700/60 px-2.5 sm:px-3.5 py-1.5 rounded-full shadow-inner">
+                    <i class="fa-solid fa-user-pen text-teal-300 text-sm"></i>
+                    <input id="player-name-input" maxlength="18" placeholder="Имя для джекпота" oninput="setPlayerName(this.value)" class="bg-transparent w-24 sm:w-36 text-[11px] sm:text-xs font-bold text-teal-200 placeholder-slate-500 focus:outline-none">
+                </div>
+
                 <!-- Sound Toggle -->
                 <button onclick="toggleSound()" class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-900/90 border border-slate-700/60 rounded-full text-slate-300 hover:text-white transition shrink-0" title="Звук вкл/выкл">
                     <i id="sound-icon" class="fa-solid fa-volume-high text-sm"></i>
@@ -931,8 +937,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
                             <span id="slots-bets" class="inline-flex items-center gap-1.5"></span>
                             <button id="slots-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
-                            <input id="player-name-input" maxlength="18" placeholder="Ваше имя (для джекпота)" oninput="setPlayerName(this.value)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-slate-200 placeholder-slate-500 w-40 focus:border-amber-400/70 focus:outline-none transition">
-                            <button id="slots-spin" onclick="slotsSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
+                                                        <button id="slots-spin" onclick="slotsSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
                             <button id="slots-auto-btn" onclick="slotsToggleAuto()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
@@ -1884,6 +1889,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- 3D Pack Opening Modal -->
     <style>
+    /* b128: защита от копирования текста и скачивания картинок */
+    html { -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; }
+    input, textarea, [contenteditable="true"] { -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; user-select: text; }
+    img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; }
     /* b67: on smartphones, opening a pack is FULLSCREEN: the 3D canvas is stretched
        across the entire modal, and the hint and buttons are an overlay at the bottom — nothing gets cut off */
     @media (max-width: 639px) {
@@ -4665,6 +4674,22 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }, 3000);
             return toast;
         }
+
+        // ============ b128: ЗАЩИТА ОТ КОПИРОВАНИЯ ТЕКСТА И СКАЧКИ КАРТИНОК ============
+        (function () {
+            const isField = t => !!(t && t.closest && t.closest('input, textarea, [contenteditable="true"]'));
+            // Ctrl+C / Ctrl+X и «Копировать» из меню — запрещены вне полей ввода
+            document.addEventListener('copy', e => { if (!isField(e.target)) e.preventDefault(); }, true);
+            document.addEventListener('cut', e => { if (!isField(e.target)) e.preventDefault(); }, true);
+            // Правый клик по картинкам: убираем «Сохранить изображение как…»
+            document.addEventListener('contextmenu', e => {
+                if (e.target && e.target.closest && e.target.closest('img')) e.preventDefault();
+            });
+            // Перетаскивание картинок в папку/на рабочий стол
+            document.addEventListener('dragstart', e => {
+                if (e.target && e.target.closest && e.target.closest('img')) e.preventDefault();
+            });
+        })();
 
         // ============ ЕЖЕДНЕВНАЯ НАГРАДА ============
         function canClaimDaily() { return state.daily.lastClaimDate !== todayStr(); }
@@ -13152,7 +13177,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             cloudInit();
             // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
             try { jpSyncNow(); setInterval(jpSyncNow, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) jpSyncNow(); }); } catch (e) {}
-            // b91: имя игрока в поле слотов
+            // b91/b127: имя игрока для джекпота — поле в шапке рядом с балансом
             try { const inp = document.getElementById('player-name-input'); if (inp) inp.value = getPlayerName(); } catch (e) {}
           } catch (e) {
             try { console.error('window.onload', e); } catch (e2) {}
