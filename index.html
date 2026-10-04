@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
@@ -708,7 +709,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
-    <div id="build-badge" title="Тап: диагностика ошибок" style="position:fixed;right:8px;bottom:5px;z-index:80;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:auto;cursor:pointer;user-select:none;letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b97</div>
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
         <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2">
@@ -769,16 +769,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <!-- Sound Toggle -->
                 <button onclick="toggleSound()" class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-900/90 border border-slate-700/60 rounded-full text-slate-300 hover:text-white transition shrink-0" title="Звук вкл/выкл">
                     <i id="sound-icon" class="fa-solid fa-volume-high text-sm"></i>
-                </button>
-
-                <!-- Daily Reward Button -->
-                <button onclick="openDailyModal()" id="daily-header-btn" class="relative px-2.5 sm:px-3 lg:px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-sm font-semibold transition flex items-center space-x-2" title="Ежедневная награда">
-                    <i class="fa-solid fa-gift"></i>
-                    <span class="hidden xl:inline">Ежедневная награда</span>
-                    <span id="daily-dot" class="hidden absolute -top-1.5 -right-1.5 flex w-3 h-3">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-                    </span>
                 </button>
 
                 <!-- Nav Tabs -->
@@ -899,6 +889,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="setBattleMode('miner')" id="mode-miner-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-helmet-safety mr-1.5"></i>Шахта</button>
                     <button onclick="setBattleMode('slots')" id="mode-slots-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-lemon mr-1.5"></i>Слоты</button>
                     <button onclick="setBattleMode('grid')" id="mode-grid-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-border-all mr-1.5"></i>Сетка</button>
+                <button onclick="setBattleMode('lines')" id="mode-lines-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-table-cells mr-1.5"></i>Линии</button>
                 <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-1.5"></i>Мины</button>
                 <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-1.5"></i>Колесо</button>
                 </div>
@@ -915,13 +906,24 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <p id="slots-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
                             </div>
                         </div>
-                        <!-- b56: банк джекпота -->
-                        <div class="mt-3 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-slate-950/70 to-amber-500/10 px-3 py-2 flex flex-wrap items-center gap-2 justify-between">
-                            <span class="text-[10px] font-black uppercase tracking-wider text-amber-300"><i class="fa-solid fa-crown mr-1"></i>Джекпот</span>
-                            <span id="slots-jackpot" class="font-mono text-lg sm:text-xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,.45)]">0</span>
-                            <span class="text-[9px] text-slate-500">три символа JACKPOT подряд на барабанах — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</span>
-                            <span id="slots-jackpot-note" class="w-full text-[9px] font-bold text-amber-200/80"></span>
-                            <span id="slots-jp-winner" class="w-full text-[10px] font-bold text-amber-300/90"></span>
+                        <!-- b100: банк джекпота — праздничный блок -->
+                        <div class="jp-banner mt-3">
+                            <div class="jp-shine" aria-hidden="true"></div>
+                            <div class="jp-flex">
+                            <div class="jp-main">
+                            <div class="jp-head">
+                                <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
+                                <span id="slots-jackpot" class="jp-value">0</span>
+                            </div>
+                            <p class="jp-desc">три символа JACKPOT подряд на барабанах — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</p>
+                            <p id="slots-jackpot-note" class="jp-note"></p>
+                            <p id="slots-jp-winner" class="jp-winner"></p>
+                            </div>
+                            <div id="slots-jp-top" class="jp-top">
+                                <p class="jp-top-title"><i class="fa-solid fa-trophy"></i>Топ-3 джекпота сайта</p>
+                                <ol id="slots-jp-top-list" class="jp-top-list"></ol>
+                            </div>
+                            </div>
                         </div>
                         <div id="slots-container" class="relative mt-4 rounded-xl overflow-hidden bg-slate-950/70 border border-slate-800" style="height:520px"></div>
                         <div id="slots-fallback" class="hidden grid grid-cols-3 gap-2 mt-4"></div>
@@ -963,13 +965,24 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <p id="grid-balance" class="text-3xl font-black text-amber-300 font-mono">0</p>
                             </div>
                         </div>
-                        <!-- b56: банк джекпота -->
-                        <div class="mt-3 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-slate-950/70 to-amber-500/10 px-3 py-2 flex flex-wrap items-center gap-2 justify-between">
-                            <span class="text-[10px] font-black uppercase tracking-wider text-amber-300"><i class="fa-solid fa-crown mr-1"></i>Джекпот</span>
-                            <span id="grid-jackpot" class="font-mono text-lg sm:text-xl font-black text-amber-300 drop-shadow-[0_0_10px_rgba(251,191,36,.45)]">0</span>
-                            <span class="text-[9px] text-slate-500">3+ карт JACKPOT где угодно на поле — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</span>
-                            <span id="grid-jackpot-note" class="w-full text-[9px] font-bold text-amber-200/80"></span>
-                            <span id="grid-jp-winner" class="w-full text-[10px] font-bold text-amber-300/90"></span>
+                        <!-- b100: банк джекпота — праздничный блок -->
+                        <div class="jp-banner mt-3">
+                            <div class="jp-shine" aria-hidden="true"></div>
+                            <div class="jp-flex">
+                            <div class="jp-main">
+                            <div class="jp-head">
+                                <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
+                                <span id="grid-jackpot" class="jp-value">0</span>
+                            </div>
+                            <p class="jp-desc">3+ карт JACKPOT где угодно на поле — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</p>
+                            <p id="grid-jackpot-note" class="jp-note"></p>
+                            <p id="grid-jp-winner" class="jp-winner"></p>
+                            </div>
+                            <div id="grid-jp-top" class="jp-top">
+                                <p class="jp-top-title"><i class="fa-solid fa-trophy"></i>Топ-3 джекпота сайта</p>
+                                <ol id="grid-jp-top-list" class="jp-top-list"></ol>
+                            </div>
+                            </div>
                         </div>
                         <div id="grid3d-box" class="relative mt-4 rounded-xl border-2 border-amber-500/40 bg-violet-950/40 overflow-hidden shadow-inner shadow-black/60 hidden" style="height:560px">
                             <div id="grid3d-container" class="absolute inset-0"></div>
@@ -1072,6 +1085,74 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <li>Мина: ставка сгорает и уходит в общий джекпот сайта на <b>100%</b>; старт раунда кормит банк 100% ставки.</li>
                             </ol>
                         </div>
+                </div>
+                <!-- b103: Сеточный слот: Линии -->
+                <div id="lobby-lines" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-table-cells text-sky-300 mr-2"></i>Сеточный слот: Линии</h2>
+                                <p class="text-sm text-slate-400 mt-1">Классический автомат: <b class="text-sky-300">5 барабанов × 3 ряда</b> и <b>10 цветных линий оплаты</b> (номера линий — по бокам поля). Одинаковые карты <b>слева направо</b> по линии: 3, 4 или 5 штук — выплата по редкости и длине. Линия из JACKPOT — весь общий банк сайта ваш!</p>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <p class="text-[10px] uppercase font-black text-slate-500">спинов</p>
+                                <p id="lines-spins" class="font-mono text-lg font-black text-sky-300">0</p>
+                            </div>
+                        </div>
+                        <!-- b107: блок джекпота сайта и в Линиях -->
+                        <div class="jp-banner mt-3">
+                            <div class="jp-shine" aria-hidden="true"></div>
+                            <div class="jp-flex">
+                                <div class="jp-main">
+                                    <div class="jp-head">
+                                        <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
+                                        <span id="lines-jackpot" class="jp-value">0</span>
+                                    </div>
+                                    <p class="jp-desc">линия JACKPOT слева направо — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</p>
+                                    <p id="lines-jackpot-note" class="jp-note"></p>
+                                    <p id="lines-jp-winner" class="jp-winner"></p>
+                                </div>
+                                <div id="lines-jp-top" class="jp-top">
+                                    <p class="jp-top-title"><i class="fa-solid fa-trophy"></i>Топ-3 джекпота сайта</p>
+                                    <ol id="lines-jp-top-list" class="jp-top-list"></ol>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-stretch gap-1.5 sm:gap-2 justify-center">
+                            <div id="lines-chips-l" class="flex flex-col justify-between gap-1 py-0.5"></div>
+                            <div id="lines-stage" class="game-stage relative w-full max-w-xl rounded-xl overflow-hidden border-2 border-amber-500/50" style="min-height:340px">
+                                <div id="lines-3d-box" class="absolute inset-0 hidden"></div>
+                                <div id="lines-board" class="grid grid-cols-5 gap-1 p-1.5"></div>
+                                <svg id="lines-svg" class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 500 300" preserveAspectRatio="none"></svg>
+                            </div>
+                            <div id="lines-chips-r" class="flex flex-col justify-between gap-1 py-0.5"></div>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-3 justify-center">
+                            <span class="text-[10px] uppercase font-bold text-slate-500 mr-1">Ставка:</span>
+                            <div id="lines-bets" class="flex flex-wrap gap-1.5 justify-center"></div>
+                            <button id="lines-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
+                        </div>
+                        <div class="bor-panel mt-3">
+                            <div class="bor-cell"><span>Баланс:</span><b id="lines-credit" class="font-mono text-amber-200">0</b></div>
+                            <div class="bor-cell"><span>Общая ставка:</span><b id="lines-bet-label" class="font-mono text-amber-200">100</b></div>
+                            <div class="bor-cell"><span>Линии:</span><b class="font-mono text-amber-200">10</b></div>
+                            <div class="flex gap-1.5 ml-auto">
+                                <button onclick="linesMaxBet()" class="bor-btn bor-btn-gray">МАКС СТАВКА</button>
+                                <button id="lines-spin" onclick="linesSpin()" class="bor-btn bor-btn-green">СТАРТ</button>
+                                <button id="lines-auto-btn" onclick="linesToggleAuto()" class="bor-btn bor-btn-cyan">АВТО</button>
+                            </div>
+                        </div>
+                        <p id="lines-result" class="text-xs text-slate-400 mt-3 text-center">10 линий оплаты, как в классике: одинаковые карты слева направо по цветным линиям.</p>
+                        <div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Кнопка <b>«Карты»</b> — выберите свои карты для барабанов (до 5 в общем выборе Слотов/Сетки/Линий); не выбрали — крутятся случайные карты сайта. Выбери ставку и жми <b>СТАРТ</b> (или <b>АВТО</b>, <b>МАКС СТАВКА</b>): 5 барабанов × 3 ряда закрутятся и остановятся слева направо.</li>
+                                <li>Линия оплаты идёт <b>слева направо</b>: 3, 4 или 5 одинаковых карт на одной из <b>10 линий</b> (горизонтали и зигзаги — цвета и номера по бокам поля).</li>
+                                <li>Выплата по редкости и длине: обычная <b>×0.5/×2/×10</b>, редкая <b>×1/×5/×25</b>, эпическая <b>×2/×10/×50</b>, легендарная <b>×5/×25/×100</b> от ставки; несколько линий складываются.</li>
+                                <li>Три символа <b>JACKPOT</b> слева на линии — весь общий банк сайта ваш; 100% ставки кормят банк каждый спин, проигрыш докидывает 100% ставки.</li>
+</ol>
+                        </div>
+                    </div>
                 </div>
                 <div id="lobby-miner" class="space-y-6 hidden">
                     <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
@@ -1198,7 +1279,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div>
                             <h2 class="text-2xl font-black text-white tracking-tight">Дурак <span class="text-emerald-400">♦</span> в 3D</h2>
                             <p class="text-sm text-slate-400 mt-1">Классическая карточная игра: 36 карт, козырь, бей или забирай. Не останься дураком!</p>
-                            <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Победа: +150 монет • достижение «Не дурак!» • задания дня</p>
+                            <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Победа: +150 монет • достижение «Не дурак!»</p>
                                                     <p id="durak-reward-note" class="text-xs text-emerald-400/90 mt-1 font-semibold"></p>
                         </div>
                         <button onclick="startDurak()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 shrink-0"><i class="fa-solid fa-play mr-2"></i>Играть в дурака</button>
@@ -1279,6 +1360,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         <!-- STUDIO TAB -->
         <section id="tab-studio" class="space-y-8 hidden overflow-x-clip">
+            <!-- b119: номер сборки живёт только в Студии; тап — диагностика ошибок -->
+            <p id="studio-build" title="Тап: диагностика ошибок" class="text-[10px] font-mono text-slate-500 hover:text-slate-300 cursor-pointer select-none" style="letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b122 <span id="studio-build-err" class="hidden text-rose-400 font-bold">• были ошибки — тап для диагностики</span></p>
             <!-- Облако: общие паки для всех пользователей сайта -->
             <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
@@ -1894,6 +1977,75 @@ Check your Browserslist config to be sure that your targets are set up correctly
         animation: wheelTwinkle 1.6s ease-in-out infinite alternate;
     }
     #mines-board button { position: relative; }
+    /* b100: дизайн блока «Джекпот» — золото, блик, пульс суммы, топ-5 с медалями */
+    .jp-banner { position: relative; overflow: hidden; border-radius: 18px; padding: 12px 14px; border: 1px solid rgba(251, 191, 36, .45);
+        background:
+            radial-gradient(ellipse 70% 90% at 12% 0%, rgba(251, 191, 36, .17), transparent 60%),
+            radial-gradient(ellipse 60% 80% at 88% 100%, rgba(217, 70, 239, .10), transparent 60%),
+            linear-gradient(150deg, #2a2108, #14100a 45%, #1b1408);
+        box-shadow: inset 0 0 0 1px rgba(251, 191, 36, .12), 0 8px 30px rgba(0, 0, 0, .45), 0 0 24px rgba(251, 191, 36, .12); }
+    .jp-shine { position: absolute; inset: 0; pointer-events: none;
+        background: linear-gradient(115deg, transparent 42%, rgba(255, 255, 255, .10) 50%, transparent 58%);
+        background-size: 250% 100%; animation: jpShine 4.5s linear infinite; }
+    @keyframes jpShine { 0% { background-position: 130% 0; } 100% { background-position: -130% 0; } }
+    .jp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+    .jp-label { font-size: 11px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; color: #fcd34d; text-shadow: 0 0 12px rgba(251, 191, 36, .55); }
+    .jp-label i { margin-right: 6px; color: #fbbf24; }
+    .jp-value { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 27px; line-height: 1; font-weight: 900; color: #fde68a; animation: jpPulse 2.2s ease-in-out infinite; }
+    @keyframes jpPulse {
+        0%, 100% { text-shadow: 0 0 14px rgba(251, 191, 36, .5), 0 0 34px rgba(251, 191, 36, .22); }
+        50% { text-shadow: 0 0 24px rgba(251, 191, 36, .9), 0 0 60px rgba(251, 191, 36, .4); } }
+    .jp-desc { margin-top: 6px; font-size: 10px; line-height: 1.5; color: rgba(203, 213, 225, .78); }
+    .jp-note { margin-top: 4px; font-size: 10px; font-weight: 700; color: rgba(253, 230, 138, .85); }
+    .jp-winner { margin-top: 3px; font-size: 11px; font-weight: 800; color: #fbbf24; }
+    .jp-flex { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+    .jp-main { flex: 1 1 260px; min-width: 0; }
+    /* b102: топ-3 — отдельный квадратный блок сбоку от банка */
+    .jp-top { flex: 0 1 280px; min-width: 240px; border-radius: 14px; border: 1px solid rgba(251, 191, 36, .35); background: rgba(2, 6, 23, .62); padding: 9px 11px; box-shadow: inset 0 0 18px rgba(251, 191, 36, .07); }
+    @media (max-width: 639px) { .jp-top { flex: 1 1 100%; min-width: 0; } }
+    .jp-top-title { font-size: 9px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: rgba(252, 211, 77, .92); }
+    .jp-top-title i { margin-right: 5px; }
+    .jp-top-list { margin-top: 5px; display: flex; flex-direction: column; gap: 3px; list-style: none; padding: 0; }
+    .jp-top-list li { display: flex; align-items: baseline; gap: 7px; font-size: 11px; color: #cbd5e1; background: linear-gradient(90deg, rgba(251, 191, 36, .10), transparent 72%); border-radius: 8px; padding: 3px 8px; }
+    .jp-top-list li .jp-rank { min-width: 20px; font-weight: 900; color: #fbbf24; }
+    .jp-top-list li .jp-name { font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .jp-top-list li .jp-amt { margin-left: auto; font-family: ui-monospace, SFMono-Regular, monospace; font-weight: 800; color: #fde68a; }
+    .jp-top-list li .jp-date { font-size: 9px; color: #64748b; }
+    .jp-top-list li.jp-empty { background: none; color: #64748b; }
+    /* b103: плитки сеточного слота «Линии» */
+    .lines-tile { transition: transform .18s ease, box-shadow .18s ease; }
+    .lines-face { border-radius: 10px; border: 2px solid rgba(148, 163, 184, .35); background: linear-gradient(160deg, rgba(30, 41, 59, .95), rgba(2, 6, 23, .95)); }
+    .lines-jp { border-color: rgba(251, 191, 36, .8); background: linear-gradient(160deg, #fbbf24, #b45309 60%, #78350f); color: #1c1917; box-shadow: 0 0 16px rgba(251, 191, 36, .5); }
+    .lines-jp p { color: #1c1917; }
+    .lines-winpulse { background: radial-gradient(circle, rgba(251, 191, 36, .28), transparent 70%); animation: jpPulse 1.4s ease-in-out infinite; }
+    /* b105: барабаны крутятся вертикально, как в классическом автомате */
+    #lines-board { perspective: 600px; }
+    #lines-board.spinning .lines-face { animation: linesReel .12s linear infinite; filter: blur(.4px); }
+    @keyframes linesReel { 0% { transform: translateY(-7%); } 50% { transform: translateY(0); } 100% { transform: translateY(7%); } }
+    /* b105: панель управления в стиле классического автомата */
+    .bor-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-radius: 14px; border: 1px solid rgba(251, 191, 36, .4); background: linear-gradient(180deg, #2a2108, #14100a); padding: 8px 10px; box-shadow: inset 0 0 0 1px rgba(251, 191, 36, .12), 0 4px 18px rgba(0, 0, 0, .4); }
+    .bor-cell { display: flex; align-items: center; gap: 6px; background: rgba(2, 6, 23, .72); border: 1px solid rgba(251, 191, 36, .25); border-radius: 10px; padding: 6px 10px; font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
+    .bor-btn { border-radius: 10px; padding: 9px 16px; font-size: 12px; font-weight: 900; letter-spacing: .05em; transition: .15s; border: 1px solid rgba(2, 6, 23, .65); }
+    .bor-btn:active { transform: scale(.96); }
+    .bor-btn-gray { background: linear-gradient(180deg, #e5e7eb, #9ca3af); color: #111827; }
+    .bor-btn-green { background: linear-gradient(180deg, #4ade80, #16a34a); color: #052e16; box-shadow: 0 0 14px rgba(74, 222, 128, .45); }
+    .bor-btn-cyan { background: linear-gradient(180deg, #67e8f9, #0891b2); color: #083344; }
+    .bor-btn-cyan.on { background: linear-gradient(180deg, #fbbf24, #d97706); color: #1c1917; box-shadow: 0 0 14px rgba(251, 191, 36, .5); animation: jpPulse 1.6s ease-in-out infinite; }
+    .lines-card { border-radius: 8px; border-width: 2px; border-style: solid; overflow: hidden; background: #0b1220; }
+    .lines-card-noart { background: linear-gradient(160deg, rgba(148, 163, 184, .25), #0b1220 70%); }
+    .lines-card-rar { position: absolute; top: 3px; left: 3px; font-size: 6px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; border: 1px solid; border-radius: 4px; padding: 1px 3px; background: rgba(2, 6, 23, .72); }
+    .lines-chip { width: 20px; height: 20px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font: 900 10px ui-monospace, monospace; color: #111; opacity: .8; }
+    .lines-chip.on { outline: 2px solid #fff; opacity: 1; box-shadow: 0 0 12px rgba(255, 255, 255, .6); }
+    /* b114: праздничный фон игрового поля «Линий» — как у сцены колеса */
+    .game-stage {
+        background:
+            radial-gradient(ellipse 60% 45% at 50% 0%, rgba(251, 191, 36, .14), transparent 70%),
+            radial-gradient(ellipse 45% 40% at 12% 90%, rgba(56, 189, 248, .10), transparent 65%),
+            radial-gradient(ellipse 45% 40% at 88% 90%, rgba(217, 70, 239, .10), transparent 65%),
+            linear-gradient(#0b1020, #070a14);
+        box-shadow: 0 0 26px rgba(251, 191, 36, .18), inset 0 0 60px rgba(2, 6, 23, .8);
+        animation: wheelGlow 2.6s ease-in-out infinite;
+    }
     /* b82: единообразные карточки правил для всех игр */
     .rules-card { border: 1px solid rgba(148, 163, 184, .25); background: rgba(15, 23, 42, .65); border-radius: 14px; padding: 10px 14px; margin-top: 12px; }
     .rules-title { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; }
@@ -1911,7 +2063,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
     }
 </style>
 <div id="modal-pack3d" class="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md hidden flex flex-col items-center justify-center p-4 overflow-y-auto">
-        <div id="pack3d-build" style="position:absolute;right:10px;bottom:6px;z-index:5;font:10px/1.4 monospace;color:rgba(148,163,184,.5);pointer-events:none;user-select:none;letter-spacing:.08em;">сборка 02.10-b97</div>
         <div id="pack3d-wrap" class="w-full h-full max-w-4xl flex flex-col items-center justify-center">
             <div id="pack3d-container" class="w-full cursor-pointer" style="height: 62vh;"></div>
             <div id="pack3d-ui" class="flex flex-col items-center">
@@ -3502,7 +3653,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 hint.classList.remove('animate-pulse');
             }
             // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
-            hint.innerHTML += ' <span style="opacity:.45;font:9px/1 monospace;letter-spacing:.08em;">• сборка b97</span>';
             if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
         }
 
@@ -3943,7 +4093,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         const RARITY_WEIGHTS = { common: 60, rare: 25, epic: 12, legendary: 3 };
         const RARITY_LABELS_RU = { common: 'Обычная', rare: 'Редкая', epic: 'Эпическая', legendary: 'Легендарная' };
         const RAR_COLORS = { common: '#94a3b8', rare: '#38bdf8', epic: '#c084fc', legendary: '#fbbf24' }; // b18
-        const DAILY_REWARDS = [100, 150, 200, 250, 300, 400, 700];
+        const DAILY_REWARDS = [100, 200, 350, 500, 750, 1000, 2000];
         const PITY_LIMIT = 10; // каждый 10-й пак без epic+ гарантирует epic+
 
         function pluralRu(n, one, few, many) {
@@ -3979,16 +4129,35 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         // Пул ежедневных заданий
         const MISSION_POOL = [
-            { type: 'open_pack', variants: [[1, 80], [2, 150], [3, 250]], desc: n => `Открыть ${n} ${pluralRu(n, 'бустер пак', 'бустер пака', 'бустер паков')}` },
-            { type: 'collect_new', variants: [[3, 140], [5, 220]], desc: n => `Получить ${n} ${pluralRu(n, 'новую карту', 'новые карты', 'новых карт')}` },
-            { type: 'find_rare_plus', variants: [[1, 120], [2, 200]], desc: n => `Найти ${n} ${pluralRu(n, 'карту Rare+', 'карты Rare+', 'карт Rare+')}` },
-            { type: 'find_epic_plus', variants: [[1, 200]], desc: n => `Найти ${n} ${pluralRu(n, 'карту Epic или Legendary', 'карты Epic или Legendary', 'карт Epic или Legendary')}` },
-            { type: 'sell_dupe', variants: [[2, 100], [4, 180]], desc: n => `Продать ${n} ${pluralRu(n, 'дубликат', 'дубликата', 'дубликатов')}` },
-            { type: 'earn_dupe_coins', variants: [[100, 120], [250, 200]], desc: n => `Заработать ${n} монет на дубликатах` },
-            { type: 'open_album', variants: [[1, 50]], desc: n => `Открыть любой альбом` },
-            { type: 'win_battle', variants: [[1, 150], [2, 300]], desc: n => `Выиграть ${n} ${pluralRu(n, 'бой', 'боя', 'боёв')} на Арене` },
-            { type: 'win_durak', variants: [[1, 150], [2, 280]], desc: n => `Выиграть ${n} ${pluralRu(n, 'партию', 'партии', 'партий')} в «Дурака»` }
+            { type: 'open_pack', icon: 'fa-box-open', color: 'from-fuchsia-500 to-purple-600', variants: [[1, 80], [2, 150], [3, 250]], desc: n => `Открыть ${n} ${pluralRu(n, 'бустер пак', 'бустер пака', 'бустер паков')}` },
+            { type: 'collect_new', icon: 'fa-layer-group', color: 'from-teal-500 to-emerald-600', variants: [[3, 140], [5, 220]], desc: n => `Получить ${n} ${pluralRu(n, 'новую карту', 'новые карты', 'новых карт')}` },
+            { type: 'find_rare_plus', icon: 'fa-gem', color: 'from-sky-500 to-blue-600', variants: [[1, 120], [2, 200]], desc: n => `Найти ${n} ${pluralRu(n, 'карту Rare+', 'карты Rare+', 'карт Rare+')}` },
+            { type: 'find_epic_plus', icon: 'fa-hat-wizard', color: 'from-purple-500 to-fuchsia-600', variants: [[1, 200]], desc: n => `Найти ${n} ${pluralRu(n, 'карту Epic или Legendary', 'карты Epic или Legendary', 'карт Epic или Legendary')}` },
+            { type: 'sell_dupe', icon: 'fa-recycle', color: 'from-amber-500 to-orange-600', variants: [[2, 100], [4, 180]], desc: n => `Продать ${n} ${pluralRu(n, 'дубликат', 'дубликата', 'дубликатов')}` },
+            { type: 'earn_dupe_coins', icon: 'fa-coins', color: 'from-yellow-500 to-amber-600', variants: [[100, 120], [250, 200]], desc: n => `Заработать ${n} монет на дубликатах` },
+            { type: 'open_album', icon: 'fa-book-open', color: 'from-emerald-500 to-teal-600', variants: [[1, 50], [2, 90]], desc: n => `Заглянуть в ${n === 1 ? 'любой альбом' : n + ' альбома(ов)'}` },
+            // b122: задания про Арену и Дурака убраны; добавлено больше заданий по мини-играм.
+            // Поле game объединяет задания одной игры — генератор берёт по одному из каждой группы.
+            { type: 'spin_slots', game: 'slots', icon: 'fa-lemon', color: 'from-lime-500 to-green-600', variants: [[3, 100], [10, 220]], desc: n => `Крутить «Слоты» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'win_slots', game: 'slots', icon: 'fa-slot-machine', color: 'from-green-500 to-emerald-600', variants: [[1, 150], [3, 320]], desc: n => `Выиграть ${n} ${pluralRu(n, 'раз', 'раза', 'раз')} в «Слотах»` },
+            { type: 'slots_coins', game: 'slots', icon: 'fa-sack-dollar', color: 'from-emerald-500 to-teal-600', variants: [[500, 140], [1500, 260]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Слотах»` },
+            { type: 'spin_grid', game: 'grid', icon: 'fa-table-cells', color: 'from-sky-500 to-cyan-600', variants: [[3, 100], [8, 200]], desc: n => `Крутить «Сетку» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'win_grid', game: 'grid', icon: 'fa-border-all', color: 'from-blue-500 to-indigo-600', variants: [[1, 150], [3, 320]], desc: n => `Выиграть ${n} ${pluralRu(n, 'раз', 'раза', 'раз')} в «Сетке»` },
+            { type: 'grid_coins', game: 'grid', icon: 'fa-coins', color: 'from-cyan-500 to-blue-600', variants: [[500, 140], [2000, 280]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Сетке»` },
+            { type: 'spin_lines', game: 'lines', icon: 'fa-bars-staggered', color: 'from-violet-500 to-purple-600', variants: [[3, 100], [8, 200]], desc: n => `Крутить «Линии» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'win_lines', game: 'lines', icon: 'fa-align-left', color: 'from-indigo-500 to-violet-600', variants: [[1, 150], [3, 320]], desc: n => `Выиграть ${n} ${pluralRu(n, 'раз', 'раза', 'раз')} в «Линиях»` },
+            { type: 'lines_coins', game: 'lines', icon: 'fa-money-bill-wave', color: 'from-purple-500 to-fuchsia-600', variants: [[500, 150], [2500, 320]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Линиях»` },
+            { type: 'wheel_spin', game: 'wheel', icon: 'fa-dharmachakra', color: 'from-orange-500 to-red-600', variants: [[3, 120], [8, 240]], desc: n => `Крутить «Колесо» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'wheel_coins', game: 'wheel', icon: 'fa-circle-dot', color: 'from-rose-500 to-orange-600', variants: [[300, 130], [1500, 260]], desc: n => `Выиграть ${fmtCoins(n)} монет на «Колесе»` },
+            { type: 'mines_open', game: 'mines', icon: 'fa-square', color: 'from-teal-600 to-slate-700', variants: [[5, 120], [12, 260]], desc: n => `Открыть ${n} ${pluralRu(n, 'безопасную клетку', 'безопасные клетки', 'безопасных клеток')} в «Минах»` },
+            { type: 'mines_win', game: 'mines', icon: 'fa-bomb', color: 'from-slate-500 to-slate-700', variants: [[1, 180], [3, 400]], desc: n => `Забрать выигрыш в «Минах» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'mines_coins', game: 'mines', icon: 'fa-gem', color: 'from-cyan-600 to-slate-700', variants: [[500, 150], [2500, 320]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Минах»` },
+            { type: 'mine_ore', game: 'miner', icon: 'fa-helmet-safety', color: 'from-yellow-600 to-amber-700', variants: [[2000, 120], [10000, 250]], desc: n => `Добыть ${fmtCoins(n)} руды в «Шахте»` },
+            { type: 'miner_upgrade', game: 'miner', icon: 'fa-screwdriver-wrench', color: 'from-amber-600 to-yellow-700', variants: [[1, 150], [2, 320]], desc: n => `Улучшить «Шахту» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` }
         ];
+        // b121: задания про Студию/создание навсегда убраны из пула; старые списки чистятся в ensureDailyMissions
+        // b122: 8 заданий в день; Арена и Дурак больше не участвуют
+        const MISSIONS_PER_DAY = 8;
 
         function collectedCount(s) { return Object.keys(s.collection || {}).length; }
         function completedAlbums(s) {
@@ -4019,7 +4188,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'rich', icon: 'fa-coins', title: 'Богач', desc: 'Имейте 2000+ монет одновременно', reward: 200, check: s => s.coins >= 2000, prog: s => [Math.min(s.coins, 2000), 2000] },
             { id: 'streak_7', icon: 'fa-calendar-check', title: 'Неделя без пропусков', desc: 'Забирайте награду 7 дней подряд', reward: 600, check: s => Math.max(s.daily.streak, s.stats.bestStreak) >= 7, prog: s => [Math.min(Math.max(s.daily.streak, s.stats.bestStreak), 7), 7] },
             { id: 'all_missions', icon: 'fa-list-check', title: 'Идеальный день', desc: 'Выполните все задания дня', reward: 150, check: s => s.missions && s.missions.list && s.missions.list.length > 0 && s.missions.list.every(m => m.claimed) },
-            { id: 'creator', icon: 'fa-wand-magic-sparkles', title: 'Творец', desc: 'Создайте свою первую карту', reward: 50, secret: true, check: s => s.stats.cardsCreated >= 1, prog: s => [Math.min(s.stats.cardsCreated, 1), 1] },
             { id: 'first_win', icon: 'fa-hand-fist', title: 'Первая победа', desc: 'Выиграйте свой первый бой на Арене', reward: 100, check: s => s.stats.battlesWon >= 1, prog: s => [Math.min(s.stats.battlesWon, 1), 1] },
             { id: 'wins_10', icon: 'fa-shield-halved', title: 'Ветеран арены', desc: 'Выиграйте 10 боёв', reward: 300, check: s => s.stats.battlesWon >= 10, prog: s => [s.stats.battlesWon, 10] },
             { id: 'wins_25', icon: 'fa-medal', title: 'Гладиатор', desc: 'Выиграйте 25 боёв', reward: 600, check: s => s.stats.battlesWon >= 25, prog: s => [s.stats.battlesWon, 25] },
@@ -4036,7 +4204,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { id: 'grid_win_10', icon: 'fa-border-all', title: 'Мастер сетки', desc: '10 выигрышей в «Сеточном слоте»', reward: 300, check: s => (s.stats.gridWins || 0) >= 10, prog: s => [Math.min(s.stats.gridWins || 0, 10), 10] },
             { id: 'grid_chain3', icon: 'fa-link', title: 'Цепь цепей', desc: 'Цепь из 3+ каскадов за один спин в Сетке', reward: 500, check: s => (s.stats.bestGridChain || 0) >= 3, prog: s => [Math.min(s.stats.bestGridChain || 0, 3), 3] },
             { id: 'miner_lvl5', icon: 'fa-helmet-safety', title: 'Бригадир', desc: 'Прокачайте кирку в «Шахте» до 5 уровня', reward: 400, check: s => (s.stats.minerLvl || 0) >= 5, prog: s => [Math.min(s.stats.minerLvl || 0, 5), 5] },
-            { id: 'miner_lvl10', icon: 'fa-gem', title: 'Хозяин шахты', desc: 'Прокачайте кирку до 10 уровня', reward: 800, check: s => (s.stats.minerLvl || 0) >= 10, prog: s => [Math.min(s.stats.minerLvl || 0, 10), 10] }
+            { id: 'miner_lvl10', icon: 'fa-gem', title: 'Хозяин шахты', desc: 'Прокачайте кирку до 10 уровня', reward: 800, check: s => (s.stats.minerLvl || 0) >= 10, prog: s => [Math.min(s.stats.minerLvl || 0, 10), 10] },
+            // b121: новые достижения по играм
+            { id: 'lines_win_10', icon: 'fa-align-left', title: 'Мастер линий', desc: '10 выигрышей в «Линиях»', reward: 300, check: s => (s.stats.linesWins || 0) >= 10, prog: s => [Math.min(s.stats.linesWins || 0, 10), 10] },
+            { id: 'wheel_spin_10', icon: 'fa-dharmachakra', title: 'Колесо фортуны', desc: 'Крутите «Колесо» 10 раз', reward: 250, check: s => (s.stats.wheelSpins || 0) >= 10, prog: s => [Math.min(s.stats.wheelSpins || 0, 10), 10] },
+            { id: 'mines_win_10', icon: 'fa-bomb', title: 'Сапёр', desc: '10 успешных заборов выигрыша в «Минах»', reward: 400, check: s => (s.stats.minesWins || 0) >= 10, prog: s => [Math.min(s.stats.minesWins || 0, 10), 10] }
         ];
 
         // Стандартный набор — паки и карты из авторского сохранения
@@ -4579,12 +4751,45 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!state.missions || state.missions.date !== t || !Array.isArray(state.missions.list) || state.missions.list.length === 0) {
                 state.missions = { date: t, list: generateDailyMissions() };
                 saveState();
+                return;
             }
+            // b121: вычищаем задания устаревших типов (Студия, создание; b122: Арена, Дурак)
+            // из старых сохранений и добираем список до 8 актуальных заданий
+            const valid = new Set(MISSION_POOL.map(m => m.type));
+            const before = state.missions.list.length;
+            state.missions.list = state.missions.list.filter(m => m && valid.has(m.type));
+            let guard = 0;
+            while (state.missions.list.length < MISSIONS_PER_DAY && guard++ < 24) {
+                let cand = MISSION_POOL.filter(p => !state.missions.list.some(m => m.type === p.type));
+                if (!cand.length) break;
+                // b123: добор приоритетно из игр, которых ещё нет в списке —
+                // даже у старых сохранений будет по заданию на каждую мини-игру
+                const haveGames = new Set(state.missions.list
+                    .map(m => (MISSION_POOL.find(p => p.type === m.type) || {}).game)
+                    .filter(Boolean));
+                const byGame = cand.filter(p => p.game && !haveGames.has(p.game));
+                if (byGame.length) cand = byGame;
+                const p = cand[Math.floor(Math.random() * cand.length)];
+                const [target, reward] = p.variants[Math.floor(Math.random() * p.variants.length)];
+                state.missions.list.push({ id: `mx${Date.now()}-${Math.floor(Math.random() * 1e6)}`, type: p.type, desc: p.desc(target), target, reward, progress: 0, claimed: false });
+            }
+            if (state.missions.list.length !== before) saveState();
         }
 
         function generateDailyMissions() {
-            const shuffled = [...MISSION_POOL].sort(() => Math.random() - 0.5);
-            return shuffled.slice(0, 3).map((m, i) => {
+            // b122: 8 заданий в день; гарантируем по одному заданию на каждую мини-игру
+            // (Шахта, Слоты, Сетка, Линии, Мины, Колесо), остальные добираем из всего пула
+            const picked = [];
+            ['miner', 'slots', 'grid', 'lines', 'mines', 'wheel'].forEach(g => {
+                const cand = MISSION_POOL.filter(p => p.game === g && picked.indexOf(p) < 0);
+                if (cand.length) picked.push(cand[Math.floor(Math.random() * cand.length)]);
+            });
+            const rest = MISSION_POOL.filter(p => picked.indexOf(p) < 0).sort(() => Math.random() - 0.5);
+            for (const p of rest) {
+                if (picked.length >= MISSIONS_PER_DAY) break;
+                picked.push(p);
+            }
+            return picked.slice(0, MISSIONS_PER_DAY).map((m, i) => {
                 const [target, reward] = m.variants[Math.floor(Math.random() * m.variants.length)];
                 return { id: `m${i}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`, type: m.type, desc: m.desc(target), target, reward, progress: 0, claimed: false };
             });
@@ -4669,28 +4874,33 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 action.innerHTML = `<div class="w-full py-3 bg-slate-800/60 border border-slate-700 text-slate-300 font-semibold rounded-xl text-center text-sm">✅ Награда за сегодня получена. Следующая через: <span class="js-countdown text-emerald-400"></span></div>`;
             }
 
-            // Задания
+            // Задания (b121: новый дизайн — иконка-плашка, градиентный прогресс; b122: 8 заданий)
             const list = document.getElementById('rewards-missions-list');
             list.innerHTML = state.missions.list.map((m, i) => {
+                const meta = MISSION_POOL.find(p => p.type === m.type) || { icon: 'fa-scroll', color: 'from-slate-500 to-slate-700' };
                 const pct = Math.min(100, Math.round(m.progress / m.target * 100));
                 const done = m.progress >= m.target;
+                // b122: монетные задания показывают прогресс в формате 1k/1m
+                const isCoinM = m.type === 'mine_ore' || m.type === 'earn_dupe_coins' || /_coins$/.test(m.type);
+                const progTxt = isCoinM ? `${fmtCoins(Math.min(m.progress, m.target))} / ${fmtCoins(m.target)}` : `${Math.min(m.progress, m.target)} / ${m.target}`;
                 let btn;
                 if (m.claimed) {
                     btn = `<span class="px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-700/50 text-emerald-400 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i>Получено</span>`;
                 } else if (done) {
-                    btn = `<button onclick="claimMission(${i})" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold whitespace-nowrap transition animate-pulse">Забрать +${m.reward}</button>`;
+                    btn = `<button onclick="claimMission(${i})" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 text-slate-950 text-xs font-black whitespace-nowrap transition animate-pulse shadow-lg shadow-amber-500/25">Забрать +${fmtCoins(m.reward)}</button>`;
                 } else {
-                    btn = `<span class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>${m.reward}</span>`;
+                    btn = `<span class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>${fmtCoins(m.reward)}</span>`;
                 }
                 return `
-                    <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div class="flex-grow">
-                            <div class="flex items-center justify-between mb-1.5">
-                                <span class="text-sm font-semibold text-slate-200">${m.desc}</span>
-                                <span class="text-xs font-mono ${done ? 'text-emerald-400' : 'text-slate-400'} ml-2 whitespace-nowrap">${Math.min(m.progress, m.target)} / ${m.target}</span>
+                    <div class="relative bg-slate-950/80 border ${done && !m.claimed ? 'border-amber-500/40' : 'border-slate-800'} rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 overflow-hidden">
+                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br ${meta.color} flex items-center justify-center shrink-0 shadow-lg"><i class="fa-solid ${meta.icon} text-white text-lg"></i></div>
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-sm font-bold text-slate-100 truncate">${m.desc}</span>
+                                <span class="text-[11px] font-mono ${done ? 'text-emerald-400' : 'text-slate-400'} whitespace-nowrap">${progTxt}</span>
                             </div>
-                            <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-                                <div class="h-full ${done ? 'bg-emerald-500' : 'bg-teal-500'} transition-all duration-500" style="width: ${pct}%"></div>
+                            <div class="mt-1.5 w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                <div class="h-full bg-gradient-to-r ${meta.color} transition-all duration-500" style="width: ${pct}%"></div>
                             </div>
                         </div>
                         ${btn}
@@ -4837,6 +5047,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (lw) lw.classList.toggle('hidden', m !== 'wheel');
             const lmn = document.getElementById('lobby-mines');
             if (lmn) lmn.classList.toggle('hidden', m !== 'mines');
+            const ll = document.getElementById('lobby-lines');
+            if (ll) ll.classList.toggle('hidden', m !== 'lines');
             const ba = document.getElementById('mode-arena-btn'), bd = document.getElementById('mode-durak-btn'), bm = document.getElementById('mode-miner-btn');
             if (ba) ba.className = m === 'arena' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-rose-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             if (bd) bd.className = m === 'durak' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-emerald-600 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
@@ -4849,6 +5061,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (bwheel) bwheel.className = m === 'wheel' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-amber-500 text-slate-950 shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             const bmn = document.getElementById('mode-mines-btn');
             if (bmn) bmn.className = m === 'mines' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-rose-500 text-white shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
+            const bln = document.getElementById('mode-lines-btn');
+            if (bln) bln.className = m === 'lines' ? 'px-4 py-2 rounded-xl text-sm font-bold transition bg-sky-500 text-slate-950 shadow' : 'px-4 py-2 rounded-xl text-sm font-bold transition bg-slate-800 text-slate-300 border border-slate-700';
             if (m === 'miner') renderMiner();
             if (m !== 'slots' && slots.auto) slotsAutoStop(false); // b93
             if (m !== 'grid' && grid.auto) gridAutoStop(false); // b93
@@ -4856,6 +5070,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
             if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
             if (m === 'mines') { renderMinesUI(); } // b79
+            if (m === 'lines') { linesEnsure(); renderLinesUI(); } // b103
             if (m === 'durak') {
                 const w = document.getElementById('durak-wins-label'), l = document.getElementById('durak-loss-label');
                 if (w) w.innerText = state.stats.durakWins || 0;
@@ -4897,15 +5112,21 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (sec > 5) {
                 const gain = sec * minerRate();
                 state.coins += gain; miner.mined += gain;
+                if (gain > 0) updateMissions('mine_ore', gain); // b121: задание дня
                 return { sec: sec, gain: gain };
             }
             return null;
         }
+        let minerMissionAcc = 0; // b121: батчим прогресс задания «Добыть руду», чтобы не дёргать сохранение каждую секунду
         function minerTick() {
             const r = minerRate();
             state.coins += r; miner.mined += r;
+            minerMissionAcc += r;
             updateCoinDisplay();
-            if (++minerTickN % 5 === 0) { minerSave(); saveState(); }
+            if (++minerTickN % 5 === 0) {
+                minerSave(); saveState();
+                if (minerMissionAcc > 0) { updateMissions('mine_ore', minerMissionAcc); minerMissionAcc = 0; }
+            }
         }
         function minerStart() {
             if (minerTickT) return;
@@ -4923,6 +5144,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             state.stats.minerLvl = miner.lvl; // b61: награды по играм видят уровень кирки
             minerSave(); saveState();
             try { SoundFX.play('coin'); } catch (e) {}
+            updateMissions('miner_upgrade', 1); // b122: задание дня
             updateCoinDisplay();
             checkAchievements(); // b61
             showToast('⛏ Кирка ' + miner.lvl + ' уровня: теперь ' + fmtCoins(minerRate()) + ' монет/сек', 'success');
@@ -5021,7 +5243,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const map = {};
                 (jackpot.hall || []).forEach(h => { if (h && h.t) map[h.t] = h; });
                 remote.hall.forEach(h => { if (h && h.t && !map[h.t]) { map[h.t] = h; ch = true; } });
-                jackpot.hall = Object.keys(map).map(k => map[k]).sort((a, b) => b.t - a.t).slice(0, 6);
+                jackpot.hall = Object.keys(map).map(k => map[k]).sort((a, b) => b.t - a.t).slice(0, 20);
             }
             if (ch) {
                 jackpotSave(); jackpotRender();
@@ -5059,7 +5281,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             jackpot.names[JACKPOT_CID] = wname;
             jackpot.hall = jackpot.hall || [];
             jackpot.hall.unshift({ n: wname, a: prize, t: Date.now(), c: JACKPOT_CID });
-            jackpot.hall = jackpot.hall.slice(0, 6);
+            jackpot.hall = jackpot.hall.slice(0, 20);
             try { LS.setItem('nexus_jp_seen', String(Date.now())); } catch (e) {}
             jackpotSave();
             state.coins += prize;
@@ -5094,6 +5316,25 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const wb = document.getElementById('grid-jp-winner');
             if (wa) { wa.textContent = wtxt; wa.title = wtitle; }
             if (wb) { wb.textContent = wtxt; wb.title = wtitle; }
+            // b98: ТОП-5 крупнейших срывов банка
+            const topWins = (jackpot.hall || []).slice().sort((a, b) => (b.a || 0) - (a.a || 0)).slice(0, 3); // b101: топ-3
+            const medals = ['🥇', '🥈', '🥉'];
+            const html = topWins.length
+                ? topWins.map((h, i) => '<li><span class="jp-rank">' + (i + 1) + (medals[i] ? ' ' + medals[i] : '.') + '</span><span class="jp-name">' + String(h.n || 'игрок').replace(/[<>&]/g, '') + '</span><span class="jp-amt">+' + fmtCoins(h.a || 0) + '</span><span class="jp-date">' + new Date(h.t || 0).toLocaleDateString() + '</span></li>').join('')
+                : '<li class="jp-empty">Джекпот ещё не срывали — станьте первым в топе!</li>';
+            const la = document.getElementById('slots-jp-top-list');
+            const lb = document.getElementById('grid-jp-top-list');
+            if (la) la.innerHTML = html;
+            if (lb) lb.innerHTML = html;
+            // b107: блок джекпота в Линиях обновляется тем же рендером
+            const cv = document.getElementById('lines-jackpot');
+            if (cv) cv.textContent = fmtCoins(pool);
+            const nv = document.getElementById('lines-jackpot-note');
+            if (nv) nv.textContent = note;
+            const wv = document.getElementById('lines-jp-winner');
+            if (wv) { wv.textContent = wtxt; wv.title = wtitle; }
+            const lv = document.getElementById('lines-jp-top-list');
+            if (lv) lv.innerHTML = html;
         }
 
         // ==== b71: синхронизация общего банка джекпота между всеми игроками ====
@@ -5173,8 +5414,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const txt = ids.length ? 'Карты: мои (' + ids.length + ')' : 'Карты: стандарт';
             const a = document.getElementById('slots-cards-btn');
             const b = document.getElementById('grid-cards-btn');
+            const c = document.getElementById('lines-cards-btn');
             if (a) a.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
             if (b) b.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
+            if (c) c.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
         }
         function slotsApplySymbols() {
             const oldSyms = slots.symbols || [];
@@ -5642,6 +5885,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!slots.symbols.length) slots.symbols = slotsSymbols();
             state.coins -= bet;
             state.stats.slotsSpins = (state.stats.slotsSpins || 0) + 1;
+            updateMissions('spin_slots', 1); // b121: задание дня
             jackpotFeed(bet); // b96: 100% ставки в банк
             saveState(); updateCoinDisplay(); renderSlotsUI();
             const N = slots.symbols.length;
@@ -5679,6 +5923,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (win > 0) {
                 state.coins += win;
                 state.stats.slotsWins = (state.stats.slotsWins || 0) + 1;
+                updateMissions('win_slots', 1); // b122: задание дня
+                updateMissions('slots_coins', win); // b122: задание дня
                 slots.winFlash = performance.now(); // b52: иллюминация празднует
                 try { SoundFX.play(mult >= 8 ? 'legendary' : 'coin'); } catch (e) {}
                 launchConfetti(mult >= 8 ? 140 : 70); // b61: конфетти на выигрыш
@@ -6104,6 +6350,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet), 'error'); return; }
             state.coins -= bet;
             state.stats.gridSpins = (state.stats.gridSpins || 0) + 1;
+            updateMissions('spin_grid', 1); // b122: задание дня
             jackpotFeed(bet); // b96: 100% ставки в банк
             saveState(); updateCoinDisplay(); renderGridUI();
             grid.spinning = true; grid.chain = 0; grid.total = 0; grid.lastBet = bet; // b57
@@ -6175,6 +6422,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (grid.total > 0) {
                 state.coins += grid.total;
                 state.stats.gridWins = (state.stats.gridWins || 0) + 1;
+                updateMissions('win_grid', 1); // b121: задание дня
+                updateMissions('grid_coins', grid.total); // b122: задание дня
                 state.stats.bestGridChain = Math.max(state.stats.bestGridChain || 0, grid.chain); // b61
                 grid.lastWin = grid.total;
                 grid.winFlashT = performance.now();
@@ -6675,7 +6924,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 battle3dPlay('player', 'victory');
                 launchConfetti(flawless ? 180 : 110);
                 showToast(`🏆 Победа над «${battle.opp.name}»! +${reward} монет${streakBonus ? ` • 🔥 серия ${state.stats.battleStreak}: +${streakBonus}` : ''}`, 'success');
-                updateMissions('win_battle', 1);
+                // b122: задания про Арену убраны из пула
                 checkAchievements();
             } else {
                 state.stats.battlesLost++;
@@ -7431,6 +7680,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!mines.active || mines.picked.indexOf(i) >= 0) return;
             mines.picked.push(i);
             if (mines.mines.indexOf(i) >= 0) { minesEnd(false); return; }
+            updateMissions('mines_open', 1); // b122: задание дня — безопасная клетка
             try { SoundFX.play('reveal'); } catch (e) {}
             if (mines.picked.length === MINES_TILES - mines.m) { minesEnd(true); return; }
             renderMinesUI();
@@ -7448,6 +7698,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (winCoins > 0) {
                 state.coins += winCoins;
                 state.stats.minesWins = (state.stats.minesWins || 0) + 1;
+                updateMissions('mines_win', 1); // b121: задание дня
+                updateMissions('mines_coins', winCoins); // b122: задание дня
                 showToast('💎 Мины: забрали +' + fmtCoins(winCoins) + ' (×' + mult + ')', 'success');
                 if (mult >= 3) launchConfetti(mult >= 8 ? 120 : 60);
                 try { SoundFX.play('coin'); } catch (e) {}
@@ -7517,6 +7769,487 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     html += '<button type="button" onclick="minesPick(' + i + ')" class="' + cls + '" ' + dis + '>' + inner + '</button>';
                 }
                 board.innerHTML = html;
+            }
+        }
+
+        // ============ b105: СЕТОЧНЫЙ СЛОТ «ЛИНИИ» (классика: 5×3, 10 линий) ============
+        // Барабаны крутятся и останавливаются слева направо. Линия оплаты считается
+        // СЛЕВА НАПРАВО: 3/4/5 одинаковых карт подряд на одной из 10 цветных линий.
+        const LINES_COLS = 5, LINES_ROWS = 3, LINES_CELLS = 15;
+        const LINES_PATHS = [
+            [1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2],
+            [0, 1, 1, 1, 0], [2, 1, 1, 1, 2],
+            [0, 0, 1, 2, 2], [2, 2, 1, 0, 0],
+            [1, 0, 1, 2, 1], [1, 2, 1, 0, 1], [0, 1, 2, 1, 0]
+        ];
+        const LINE_COLORS = ['#facc15', '#ef4444', '#fb923c', '#86efac', '#93c5fd', '#f8fafc', '#c4b5fd', '#67e8f9', '#4ade80', '#f472b6'];
+        const LINES_PAY = { common: [0.5, 2, 10], rare: [1, 5, 25], epic: [2, 10, 50], legendary: [5, 25, 100] };
+        const lines = { cells: new Array(LINES_CELLS).fill(null), win: {}, winLines: [], spinning: false, bet: 100, built: false, pool: null, auto: false, autoT: null };
+        function linesEnsure() {
+            const board = document.getElementById('lines-board');
+            if (!board || lines.built) return;
+            let html = '';
+            for (let i = 0; i < LINES_CELLS; i++) html += '<div id="lines-tile-' + i + '" class="lines-tile relative aspect-[2/3] rounded-lg border-2 border-slate-700 bg-slate-800/70 flex flex-col items-center justify-center p-1 overflow-hidden"><i class="fa-solid fa-question text-slate-600 text-sm"></i></div>';
+            board.innerHTML = html;
+            let chips = '';
+            for (let li = 0; li < 10; li++) chips += '<span class="lines-chip" id="lines-chip-l-' + li + '" style="background:' + LINE_COLORS[li] + '">' + (li + 1) + '</span>';
+            let chipsR = '';
+            for (let li = 0; li < 10; li++) chipsR += '<span class="lines-chip" id="lines-chip-r-' + li + '" style="background:' + LINE_COLORS[li] + '">' + (li + 1) + '</span>';
+            const cl = document.getElementById('lines-chips-l'), cr = document.getElementById('lines-chips-r');
+            if (cl) cl.innerHTML = chips;
+            if (cr) cr.innerHTML = chipsR;
+            lines.built = true;
+            linesTry3D(); // b109: поле в 3D, если браузер умеет WebGL
+        }
+        // b110: пул спина — ВЫБРАННЫЕ пользователем карты (кнопка «Карты»);
+        // если выбора нет или его карт не хватает — случайные карточки сайта до 3 + JACKPOT
+        function linesMakePool() {
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            const byId = {};
+            (state.cards || []).forEach(c => { if (c && c.id) byId[c.id] = c; });
+            const chosen = [];
+            getSlotCardIds().forEach(id => { if (byId[id] && chosen.indexOf(byId[id]) < 0) chosen.push(byId[id]); });
+            let arr = chosen.slice();
+            for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+            if (arr.length < 3) {
+                // добираем случайными картами сайта, которых нет в выборе
+                const rest = (state.cards || []).filter(c => c && c.id && arr.indexOf(c) < 0);
+                for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = rest[i]; rest[i] = rest[j]; rest[j] = t; }
+                arr = arr.concat(rest);
+            }
+            if (arr.length < 3) arr = arr.concat(slots.symbols.filter(x => x && !x.jackpot && arr.indexOf(x) < 0));
+            const pick = arr.slice(0, 3);
+            while (pick.length < 3) pick.push(arr[0] || { id: 'sym-x', name: 'Джокер', rarity: 'legendary', image: '' });
+            let jp = null;
+            for (let i = 0; i < slots.symbols.length; i++) if (slots.symbols[i].jackpot) jp = slots.symbols[i];
+            lines.pool = pick.concat([jp || { id: 'sym-jackpot', name: 'JACKPOT', rarity: 'legendary', image: '', jackpot: true }]);
+        }
+        function linesRand() {
+            const r = Math.random() * 25;
+            if (r < 1) return 3; // JACKPOT
+            return Math.min(2, Math.floor((r - 1) / 8));
+        }
+        function linesTileHtml(sym, win) {
+            if (!sym) return '<i class="fa-solid fa-question text-slate-600 text-sm"></i>';
+            if (sym.jackpot) {
+                return '<div class="lines-face lines-jp absolute inset-0 flex flex-col items-center justify-center gap-0.5"><i class="fa-solid fa-crown text-lg"></i><p class="text-[8px] font-black tracking-wider">JACKPOT</p></div>';
+            }
+            const col = RAR_COLORS[sym.rarity] || '#e2e8f0';
+            // b106: плитка — мини-карточка сайта: арт, рамка редкости, имя
+            return '<div class="lines-face lines-card absolute inset-0" style="border-color:' + col + '">' +
+                (sym.image ? '<img src="' + mediaUrl(sym.image) + '" alt="" onerror="imgErrorChain(this)" class="absolute inset-0 w-full h-full object-cover">' : '<div class="absolute inset-0 lines-card-noart" style="--rar:' + col + '"></div>') +
+                '<div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/10 to-slate-950/30"></div>' +
+                '<span class="lines-card-rar" style="color:' + col + ';border-color:' + col + '">' + (RARITY_LABELS_RU[sym.rarity] || sym.rarity || '') + '</span>' +
+                '<p class="absolute bottom-0.5 left-0.5 right-0.5 text-[8px] font-bold text-white leading-tight truncate text-center drop-shadow">' + String(sym.name || '').replace(/[<>&]/g, '') + '</p>' +
+                (win ? '<div class="lines-winpulse absolute inset-0"></div>' : '') +
+                '</div>';
+        }
+        function linesRenderBoard(cols) {
+            for (let i = 0; i < LINES_CELLS; i++) {
+                const col = i % LINES_COLS;
+                if (cols && cols.indexOf(col) < 0) continue;
+                const el = document.getElementById('lines-tile-' + i);
+                if (!el) continue;
+                const sym = lines.cells[i] == null ? null : (lines.pool ? lines.pool[lines.cells[i]] : null);
+                const win = !!lines.win[i];
+                el.innerHTML = linesTileHtml(sym, win);
+                el.className = 'lines-tile relative aspect-[3/4] rounded-lg border-2 flex flex-col items-center justify-center p-1 overflow-hidden ' +
+                    (win ? 'border-amber-400 shadow-[0_0_14px_rgba(251,191,36,.6)]' : 'border-slate-700 bg-slate-800/70');
+            }
+        }
+        function linesDrawWinLines() {
+            const svg = document.getElementById('lines-svg');
+            if (!svg) return;
+            let html = '';
+            (lines.winLines || []).forEach(wl => {
+                const pts = LINES_PATHS[wl.li].map((row, col) => (col * 100 + 50) + ',' + (row * 100 + 50)).join(' ');
+                html += '<polyline points="' + pts + '" fill="none" stroke="' + LINE_COLORS[wl.li] + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" style="filter:drop-shadow(0 0 6px ' + LINE_COLORS[wl.li] + ')"/>';
+            });
+            svg.innerHTML = html;
+            for (let li = 0; li < 10; li++) {
+                const on = (lines.winLines || []).some(w => w.li === li);
+                const a = document.getElementById('lines-chip-l-' + li), b = document.getElementById('lines-chip-r-' + li);
+                if (a) a.classList.toggle('on', on);
+                if (b) b.classList.toggle('on', on);
+            }
+        }
+        function linesClearWin() {
+            lines.win = {}; lines.winLines = [];
+            const svg = document.getElementById('lines-svg');
+            if (svg) svg.innerHTML = '';
+            for (let li = 0; li < 10; li++) {
+                const a = document.getElementById('lines-chip-l-' + li), b = document.getElementById('lines-chip-r-' + li);
+                if (a) a.classList.remove('on');
+                if (b) b.classList.remove('on');
+            }
+        }
+        function linesSetBet(b) { if (SLOTS_BETS.indexOf(b) < 0) return; lines.bet = b; renderLinesUI(); }
+        function linesMaxBet() { lines.bet = SLOTS_BETS[SLOTS_BETS.length - 1]; renderLinesUI(); }
+        function renderLinesUI() {
+            const bets = document.getElementById('lines-bets');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="linesSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (lines.bet === v ? 'bg-sky-500 border-sky-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
+            const spin = document.getElementById('lines-spin');
+            if (spin) { spin.disabled = lines.spinning || state.coins < lines.bet; spin.classList.toggle('opacity-40', lines.spinning || state.coins < lines.bet); }
+            const ab = document.getElementById('lines-auto-btn');
+            if (ab) ab.classList.toggle('on', lines.auto);
+            const cr = document.getElementById('lines-credit');
+            if (cr) cr.textContent = fmtCoins(state.coins);
+            const bl = document.getElementById('lines-bet-label');
+            if (bl) bl.textContent = fmtCoins(lines.bet);
+            const sp = document.getElementById('lines-spins');
+            if (sp) sp.textContent = state.stats.linesSpins || 0;
+        }
+        function linesToggleAuto() {
+            if (lines.auto) { lines.auto = false; clearInterval(lines.autoT); lines.autoT = null; renderLinesUI(); return; }
+            lines.auto = true;
+            lines.autoT = setInterval(() => {
+                try {
+                    if (!lines.auto) return;
+                    if (document.hidden || lines.spinning) return;
+                    if (state.coins < lines.bet) { lines.auto = false; clearInterval(lines.autoT); lines.autoT = null; renderLinesUI(); showToast('📖 Авто остановлено: не хватает монет', 'refund'); return; }
+                    linesSpin();
+                } catch (e) {}
+            }, 1000);
+            renderLinesUI();
+            showToast('📖 Линии: автопрокрутка включена', 'success');
+        }
+        function linesSpin() {
+            if (lines.spinning) return;
+            const bet = lines.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            linesEnsure();
+            linesMakePool();
+            state.coins -= bet;
+            updateCoinDisplay(); saveState();
+            jackpotFeed(bet); // b105: 100% ставки кормят общий банк
+            state.stats.linesSpins = (state.stats.linesSpins || 0) + 1;
+            updateMissions('spin_lines', 1); // b122: задание дня
+            lines.spinning = true;
+            linesClearWin();
+            linesRenderBoard();
+            try { SoundFX.play('whoosh'); } catch (e) {}
+            renderLinesUI();
+            const board = document.getElementById('lines-board');
+            if (board && !lines.mode3d) board.classList.add('spinning');
+            const final = [];
+            for (let i = 0; i < LINES_CELLS; i++) final.push(linesRand());
+            if (lines.mode3d && lines3d.reels.length) { // b109: 3D-спин барабанов
+                linesSpin3D(final, bet);
+                return;
+            }
+            const stopAt = [10, 13, 16, 19, 22]; // тики остановки колонок
+            let tick = 0;
+            const stopped = [false, false, false, false, false];
+            const iv = setInterval(() => {
+                tick++;
+                const moved = [];
+                for (let c = 0; c < LINES_COLS; c++) {
+                    if (stopped[c]) continue;
+                    for (let r = 0; r < LINES_ROWS; r++) lines.cells[r * LINES_COLS + c] = linesRand();
+                    moved.push(c);
+                    if (tick >= stopAt[c]) {
+                        stopped[c] = true;
+                        for (let r = 0; r < LINES_ROWS; r++) lines.cells[r * LINES_COLS + c] = final[r * LINES_COLS + c];
+                        try { SoundFX.play('click'); } catch (e) {}
+                    }
+                }
+                linesRenderBoard(moved);
+                if (stopped.every(x => x)) {
+                    clearInterval(iv);
+                    if (board) board.classList.remove('spinning');
+                    setTimeout(() => linesFinish(final, bet), 300);
+                }
+            }, 80);
+        }
+        function linesFinish(final, bet) {
+            let total = 0, jpHit = false;
+            const winCells = {};
+            const winLines = [];
+            LINES_PATHS.forEach((path, li) => {
+                const first = lines.pool ? lines.pool[final[path[0] * LINES_COLS + 0]] : null;
+                if (!first) return;
+                let count = 1;
+                for (let c = 1; c < LINES_COLS; c++) {
+                    const sy = lines.pool ? lines.pool[final[path[c] * LINES_COLS + c]] : null;
+                    if (!sy || sy.id !== first.id) break;
+                    count++;
+                }
+                if (count < 3) return;
+                for (let c = 0; c < count; c++) winCells[path[c] * LINES_COLS + c] = 1;
+                if (first.jackpot) { jpHit = true; winLines.push({ li: li, count: count }); return; }
+                const pay = (LINES_PAY[first.rarity] || LINES_PAY.common)[count - 3];
+                total += Math.round(bet * pay);
+                winLines.push({ li: li, count: count });
+            });
+            lines.win = winCells;
+            lines.winLines = winLines;
+            lines.cells = final.slice();
+            lines.spinning = false;
+            let jpPrize = 0;
+            if (jpHit) { jpPrize = jackpotWin(); if (lines.auto) linesToggleAuto(); }
+            if (total > 0) {
+                state.coins += total;
+                state.stats.linesWins = (state.stats.linesWins || 0) + 1;
+                updateMissions('win_lines', 1); // b121: задание дня
+                updateMissions('lines_coins', total); // b122: задание дня
+            }
+            if (!total && !jpHit) jackpotOnLoss(bet); // b105: проигрыш отдаёт банку 100% ставки
+            saveState(); updateCoinDisplay();
+            linesRenderBoard();
+            linesDrawWinLines();
+            // b109: выигрышные карты пульсируют в 3D
+            if (lines.mode3d && lines3d.reels.length) {
+                lines3d.pulsePlanes = [];
+                for (let r = 0; r < LINES_ROWS; r++) for (let c = 0; c < LINES_COLS; c++) {
+                    if (!lines.win[r * LINES_COLS + c]) continue;
+                    const rl = lines3d.reels[c];
+                    if (rl && rl.planes[r]) lines3d.pulsePlanes.push(rl.planes[r]);
+                }
+                lines3d.pulseUntil = performance.now() + 1500;
+            }
+            renderLinesUI();
+            const res = document.getElementById('lines-result');
+            if (jpHit) {
+                showToast('👑 ЛИНИЯ JACKPOT! Общий банк сайта ваш: +' + fmtCoins(jpPrize), 'success');
+                launchConfetti(160);
+                if (res) res.innerHTML = 'Линия JACKPOT: <b class="text-amber-300">+' + fmtCoins(jpPrize) + '</b>!';
+            } else if (winLines.length) {
+                const nums = winLines.map(w => w.li + 1).join(', ');
+                showToast('📖 Линии ' + nums + ': +' + fmtCoins(total) + ' монет', 'success');
+                if (winLines.length >= 2) launchConfetti(winLines.length >= 3 ? 100 : 50);
+                try { SoundFX.play('coin'); } catch (e) {}
+                if (res) res.innerHTML = 'Линии <b class="text-sky-300">' + nums + '</b> — +' + fmtCoins(total) + ' монет';
+            } else {
+                try { SoundFX.play('tear'); } catch (e) {}
+                if (res) res.innerHTML = 'Линий нет — 100% ставки ушли в общий джекпот';
+            }
+        }
+
+        // ============ b109: ЛИНIIИ в 3D: пять барабанов-цилиндров, окно в 3 ряда ============
+        const lines3d = { renderer: null, scene: null, camera: null, reels: [], pending: null, pulsePlanes: null, pulseUntil: 0, animId: 0 };
+        // b111: текстура-карточка для барабанов: рамка редкости, имя, и АРТ карты,
+        // дорисовывается сразу, как загрузится скан (зеркало/оригинал)
+        const linesTexCache = {};
+        function linesCardTexture(sym) {
+            if (!sym) return null;
+            if (linesTexCache[sym.id]) return linesTexCache[sym.id];
+            const W = 256, H = 368;
+            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const col = RAR_COLORS[sym.rarity] || '#e2e8f0';
+            if (g) {
+                const bg = g.createLinearGradient(0, 0, W, H);
+                bg.addColorStop(0, '#1e293b'); bg.addColorStop(1, '#0b1220');
+                g.fillStyle = bg; g.fillRect(0, 0, W, H);
+                if (sym.jackpot) {
+                    const jg = g.createLinearGradient(0, 0, W, H);
+                    jg.addColorStop(0, '#fde68a'); jg.addColorStop(0.5, '#f59e0b'); jg.addColorStop(1, '#b45309');
+                    g.fillStyle = jg; g.fillRect(10, 10, W - 20, H - 104);
+                    g.fillStyle = '#1c1917';
+                    g.font = '900 30px system-ui, sans-serif'; g.textAlign = 'center';
+                    g.fillText('JACKPOT', W / 2, H / 2 - 20);
+                }
+                g.fillStyle = 'rgba(2,6,23,.85)'; g.fillRect(10, H - 84, W - 20, 74);
+                g.fillStyle = '#ffffff'; g.font = '700 26px system-ui, sans-serif'; g.textAlign = 'center';
+                g.fillText(String(sym.name || '').slice(0, 14), W / 2, H - 52);
+                g.fillStyle = col; g.font = '900 18px system-ui, sans-serif';
+                g.fillText(String(RARITY_LABELS_RU[sym.rarity] || sym.rarity || '').toUpperCase(), W / 2, H - 24);
+                g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(5, 5, W - 10, H - 10);
+            }
+            const tex = new THREE.CanvasTexture(cv);
+            try { tex.encoding = THREE.sRGBEncoding; tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+            linesTexCache[sym.id] = tex;
+            if (sym.image && g && !sym.jackpot) {
+                loadImgSafe(sym.image, (img) => {
+                    try {
+                        const dw = W - 20, dh = H - 104;
+                        const ar = (img.width || 1) / (img.height || 1), dr = dw / dh;
+                        let sw, sh, sx, sy;
+                        if (ar > dr) { sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
+                        else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
+                        g.drawImage(img, sx, sy, sw, sh, 10, 10, dw, dh);
+                        g.fillStyle = 'rgba(2,6,23,.85)'; g.fillRect(10, H - 84, W - 20, 74);
+                        g.fillStyle = '#ffffff'; g.font = '700 26px system-ui, sans-serif'; g.textAlign = 'center';
+                        g.fillText(String(sym.name || '').slice(0, 14), W / 2, H - 52);
+                        g.fillStyle = col; g.font = '900 18px system-ui, sans-serif';
+                        g.fillText(String(RARITY_LABELS_RU[sym.rarity] || sym.rarity || '').toUpperCase(), W / 2, H - 24);
+                        g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(5, 5, W - 10, H - 10);
+                        tex.needsUpdate = true;
+                    } catch (e) {}
+                });
+            }
+            return tex;
+        }
+        function linesTry3D() {
+            if (lines.mode3d || lines.no3d) return;
+            if (typeof THREE === 'undefined' || !webglAvailable()) { lines.no3d = true; return; }
+            const box = document.getElementById('lines-3d-box');
+            const board = document.getElementById('lines-board');
+            if (!box) return;
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { lines.no3d = true; return; }
+            const w = box.clientWidth || 640, h = box.clientHeight || 360;
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setSize(w, h);
+            try { renderer.localClippingEnabled = true; } catch (e) {}
+            box.innerHTML = '';
+            box.appendChild(renderer.domElement);
+            // b116: плоскости клиппинга — карты обрезаются ровно по окну барабана,
+            // ничего не торчит из-под разделителей и капюшонов
+            lines3d.clip = [
+                new THREE.Plane(new THREE.Vector3(0, -1, 0), 2.72),
+                new THREE.Plane(new THREE.Vector3(0, 1, 0), 2.72)
+            ];
+            nxGuardContextLoss(renderer, 'lines', () => {
+                lines.mode3d = false; lines.no3d = true;
+                try { cancelAnimationFrame(lines3d.animId); lines3d.animId = 0; } catch (e) {}
+                box.classList.add('hidden');
+                if (board) board.classList.remove('hidden');
+                try { box.parentElement.style.aspectRatio = ''; box.parentElement.style.minHeight = ''; } catch (e) {}
+                linesRenderBoard();
+            });
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
+            camera.position.set(0, 0.1, 9.8);
+            scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.75, 40); l1.position.set(3, 5, 7); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.4, 40); l2.position.set(-4, -2, 6); scene.add(l2);
+            const l4 = new THREE.PointLight(0xffffff, 0.35, 30); l4.position.set(0, 4.5, 6); scene.add(l4); // b114: верхний софит — верхний ряд не темнеет
+            // золотой корпус: капюшоны сверху/снизу, стойки и разделители колонок
+            const gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.9 });
+            const dark = new THREE.MeshStandardMaterial({ color: 0x140f08, roughness: 0.6, metalness: 0.4 });
+            const hoodT = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.5, 0.7), gold); hoodT.position.set(0, 2.82, 0.75); scene.add(hoodT);
+            const hoodB = hoodT.clone(); hoodB.position.y = -2.82; scene.add(hoodB);
+            const postL = new THREE.Mesh(new THREE.BoxGeometry(0.32, 6.1, 0.7), gold); postL.position.set(-3.32, 0, 0.75); scene.add(postL);
+            const postR = postL.clone(); postR.position.x = 3.32; scene.add(postR);
+            const backP = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 6.4), dark); backP.position.set(0, 0, -3.0); scene.add(backP);
+            for (let k = -1.5; k <= 1.5; k++) {
+                // b118: разделитель в той же глубине, что и карты: перспектива не
+                // оставляет щелей — кромки карт гарантированно перекрыты
+                const sep = new THREE.Mesh(new THREE.BoxGeometry(0.14, 5.5, 0.2), gold);
+                sep.position.set(k * 1.22, 0, 0.1);
+                scene.add(sep);
+            }
+            // b112: барабаны — плоские колонки: 3 ПРЯМЫЕ карты в ряд (как средняя линия),
+            // вращение = вертикальная вибрация со сменой символов, стоп — точный результат
+            const ROW_H = 1.8;
+            const planeGeo = new THREE.PlaneGeometry(1.18, 1.75); // b117: вертикальные карты, стык уходит под разделитель
+            lines3d.reels = [];
+            for (let c = 0; c < 5; c++) {
+                const grp = new THREE.Group();
+                grp.position.x = (c - 2) * 1.22;
+                const planes = [];
+                for (let r = 0; r < 3; r++) {
+                    const m = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45, metalness: 0.15, side: THREE.FrontSide, clippingPlanes: lines3d.clip || undefined }));
+                    m.position.set(0, (1 - r) * ROW_H, 0);
+                    grp.add(m);
+                    planes.push(m);
+                }
+                scene.add(grp);
+                lines3d.reels.push({ group: grp, planes: planes, t0: 0, dur: 1, stopped: true, lastSwap: 0, finalCols: null });
+            }
+            // b112: карты на барабанах СРАЗУ при входе — никаких белых плат
+            try {
+                linesMakePool();
+                lines3d.reels.forEach(rl => rl.planes.forEach(m => {
+                    m.material.map = linesCardTexture(lines.pool[Math.floor(Math.random() * lines.pool.length)]);
+                    m.material.needsUpdate = true;
+                }));
+            } catch (e) {}
+            lines3d.renderer = renderer; lines3d.scene = scene; lines3d.camera = camera;
+            lines.mode3d = true;
+            box.classList.remove('hidden');
+            if (board) board.classList.add('hidden');
+            // b113: оболочка поля повторяет пропорции сетки 5×3 — поле без полей
+            try { box.parentElement.style.aspectRatio = '1.13'; box.parentElement.style.minHeight = '0'; } catch (e) {}
+            if (!window._nx3dLines) {
+                window._nx3dLines = 1;
+                const rs = () => {
+                    const b2 = document.getElementById('lines-3d-box');
+                    if (!b2 || !lines3d.renderer) return;
+                    const w = b2.clientWidth || 640, h = b2.clientHeight || 430;
+                    lines3d.renderer.setSize(w, h);
+                    const cam = lines3d.camera;
+                    cam.aspect = w / h;
+                    // b115: камера по сетке вертикальных карт: полуширина 3.05, полувысота 2.7
+                    const t = Math.tan((cam.fov * Math.PI / 180) / 2);
+                    cam.position.z = Math.max(3.05 / (t * cam.aspect), 2.7 / t) * 1.045; // запас — карты видны целиком
+                    cam.updateProjectionMatrix();
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(box, rs);
+                rs();
+            }
+            lines3dTick();
+        }
+        function linesSpin3D(final, bet) {
+            const now = performance.now();
+            for (let c = 0; c < 5; c++) {
+                const rl = lines3d.reels[c];
+                rl.finalCols = [final[c], final[5 + c], final[10 + c]];
+                rl.t0 = now + c * 220;
+                rl.dur = 1500 + c * 260;
+                rl.stopped = false;
+                rl.lastSwap = 0;
+            }
+            lines3d.pending = { final: final, bet: bet };
+        }
+        function lines3dTick() {
+            lines3d.animId = requestAnimationFrame(lines3dTick);
+            try { // b109: кадр под предохранителем
+                const now = performance.now();
+                if (lines.mode3d && lines3d.reels.length) {
+                    let allStopped = true;
+                    for (let c = 0; c < lines3d.reels.length; c++) {
+                        const rl = lines3d.reels[c];
+                        if (rl.stopped) continue;
+                        const t = (now - rl.t0) / rl.dur;
+                        if (t <= 0) { allStopped = false; continue; }
+                        if (t >= 1) {
+                            rl.stopped = true;
+                            rl.group.position.y = 0;
+                            for (let r = 0; r < 3; r++) {
+                                const m = rl.planes[r].material;
+                                m.map = linesCardTexture(lines.pool[rl.finalCols[r]] || null);
+                                m.needsUpdate = true;
+                            }
+                            try { SoundFX.play('click'); } catch (e2) {}
+                        } else {
+                            allStopped = false;
+                            // вращение: вертикальная вибрация + смена карт каждые 90 мс
+                            rl.group.position.y = Math.sin(now / 35 + c * 1.7) * 0.16;
+                            if (now - rl.lastSwap > 90) {
+                                rl.lastSwap = now;
+                                for (let r = 0; r < 3; r++) {
+                                    const m = rl.planes[r].material;
+                                    m.map = linesCardTexture(lines.pool[Math.floor(Math.random() * lines.pool.length)] || null);
+                                    m.needsUpdate = true;
+                                }
+                            }
+                        }
+                    }
+                    if (allStopped && lines3d.pending) {
+                        const p = lines3d.pending; lines3d.pending = null;
+                        setTimeout(() => linesFinish(p.final, p.bet), 300);
+                    }
+                    if (lines3d.pulsePlanes && now < lines3d.pulseUntil) {
+                        const sc = 1 + 0.07 * Math.sin(now / 70);
+                        lines3d.pulsePlanes.forEach(m => m.scale.setScalar(sc));
+                    } else if (lines3d.pulsePlanes) {
+                        lines3d.pulsePlanes.forEach(m => m.scale.setScalar(1));
+                        lines3d.pulsePlanes = null;
+                    }
+                }
+                if (lines.mode3d && lines3d.renderer) lines3d.renderer.render(lines3d.scene, lines3d.camera);
+            } catch (e) {
+                nx3dLoopBail('lines', e, () => {
+                    cancelAnimationFrame(lines3d.animId); lines3d.animId = 0;
+                    lines.mode3d = false; lines.no3d = true;
+                    const box = document.getElementById('lines-3d-box'); const board = document.getElementById('lines-board');
+                    if (box) box.classList.add('hidden');
+                    if (board) { board.classList.remove('hidden'); linesRenderBoard(); }
+                });
             }
         }
 
@@ -7780,6 +8513,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             updateCoinDisplay(); saveState();
             jackpotFeed(bet); // b74: колесо тоже кормит общий джекпот
             state.stats.wheelSpins = (state.stats.wheelSpins || 0) + 1;
+            updateMissions('wheel_spin', 1); // b121: задание дня
             const idx = Math.floor(Math.random() * WHEEL_SECTORS.length);
             const jitter = (Math.random() - 0.5) * WHEEL_STEP * 0.6;
             const mid = idx * WHEEL_STEP + WHEEL_STEP / 2;
@@ -7838,6 +8572,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 // b75: колесо тоже борется за общий джекпот сайта — сектор срывает весь банк
                 // (jackpotWin сам начисляет монеты и показывает тост)
                 win = jackpotWin();
+                if (win > 0) updateMissions('wheel_coins', win); // b122: задание дня
                 paid = true;
             } else if (sec.t === 'mine') {
                 miner.lvl += 1;
@@ -7848,6 +8583,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             }
             if (!paid && win > 0) {
                 state.coins += win;
+                updateMissions('wheel_coins', win); // b122: задание дня
                 showToast('🎡 ' + sec.label + ': +' + fmtCoins(win) + ' монет', 'success');
                 if ((sec.m || 0) >= 3) launchConfetti(sec.m >= 5 ? 140 : 70);
             } else if (sec.t === 'mult' && sec.m === 0) {
@@ -8145,7 +8881,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 SoundFX.play('win');
                 launchConfetti(120);
                 showToast(`🃏 Победа в «Дураке»! +${total} монет`, 'success');
-                updateMissions('win_durak', 1);
+                // b122: задания про Дурака убраны из пула
                 checkAchievements();
             } else if (durak.winner === 'ai') {
                 state.stats.durakLosses = (state.stats.durakLosses || 0) + 1;
@@ -8840,7 +9576,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div class="flex flex-col items-end justify-between gap-1.5 shrink-0 pl-0.5">
                                 <div class="flex items-center gap-1 sm:gap-1.5">
                                     <span class="inline-flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded-lg bg-slate-950/75 text-slate-200 border border-slate-700/70" title="Карточек в паке"><i class="fa-solid fa-clone text-teal-300"></i>${cardsInPack}</span>
-                                    <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-lg bg-amber-400/95 text-slate-950 shadow" title="Цена вскрытия"><i class="fa-solid fa-coins"></i>${pack.price}</span>
+                                    <span class="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black px-1.5 sm:px-2 py-0.5 rounded-lg bg-amber-400/95 text-slate-950 shadow" title="Цена вскрытия"><i class="fa-solid fa-coins"></i>${fmtCoins(pack.price)}</span>
                                 </div>
                                 <div class="flex items-center gap-1 sm:gap-1.5">
                                     <button onclick="buyPack('${pack.id}')" class="px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] sm:text-[11px] font-bold transition shadow-md shadow-emerald-950/40 whitespace-nowrap"><i class="fa-solid fa-box-open mr-1"></i>Открыть</button>
@@ -9081,7 +9817,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
                     <span id="carousel-price" class="inline-flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-2 font-black text-amber-300">
                         <i class="fa-solid fa-coins"></i>
-                        <span class="text-sm sm:text-base">${pack.price}</span>
+                        <span class="text-sm sm:text-base">${fmtCoins(pack.price)}</span>
                         <span class="text-[9px] uppercase tracking-wider text-amber-200/70 font-bold">монет</span>
                     </span>
                     <button id="carousel-open-btn" onclick="buyPack('${pack.id}')" class="px-5 sm:px-6 py-2.5 sm:py-3 font-bold text-sm rounded-xl transition shadow-lg ${afford ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25' : 'bg-slate-800 text-slate-500 border border-slate-700 shadow-none cursor-not-allowed'}">
@@ -11755,7 +12491,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <img src="${mediaUrl(p.image)}" class="w-8 h-12 object-cover rounded" onerror="this.onerror=null;imgErrorChain(this);">
                                 <div class="truncate">
                                     <h5 class="font-bold text-white text-sm truncate">${p.title}</h5>
-                                    <p class="text-[10px] text-slate-400">${p.price} монет • <span class="inline-block w-2 h-2 rounded-full align-middle border border-black/60" style="background:${(PACK_COLORS[p.color] || PACK_COLORS.silver).swatch}"></span> ${(PACK_COLORS[p.color] || PACK_COLORS.silver).name} • ${(PACK_SHIMMERS[p.shimmer] || PACK_SHIMMERS.holo).name}${p.musicUrl ? ' • <i class="fa-solid fa-music text-fuchsia-400"></i> ' + (p.musicUrl.split('/').pop() || 'трек') : (p.musicOff ? ' • <i class="fa-solid fa-volume-xmark text-slate-600"></i> без музыки' : '')}</p>
+                                    <p class="text-[10px] text-slate-400">${fmtCoins(p.price)} монет • <span class="inline-block w-2 h-2 rounded-full align-middle border border-black/60" style="background:${(PACK_COLORS[p.color] || PACK_COLORS.silver).swatch}"></span> ${(PACK_COLORS[p.color] || PACK_COLORS.silver).name} • ${(PACK_SHIMMERS[p.shimmer] || PACK_SHIMMERS.holo).name}${p.musicUrl ? ' • <i class="fa-solid fa-music text-fuchsia-400"></i> ' + (p.musicUrl.split('/').pop() || 'трек') : (p.musicOff ? ' • <i class="fa-solid fa-volume-xmark text-slate-600"></i> без музыки' : '')}</p>
                                 </div>
                             </div>
                             <div class="flex items-center space-x-2">
@@ -12225,7 +12961,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function nxDiag(msg) {
             const rec = {
-                build: '02.10-b97',
+                build: '02.10-b122',
                 at: new Date().toISOString(),
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
@@ -12251,17 +12987,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // b65: тихий индикатор: если за сессию были ошибки — надпись сборки розовеет.
         // Ничего не всплывает; тап по надписи = диагностика.
         function nxBadgeMark() {
-            const b = document.getElementById('build-badge');
-            if (b && !b.dataset.err) {
-                b.dataset.err = '1';
-                b.style.color = 'rgba(251,113,133,.8)';
-                b.title = 'Были ошибки — тап: диагностика';
-            }
+            // b119: индикатор ошибок — в Студии, рядом с номером сборки
+            const e = document.getElementById('studio-build-err');
+            if (e) e.classList.remove('hidden');
         }
         function nxShowDiag() {
             try {
                 const log = localStorage.getItem('nexus_errlog') || '[]';
-                const txt = 'Диагностика сборка 02.10-b97:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                const txt = 'Диагностика сборка 02.10-b122:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
                 try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
                 alert(txt);
             } catch (e) {}
@@ -12314,9 +13047,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // ошибок с ориентацией экрана, вкладкой и открытыми модалками на момент сбоя).
         // Всплывающих тостов об ошибках больше нет вовсе.
         (function () {
-            const b = document.getElementById('build-badge');
+            const b = document.getElementById('studio-build');
             if (!b) return;
-            b.style.pointerEvents = 'auto';
             b.addEventListener('click', function () {
                 let txt = '';
                 try {
@@ -12328,9 +13060,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
                         : '';
                     if (!log.length) {
-                        txt = 'Сборка 02.10-b97. Журнал ошибок пуст.' + extLine;
+                        txt = 'Сборка 02.10-b122. Журнал ошибок пуст.' + extLine;
                     } else {
-                        txt = 'Сборка 02.10-b97. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                        txt = 'Сборка 02.10-b122. Последние ошибки (' + log.length + '):\n' + log.map(r =>
                             '• ' + String(r.at || '').slice(11, 19) +
                             ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
                             (r.tab ? ' вкладка:' + r.tab : '') +
@@ -12353,10 +13085,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // b66: при смене сборки старый журнал очищается — записи прошлых версий
             // не путают; счётчик внешних событий живёт одну сессию
             try {
-                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b97') {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b122') {
                     localStorage.removeItem('nexus_errlog');
                     localStorage.removeItem('nexus_ext_src');
-                    localStorage.setItem('nexus_errlog_build', '02.10-b97');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b122');
                 }
                 localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
             } catch (e) {}
@@ -12389,13 +13121,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (canClaimDaily()) {
                 setTimeout(openDailyModal, 700);
             }
-            // b42: один раз за сессию показываем номер сборки — сразу видно, какой файл открыт
-            try {
-                if (sessionStorage.getItem('nexus_build_shown') !== '02.10-b97') {
-                    sessionStorage.setItem('nexus_build_shown', '02.10-b97');
-                    setTimeout(() => showToast('Открыт файл игры: сборка 02.10-b97', 'success'), 1200);
-                }
-            } catch (e) {}
             // Облачная синхронизация общего каталога паков
             cloudInit();
             // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
