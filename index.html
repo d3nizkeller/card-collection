@@ -1442,7 +1442,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <input id="market-price-input" inputmode="numeric" maxlength="12" placeholder="Цена: 500, 2k…" class="sm:w-44 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-200 placeholder-slate-600 focus:border-amber-400/70 focus:outline-none" onkeydown="if(event.key==='Enter')marketListCard()">
                     <button onclick="marketListCard()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 whitespace-nowrap"><i class="fa-solid fa-upload mr-1.5"></i>Выставить</button>
                 </div>
-                <p class="text-[10px] text-slate-500">Продаётся одна копия из коллекции: пока лот активен, она недоступна вам; сняли лот — вернулась. Цена любая: от 1 до 1 млрд монет. <i class="fa-solid fa-robot text-slate-400 mr-1"></i>Защита экономики: если одинаковых карт в продаже больше 4, игра автоматически выкупает лишние лоты (рандомно) по цене выкупа: 20 / 50 / 120 / 300 монет за common / rare / epic / legendary.</p>
+                <p class="text-[10px] text-slate-500">Продаётся одна копия из коллекции: пока лот активен, она недоступна вам; сняли лот — вернулась. Цена любая: от 1 до 1 млрд монет.</p>
                 <div id="market-my-lots" class="grid grid-cols-1 xl:grid-cols-2 gap-1.5"></div>
             </div>
 
@@ -5814,7 +5814,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             credited = credited.concat(added).slice(-200);
             try { LS.setItem('nexus_market_credited', JSON.stringify(credited)); } catch (e) {}
             saveState(); updateCoinDisplay();
-            showToast('💰 Ваши лоты куплены: +' + fmtCoins(sum) + ' монет', 'success');
+            showToast('🎉 Ваша карта куплена на обмене: +' + fmtCoins(sum) + ' монет', 'success');
             renderMarketIfVisible();
         }
         // ============ b142: ЗАЩИТА ЭКОНОМИКИ — больше 4 одинаковых карт в продаже ============
@@ -5849,14 +5849,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 receipts.push({
                     id: 'sys-' + l.id, sid: l.sid,
                     amount: MARKET_SYS_REFUND[(l.card || {}).rarity] || 20,
-                    at: Date.now(), bname: '🤖 автвыкуп системы'
+                    at: Date.now(), bname: 'Игрок обмена'
                 });
             });
             CLOUD.market = marketLots().filter(l => !gone[l.id]);
             CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat(receipts).slice(-60);
             jpSyncSoon();
             renderMarketIfVisible();
-            showToast('🤖 Одинаковых карт в продаже больше ' + MARKET_MAX_PER_CARD + ' — система выкупила лотов: ' + bought.length, 'refund');
+            // b145: механика выкупа скрыта от игроков — продавцы просто получают
+            // обычное уведомление «ваша карта куплена» через квитанции ниже
         }
         function lotTileHTML(l) {
             // b140: компактная строка лота — много лотов видно сразу
