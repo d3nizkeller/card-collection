@@ -1161,7 +1161,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-2 mt-4">
                             <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
                             <span id="slots-bets" class="inline-flex items-center gap-1.5"></span>
-                            <input id="slots-bet-input" inputmode="numeric" maxlength="12" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('slots', this.value)">
+                            <input id="slots-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('slots', this.value)">
                             <button id="slots-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
                                                         <button id="slots-spin" onclick="slotsSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
                             <button id="slots-auto-btn" onclick="slotsToggleAuto()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
@@ -1222,7 +1222,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-2 mt-4">
                             <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
                             <span id="grid-bets" class="inline-flex items-center gap-1.5"></span>
-                            <input id="grid-bet-input" inputmode="numeric" maxlength="12" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('grid', this.value)">
+                            <input id="grid-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('grid', this.value)">
                             <button id="grid-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
                             <button id="grid-spin" onclick="gridSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
                             <button id="grid-auto-btn" onclick="gridToggleAuto()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
@@ -1260,7 +1260,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div id="wheel-fallback" class="hidden mt-4 flex-col items-center"></div>
                         <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
                             <div id="wheel-bets" class="flex flex-wrap justify-center gap-1.5"></div>
-                            <input id="wheel-bet-input" inputmode="numeric" maxlength="12" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('wheel', this.value)">
+                            <input id="wheel-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('wheel', this.value)">
                             <button id="wheel-spin" onclick="wheelSpin()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-dharmachakra mr-1"></i>Крутить</button>
                         </div>
                         <p id="wheel-result" class="text-xs text-slate-400 mt-2 text-center">Выбери ставку и крути колесо!</p>
@@ -1287,7 +1287,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div class="flex flex-col items-center gap-1.5">
                                 <span class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Ставка</span>
                                 <div id="mines-bets" class="flex flex-wrap justify-center gap-1.5"></div>
-                            <input id="mines-bet-input" inputmode="numeric" maxlength="12" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('mines', this.value)">
+                            <input id="mines-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('mines', this.value)">
                             </div>
                             <div class="flex flex-col items-center gap-1.5">
                                 <span class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Мин на игровом поле: <b id="mines-count-label" class="text-slate-200">5</b></span>
@@ -1354,7 +1354,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-1.5 mt-3 justify-center">
                             <span class="text-[10px] uppercase font-bold text-slate-500 mr-1">Ставка:</span>
                             <div id="lines-bets" class="flex flex-wrap gap-1.5 justify-center"></div>
-                            <input id="lines-bet-input" inputmode="numeric" maxlength="12" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('lines', this.value)">
+                            <input id="lines-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('lines', this.value)">
                             <button id="lines-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
                         </div>
                         <div class="bor-panel mt-3">
@@ -6830,7 +6830,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // ============ b49: СЛОТЫ «Коллекционер карт» (3D-барабаны с картами сайта) ============
-        const SLOTS_BETS = [100, 1000, 5000, 10000, 20000, 50000, 100000, 1000000]; // b95: ставки до 1m, ставка 250 убрана
+        // b95: ставки до 1m, ставка 250 убрана. b221: добавлены все «буквы» — K, M, B (до 1b),
+        // чтобы любой порядок суммы был в один тап; поле ввода понимает те же буквы
+        const SLOTS_BETS = [100, 1000, 5000, 10000, 20000, 50000, 100000, 1000000, 5000000, 10000000, 100000000, 1000000000, 1000000000000, 1000000000000000];
         const SLOTS_MULT = { common: 8, rare: 12, epic: 18, legendary: 30 };
         const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 100, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
         // b85: пользователь сам выбирает, какие карты крутить в Слотах и Сетке.
@@ -7377,6 +7379,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const last = t[t.length - 1];
             if (last === 'k' || last === 'к') { mult = 1e3; t = t.slice(0, -1); }
             else if (last === 'm' || last === 'м') { mult = 1e6; t = t.slice(0, -1); }
+            else if (last === 'b' || last === 'б') { mult = 1e9; t = t.slice(0, -1); } // b221: миллиарды тоже буквой
+            else if (last === 't' || last === 'т') { mult = 1e12; t = t.slice(0, -1); } // b222: триллионы
+            else if (last === 'q') { mult = 1e15; t = t.slice(0, -1); } // b222: квадриллионы
             const n = Number(t.replace(',', '.'));
             if (!isFinite(n) || n <= 0) return NaN;
             return n * mult;
@@ -7384,7 +7389,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function normBet(b) {
             b = Math.floor(Number(b));
             if (!isFinite(b) || b < 1) return 1;
-            if (b > 1e9) return 1e9;
+            if (b > 1e15) return 1e15; // b222: потолок ставки — буква q
             return b;
         }
         function applyCustomBet(game, val) {
@@ -10789,7 +10794,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function fmtCoins(n) {
             n = Math.floor(Number(n) || 0);
             if (n < 1000) return String(n);
-            const units = [[1e9, 'b'], [1e6, 'm'], [1e3, 'k']];
+            const units = [[1e15, 'q'], [1e12, 't'], [1e9, 'b'], [1e6, 'm'], [1e3, 'k']]; // b222: буквы до квадриллионов
             for (let i = 0; i < units.length; i++) {
                 if (n >= units[i][0]) {
                     const x = n / units[i][0];
