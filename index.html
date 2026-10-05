@@ -840,16 +840,29 @@ Check your Browserslist config to be sure that your targets are set up correctly
             #hdr-controls > * + *{margin-left:4px}
             #hdr-controls .rounded-full{padding-left:8px;padding-right:8px}
         }
+        /* b172: «Студия» — 6-я вкладка, шапка компактная, чтобы всё гарантированно было в одну строку */
         @media (min-width:1024px) and (max-width:1279.98px){
-            /* ноутбук: компактные вкладки, чтобы логотип не обрезался */
-            #hdr-nav>button{padding-left:10px;padding-right:10px;font-size:12px}
+            #hdr-wordmark h1{font-size:17.5px}
+            #hdr-wordmark p{font-size:8.5px;letter-spacing:.14em}
+            #player-name-input{width:88px}
+            #hdr-controls > * + *{margin-left:8px}
+            #hdr-controls .rounded-full{padding-left:10px;padding-right:10px}
+            #hdr-nav{padding:3px}
+            #hdr-nav>button{padding-left:8px;padding-right:8px;font-size:11.5px}
+        }
+        @media (min-width:1280px){
+            #hdr-wordmark h1{font-size:22px}
+            #hdr-wordmark p{font-size:10px}
+            #player-name-input{width:112px}
+            #hdr-controls > * + *{margin-left:14px}
+            #hdr-nav>button{padding-left:10px;padding-right:10px;font-size:12.5px}
         }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
 
     <header class="sticky top-0 z-50 backdrop-blur-md bg-slate-900/80 border-b border-slate-800">
-        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 min-h-[clamp(54px,4vw_+_40px,68px)] py-1.5 sm:py-0 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 min-h-[clamp(54px,4vw_+_40px,68px)] py-1.5 sm:py-0 flex flex-nowrap items-center justify-between gap-x-2">
             <!-- b169: логотип «голо-карта» (вариант А), виден на всех разрешениях -->
             <!-- b171: логотип может сжиматься (truncate), чтобы остаться в одну строку с контролами -->
             <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer min-w-0 shrink" onclick="switchTab('store')">
