@@ -4,6 +4,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
@@ -2199,6 +2200,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <div class="flex flex-wrap justify-between w-full max-w-xl items-center gap-2 px-1 sm:px-4">
                 <h3 class="text-base sm:text-xl font-bold text-white" id="unboxing-title">Вскрытие пака</h3>
                 <div class="flex space-x-2 sm:space-x-3 flex-wrap justify-end">
+                    <button id="unboxing-buy-btn" onclick="buyPackFromUnboxing()" title="Купить ещё один пак этого же набора, не закрывая окно вскрытия" class="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 hover:to-teal-300 text-slate-950 text-xs font-semibold rounded-lg transition shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-300/60"><i class="fa-solid fa-cart-plus mr-1"></i>Купить пак</button>
                     <button onclick="sellAllDupesToMarket()" title="Выставить все раскрытые повторки этого вскрытия на биржу по рекомендуемой цене" class="px-3 sm:px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition shadow"><i class="fa-solid fa-sack-coins mr-1"></i>Продать все повторки</button>
                     <button onclick="scratchAllCards()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition shadow">Стереть всё</button>
                     <button onclick="closeUnboxingModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Закрыть</button>
@@ -11811,12 +11813,40 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return rolled.map(c => ({ ...c, unboxedId: Math.random() }));
         }
 
+        // b216: кнопка «Купить пак» в окне вскрытия — ценник синхронизируется с паком
+        function syncUnboxBuyBtn(pack) {
+            const b = document.getElementById('unboxing-buy-btn');
+            if (!b) return;
+            if (!pack) { b.classList.add('hidden'); return; }
+            b.classList.remove('hidden');
+            const price = packSalePrice(pack);
+            b.innerHTML = '<i class="fa-solid fa-cart-plus mr-1"></i>Купить пак · <i class="fa-solid fa-coins mr-0.5"></i>' + fmtCoins(price);
+            b.title = 'Купить ещё один пак «' + pack.title + '» за ' + fmtCoins(price) + ' монет, не закрывая окно вскрытия';
+        }
+
+        // b216: покупка ещё одного пака того же набора прямо из окна вскрытия.
+        // Нестёртые карты текущего вскрытия сначала открываются автоматически
+        // (scratchAllCards → processCardReward), чтобы не потерять их при покупке.
+        function buyPackFromUnboxing() {
+            const pack = currentUnboxingPack;
+            if (!pack) { showToast('Пак не определён — закройте окно и купите из магазина', 'error'); return; }
+            scratchAllCards(); // ничего не теряем: неоткрытые карты уходят в коллекцию
+            const before = state.stats.packsOpened;
+            buyPack(pack.id); // все проверки (тираж/премьера/окно/монеты) и тосты — внутри buyPack
+            // 2D-путь: showUnboxingUI уже пересобрал окно с новыми картами.
+            // 3D-путь: старое окно прячем на время новой 3D-анимации — вернётся само в конце
+            if (state.stats.packsOpened > before && !document.getElementById('modal-pack3d').classList.contains('hidden')) {
+                document.getElementById('modal-unboxing').classList.add('hidden');
+            }
+        }
+
         function showUnboxingUI(pack, cards) {
             nxTrail('unbox2d');
             currentUnboxingCards = cards;
             unboxDupeIdx = {}; unboxListedIdx = {}; // b143: новое вскрытие — новые повторки
 
             document.getElementById('unboxing-title').innerText = `Вскрытие пака: ${pack.title}`;
+            syncUnboxBuyBtn(pack); // b216: ценник кнопки «Купить пак»
             const container = document.getElementById('unboxing-cards-container');
             container.innerHTML = currentUnboxingCards.map((card, idx) => {
                 const L = cardLayoutOf(card);
