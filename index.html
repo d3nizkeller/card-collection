@@ -1251,7 +1251,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-dharmachakra text-amber-300 mr-2"></i>Колесо Фортуны</h2>
-                                <p class="text-sm text-slate-400 mt-1">3D-колесо с призами: множители ставки до ×5, случайная карта сайта, кирка +1 и два золотых сектора JACKPOT (1 из 8 спинов) — срывают весь общий банк сайта! Каждая ставка кормит банк на 100%, а проигрыш отдаёт банку ещё 100% потерянной суммы. Крутить можно тапом по самому колесу — кнопка не обязательна!</p>
+                                <p class="text-sm text-slate-400 mt-1">3D-колесо с призами: множители ставки до ×5, случайная карта сайта, кирка +1 и золотой сектор JACKPOT (1 из 16 спинов) — срывает весь общий банк сайта! Каждая ставка кормит банк на 100%, а проигрыш отдаёт банку ещё 100% потерянной суммы. Крутить можно тапом по самому колесу — кнопка не обязательна!</p>
                                                     </div>
                         </div>
                         <div class="wheel-lights mt-4" aria-hidden="true"></div>
@@ -1269,7 +1269,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
                                 <li>Выбери ставку и нажми <b>«Крутить»</b> — или просто тапни по самому колесу.</li>
-                                <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> (их два — 1 из 8 спинов) — весь общий банк сайта.</li>
+                                <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> (один — 1 из 16 спинов) — весь общий банк сайта.</li>
                                 <li>Пустой сектор: ставка сгорает и уходит в общий джекпот на <b>100%</b>; 100% каждой ставки капают в банк всегда, а проигрыш докидывает ещё 100% потерянной суммы.</li>
                             </ol>
                         </div>
@@ -2197,27 +2197,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
     <!-- Unboxing Modal -->
     <div id="modal-unboxing" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
         <div id="unboxing-wrap" class="max-w-4xl w-full flex flex-col items-center space-y-3 sm:space-y-6">
-            <div class="flex flex-wrap justify-between w-full max-w-xl items-center gap-2 px-1 sm:px-4">
-                <h3 class="text-base sm:text-xl font-bold text-white" id="unboxing-title">Вскрытие пака</h3>
-                <div class="flex space-x-2 sm:space-x-3 flex-wrap justify-end">
-                    <button id="unboxing-buy-btn" onclick="buyPackFromUnboxing()" title="Купить ещё один пак этого же набора, не закрывая окно вскрытия" class="px-3 sm:px-4 py-1.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 hover:to-teal-300 text-slate-950 text-xs font-semibold rounded-lg transition shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-300/60"><i class="fa-solid fa-cart-plus mr-1"></i>Купить пак</button>
-                    <button onclick="sellAllDupesToMarket()" title="Выставить все раскрытые повторки этого вскрытия на биржу по рекомендуемой цене" class="px-3 sm:px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition shadow"><i class="fa-solid fa-sack-coins mr-1"></i>Продать все повторки</button>
-                    <button onclick="scratchAllCards()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition shadow">Стереть всё</button>
-                    <button onclick="closeUnboxingModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Закрыть</button>
+            <div class="flex flex-wrap items-center justify-center w-full max-w-4xl gap-2 px-1 sm:px-4 text-center">
+                <h3 class="text-base sm:text-xl font-bold text-white min-w-0 truncate" id="unboxing-title">Вскрытие пака</h3>
+                <div class="grid grid-cols-2 gap-2 w-full md:flex md:w-auto md:gap-3 md:flex-nowrap md:whitespace-nowrap md:justify-center">
+                    <button onclick="sellAllDupesToMarket()" title="Выставить все раскрытые повторки этого вскрытия на биржу по рекомендуемой цене" class="rounded-full border border-amber-400/50 bg-slate-900/70 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold text-amber-300 hover:bg-amber-400/15 hover:border-amber-300 transition shadow-lg shadow-amber-950/30"><i class="fa-solid fa-tag mr-1.5"></i>Продать все повторки</button>
+                    <button onclick="scratchAllCards()" class="rounded-full border border-emerald-400/50 bg-slate-900/70 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold text-emerald-300 hover:bg-emerald-400/15 hover:border-emerald-300 transition shadow-lg shadow-emerald-950/30"><i class="fa-solid fa-eraser mr-1.5"></i>Стереть всё</button>
+                    <button id="unboxing-buy-btn" onclick="buyPackFromUnboxing()" title="Купить ещё один пак этого же набора, не закрывая окно вскрытия" class="rounded-full border border-teal-300/70 bg-teal-400 px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-black text-slate-950 hover:bg-teal-300 transition shadow-lg shadow-teal-500/40"><i class="fa-solid fa-cart-plus mr-1.5"></i>Купить пак</button>
+                    <button onclick="closeUnboxingModal()" class="rounded-full border border-slate-700 bg-slate-900/70 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition"><i class="fa-solid fa-xmark mr-1.5"></i>Закрыть</button>
                 </div>
             </div>
 
-            <!-- b21: плеер музыки вскрытия — только кнопка «Остановить трек»; ссылка правится в Студии -->
-            <div id="unbox-music-bar" class="w-full max-w-xl bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3 flex items-center gap-2.5">
-                <div class="flex items-center gap-2.5 min-w-0 flex-1">
-                    <span class="w-8 h-8 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center shrink-none"><i id="unbox-music-icon" class="fa-solid fa-music text-fuchsia-400 text-xs"></i></span>
-                    <div class="min-w-0">
-                        <p class="text-[11px] font-bold text-white leading-tight" title="Ссылка на mp3 задаётся у пака: кнопка ♪ или поле музыки в карточке пака">Музыка вскрытия <i class="fa-solid fa-circle-info text-slate-500 text-[9px]"></i></p>
-                        <p id="unbox-music-state" class="text-[10px] text-slate-400 truncate">звук выключен</p>
-                    </div>
-                </div>
-                <button id="unbox-music-stop" onclick="stopUnboxMusic()" class="px-3 py-2 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-lg text-[10px] font-semibold text-slate-200 transition shrink-none" title="Остановить трек вскрытия"><i class="fa-solid fa-stop"></i> Остановить трек</button>
-            </div>
             <p id="unbox-foil-hint" class="text-xs text-slate-400 text-center animate-pulse">Зажмите и водите мышкой или пальцем по карте, чтобы стереть фольгу!</p>
             
             <div id="unboxing-cards-container" class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 w-full max-w-4xl justify-items-center py-2 sm:py-4">
@@ -2339,8 +2328,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
            сетка скроллится порядково (snap) */
         #unboxing-cards-container { flex: 1 1 auto; min-height: 0; overflow-y: auto; align-content: start; grid-auto-rows: max-content; width: 100%; padding: 4px 6px 16px; -webkit-overflow-scrolling: touch; gap: 16px; scroll-snap-type: y proximity; }
         #unboxing-cards-container > * { scroll-snap-align: start; }
-        #unbox-music-bar { padding: 6px 10px; border-radius: 14px; }
-        #unbox-music-bar span.w-8 { width: 26px; height: 26px; }
         #unbox-foil-hint { font-size: 10px; line-height: 1.25; }
         #unboxing-title { font-size: 15px; }
     }
@@ -2553,7 +2540,67 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
     <!-- Notification Toast -->
     <!-- b97: все уведомления сверху, по центру, под безопасной зоной челки -->
-    <div id="toast-container" class="fixed left-1/2 -translate-x-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md" style="top: calc(env(safe-area-inset-top, 0px) + 12px);"></div>
+    <!-- b217: уведомления в стиле Liquid Glass -->
+    <style>
+    /* b217: стек уведомлений — сразу под меню вкладок; точный top выставляет JS по высоте шапки */
+    #toast-container{ top: calc(env(safe-area-inset-top, 0px) + 64px); transform: translateX(-50%); }
+    @media (max-width:640px){
+        #toast-container{ left:12px; right:12px; top: calc(env(safe-area-inset-top, 0px) + 96px); transform:none; width:auto; max-width:none; }
+    }
+    .lq-toast{
+        position: relative;
+        border-radius: 22px;
+        border: 1px solid rgba(255,255,255,.16);
+        background:
+            radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,.09) 0%, rgba(255,255,255,0) 42%),
+            radial-gradient(90% 120% at 88% 118%, var(--lq-tint, rgba(45,212,191,.12)) 0%, rgba(255,255,255,0) 55%),
+            linear-gradient(135deg, rgba(255,255,255,.06) 0%, rgba(255,255,255,.02) 48%, rgba(255,255,255,.045) 100%);
+        -webkit-backdrop-filter: blur(18px) saturate(180%);
+        backdrop-filter: blur(18px) saturate(180%);
+        box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.26),
+            inset 0 -1px 0 rgba(255,255,255,.07),
+            inset 1px 0 0 rgba(255,255,255,.05),
+            inset -1px 0 0 rgba(255,255,255,.05),
+            0 10px 34px rgba(2,6,23,.40),
+            0 2px 10px rgba(2,6,23,.30);
+        color: rgba(255,255,255,.92);
+        text-shadow: 0 1px 2px rgba(2,6,23,.35);
+        overflow: hidden;
+        transition: transform .5s cubic-bezier(.2,1.1,.3,1), opacity .3s ease;
+    }
+    /* блик-«линза» на верхней грани стекла */
+    .lq-toast::before{
+        content:""; position:absolute; left:8%; right:8%; top:0; height:46%;
+        background: linear-gradient(to bottom, rgba(255,255,255,.12), rgba(255,255,255,0));
+        border-radius: 22px 22px 60% 60% / 22px 22px 30% 30%;
+        pointer-events:none;
+    }
+    /* цветной флаер у иконки — свет, прошедший сквозь стекло */
+    .lq-toast::after{
+        content:""; position:absolute; left:-30px; top:-30px; width:110px; height:110px;
+        background: radial-gradient(closest-side, var(--lq-glow, rgba(45,212,191,.5)), rgba(255,255,255,0));
+        filter: blur(6px);
+        pointer-events:none;
+    }
+    .lq-chip{
+        flex: none; width:30px; height:30px; border-radius:9999px;
+        display:flex; align-items:center; justify-content:center;
+        background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(255,255,255,.04));
+        border:1px solid rgba(255,255,255,.22);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 4px 10px rgba(2,6,23,.25);
+        color: var(--lq-icon, #6ee7b9);
+        font-size: 13px;
+        position: relative; z-index: 1;
+    }
+    .lq-msg{ flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; letter-spacing:.01em; position:relative; z-index:1; }
+    .lq-success{ --lq-tint: rgba(16,185,129,.12); --lq-glow: rgba(52,211,153,.38); --lq-icon:#a7f3d0; }
+    .lq-refund { --lq-tint: rgba(245,158,11,.12); --lq-glow: rgba(251,191,36,.38); --lq-icon:#fde68a; }
+    .lq-error  { --lq-tint: rgba(244,63,94,.12);  --lq-glow: rgba(251,113,133,.38); --lq-icon:#fecdd3; }
+    .lq-music  { --lq-tint: rgba(217,70,239,.12); --lq-glow: rgba(232,121,249,.35); --lq-icon:#f5d0fe; }
+    .lq-info   { --lq-tint: rgba(148,163,184,.11);--lq-glow: rgba(148,163,184,.30); --lq-icon:#e2e8f0; }
+    </style>
+    <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
 
     <!-- SVG-фильтры мятой фольги для бустеров -->
     <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -2719,7 +2766,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             LS.setItem('nexus_sound', SoundFX.enabled ? '1' : '0');
             updateSoundIcon();
             if (SoundFX.enabled) SoundFX.play('click');
-            showToast(SoundFX.enabled ? '🔊 Звук включён' : '🔇 Звук выключен', 'success');
+            // b218: без тоста «Звук включён/выключен» — состояние видно по иконке
         }
 
         function updateSoundIcon() {
@@ -2917,7 +2964,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const all = list.every((c, i) => scratchState[i] && scratchState[i].revealed);
                 if (!all) return false;
                 this.stop();
-                showToast('\u{1F3B5} Пак распечатан — музыка выключена', 'success');
+                // b218: без тоста «музыка выключена» — тишина после вскрытия естественна
                 return true;
             }
         };
@@ -2966,7 +3013,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             SoundFX.play('click');
             const had = PackMusic.stop();
             updateUnboxMusicUI();
-            if (had) showToast('\u{1F3B5} Трек остановлен', 'success');
+            // b218: без тоста «трек остановлен»
         }
 
         // пауза/продолжить во время вскрытия
@@ -3142,7 +3189,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             cloudPublishSoon();          // b33: …и не публиковалась — галочка «выключить музыку» терялась
             renderStudio();
             updateUnboxMusicUI();
-            showToast(off ? 'Музыка этого пака выключена' : 'Музыка этого пака включена', 'success');
+            // b218: без тоста «музыка пака включена/выключена» — состояние видно по чекбоксу
         }
 
         function playPackMusicRow(packId) {
@@ -3414,7 +3461,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             holo:    { name: 'Радуга',       icon: 'fa-rainbow' },
             sparkle: { name: 'Белый блеск',  icon: 'fa-star' },
             metal:   { name: 'Металлик',     icon: 'fa-gem' },
-            matte:   { name: 'Матовый',      icon: 'fa-ban' },
+            matte:   { name: 'Матовый',      icon: 'fa-feather' },
             gold:    { name: 'Золотая фольга', icon: 'fa-coins' },
             aurora:  { name: 'Аврора',       icon: 'fa-water' },
             prism:   { name: 'Призма',       icon: 'fa-shapes' },
@@ -5388,25 +5435,52 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
         }
 
+        // b218: пока открыто окно вскрытия (2D или 3D), уведомления не мелькают поверх
+        // фольги — всё кроме ошибок уходит в очередь и показывается после закрытия окна
+        const TOAST_QUEUE = [];
+        function unboxingIsOpen() {
+            const m1 = document.getElementById('modal-unboxing');
+            const m2 = document.getElementById('modal-pack3d');
+            return !!(m1 && !m1.classList.contains('hidden')) || !!(m2 && !m2.classList.contains('hidden'));
+        }
+        function flushToastQueue() {
+            const q = TOAST_QUEUE.splice(0, TOAST_QUEUE.length);
+            q.forEach(([m, t], i) => setTimeout(() => showToast(m, t), 250 + i * 160));
+        }
+
+        // b219: стек уведомлений висит сразу ПОД меню вкладок: липкая шапка измерена
+        // один раз и на каждом ресайзе/тосте — меню ушло по высоте — стек последовал
+        function positionToastContainer() {
+            const c = document.getElementById('toast-container');
+            const h = document.querySelector('header');
+            if (!c || !h) return;
+            c.style.top = Math.round(h.getBoundingClientRect().bottom + 8) + 'px';
+        }
+        window.addEventListener('resize', positionToastContainer);
+        positionToastContainer();
+
         function showToast(message, type = 'success') {
+            if (unboxingIsOpen() && type !== 'error') {
+                TOAST_QUEUE.push([message, type]);
+                while (TOAST_QUEUE.length > 3) TOAST_QUEUE.shift();
+                return null;
+            }
             const container = document.getElementById('toast-container');
+            positionToastContainer(); // b219: вдруг меню поменяло высоту — стек остаётся под ним
             const toast = document.createElement('div');
-            toast.className = `pointer-events-auto w-full px-4 py-3 rounded-xl shadow-xl border text-sm font-medium flex items-center space-x-2 transition-all transform -translate-y-2 opacity-0 ${
-                type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200' :
-                type === 'refund' ? 'bg-amber-950/90 border-amber-500/40 text-amber-200' :
-                type === 'error' ? 'bg-rose-950/90 border-rose-500/40 text-rose-200' :
-                'bg-slate-900/90 border-slate-700 text-slate-200'
-            }`;
+            // b217: Liquid Glass — стеклянная база одна, оттенок типа задают CSS-переменные
+            const lqType = ['success', 'refund', 'error', 'music'].includes(type) ? type : 'info';
+            toast.className = `lq-toast lq-${lqType} pointer-events-auto w-full px-3.5 py-3 flex items-center gap-3 transform -translate-y-3 opacity-0`;
             // b19: иконка по типу (ошибка — крестик, иначе сообщения о музыке/ссылках терялись)
             const toastIcon = type === 'refund' ? 'fa-coins' : type === 'error' ? 'fa-circle-xmark' : type === 'music' ? 'fa-music' : 'fa-check-circle';
-            toast.innerHTML = `<i class="fa-solid ${toastIcon}"></i><span>${message}</span>`;
+            toast.innerHTML = `<span class="lq-chip"><i class="fa-solid ${toastIcon}"></i></span><span class="lq-msg">${message}</span>`;
             container.appendChild(toast);
             // b86: не больше 4 живых тостов — залпы событий не заваливают экран и DOM
             while (container.childElementCount > 4) container.removeChild(container.firstChild);
-            setTimeout(() => toast.classList.remove('-translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => toast.classList.remove('-translate-y-3', 'opacity-0'), 10);
             setTimeout(() => {
-                toast.classList.add('-translate-y-2', 'opacity-0');
-                setTimeout(() => toast.remove(), 300);
+                toast.classList.add('-translate-y-3', 'opacity-0');
+                setTimeout(() => toast.remove(), 500);
             }, 3000);
             return toast;
         }
@@ -6739,11 +6813,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
             showToast('🔄 Биржа обновляется…', 'info');
         }
 
-        // взвешенный выбор символа: JACKPOT редок (вес 2 против 10)
-        // b183: джекпот срывают чаще — свой вес золотого символа у Слотов и у Сетки.
-        // Слоты: вес 6 из 56 = 10.7% на барабан (было 2 из 52 = 3.8%) → три подряд ≈ 1 из 820 спинов (было 1 из 20 800).
-        // Сетка: вес 4 из 54 = 7.4% на ячейку, поле 20 ячеек → 3+ карт JACKPOT ≈ 1 из 6 спинов (было 1 из 25).
-        const SLOTS_JP_W = 6, GRID_JP_W = 4;
+        // взвешенный выбор символа: JACKPOT редок
+        // b220: джекпот выпадает РЕЖЕ (жалоба «слишком часто»):
+        // Слоты: вес 3 из 53 ≈ 5.7% на барабан (было 6 → три подряд ≈ 1 из 820) → три подряд ≈ 1 из 5 500 спинов.
+        // Сетка: вес 2 на ячейку (было 4 → 3+ карт ≈ 1 из 6 спинов) → 3+ карт JACKPOT ≈ 1 из 25 спинов.
+        const SLOTS_JP_W = 3, GRID_JP_W = 2;
         function slotsWeightedRand(jw) {
             const syms = slots.symbols;
             if (!syms.length) return 0;
@@ -9229,9 +9303,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             for (let i = 0; i < slots.symbols.length; i++) if (slots.symbols[i].jackpot) jp = slots.symbols[i];
             lines.pool = pick.concat([jp || { id: 'sym-jackpot', name: 'JACKPOT', rarity: 'legendary', image: '', jackpot: true }]);
         }
-        // b183: JACKPOT в Линиях выпадает чаще — 3 из 25 на ячейку (было 1 из 25),
-        // остальные 22 равномерно делятся между тремя картами линии. Три JACKPOT подряд ≈ 1 из 70 спинов (было 1 из 1730).
-        const LINES_JP_W = 3;
+        // b220: JACKPOT в Линиях снова редок — 1 из 25 на ячейку (было 3 из 25 → ≈1 из 70 спинов),
+        // остальные 24 равномерно делятся между тремя картами линии. Три JACKPOT подряд ≈ 1 из 1 730 спинов.
+        const LINES_JP_W = 1;
         function linesRand() {
             const r = Math.random() * 25;
             if (r < LINES_JP_W) return 3; // JACKPOT
@@ -9664,8 +9738,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         // ============ b74: КОЛЕСО ФОРТУНЫ (3D) ============
         // 16 секторов-призов: множители ставки, случайная карта сайта, кирка +1.
-        // b183: золотых секторов JACKPOT теперь два (1 из 8 спинов) — один пустой сектор отдали джекпоту.
-        // Пустые сектора пополняют общий джекпот (как проигрышный спин).
+        // b220: золотой сектор JACKPOT один (1 из 16 спинов) — как до b183; пустые сектора пополняют общий джекпот.
         const WHEEL_SECTORS = [
             { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
             { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
@@ -9679,7 +9752,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { t: 'mult', m: 1.5, label: '×1.5', color: 0x14b8a6 },
             { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
             { t: 'mine',          label: 'КИРКА', color: 0xd97706 },
-            { t: 'jackpot',       label: 'JACKPOT', color: 0xfbbf24 }, // b183: второй золотой сектор вместо пустого — 1 из 8 (было 1 из 16)
+            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b }, // b220: второй золотой сектор убран — джекпот снова 1 из 16 спинов (было 1 из 8)
             { t: 'mult', m: 3,   label: '×3',   color: 0xd946ef },
             { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
             { t: 'mult', m: 5,   label: '×5',   color: 0xeab308 }
@@ -11820,7 +11893,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!pack) { b.classList.add('hidden'); return; }
             b.classList.remove('hidden');
             const price = packSalePrice(pack);
-            b.innerHTML = '<i class="fa-solid fa-cart-plus mr-1"></i>Купить пак · <i class="fa-solid fa-coins mr-0.5"></i>' + fmtCoins(price);
+            b.innerHTML = '<i class="fa-solid fa-cart-plus mr-1.5"></i>Купить пак · <i class="fa-solid fa-coins mr-1"></i>' + fmtCoins(price);
             b.title = 'Купить ещё один пак «' + pack.title + '» за ' + fmtCoins(price) + ' монет, не закрывая окно вскрытия';
         }
 
@@ -12261,6 +12334,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             document.getElementById('modal-unboxing').classList.add('hidden');
             PackMusic.stop(); // b19: окно закрыли — музыка точно не играет
             currentUnboxingPack = null;
+            flushToastQueue(); // b218: накопленные за вскрытие уведомления выходят каскадом
         }
 
         // ============ b18: АЛЬБОМ 2.0 — ФИЛЬТРЫ, ПОИСК, КОПИИ ============
