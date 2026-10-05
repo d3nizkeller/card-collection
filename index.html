@@ -855,6 +855,81 @@ Check your Browserslist config to be sure that your targets are set up correctly
             #hdr-nav{padding:3px}
             #hdr-nav>button{padding-left:8px;padding-right:8px;font-size:11.5px}
         }
+        /* ===== b178: КОТИК-ШАХТЁР: спит в панели прокачки, а на новом уровне мяукает и танцует ===== */
+        #miner-cat-box{position:relative;overflow:hidden;transition:box-shadow .3s,border-color .3s}
+        #miner-cat-box.dancing{border-color:rgba(251,191,36,.55);box-shadow:0 0 0 1px rgba(251,191,36,.18),0 10px 34px -14px rgba(251,191,36,.5)}
+        #miner-cat-stage{position:relative;height:116px;display:flex;align-items:flex-end;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+        #miner-cat-stage svg{width:118px;height:118px;display:block;overflow:visible;transform-origin:50% 92%;animation:catBreathe 3.4s ease-in-out infinite}
+        .dancing #miner-cat-stage svg{animation:catDance .46s ease-in-out infinite}
+        #kc-body{transform-origin:60px 100px;animation:catSway 3.4s ease-in-out infinite}
+        .dancing #kc-body{animation:catWiggle .46s ease-in-out infinite}
+        #kc-head{transform-origin:60px 74px;animation:catHead 3.4s ease-in-out infinite}
+        .dancing #kc-head{animation:catHeadBob .46s ease-in-out infinite}
+        #kc-tail-up{transform-origin:85px 100px;animation:catTail 2.6s ease-in-out infinite}
+        .dancing #kc-tail-up{animation:catTailFast .3s linear infinite}
+        #kc-paw-r{transform-origin:66px 95px}
+        .dancing #kc-paw-r{animation:catPawWave .46s ease-in-out infinite}
+        #kc-ear-l{transform-origin:46px 48px}
+        #kc-ear-r{transform-origin:74px 48px}
+        .dancing #kc-ear-l{animation:catEar .62s ease-in-out infinite}
+        .dancing #kc-ear-r{animation:catEar .62s ease-in-out .1s infinite}
+        .dancing #kc-lamp-glow{animation:catLamp .46s ease-in-out infinite}
+        @keyframes catBreathe{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.025,.985) translateY(1.5px)}}
+        @keyframes catSway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+        @keyframes catHead{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+        @keyframes catTail{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(9deg)}}
+        @keyframes catDance{0%{transform:translateY(0) rotate(-7deg)}25%{transform:translateY(-12px) rotate(0deg)}50%{transform:translateY(0) rotate(7deg)}75%{transform:translateY(-10px) rotate(0deg)}100%{transform:translateY(0) rotate(-7deg)}}
+        @keyframes catWiggle{0%,100%{transform:scale(1.04,.95)}50%{transform:scale(.96,1.05)}}
+        @keyframes catHeadBob{0%,100%{transform:rotate(-9deg) translateY(1px)}50%{transform:rotate(9deg) translateY(-1px)}}
+        @keyframes catTailFast{0%{transform:rotate(-24deg)}50%{transform:rotate(26deg)}100%{transform:rotate(-24deg)}}
+        @keyframes catPawWave{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-88deg)}}
+        @keyframes catEar{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-11deg)}}
+        @keyframes catLamp{0%,100%{opacity:.85}50%{opacity:.2}}
+        #kc-zzz,#kc-notes,#kc-confetti{display:none}
+        .sleeping #kc-zzz{display:block}
+        .dancing #kc-notes{display:block}
+        #kc-zzz span{position:absolute;right:8px;font-weight:900;color:#93c5fd;text-shadow:0 2px 8px rgba(0,0,0,.65);opacity:0;animation:catZzz 2.8s linear infinite}
+        #kc-zzz span:nth-child(1){bottom:66px;font-size:10px;animation-delay:0s}
+        #kc-zzz span:nth-child(2){bottom:80px;font-size:13px;animation-delay:.9s}
+        #kc-zzz span:nth-child(3){bottom:94px;font-size:16px;animation-delay:1.8s}
+        @keyframes catZzz{0%{opacity:0;transform:translate(0,6px) scale(.6) rotate(-8deg)}18%{opacity:.95}70%{opacity:.5}100%{opacity:0;transform:translate(14px,-20px) scale(1.15) rotate(9deg)}}
+        #kc-notes span{position:absolute;font-size:14px;opacity:0;animation:catNote 1.25s ease-out infinite;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+        #kc-notes span:nth-child(1){left:8px;bottom:62px;animation-delay:0s}
+        #kc-notes span:nth-child(2){right:8px;bottom:70px;animation-delay:.3s}
+        #kc-notes span:nth-child(3){left:18px;bottom:88px;animation-delay:.62s}
+        #kc-notes span:nth-child(4){right:18px;bottom:94px;animation-delay:.92s}
+        @keyframes catNote{0%{opacity:0;transform:translate(0,6px) scale(.6) rotate(0deg)}25%{opacity:1}100%{opacity:0;transform:translate(7px,-30px) scale(1.15) rotate(22deg)}}
+        #kc-confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+        #kc-confetti i{position:absolute;left:50%;bottom:46px;font-style:normal;font-size:13px;animation:catConf .95s ease-out forwards}
+        @keyframes catConf{0%{opacity:1;transform:translate(-50%,0) scale(.6) rotate(0deg)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),var(--dy,-70px)) scale(1.15) rotate(var(--rz,200deg))}}
+        #kc-bubble{position:relative;margin:0 auto;max-width:290px;padding:5px 10px;border-radius:12px;background:rgba(15,23,42,.9);border:1px solid rgba(51,65,85,.9);color:#e2e8f0;font-size:10.5px;font-weight:700;text-align:center;transition:border-color .25s,color .25s}
+        #kc-bubble:before{content:'';position:absolute;left:50%;top:-5px;width:8px;height:8px;margin-left:-4px;background:rgba(15,23,42,.9);border-left:1px solid rgba(51,65,85,.9);border-top:1px solid rgba(51,65,85,.9);transform:rotate(45deg)}
+        .meowing #kc-bubble{border-color:rgba(251,191,36,.6);color:#fde68a}
+        .dancing #kc-bubble{border-color:rgba(52,211,153,.5);color:#a7f3d0}
+        @media (max-width:639px){
+            #miner-cat-stage{height:96px}
+            #miner-cat-stage svg{width:98px;height:98px}
+            #kc-bubble{font-size:10px}
+        }
+        /* ===== b179: КОТИК-ШАХТЁР: эмоции чётко — сон виден сразу (темно, тихо, 💤), бодрствование — ярко (свечение, моргание, улыбка) ===== */
+        #miner-cat-stage.sleeping svg{filter:brightness(.66) saturate(.72);animation:catSleepBreathe 4.8s ease-in-out infinite}
+        @keyframes catSleepBreathe{0%,100%{transform:scale(1) translateY(1px)}50%{transform:scale(1.035,.975) translateY(2.5px)}}
+        #kc-tail-sleep{transform-origin:84px 106px;animation:catTailSleep 5.2s ease-in-out infinite}
+        @keyframes catTailSleep{0%,100%{transform:rotate(0deg)}50%{transform:rotate(5deg)}}
+        #kc-eyes-open{transform-origin:60px 58px;animation:catBlink 4.4s infinite}
+        @keyframes catBlink{0%,90%,100%{transform:scaleY(1)}93%{transform:scaleY(.08)}96%{transform:scaleY(1)}}
+        #miner-cat-box.meowing{border-color:rgba(251,191,36,.45);box-shadow:0 0 0 1px rgba(251,191,36,.14),0 10px 30px -14px rgba(251,191,36,.4)}
+        .meowing #kc-ear-l{animation:catEarTwitch 3.8s ease-in-out infinite}
+        .meowing #kc-ear-r{animation:catEarTwitch 3.8s ease-in-out 1.9s infinite}
+        @keyframes catEarTwitch{0%,86%,100%{transform:rotate(0deg)}90%{transform:rotate(-9deg)}94%{transform:rotate(4deg)}}
+        #miner-cat-stage.waking svg{animation:catWake 1s ease-out 1}
+        @keyframes catWake{0%{transform:scale(1) translateY(2px)}30%{transform:scale(1.06,.93) translateY(3px)}55%{transform:scale(.97,1.05) translateY(-4px)}100%{transform:scale(1) translateY(0)}}
+        #miner-cat-stage.petting svg{animation:catPetHop .5s ease-in-out 1}
+        @keyframes catPetHop{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-9px) scale(1.03,.97)}60%{transform:translateY(0) scale(.98,1.02)}}
+        @media (prefers-reduced-motion:reduce){
+            #miner-cat-stage svg,#kc-body,#kc-head,#kc-tail-up,.dancing #miner-cat-stage svg,.dancing #kc-body,.dancing #kc-head,.dancing #kc-tail-up,.dancing #kc-paw-r,.dancing #kc-ear-l,.dancing #kc-ear-r,#kc-eyes-open,#kc-tail-sleep,#miner-cat-stage.sleeping svg,#miner-cat-stage.waking svg,#miner-cat-stage.petting svg,.meowing #kc-ear-l,.meowing #kc-ear-r{animation:none}
+        }
+
         @media (min-width:1280px){
             #hdr-wordmark h1{font-size:22px}
             #hdr-wordmark p{font-size:10px}
@@ -1363,6 +1438,73 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-center gap-2 mt-4">
                             <button id="miner-btn" onclick="minerUpgrade()" class="px-4 py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — 20</button>
                             <span class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Каждый уровень: +1 монета/сек. Цена растёт ×1.9.</span>
+                        </div>
+                        <!-- b178: котик-шахтёр: спит в панели прокачки, на новом уровне мяукает и танцует (тап по котику = «мяу») -->
+                        <div id="miner-cat-box" class="mt-4 rounded-2xl bg-slate-950/60 border border-slate-800 p-2.5">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                <p class="text-[9px] uppercase tracking-wider text-slate-500 font-bold"><i class="fa-solid fa-paw text-amber-400 mr-1"></i>Котик-шахтёр</p>
+                                <p id="miner-cat-state" class="text-[10px] font-black text-sky-300">💤 спит</p>
+                            </div>
+                            <div id="miner-cat-stage" class="sleeping" onclick="minerCatPet()" title="Погладить котика — мяукнет" role="button" aria-label="Котик-шахтёр: погладить">
+                                <div id="kc-confetti" aria-hidden="true"></div>
+                                <div id="kc-zzz" aria-hidden="true"><span>z</span><span>z</span><span>Z</span></div>
+                                <div id="kc-notes" aria-hidden="true"><span>🎵</span><span>🎶</span><span>♪</span><span>🎵</span></div>
+                                <svg viewBox="0 0 120 122" aria-hidden="true">
+                                    <defs>
+                                        <radialGradient id="kc-lamp-grad" cx="50%" cy="50%" r="50%">
+                                            <stop offset="0%" stop-color="#fffbeb" stop-opacity=".9"/>
+                                            <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
+                                        </radialGradient>
+                                    </defs>
+                                    <ellipse cx="60" cy="115" rx="35" ry="5" fill="#000" opacity=".35"/>
+                                    <g id="kc-tail-sleep" fill="none" stroke-linecap="round"><path d="M84 106q19 6 26-7" stroke="#0f172a" stroke-width="13"/><path d="M84 106q19 6 26-7" stroke="#f59e0b" stroke-width="9"/></g>
+                                    <g id="kc-tail-up" fill="none" stroke-linecap="round"><path d="M86 100q19-5 20-26" stroke="#0f172a" stroke-width="13"/><path d="M86 100q19-5 20-26" stroke="#f59e0b" stroke-width="9"/></g>
+                                    <g id="kc-body">
+                                        <ellipse cx="60" cy="93" rx="28" ry="22" fill="#0f172a"/>
+                                        <ellipse cx="60" cy="93" rx="25" ry="19.5" fill="#f59e0b"/>
+                                        <ellipse cx="60" cy="98" rx="15" ry="12.5" fill="#fde68a"/>
+                                        <path d="M41 83q6 5 11 1M40 92q7 5 12 1M42 101q6 4 10 1" stroke="#b45309" stroke-width="2.2" fill="none" stroke-linecap="round" opacity=".5"/>
+                                        <rect x="36" y="103" width="13" height="10" rx="5" fill="#0f172a"/>
+                                        <rect x="37.5" y="104.5" width="10" height="7" rx="3.5" fill="#fbbf24"/>
+                                        <rect x="71" y="103" width="13" height="10" rx="5" fill="#0f172a"/>
+                                        <rect x="72.5" y="104.5" width="10" height="7" rx="3.5" fill="#fbbf24"/>
+                                    </g>
+                                    <g id="kc-paw-l"><rect x="44" y="93" width="9" height="17" rx="4.5" fill="#0f172a"/><rect x="45.4" y="94.4" width="6.2" height="14" rx="3.1" fill="#f59e0b"/></g>
+                                    <g id="kc-paw-r"><rect x="64" y="93" width="9" height="17" rx="4.5" fill="#0f172a"/><rect x="65.4" y="94.4" width="6.2" height="14" rx="3.1" fill="#f59e0b"/></g>
+                                    <g id="kc-head">
+                                        <g id="kc-ear-l"><path d="M41 52 37.5 29.5 57 44.5Z" fill="#0f172a"/><path d="M42.6 50.5 40.2 34.5 54.2 45.4Z" fill="#f59e0b"/><path d="M43.8 48.5 42.4 39 51 45.4Z" fill="#fda4af"/></g>
+                                        <g id="kc-ear-r"><path d="M79 52 82.5 29.5 63 44.5Z" fill="#0f172a"/><path d="M77.4 50.5 79.8 34.5 65.8 45.4Z" fill="#f59e0b"/><path d="M76.2 48.5 77.6 39 69 45.4Z" fill="#fda4af"/></g>
+                                        <circle cx="60" cy="54" r="24.6" fill="#0f172a"/>
+                                        <circle cx="60" cy="54" r="22" fill="#f59e0b"/>
+                                        <ellipse cx="60" cy="63" rx="13.5" ry="9" fill="#fde68a"/>
+                                        <path d="M50 39q3 6 0 10M60 37q3 6 0 10M70 39q3 6 0 10" stroke="#b45309" stroke-width="2" fill="none" stroke-linecap="round" opacity=".4"/>
+                                        <path d="M60 24 50 49h20Z" fill="#fef3c7" opacity=".18"/>
+                                        <path d="M37 49a23 23 0 0 1 46 0v2H37Z" fill="#1e293b"/>
+                                        <path d="M37 49a23 23 0 0 1 46 0" fill="none" stroke="#fbbf24" stroke-width="3"/>
+                                        <rect x="35" y="46" width="50" height="5.5" rx="2.75" fill="#334155"/>
+                                        <circle id="kc-lamp-glow" cx="60" cy="21" r="10" fill="url(#kc-lamp-grad)"/>
+                                        <circle cx="60" cy="21" r="5.2" fill="#0f172a"/>
+                                        <circle cx="60" cy="21" r="3.7" fill="#fde68a"/>
+                                        <circle cx="58.8" cy="19.8" r="1.2" fill="#fffbeb"/>
+                                        <g id="kc-eyes-open">
+                                            <ellipse cx="51" cy="58" rx="3.9" ry="4.5" fill="#0f172a"/>
+                                            <ellipse cx="69" cy="58" rx="3.9" ry="4.5" fill="#0f172a"/>
+                                            <circle cx="52.4" cy="56.4" r="1.35" fill="#fff"/>
+                                            <circle cx="70.4" cy="56.4" r="1.35" fill="#fff"/>
+                                        </g>
+                                        <g id="kc-eyes-closed" fill="none" stroke="#0f172a" stroke-width="2.2" stroke-linecap="round"><path d="M47 58.5q4 3.4 8 0"/><path d="M65 58.5q4 3.4 8 0"/></g>
+                                        <path d="M60 62.6 57.4 65.6h5.2Z" fill="#fb7185"/>
+                                        <g id="kc-mouth-sleep" fill="none" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"><path d="M57 68.5q3 2 6 0"/></g>
+                                        <g id="kc-mouth-smile" fill="none" stroke="#0f172a" stroke-width="1.8" stroke-linecap="round"><path d="M55.4 67.6q2.3 2.8 4.6 0q2.3 2.8 4.6 0"/></g>
+                                        <g id="kc-mouth-open"><ellipse cx="60" cy="69" rx="4.8" ry="4.3" fill="#7f1d1d"/><path d="M56.4 71.2q3.6 3 7.2 0Z" fill="#fb7185"/></g>
+                                        <g stroke="#e2e8f0" stroke-width="1.3" stroke-linecap="round" opacity=".6"><path d="M47 64 30 61M47 67 30 67.5M47 70 31 74M73 64 90 61M73 67 90 67.5M73 70 89 74"/></g>
+                                        <circle cx="44.5" cy="63.5" r="3.4" fill="#fb7185" opacity=".3"/>
+                                        <circle cx="75.5" cy="63.5" r="3.4" fill="#fb7185" opacity=".3"/>
+                                    </g>
+                                </svg>
+                            </div>
+                            <p id="kc-bubble">Котик спит и видит руду… 💤</p>
+                            <p class="text-[9px] text-slate-600 text-center mt-1.5">Спит в темноте, пока копилка не набрана. Накопил — <b class="text-amber-300">просыпается, моргает и улыбается</b>. Прокачал кирку — <b class="text-amber-400">мяукает и танцует</b>! Тап = погладить: подскок и сердечки.</p>
                         </div>
                     </div>
 <div class="rules-card">
@@ -2559,7 +2701,37 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     case 'packBurst': this.noise(0.4, 0.25, 0, 1200); this.tone(80, 0.4, 'sawtooth', 0.16, 0, 220); break;
                     case 'whoosh': this.noise(0.25, 0.09, 0, 4500); break;
                     case 'tear': this.noise(0.3, 0.22, 0, 3200); this.tone(900, 0.28, 'sawtooth', 0.05, 0, 160); this.noise(0.18, 0.12, 0.12, 5200); break;
+                    case 'meow': this.meow(0, 1); break;          // b178: «мяу» котика-шахтёра
+                    case 'meow2': this.meow(0, 1); this.meow(0.42, 0.8); break;
                 }
+            },
+            // b178: синтез кошачьего «мяу»: пила с глиссандо вверх-вниз + вибрато, полосовой фильтр и «мяу»-огибающая
+            meow(when = 0, vol = 1) {
+                if (!this.enabled) return;
+                const ctx = this.ensure(); if (!ctx) return;
+                try {
+                    const t0 = ctx.currentTime + (when || 0), d = 0.56;
+                    const o = ctx.createOscillator(); o.type = 'sawtooth';
+                    o.frequency.setValueAtTime(400, t0);
+                    o.frequency.exponentialRampToValueAtTime(790, t0 + 0.17);
+                    o.frequency.exponentialRampToValueAtTime(630, t0 + 0.33);
+                    o.frequency.exponentialRampToValueAtTime(330, t0 + d);
+                    const vib = ctx.createOscillator(); vib.frequency.value = 20;
+                    const vg = ctx.createGain(); vg.gain.value = 20;
+                    vib.connect(vg); vg.connect(o.frequency);
+                    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 3.4;
+                    f.frequency.setValueAtTime(700, t0);
+                    f.frequency.exponentialRampToValueAtTime(1500, t0 + 0.18);
+                    f.frequency.exponentialRampToValueAtTime(620, t0 + d);
+                    const g = ctx.createGain();
+                    g.gain.setValueAtTime(0.0001, t0);
+                    g.gain.exponentialRampToValueAtTime(0.19 * vol, t0 + 0.08);
+                    g.gain.setValueAtTime(0.19 * vol, t0 + 0.26);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+                    o.connect(f); f.connect(g); g.connect(ctx.destination);
+                    o.start(t0); vib.start(t0); o.stop(t0 + d + 0.06); vib.stop(t0 + d + 0.06);
+                    this.noise(0.1, 0.02, when || 0, 2600); // «м» в начале
+                } catch (e) {}
             }
         };
 
@@ -3155,13 +3327,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const tryNext = () => {
                 if (i >= cands.length) return; // текстура нарисуется без арта
                 const url = cands[i++];
+                const load = (s) => {
+                    try {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => { try { onLoad(img); } catch (e) {} };
+                        img.onerror = () => { tryNext(); };
+                        img.src = s;
+                    } catch (e) { tryNext(); }
+                };
+                // b180: сначала из постоянного кэша (мгновенно), иначе сеть + копия на будущее
                 try {
-                    const img = new Image();
-                    img.crossOrigin = 'anonymous';
-                    img.onload = () => { try { onLoad(img); } catch (e) {} };
-                    img.onerror = () => { tryNext(); };
-                    img.src = url;
-                } catch (e) { tryNext(); }
+                    imgCacheObjUrl(url).then(ou => {
+                        if (ou) { load(ou); return; }
+                        load(url);
+                        imgCacheStoreFromNetwork(url);
+                    }).catch(() => load(url));
+                } catch (e) { load(url); }
             };
             tryNext();
         }
@@ -4191,12 +4373,21 @@ Check your Browserslist config to be sure that your targets are set up correctly
         const IMG_CONC = 4; // параллельно, чтобы не забивать канал
         function imgPreloadOne(url) {
             return new Promise(res => {
-                const im = new Image();
-                im.decoding = 'async';
                 const done = () => { IMG_PRELOADED.add(url); res(); };
-                im.onload = () => { try { if (im.decode) im.decode().then(done, done); else done(); } catch (e) { done(); } };
-                im.onerror = done;
-                im.src = url;
+                const warm = (s) => {
+                    const im = new Image();
+                    im.decoding = 'async';
+                    im.onload = () => { try { if (im.decode) im.decode().then(done, done); else done(); } catch (e) { done(); } };
+                    im.onerror = done;
+                    im.src = s;
+                };
+                // b180: арт уже в постоянном кэше — сеть не трогаем вовсе
+                try {
+                    imgCacheObjUrl(url).then(ou => {
+                        if (ou) { warm(ou); return; }
+                        imgCacheStoreFromNetwork(url).then(ou2 => warm(ou2 || url), () => warm(url));
+                    }).catch(() => warm(url));
+                } catch (e) { warm(url); }
             });
         }
         function imgPump() {
@@ -4234,10 +4425,181 @@ Check your Browserslist config to be sure that your targets are set up correctly
             try {
                 (state.packs || []).slice(0, 6).forEach(p => {
                     if (!p.image) return;
+                    const u = mediaUrl(p.image);
+                    if (IMG_OBJ.has(u)) return; // b180: постер уже в постоянном кэше — preload не нужен
                     const l = document.createElement('link');
-                    l.rel = 'preload'; l.as = 'image'; l.href = mediaUrl(p.image);
+                    l.rel = 'preload'; l.as = 'image'; l.href = u;
                     document.head.appendChild(l);
                 });
+            } catch (e) {}
+        }
+
+        // ============ b180: ПОСТОЯННЫЙ КЭШ КАРТИНОК (IndexedDB) ============
+        // Жалоба игроков: арты каждый раз «прогружаются» заново — HTTP-кэш браузера ненадёжен
+        // (мобильные, чистки, revalidate), а предзагрузка b130 живёт только до перезахода.
+        // Теперь скачанные картинки хранятся блобами в IndexedDB: при следующем визите
+        // <img> мгновенно подменяется на локальный blob:URL — без единого сетевого запроса.
+        const IMG_DB_NAME = 'nx-img-cache', IMG_DB_STORE = 'img';
+        const IMG_CACHE_MAX_BYTES = 120 * 1024 * 1024; // LRU-лимит постоянного кэша ~120 МБ
+        const IMG_CACHE_MAX_BLOB = 8 * 1024 * 1024;    // одиночные файлы крупнее 8 МБ не храним
+        const IMG_OBJ = new Map();   // url -> blob:URL (память сессии, для мгновенной подмены)
+        const IMG_OBJ_MAX = 100;     // сколько blob:URL держим в памяти одновременно
+        const IMG_FAIL = new Set();  // URL, не отдавшие копию (CORS/сеть) — не мучаем повторно
+        let imgSaving = new Set();   // прямо сейчас сохраняем
+        let imgDbPromise = null;
+        function imgDb() {
+            if (!('indexedDB' in window)) return Promise.resolve(null);
+            if (!imgDbPromise) {
+                imgDbPromise = new Promise(res => {
+                    let done = false;
+                    const fin = db => { if (!done) { done = true; res(db); } };
+                    try {
+                        const rq = indexedDB.open(IMG_DB_NAME, 1);
+                        rq.onupgradeneeded = () => { try { const db = rq.result; if (!db.objectStoreNames.contains(IMG_DB_STORE)) db.createObjectStore(IMG_DB_STORE); } catch (e) {} };
+                        rq.onsuccess = () => fin(rq.result);
+                        rq.onerror = () => fin(null);
+                        rq.onblocked = () => fin(null);
+                        setTimeout(() => fin(null), 4000); // кэш не должен блокировать игру
+                    } catch (e) { fin(null); }
+                });
+            }
+            return imgDbPromise;
+        }
+        function imgCacheGetBlob(url) {
+            return imgDb().then(db => new Promise(res => {
+                if (!db) return res(null);
+                try {
+                    const rq = db.transaction(IMG_DB_STORE, 'readonly').objectStore(IMG_DB_STORE).get(url);
+                    rq.onsuccess = () => res(rq.result && rq.result.blob ? rq.result.blob : null);
+                    rq.onerror = () => res(null);
+                } catch (e) { res(null); }
+            })).catch(() => null);
+        }
+        function imgCachePut(url, blob) {
+            return imgDb().then(db => new Promise(res => {
+                if (!db || !blob || !blob.size) return res(false);
+                try {
+                    const tx = db.transaction(IMG_DB_STORE, 'readwrite');
+                    tx.objectStore(IMG_DB_STORE).put({ blob: blob, ts: Date.now(), size: blob.size }, url);
+                    tx.oncomplete = () => { imgCacheTrim(db); res(true); };
+                    tx.onerror = () => res(false);
+                    tx.onabort = () => res(false);
+                } catch (e) { res(false); }
+            })).catch(() => false);
+        }
+        function imgCacheTrim(db) { // LRU-чистка: если кэш разросся — удаляем самое старое
+            try {
+                const st = db.transaction(IMG_DB_STORE, 'readwrite').objectStore(IMG_DB_STORE);
+                const items = [];
+                const cur = st.openCursor();
+                cur.onsuccess = () => {
+                    try {
+                        const c = cur.result;
+                        if (c) { const v = c.value || {}; items.push({ key: c.key, size: v.size || 0, ts: v.ts || 0 }); c.continue(); return; }
+                        let total = items.reduce((s, x) => s + x.size, 0);
+                        if (total <= IMG_CACHE_MAX_BYTES) return;
+                        items.sort((a, b) => a.ts - b.ts); // старейшие первыми
+                        for (const it of items) {
+                            if (total <= IMG_CACHE_MAX_BYTES) break;
+                            try { st.delete(it.key); } catch (e) {}
+                            total -= it.size;
+                        }
+                    } catch (e) {}
+                };
+                cur.onerror = () => {};
+            } catch (e) {}
+        }
+        function imgCacheTouch(url, ou) { // LRU «памяти»: свежая запись в конец, хвост отзываем
+            try {
+                IMG_OBJ.delete(url); IMG_OBJ.set(url, ou);
+                while (IMG_OBJ.size > IMG_OBJ_MAX) {
+                    const oldest = IMG_OBJ.keys().next().value;
+                    const old = IMG_OBJ.get(oldest);
+                    IMG_OBJ.delete(oldest);
+                    try { URL.revokeObjectURL(old); } catch (e) {}
+                }
+            } catch (e) {}
+        }
+        function imgCacheObjUrl(url) { // Promise<string|null> — blob:URL закэшированной картинки
+            const hit = IMG_OBJ.get(url);
+            if (hit) { imgCacheTouch(url, hit); return Promise.resolve(hit); }
+            return imgCacheGetBlob(url).then(blob => {
+                if (!blob) return null;
+                try { const ou = URL.createObjectURL(blob); imgCacheTouch(url, ou); return ou; } catch (e) { return null; }
+            }).catch(() => null);
+        }
+        function imgCacheStoreFromNetwork(url) { // скачать копию в постоянный кэш (fetch из HTTP-кэша)
+            const mem = IMG_OBJ.get(url);
+            if (mem) return Promise.resolve(mem);
+            if (!url || String(url).indexOf('http') !== 0) return Promise.resolve(null);
+            if (!('fetch' in window) || IMG_FAIL.has(url) || imgSaving.has(url)) return Promise.resolve(null);
+            imgSaving.add(url);
+            return fetch(url, { cache: 'force-cache', credentials: 'omit' })
+                .then(r => { if (!r || !r.ok) throw new Error('bad'); return r.blob(); })
+                .then(blob => {
+                    imgSaving.delete(url);
+                    if (!blob || !blob.size || blob.size > IMG_CACHE_MAX_BLOB) return null;
+                    return imgCachePut(url, blob).then(ok => {
+                        if (!ok) return null;
+                        try { const ou = URL.createObjectURL(blob); imgCacheTouch(url, ou); return ou; } catch (e) { return null; }
+                    });
+                })
+                .catch(() => { imgSaving.delete(url); IMG_FAIL.add(url); return null; });
+        }
+        function imgCacheAttach(img) { // подключить один <img> к постоянному кэшу
+            try {
+                if (!img || img.__nxC || img.__nxPh) return;
+                const raw = img.getAttribute && img.getAttribute('src');
+                if (!raw || raw.indexOf('data:') === 0 || raw.indexOf('blob:') === 0) return;
+                const url = img.src; // абсолютный, уже после mediaUrl()-перезаписи зеркала
+                if (!url || url.indexOf('http') !== 0) return;
+                img.__nxC = 1;
+                const mem = IMG_OBJ.get(url);
+                if (mem) { // мгновенная подмена из памяти — без единого сетевого запроса
+                    imgCacheTouch(url, mem);
+                    if (!img.complete || !img.naturalWidth) img.src = mem;
+                    return;
+                }
+                imgCacheObjUrl(url).then(ou => {
+                    if (ou) {
+                        if (img.__nxPh || img.__nxMir) return; // уже ушёл в заглушку/зеркало
+                        if (img.complete && img.naturalWidth > 0) return; // сеть оказалась быстрее — не мигаем
+                        const cur = img.getAttribute('src') || '';
+                        if (!cur || cur.indexOf('blob:') === 0 || cur.indexOf('data:') === 0) return;
+                        img.src = ou;
+                        return;
+                    }
+                    // в кэше нет: грузится как раньше, но копию сохраним на следующий раз
+                    if (img.complete && img.naturalWidth > 0) { imgCacheStoreFromNetwork(url); return; }
+                    img.addEventListener('load', () => { if (!img.__nxPh) imgCacheStoreFromNetwork(url); }, { once: true });
+                }).catch(() => {});
+            } catch (e) {}
+        }
+        function imgCacheScan(root) {
+            try {
+                const scope = (root && root.querySelectorAll) ? root : document;
+                if (scope.tagName === 'IMG') { imgCacheAttach(scope); return; }
+                const list = scope.querySelectorAll('img');
+                for (let i = 0; i < list.length; i++) imgCacheAttach(list[i]);
+            } catch (e) {}
+        }
+        let imgCacheObs = null;
+        function startImageCache() { // стартует один раз из init: скан + наблюдатель за новыми <img>
+            imgCacheScan(document);
+            if (imgCacheObs || !('MutationObserver' in window)) return;
+            try {
+                imgCacheObs = new MutationObserver(muts => {
+                    for (let k = 0; k < muts.length; k++) {
+                        const added = muts[k].addedNodes;
+                        for (let i = 0; i < added.length; i++) {
+                            const n = added[i];
+                            if (!n || n.nodeType !== 1) continue;
+                            if (n.tagName === 'IMG') imgCacheAttach(n);
+                            else if (n.querySelectorAll) imgCacheScan(n);
+                        }
+                    }
+                });
+                imgCacheObs.observe(document.body || document.documentElement, { childList: true, subtree: true });
             } catch (e) {}
         }
 
@@ -5566,7 +5928,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
         function minerUpgrade() {
             const c = minerCost();
-            if (state.coins < c) { showToast('Не хватает монет: улучшение стоит ' + fmtCoins(c), 'error'); return; }
+            if (state.coins < c) {
+                showToast('Не хватает монет: улучшение стоит ' + fmtCoins(c), 'error');
+                // b178: котик сонно мявкает — мол, копи ещё
+                try {
+                    const poor = ['Мяу… монеток не хватает 😿', 'Рано! Копим до ' + fmtCoins(c) + ' монет…', '*сонно машет лапой* ещё чуть-чуть 💤', 'Мяу-мяу! Копилка пустая — я спать.'];
+                    minerCatDance(poor[(Math.random() * poor.length) | 0], 1600, false);
+                } catch (e) {}
+                return;
+            }
             state.coins -= c;
             miner.lvl += 1;
             state.stats.minerLvl = miner.lvl; // b61: награды по играм видят уровень кирки
@@ -5576,6 +5946,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             updateCoinDisplay();
             checkAchievements(); // b61
             showToast('⛏ Кирка ' + miner.lvl + ' уровня: теперь ' + fmtCoins(minerRate()) + ' монет/сек', 'success');
+            try { minerCatCelebrate(miner.lvl); } catch (e) {} // b178: котик мяукает и танцует за повышение уровня
         }
         function renderMiner() {
             const b = document.getElementById('miner-balance'); if (b) b.textContent = fmtCoins(state.coins);
@@ -5586,6 +5957,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const nx = document.getElementById('miner-next'); if (nx) nx.textContent = fmtCoins(Math.max(0, c - state.coins));
             const bar = document.getElementById('miner-prog'); if (bar) bar.style.width = Math.min(100, (state.coins / c) * 100).toFixed(1) + '%';
             const pl = document.getElementById('miner-prog-label'); if (pl) pl.textContent = fmtCoins(Math.min(state.coins, c)) + ' / ' + fmtCoins(c);
+            minerCatSettle(true); // b178: спит, пока не накопил на уровень (танец тиком не сбивается)
             const btn = document.getElementById('miner-btn');
             if (btn) {
                 btn.innerHTML = '<i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — ' + fmtCoins(c);
@@ -5593,6 +5965,198 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 btn.classList.toggle('opacity-40', state.coins < c);
                 btn.classList.toggle('cursor-not-allowed', state.coins < c);
             }
+            try { minerCatRender(); } catch (e) {} // b178
+        }
+
+        // ============ b178: КОТИК-ШАХТЁР ============
+        // Живёт в панели прокачки кирки: пока монет на улучшение не хватает — спит (💤),
+        // как только накопил — просыпается и точит когти. За каждый новый уровень кирки
+        // (и за приз «кирка +1» в Колесе Фортуны) мяукает и танцует ~3.6 сек, потом снова засыпает.
+        // Тап/клик по котику — погладить: короткое «мяу» и подскок.
+        const CAT_SLEEP_PHRASES = [
+            'Котик спит и видит руду… 💤',
+            '💤 «Мяу… копаем во сне…»',
+            'Спит. Хвост иногда дёргается — значит, копает.',
+            'Храпит в такт кирке: ⛏ … 💤 … ⛏ …',
+            'Свернулся клубком на тёплой породе и спит.',
+            '💤 Сон про гору монет. Не будить.'
+        ];
+        const CAT_READY_PHRASES = [
+            'Копилка полная! Котик проснулся и точит когти 🐾',
+            '👀 Монет хватает на уровень — котик уже не спит!',
+            'Ушки на макушке: жми «Улучшить кирку»!',
+            'Проснулся и следит за кнопкой улучшения 👀',
+            '🐾 Хвост трубой: можно качать кирку!'
+        ];
+        const CAT_DANCE_PHRASES = [
+            'МЯУ! Кирка {L} уровня — танцуем! 🕺',
+            'Мяу-мяу! +{R} монет/сек — праздник! 🎉',
+            'Уровень {L}! Котик отжигает в каске 🎶',
+            'Мяяяу! Шахта богаче — котик довольнее 💃',
+            'Новый уровень = новый танец! Мяу! ✨'
+        ];
+        const CAT_PET_PHRASES = [
+            'Мяу! 🐾',
+            'Мррр… 😽',
+            'Мяяяу! (довольно)',
+            'Фррр-мяу! 🐾',
+            '*мурчит и трётся о кирку* 💛',
+            'Мяу! Ещё монеток и потанцуем!'
+        ];
+        let minerCatMode = 'sleep';      // sleep | ready | dance
+        let minerCatTimer = null, minerCatConfT = null, minerCatWakeT = null, minerCatPetT = null; // b179: отдельные ручки
+        const MINER_CAT_DANCE_MS = 3600;
+
+        function minerCatBox() { return document.getElementById('miner-cat-box'); }
+
+        // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
+        function minerCatRender() {
+            const box = minerCatBox(); if (!box) return;
+            const stage = document.getElementById('miner-cat-stage');
+            const bubble = document.getElementById('kc-bubble');
+            const st = document.getElementById('miner-cat-state');
+            const mode = minerCatMode;
+            if (stage) {
+                stage.classList.toggle('sleeping', mode === 'sleep');
+                stage.classList.toggle('dancing', mode === 'dance');
+                stage.classList.toggle('meowing', mode === 'ready');
+            }
+            box.classList.toggle('dancing', mode === 'dance');
+            box.classList.toggle('meowing', mode === 'ready');
+            const setD = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+            setD('kc-eyes-closed', mode === 'sleep');
+            setD('kc-eyes-open', mode !== 'sleep');
+            setD('kc-mouth-open', mode === 'dance');   // b179: открытая пасть — только когда мяукает/танцует
+            setD('kc-mouth-smile', mode === 'ready');  // b179: бодрствует = довольная улыбка
+            setD('kc-mouth-sleep', mode === 'sleep');
+            setD('kc-tail-sleep', mode === 'sleep');
+            setD('kc-tail-sleep2', mode === 'sleep');
+            setD('kc-tail-up', mode !== 'sleep');
+            setD('kc-tail-up2', mode !== 'sleep');
+            if (st) {
+                st.textContent = mode === 'dance' ? '🎉 танцует и мяукает!' : (mode === 'ready' ? '👀 не спит — качай кирку!' : '💤 спит');
+                st.className = 'text-[10px] font-black ' + (mode === 'dance' ? 'text-emerald-300' : (mode === 'ready' ? 'text-amber-300' : 'text-sky-300'));
+            }
+            if (bubble && !bubble.dataset.locked) {
+                // b179: реплика выбирается ОДИН раз на состояние. Раньше renderMiner тикал
+                // каждую секунду и текст менялся секунду за секундой — сонный котик выглядел
+                // так, будто он не спит, а постоянно болтает.
+                if (minerCatSaidMode !== mode) { minerCatSaidMode = mode; minerCatSaidText = catSayFor(mode); }
+                if (bubble.textContent !== minerCatSaidText) bubble.textContent = minerCatSaidText;
+            }
+        }
+        let minerCatSleepI = 0;
+        function catSleepIdx() { return minerCatSleepI % CAT_SLEEP_PHRASES.length; }
+        // b179: текущая реплика котика — одна на эпизод состояния (сон/бодрствование), без мельтешения
+        let minerCatSaidMode = null, minerCatSaidText = '';
+        function catSayFor(mode) {
+            const arr = mode === 'dance' ? CAT_DANCE_PHRASES : (mode === 'ready' ? CAT_READY_PHRASES : CAT_SLEEP_PHRASES);
+            return catFill(arr[mode === 'sleep' ? catSleepIdx() : (Math.random() * arr.length) | 0]);
+        }
+        function catFill(s) {
+            return String(s).replace('{L}', miner.lvl).replace('{R}', fmtCoins(minerRate())).replace('{C}', fmtCoins(minerCost()));
+        }
+        function minerCatConfetti() {
+            const box = document.getElementById('kc-confetti'); if (!box) return;
+            const em = ['🎉', '✨', '⛏', '🪙', '🐾', '💛', '🎊', '⭐'];
+            let h = '';
+            for (let i = 0; i < 16; i++) {
+                const dx = Math.round((Math.random() * 2 - 1) * 88), dy = Math.round(-48 - Math.random() * 62);
+                const rz = Math.round((Math.random() * 2 - 1) * 300), dl = (Math.random() * 0.35).toFixed(2);
+                h += '<i style="--dx:' + dx + 'px;--dy:' + dy + 'px;--rz:' + rz + 'deg;animation-delay:' + dl + 's;left:' + (16 + Math.random() * 68).toFixed(1) + '%">' + em[(Math.random() * em.length) | 0] + '</i>';
+            }
+            box.innerHTML = h;
+            // отдельный таймер уборки: не трогает minerCatTimer (иначе сбивался бы отбой танца)
+            if (minerCatConfT) clearTimeout(minerCatConfT);
+            minerCatConfT = setTimeout(() => { minerCatConfT = null; const b2 = document.getElementById('kc-confetti'); if (b2) b2.innerHTML = ''; }, 1500);
+        }
+        // мяукает + танцует, потом сам засыпает/просыпается по состоянию копилки
+        function minerCatDance(text, ms, confetti) {
+            minerCatMode = 'dance';
+            const bubble = document.getElementById('kc-bubble');
+            if (bubble) { bubble.dataset.locked = '1'; bubble.textContent = catFill(text || CAT_DANCE_PHRASES[(Math.random() * CAT_DANCE_PHRASES.length) | 0]); }
+            minerCatRender();
+            if (confetti !== false) minerCatConfetti();
+            // «мяу» сразу и ещё раз в конце танца (второе мяу шлём звуковым оффсетом, без вложенных таймеров)
+            try { SoundFX.play('meow'); SoundFX.play('coin'); } catch (e) {}
+            try { if (SoundFX.enabled) SoundFX.meow(0.75, 0.85); } catch (e) {}
+            if (minerCatTimer) clearTimeout(minerCatTimer);
+            minerCatTimer = setTimeout(() => {
+                minerCatTimer = null;
+                if (bubble) delete bubble.dataset.locked;
+                minerCatSettle();
+            }, ms || MINER_CAT_DANCE_MS);
+        }
+        // «после танца»: хватает монет на уровень — бодрствует, иначе снова спит.
+        // fromTick=true — вызов из секундного renderMiner: танец там не прерываем.
+        function minerCatSettle(fromTick) {
+            if (fromTick && minerCatMode === 'dance') return;
+            const prev = minerCatMode;
+            const next = state.coins >= minerCost() ? 'ready' : 'sleep';
+            minerCatMode = next;
+            if (next !== prev) { // b179: смена эмоции только на переходе — сон спокойный, без ежесекундной болтовни
+                minerCatSaidMode = null; // следующая перерисовка возьмёт свежую реплику
+                if (next === 'sleep') minerCatSleepI = (minerCatSleepI + 1) % CAT_SLEEP_PHRASES.length;
+                if (prev === 'sleep' && next === 'ready') catWakeUp();
+            }
+            minerCatRender();
+        }
+        // b179: пробуждение — потягивание + сонное «мяу» (звук только если панель котика реально видна)
+        function catWakeUp() {
+            const stage = document.getElementById('miner-cat-stage');
+            if (stage) {
+                stage.classList.add('waking');
+                if (minerCatWakeT) clearTimeout(minerCatWakeT);
+                minerCatWakeT = setTimeout(() => { minerCatWakeT = null; const s2 = document.getElementById('miner-cat-stage'); if (s2) s2.classList.remove('waking'); }, 1000);
+            }
+            try { const bx = minerCatBox(); if (bx && bx.offsetParent) SoundFX.play('meow2'); } catch (e) {}
+        }
+        // празднование повышения уровня кирки (кнопка «Улучшить» и приз Колеса Фортуны)
+        function minerCatCelebrate(lvl) {
+            minerCatDance(catFill(CAT_DANCE_PHRASES[(Math.random() * CAT_DANCE_PHRASES.length) | 0]).replace('{L}', lvl || miner.lvl), 4200, true);
+        }
+        // погладить котика: короткое «мяу» и подскок (сонного — будим на секунду)
+        function minerCatPet() {
+            if (minerCatMode === 'dance') return;
+            const wasSleep = minerCatMode === 'sleep';
+            const bubble = document.getElementById('kc-bubble');
+            if (bubble) {
+                bubble.dataset.locked = '1';
+                bubble.textContent = wasSleep ? '*просыпается* Мяу?.. 😾' : CAT_PET_PHRASES[(Math.random() * CAT_PET_PHRASES.length) | 0];
+            }
+            minerCatMode = 'ready';
+            minerCatSaidMode = null; // b179: когда замок спадёт — свежая реплика, а не старая
+            minerCatRender();
+            catHop();    // b179: подскок от удовольствия
+            catHearts(); // b179: сердечки
+            try { SoundFX.play(wasSleep ? 'meow2' : 'meow'); } catch (e) {}
+            if (minerCatTimer) clearTimeout(minerCatTimer);
+            minerCatTimer = setTimeout(() => {
+                minerCatTimer = null;
+                if (bubble) delete bubble.dataset.locked;
+                minerCatSettle();
+            }, wasSleep ? 1800 : 1300);
+        }
+        // b179: подскок при поглаживании — класс на ~0.6 сек, таймер отдельный (minerCatTimer не трогаем)
+        function catHop() {
+            const stage = document.getElementById('miner-cat-stage'); if (!stage) return;
+            stage.classList.add('petting');
+            if (minerCatPetT) clearTimeout(minerCatPetT);
+            minerCatPetT = setTimeout(() => { minerCatPetT = null; const s2 = document.getElementById('miner-cat-stage'); if (s2) s2.classList.remove('petting'); }, 620);
+        }
+        // b179: маленький салют из сердечек (тот же контейнер, что и конфетти, но тише и розовее)
+        function catHearts() {
+            const box = document.getElementById('kc-confetti'); if (!box) return;
+            const em = ['💛', '❤', '🧡', '🐾', '✨'];
+            let h = '';
+            for (let i = 0; i < 8; i++) {
+                const dx = Math.round((Math.random() * 2 - 1) * 52), dy = Math.round(-36 - Math.random() * 44);
+                const rz = Math.round((Math.random() * 2 - 1) * 160), dl = (Math.random() * 0.3).toFixed(2);
+                h += '<i style="--dx:' + dx + 'px;--dy:' + dy + 'px;--rz:' + rz + 'deg;animation-delay:' + dl + 's;left:' + (24 + Math.random() * 52).toFixed(1) + '%">' + em[(Math.random() * em.length) | 0] + '</i>';
+            }
+            box.innerHTML = h;
+            if (minerCatConfT) clearTimeout(minerCatConfT);
+            minerCatConfT = setTimeout(() => { minerCatConfT = null; const b2 = document.getElementById('kc-confetti'); if (b2) b2.innerHTML = ''; }, 1500);
         }
         // ============ b56: ДЖЕКПОТ (общий банк для Слотов и Сетки) ============
         const JACKPOT_KEY = 'nexus_jackpot_v2'; // b94: чистый старт банка без тестового мусора старых сессий
@@ -9395,6 +9959,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 minerSave();
                 checkAchievements();
                 showToast('🎡 Приз: кирка +1 — уровень ' + miner.lvl + '!', 'success');
+                try { minerCatCelebrate(miner.lvl); } catch (e) {} // b178: котик празднует и приз Колеса
             }
             if (!paid && win > 0) {
                 state.coins += win;
@@ -10943,7 +11508,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // Клик по пакету: боковой — крутим карусель к нему, центральный — сразу покупаем
         function carouselSlotClick(i) {
             if (packCarousel.dragging || packCarousel.moved) return;
-            const unbox = document.getElementById('modal-unbox');
+            const unbox = document.getElementById('modal-unboxing');
             if (unbox && !unbox.classList.contains('hidden')) return; // идёт вскрытие — клики мимо
             if (i === packCarousel.idx) buyPack(SHOP_LIST[i].id);
             else carouselGoTo(i);
@@ -10999,7 +11564,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const tab = document.getElementById('tab-store');
                 if (!tab || tab.classList.contains('hidden')) return;
                 if (ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName || '')) return;
-                const modal = document.getElementById('modal-unbox');
+                const modal = document.getElementById('modal-unboxing');
                 if (modal && !modal.classList.contains('hidden')) return;
                 if (ev.key === 'ArrowLeft') { ev.preventDefault(); carouselStep(-1); }
                 else if (ev.key === 'ArrowRight') { ev.preventDefault(); carouselStep(1); }
@@ -11052,7 +11617,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (packCarousel.dragging || packCarousel.hover) return;
                 const tab = document.getElementById('tab-store');
                 if (!tab || tab.classList.contains('hidden')) return;
-                const modal = document.getElementById('modal-unbox');
+                const modal = document.getElementById('modal-unboxing');
                 if (modal && !modal.classList.contains('hidden')) return;
                 // по очереди на один пак вперёд; следующий шаг — ещё через 15 секунд
                 // b62: тик автовращения под предохранителем (поворот экрана/гонка DOM)
@@ -14817,6 +15382,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (off) setTimeout(() => showToast('⛏ Шахта поработала без вас (' + minerDur(off.sec) + '): +' + fmtCoins(off.gain) + ' монет', 'refund'), 1000);
             } catch (e) {}
             minerStart();
+            try { minerCatRender(); } catch (e) {} // b178: котик-шахтёр сразу спит в панели прокачки
             state.stats.minerLvl = Math.max(state.stats.minerLvl || 0, miner.lvl); // b61
             updateCoinDisplay();
             updateSoundIcon();
@@ -14835,7 +15401,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // Выплатить бонусы за альбомы, собранные до этого момента (один раз)
             checkAlbumRewards();
             // b130: мгновенные картинки — постеры приоритетно, остальной арт-кэш в фоне
-            injectPosterPreloads();
+            // b180: постоянный кэш — сначала подменяем <img> из IndexedDB, preload догоняет остальное
+            startImageCache();
+            setTimeout(() => { try { injectPosterPreloads(); } catch (e) {} }, 400);
             startImagePreload();
 
             // Показать попап ежедневной награды, если она доступна
