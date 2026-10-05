@@ -829,6 +829,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="switchTab('albums')" id="nav-albums" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Альбомы</button>
                     <button onclick="switchTab('battle')" id="nav-battle" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Игры</button>
                     <button onclick="switchTab('rewards')" id="nav-rewards" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Награды</button>
+                    <button onclick="switchTab('market')" id="nav-market" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Обмен</button>
                     <button onclick="switchTab('studio')" id="nav-studio" style="display:none" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Студия</button>
                 </nav>
             </div>
@@ -847,6 +848,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             </button>
             <button onclick="switchTab('rewards')" id="mob-nav-rewards" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-gift text-[15px] mb-0.5"></i> Награды
+            </button>
+            <button onclick="switchTab('market')" id="mob-nav-market" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
+                <i class="fa-solid fa-right-left text-[15px] mb-0.5"></i> Обмен
             </button>
             <button onclick="switchTab('studio')" id="mob-nav-studio" style="display:none" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-wand-magic-sparkles text-[15px] mb-0.5"></i> Студия
@@ -1411,6 +1415,65 @@ Check your Browserslist config to be sure that your targets are set up correctly
         </section>
 
         <!-- STUDIO TAB -->
+        <!-- MARKET TAB (b136: биржа дубликатов между игроками) -->
+        <section id="tab-market" class="space-y-4 sm:space-y-6 hidden">
+            <div class="relative overflow-hidden rounded-[28px] border border-teal-500/20 bg-[#050b10] p-5 sm:p-7">
+                <div class="store-hero-glow" aria-hidden="true"></div>
+                <div class="relative flex flex-col sm:flex-row sm:items-end gap-4">
+                    <div class="flex-1 min-w-0">
+                        <div class="inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.28em] text-teal-300 bg-teal-500/10 border border-teal-500/25 rounded-full px-3 py-1"><i class="fa-solid fa-right-left"></i>Биржа дубликатов</div>
+                        <h2 class="mt-3 text-2xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-teal-200 via-emerald-100 to-amber-200">Обмен картами</h2>
+                        <p class="text-xs sm:text-sm text-slate-400 mt-2 max-w-xl leading-relaxed">Выставьте копию карты за свою цену — игроки увидят лот и купят карту себе в коллекцию. Монеты продавцу приходят сами, даже если он офлайн.</p>
+                    </div>
+                    <div class="store-stat coins shrink-0"><i class="fa-solid fa-coins"></i><div><span>баланс</span><b id="market-stat-coins">0</b></div></div>
+                </div>
+            </div>
+
+            <!-- b141: зоны покупки и продажи разделены -->
+            <div class="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 w-fit max-w-full">
+                <button id="market-subtab-buy" onclick="marketSubTab('buy')" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-teal-600 text-white shadow"><i class="fa-solid fa-cart-shopping mr-1.5"></i>Покупка</button>
+                <button id="market-subtab-sell" onclick="marketSubTab('sell')" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-tag mr-1.5"></i>Продажа</button>
+            </div>
+
+            <div id="market-panel-sell" class="hidden bg-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-sm sm:text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-tag text-emerald-400"></i>Выставить карту на продажу</h3>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <select id="market-card-select" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-teal-500"></select>
+                    <input id="market-price-input" inputmode="numeric" maxlength="12" placeholder="Цена: 500, 2k…" class="sm:w-44 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-200 placeholder-slate-600 focus:border-amber-400/70 focus:outline-none" onkeydown="if(event.key==='Enter')marketListCard()">
+                    <button onclick="marketListCard()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 whitespace-nowrap"><i class="fa-solid fa-upload mr-1.5"></i>Выставить</button>
+                </div>
+                <p class="text-[10px] text-slate-500">Продаётся одна копия из коллекции: пока лот активен, она недоступна вам; сняли лот — вернулась. Цена любая: от 1 до 1 млрд монет. <i class="fa-solid fa-robot text-slate-400 mr-1"></i>Защита экономики: если одинаковых карт в продаже больше 4, игра автоматически выкупает лишние лоты (рандомно) по цене выкупа: 20 / 50 / 120 / 300 монет за common / rare / epic / legendary.</p>
+                <div id="market-my-lots" class="grid grid-cols-1 xl:grid-cols-2 gap-1.5"></div>
+            </div>
+
+            <div id="market-panel-buy" class="bg-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-sm sm:text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-store text-teal-400"></i>Лоты игроков</h3>
+                    <button onclick="marketRefresh()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-rotate mr-1"></i>Обновить</button>
+                </div>
+                <!-- b138: поиск и фильтры, чтобы удобно искать карты для покупки -->
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input id="market-search" oninput="renderMarket()" placeholder="Поиск карты по имени…" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:border-teal-500 focus:outline-none">
+                    <select id="market-pack" onchange="renderMarket()" class="sm:w-52 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none"></select>
+                    <select id="market-rarity" onchange="renderMarket()" class="sm:w-40 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none">
+                        <option value="">Любая редкость</option>
+                        <option value="common">Обычная</option>
+                        <option value="rare">Редкая</option>
+                        <option value="epic">Эпическая</option>
+                        <option value="legendary">Легендарная</option>
+                    </select>
+                    <select id="market-sort" onchange="renderMarket()" class="sm:w-44 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none">
+                        <option value="new">Сначала новые</option>
+                        <option value="cheap">Сначала дешёвые</option>
+                        <option value="exp">Сначала дорогие</option>
+                        <option value="name">По алфавиту</option>
+                    </select>
+                </div>
+                <p id="market-found" class="text-[10px] text-slate-500"></p>
+                <div id="market-list" class="grid grid-cols-1 xl:grid-cols-2 gap-1.5"></div>
+            </div>
+        </section>
+
         <section id="tab-studio" class="space-y-8 hidden overflow-x-clip">
             <!-- b119: номер сборки живёт только в Студии; тап — диагностика ошибок -->
             <p id="studio-build" title="Тап: диагностика ошибок" class="text-[10px] font-mono text-slate-500 hover:text-slate-300 cursor-pointer select-none" style="letter-spacing:.08em;">Коллекционер карт • сборка 02.10-b122 <span id="studio-build-err" class="hidden text-rose-400 font-bold">• были ошибки — тап для диагностики</span></p>
@@ -1839,7 +1902,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
         <div id="unboxing-wrap" class="max-w-4xl w-full flex flex-col items-center space-y-3 sm:space-y-6">
             <div class="flex flex-wrap justify-between w-full max-w-xl items-center gap-2 px-1 sm:px-4">
                 <h3 class="text-base sm:text-xl font-bold text-white" id="unboxing-title">Вскрытие пака</h3>
-                <div class="flex space-x-3">
+                <div class="flex space-x-2 sm:space-x-3 flex-wrap justify-end">
+                    <button onclick="sellAllDupesToMarket()" title="Выставить все раскрытые повторки этого вскрытия на биржу по рекомендуемой цене" class="px-3 sm:px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold rounded-lg transition shadow"><i class="fa-solid fa-sack-coins mr-1"></i>Продать все повторки</button>
                     <button onclick="scratchAllCards()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition shadow">Стереть всё</button>
                     <button onclick="closeUnboxingModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition">Закрыть</button>
                 </div>
@@ -1877,6 +1941,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <!-- b18: счётчик / листание альбома -->
             <div id="inspect-counter" class="hidden mt-3 text-[11px] font-mono tracking-wide text-slate-400 text-center"></div>
             <button id="inspect-slots-btn" onclick="inspectSlotsToggle()" title="Карта станет символом на барабанах автоматов «Слоты», «Сетка» и «Линии» (до 5 карт)" class="hidden mt-2 px-4 py-2 rounded-xl text-xs font-bold transition"></button>
+            <button id="inspect-market-btn" onclick="openInspectMarket()" title="Выставить копию этой карты на биржу" class="hidden mt-2 px-4 py-2 rounded-xl text-xs font-bold transition bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200"><i class="fa-solid fa-tag mr-1.5"></i>Отправить на продажу</button>
             <p class="mt-1 text-[10px] text-slate-600 text-center">Листайте стрелками ← → или свайпом, Esc — закрыть</p>
         </div>
         <button id="inspect-prev" onclick="inspectStep(-1)" title="Предыдущая (←)" style="display:none;" class="hidden fixed left-2 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-slate-900/85 border border-slate-700 hover:border-emerald-400 hover:text-emerald-300 text-slate-200 flex items-center justify-center transition shadow-xl"><i class="fa-solid fa-chevron-left"></i></button>
@@ -2152,6 +2217,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
     </div>
 
     <!-- Daily Reward Modal -->
+    <!-- b137: продажа копии карты прямо из просмотра -->
+    <div id="modal-market-list" class="hidden fixed inset-0 z-[75] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target===this)closeInspectMarket()">
+        <div class="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4 shadow-2xl">
+            <h3 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-tag text-emerald-400"></i><span>Продажа копии</span></h3>
+            <p id="market-list-card-name" class="text-xs text-slate-400"></p>
+            <input id="market-list-price" inputmode="numeric" maxlength="12" placeholder="Цена: 500, 2k, 1.5m…" class="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-amber-200 text-sm font-bold placeholder-slate-500 focus:border-amber-400/70 focus:outline-none" onkeydown="if(event.key==='Enter')confirmInspectMarket()">
+            <p class="text-[10px] text-slate-500">Одна копия карты уйдёт в лот: пока он активен, копия недоступна вам. Монеты придут сразу после покупки.</p>
+            <button onclick="confirmInspectMarket()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition"><i class="fa-solid fa-upload mr-1.5"></i>Выставить на биржу</button>
+        </div>
+    </div>
     <!-- b133: вход в Студию по паролю комнаты облака -->
     <div id="modal-studio-pass" class="hidden fixed inset-0 z-[75] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="if(event.target===this)closeStudioPassModal()">
         <div class="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4 shadow-2xl">
@@ -5530,20 +5605,352 @@ Check your Browserslist config to be sure that your targets are set up correctly
             jpBusy = true;
             const cycle = depth => jpFetch().then(remote => {
                 jackpotMerge(remote && remote.jp ? remote.jp : remote);
+                marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
                 const doc = {
                     jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall },
+                    mk: marketDoc(), // b136
                     updatedAt: Date.now() + '-' + JACKPOT_CID
                 };
                 return jpPush(doc).then(() => jpFetch().then(chk => {
                     // кто-то перезаписал документ между записью и чтением — повторим слияние
                     if (chk && chk.updatedAt && chk.updatedAt !== doc.updatedAt && depth < 1) return cycle(depth + 1);
                     jackpotMerge(chk && chk.jp ? chk.jp : chk);
+                    marketMerge(chk && chk.mk); // b136
+                    marketCreditLedger();       // b136: продавцу прилетели монеты
+                    marketEnforceLimit();       // b142: выкуп лишних одинаковых лотов
+                    renderMarketIfVisible();
                 }));
             }).catch(() => { /* офлайн или облако недоступно — банк дождётся следующей синхронизации */ })
               .then(() => { jpBusy = false; jpLastAt = Date.now(); });
             cycle(0);
         }
         function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }
+
+        // ============ b136: БИРЖА ДУБЛИКАТОВ — игроки продают и покупают карты ============
+        // Лоты и квитанции живут в общесайтовом облаке (там же, где джекпот): пишут все,
+        // включая участников комнат. Удалённые лоты помнятся в «надгробиях», чтобы не воскресать.
+        function marketLots() { return Array.isArray(CLOUD.market) ? CLOUD.market : []; }
+        function marketIsMine(l) { return !!(l && l.sid === cloudDeviceId()); }
+        function marketRemoved() {
+            try {
+                const o = JSON.parse(LS.getItem('nexus_market_removed') || '{}');
+                const cut = Date.now() - 7 * 24 * 3600 * 1000;
+                const res = {};
+                Object.keys(o || {}).forEach(k => { if ((o[k] || 0) > cut) res[k] = o[k]; });
+                return res;
+            } catch (e) { return {}; }
+        }
+        function marketRemovedAdd(id) {
+            try { const o = marketRemoved(); o[id] = Date.now(); const ks = Object.keys(o); if (ks.length > 300) delete o[ks[0]]; LS.setItem('nexus_market_removed', JSON.stringify(o)); } catch (e) {}
+        }
+        function marketDoc() {
+            return { lots: marketLots().slice(-80), ledger: (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).slice(-60) };
+        }
+        function marketMerge(rmk) {
+            if (!rmk || typeof rmk !== 'object') return;
+            const removed = marketRemoved();
+            const cur = {};
+            marketLots().forEach(l => { if (l && l.id) cur[l.id] = l; });
+            (Array.isArray(rmk.lots) ? rmk.lots : []).forEach(l => { if (l && l.id) cur[l.id] = l; });
+            Object.keys(cur).forEach(id => { if (removed[id]) delete cur[id]; });
+            CLOUD.market = Object.values(cur);
+            const led = {};
+            (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).forEach(r => { if (r && r.id) led[r.id] = r; });
+            (Array.isArray(rmk.ledger) ? rmk.ledger : []).forEach(r => { if (r && r.id) led[r.id] = r; });
+            let arr = Object.values(led).sort((a, b) => (a.at || 0) - (b.at || 0));
+            if (arr.length > 60) arr = arr.slice(-60);
+            CLOUD.ledger = arr;
+        }
+        function marketSetCollection(id, n) {
+            if (n <= 0) delete state.collection[id]; else state.collection[id] = n;
+        }
+        function marketListCardFor(cardId, priceStr, silent) {
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return false; }
+            const card = state.cards.find(c => c.id === cardId);
+            if (!card) { showToast('Выберите карту из коллекции', 'error'); return false; }
+            if (cardCopies(cardId) < 1) { showToast('Этой карты нет в коллекции', 'error'); return false; }
+            const raw = parseBetStr(priceStr);
+            if (!isFinite(raw) || raw < 1) { showToast('Укажите цену: число, можно 2k / 1.5m', 'error'); return false; }
+            const price = normBet(raw);
+            marketSetCollection(cardId, cardCopies(cardId) - 1); // копия уходит в эскроу лота
+            const snap = Object.assign({}, card);
+            if (typeof snap.image === 'string' && snap.image.indexOf('data:') === 0) snap.image = ''; // не тащим base64 в облако
+            const lot = {
+                id: 'lot-' + Date.now() + '-' + Math.floor(Math.random() * 1e6),
+                sid: cloudDeviceId(),
+                sname: getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4)),
+                price: price, at: Date.now(), card: snap
+            };
+            CLOUD.market = marketLots().concat([lot]);
+            saveState(); jpSyncSoon(); renderMarket();
+            marketEnforceLimit(); // b142: вдруг это уже пятая такая карта в продаже
+            if (!silent) showToast('🏷 Лот выставлен: ' + card.name + ' за ' + fmtCoins(price), 'success');
+            return true;
+        }
+        function marketListCard() {
+            const sel = document.getElementById('market-card-select');
+            const pi = document.getElementById('market-price-input');
+            const ok = marketListCardFor(sel && sel.value, pi && pi.value);
+            if (ok && pi) pi.value = '';
+            renderMarket();
+        }
+        // b137: продажа копии прямо из окна просмотра карты
+        function openInspectMarket() {
+            const id = (inspectList || [])[inspectIdx];
+            const card = id ? state.cards.find(c => c.id === id) : null;
+            if (!card || cardCopies(id) < 1) { showToast('Этой карты нет в коллекции', 'error'); return; }
+            const nm = document.getElementById('market-list-card-name');
+            if (nm) nm.innerHTML = 'Карта: <b class="text-slate-200">' + cloudEsc(card.name) + '</b> • копий у вас: <b class="text-slate-200">' + cardCopies(id) + '</b>';
+            const pi = document.getElementById('market-list-price');
+            if (pi) pi.value = '';
+            const m = document.getElementById('modal-market-list');
+            if (m) m.classList.remove('hidden');
+            setTimeout(() => { try { pi.focus(); } catch (e) {} }, 60);
+        }
+        function closeInspectMarket() {
+            const m = document.getElementById('modal-market-list');
+            if (m) m.classList.add('hidden');
+        }
+        function confirmInspectMarket() {
+            const id = (inspectList || [])[inspectIdx];
+            const pi = document.getElementById('market-list-price');
+            if (marketListCardFor(id, pi && pi.value)) {
+                closeInspectMarket();
+                updateInspectMarketBtn();
+            }
+        }
+        function updateInspectMarketBtn() {
+            const b = document.getElementById('inspect-market-btn');
+            if (!b) return;
+            const id = (inspectList || [])[inspectIdx];
+            const owned = !!id && cardCopies(id) > 0;
+            b.classList.toggle('hidden', !owned);
+        }
+        // b139: рекомендованная цена дубликата на бирже (выше автовыкупа, по редкости)
+        function marketRecommendPrice(card) {
+            const base = { common: 100, rare: 400, epic: 1000, legendary: 3500 };
+            return base[(card && card.rarity) || 'common'] || 100;
+        }
+        // b143: какие карты текущего вскрытия оказались повторками и какие уже улетели на биржу
+        let unboxDupeIdx = {};
+        let unboxListedIdx = {};
+        function marketMarkListedBtn(idx, price) {
+            const btn = document.getElementById('mk-sell-' + idx);
+            if (btn) btn.outerHTML = '<span class="inline-flex items-center gap-1 px-2 py-1 bg-teal-500/10 text-teal-300 rounded border border-teal-500/30 text-[10px] font-bold"><i class="fa-solid fa-check"></i>На бирже за ' + fmtCoins(price) + '</span>';
+        }
+        // b143: одна кнопка — все раскрытые повторки улетают на биржу
+        function sellAllDupesToMarket() {
+            const idxs = Object.keys(unboxDupeIdx).map(Number).filter(i => !unboxListedIdx[i]);
+            if (!idxs.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }
+            let ok = 0, sum = 0;
+            idxs.forEach(i => {
+                const card = (currentUnboxingCards || [])[i];
+                if (!card || cardCopies(card.id) < 1) return;
+                const price = marketRecommendPrice(card);
+                if (marketListCardFor(card.id, String(price), true)) {
+                    unboxListedIdx[i] = 1;
+                    ok++; sum += price;
+                    marketMarkListedBtn(i, price);
+                }
+            });
+            if (ok) showToast('💰 Повторки отправлены на биржу: ' + ok + ' на сумму ' + fmtCoins(sum), 'success');
+            else showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');
+        }
+        // b139: кнопка под раскрытой повторкой — карта сама улетает на биржу
+        function marketSellRevealed(idx) {
+            const card = (currentUnboxingCards || [])[idx];
+            if (!card) return;
+            const price = marketRecommendPrice(card);
+            if (marketListCardFor(card.id, String(price))) {
+                unboxListedIdx[idx] = 1;
+                marketMarkListedBtn(idx, price);
+            }
+        }
+        function marketCancel(lotId) {
+            const lot = marketLots().find(l => l.id === lotId);
+            if (!lot || !marketIsMine(lot)) return;
+            marketRemovedAdd(lotId);
+            CLOUD.market = marketLots().filter(l => l.id !== lotId);
+            marketSetCollection(lot.card.id, cardCopies(lot.card.id) + 1); // копия вернулась
+            saveState(); jpSyncSoon(); renderMarket();
+            showToast('Лот снят, карта вернулась в коллекцию', 'info');
+        }
+        function marketBuy(lotId) {
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
+            const lot = marketLots().find(l => l.id === lotId);
+            if (!lot) { showToast('Лот уже куплен или снят', 'error'); renderMarket(); return; }
+            if (marketIsMine(lot)) { showToast('Это ваш собственный лот', 'error'); return; }
+            if (state.coins < lot.price) { showToast('Не хватает монет: нужно ' + fmtCoins(lot.price), 'error'); return; }
+            state.coins -= lot.price;
+            marketRemovedAdd(lotId);
+            CLOUD.market = marketLots().filter(l => l.id !== lotId);
+            CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat([{
+                id: 'sale-' + lot.id, sid: lot.sid, amount: lot.price, at: Date.now(),
+                bname: getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4))
+            }]).slice(-60);
+            const isNewDef = !state.cards.some(c => c.id === lot.card.id);
+            if (isNewDef && lot.card) state.cards.push(Object.assign({}, lot.card));
+            marketSetCollection(lot.card.id, cardCopies(lot.card.id) + 1);
+            saveState(); updateCoinDisplay(); checkAchievements();
+            if (isNewDef) updateMissions('collect_new', 1);
+            jpSyncSoon(); renderMarket();
+            try { preloadImages([lot.card.image]); } catch (e) {}
+            try { SoundFX.play('coin'); } catch (e) {}
+            showToast('🎉 Куплено: «' + (lot.card.name || 'карта') + '» в коллекции!', 'success');
+        }
+        function marketCreditLedger() {
+            const led = Array.isArray(CLOUD.ledger) ? CLOUD.ledger : [];
+            if (!led.length) return;
+            let credited = [];
+            try { credited = JSON.parse(LS.getItem('nexus_market_credited') || '[]'); } catch (e) { credited = []; }
+            const have = {}; credited.forEach(id => { have[id] = 1; });
+            let sum = 0; const added = [];
+            led.forEach(r => {
+                if (!r || r.sid !== cloudDeviceId() || have[r.id]) return;
+                have[r.id] = 1; added.push(r.id); sum += Number(r.amount) || 0;
+            });
+            if (!added.length) return;
+            state.coins += sum;
+            credited = credited.concat(added).slice(-200);
+            try { LS.setItem('nexus_market_credited', JSON.stringify(credited)); } catch (e) {}
+            saveState(); updateCoinDisplay();
+            showToast('💰 Ваши лоты куплены: +' + fmtCoins(sum) + ' монет', 'success');
+            renderMarketIfVisible();
+        }
+        // ============ b142: ЗАЩИТА ЭКОНОМИКИ — больше 4 одинаковых карт в продаже ============
+        // Игра автоматически ВЫКУПАЕТ лишние лоты (рандомно), по цене выкупа дубликата:
+        // продавцы получают монеты через квитанции, а рынок не затапливается копиями.
+        const MARKET_MAX_PER_CARD = 4;
+        const MARKET_SYS_REFUND = { common: 20, rare: 50, epic: 120, legendary: 300 };
+        function marketEnforceLimit() {
+            const byCard = {};
+            marketLots().forEach(l => {
+                const k = (l && l.card) ? l.card.id : '';
+                if (!k) return;
+                (byCard[k] = byCard[k] || []).push(l);
+            });
+            const bought = [];
+            Object.keys(byCard).forEach(k => {
+                const arr = byCard[k];
+                let excess = arr.length - MARKET_MAX_PER_CARD;
+                if (excess <= 0) return;
+                const pool = arr.slice();
+                while (excess-- > 0 && pool.length) {
+                    const i = Math.floor(Math.random() * pool.length); // рандомный выкуп
+                    bought.push(pool.splice(i, 1)[0]);
+                }
+            });
+            if (!bought.length) return;
+            const gone = {};
+            const receipts = [];
+            bought.forEach(l => {
+                gone[l.id] = 1;
+                marketRemovedAdd(l.id); // лот не должен воскреснуть из старых копий облака
+                receipts.push({
+                    id: 'sys-' + l.id, sid: l.sid,
+                    amount: MARKET_SYS_REFUND[(l.card || {}).rarity] || 20,
+                    at: Date.now(), bname: '🤖 автвыкуп системы'
+                });
+            });
+            CLOUD.market = marketLots().filter(l => !gone[l.id]);
+            CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat(receipts).slice(-60);
+            jpSyncSoon();
+            renderMarketIfVisible();
+            showToast('🤖 Одинаковых карт в продаже больше ' + MARKET_MAX_PER_CARD + ' — система выкупила лотов: ' + bought.length, 'refund');
+        }
+        function lotTileHTML(l) {
+            // b140: компактная строка лота — много лотов видно сразу
+            const mine = marketIsMine(l);
+            const c = l.card || {};
+            const rar = RAR_COLORS[c.rarity] || '#94a3b8';
+            const pack = state.packs.find(p => p.id === c.packId);
+            return `<div class="group flex items-center gap-2.5 rounded-xl border p-1.5 sm:p-2 transition-all duration-200 ${mine ? 'border-teal-500/40 bg-teal-500/[.04]' : 'border-slate-800/80 bg-slate-900/60'} hover:border-teal-500/40 hover:bg-slate-900">
+                <div class="relative w-10 sm:w-12 shrink-0 rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0" style="color:${rar};border-color:${rar}55;background:${rar}14">${RARITY_LABELS_RU[c.rarity] || c.rarity || ''}</span>
+                        <h3 class="font-bold text-white text-[12px] sm:text-[13px] leading-tight truncate">${cloudEsc(c.name || 'Карта')}</h3>
+                    </div>
+                    <p class="text-[9px] text-slate-500 truncate mt-0.5">${mine ? 'ваш лот' : 'продавец: ' + cloudEsc(l.sname || 'игрок')}${pack ? ' • ' + cloudEsc(pack.title) : ''}</p>
+                </div>
+                <span class="inline-flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-lg bg-amber-400/95 text-slate-950 shrink-0" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
+                ${mine
+                    ? `<button onclick="marketCancel('${l.id}')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-xmark mr-1"></i><span class="hidden sm:inline">Снять лот</span><span class="sm:hidden">Снять</span></button>`
+                    : `<button onclick="marketBuy('${l.id}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold transition shadow-md shadow-emerald-950/40 shrink-0"><i class="fa-solid fa-cart-shopping mr-1"></i><span class="hidden sm:inline">Купить</span><span class="sm:hidden">&#10003;</span></button>`}
+            </div>`;
+        }
+        function renderMarket() {
+            const sel = document.getElementById('market-card-select');
+            if (sel) {
+                const owned = state.cards.filter(c => cardCopies(c.id) > 0);
+                const keep = sel.value;
+                sel.innerHTML = owned.length
+                    ? owned.map(c => `<option value="${c.id}">${cloudEsc(c.name)} • ${RARITY_LABELS_RU[c.rarity] || c.rarity} • копий: ${cardCopies(c.id)}</option>`).join('')
+                    : '<option value="">В коллекции нет карт</option>';
+                if (keep && owned.some(c => c.id === keep)) sel.value = keep;
+            }
+            // b138: фильтр по паку/альбому
+            const psel = document.getElementById('market-pack');
+            if (psel) {
+                const keepP = psel.value;
+                psel.innerHTML = '<option value="">Все паки и альбомы</option>' + state.packs.map(p => `<option value="${p.id}">${cloudEsc(p.title)}</option>`).join('');
+                if (keepP && state.packs.some(p => p.id === keepP)) psel.value = keepP;
+            }
+            const my = marketLots().filter(marketIsMine).sort((a, b) => (b.at || 0) - (a.at || 0));
+            let others = marketLots().filter(l => !marketIsMine(l));
+            const q = String((document.getElementById('market-search') || {}).value || '').trim().toLowerCase();
+            const fpk = psel ? psel.value : '';
+            const frar = (document.getElementById('market-rarity') || {}).value || '';
+            const fsort = (document.getElementById('market-sort') || {}).value || 'new';
+            others = others.filter(l => {
+                const c = l.card || {};
+                if (q && String(c.name || '').toLowerCase().indexOf(q) < 0) return false;
+                if (fpk && c.packId !== fpk) return false;
+                if (frar && c.rarity !== frar) return false;
+                return true;
+            });
+            others.sort((a, b) => {
+                if (fsort === 'cheap') return (a.price || 0) - (b.price || 0);
+                if (fsort === 'exp') return (b.price || 0) - (a.price || 0);
+                if (fsort === 'name') return String((a.card || {}).name || '').localeCompare(String((b.card || {}).name || ''), 'ru');
+                return (b.at || 0) - (a.at || 0);
+            });
+            const found = document.getElementById('market-found');
+            if (found) found.innerHTML = 'Найдено лотов: <b class="text-teal-300">' + others.length + '</b>' + (q || fpk || frar ? ' по фильтру' : '');
+            const myBox = document.getElementById('market-my-lots');
+            if (myBox) myBox.innerHTML = my.length ? my.map(lotTileHTML).join('') : '<p class="text-[11px] text-slate-500 col-span-full">У вас пока нет активных лотов.</p>';
+            const listBox = document.getElementById('market-list');
+            if (listBox) {
+                if (!CLOUD.connected()) listBox.innerHTML = '<p class="text-[11px] text-slate-500 col-span-full">Биржа недоступна: облако отключено.</p>';
+                else listBox.innerHTML = others.length ? others.map(lotTileHTML).join('') : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>';
+            }
+            const sc = document.getElementById('market-stat-coins');
+            if (sc) sc.textContent = fmtCoins(state.coins);
+        }
+        function marketSubTab(which) {
+            const buy = document.getElementById('market-panel-buy');
+            const sell = document.getElementById('market-panel-sell');
+            const bb = document.getElementById('market-subtab-buy');
+            const bs = document.getElementById('market-subtab-sell');
+            const onBuy = which !== 'sell';
+            if (buy) buy.classList.toggle('hidden', !onBuy);
+            if (sell) sell.classList.toggle('hidden', onBuy);
+            if (bb) bb.className = 'px-4 py-2 rounded-lg text-xs font-bold transition ' + (onBuy ? 'bg-teal-600 text-white shadow' : 'bg-slate-800 text-slate-300 border border-slate-700');
+            if (bs) bs.className = 'px-4 py-2 rounded-lg text-xs font-bold transition ' + (!onBuy ? 'bg-teal-600 text-white shadow' : 'bg-slate-800 text-slate-300 border border-slate-700');
+            try { LS.setItem('nexus_market_subtab', onBuy ? 'buy' : 'sell'); } catch (e) {}
+        }
+        function renderMarketIfVisible() {
+            const t = document.getElementById('tab-market');
+            if (t && !t.classList.contains('hidden')) renderMarket();
+        }
+        function marketRefresh() {
+            if (!CLOUD.connected()) { showToast('Облако отключено', 'error'); return; }
+            jpSyncNow();
+            renderMarket();
+            showToast('🔄 Биржа обновляется…', 'info');
+        }
 
         // взвешенный выбор символа: JACKPOT редок (вес 2 против 10)
         function slotsWeightedRand() {
@@ -9695,7 +10102,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 applyHiddenTabVisibility();
                 return;
             }
-            ['store', 'albums', 'battle', 'rewards', 'studio'].forEach(t => {
+            ['store', 'albums', 'battle', 'rewards', 'market', 'studio'].forEach(t => {
                 document.getElementById(`tab-${t}`).classList.add('hidden');
                 const navBtn = document.getElementById(`nav-${t}`);
                 if (navBtn) {
@@ -9716,6 +10123,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (tabId === 'store') renderStore();
             if (tabId === 'albums') renderAlbumsHub();
             if (tabId === 'battle') renderBattleTab();
+            if (tabId === 'market') {
+                let sub = 'buy';
+                try { sub = LS.getItem('nexus_market_subtab') === 'sell' ? 'sell' : 'buy'; } catch (e) {}
+                marketSubTab(sub);
+                renderMarket();
+            }
             if (tabId === 'rewards') renderRewards();
             if (tabId === 'studio') renderStudio();
         }
@@ -10335,6 +10748,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function showUnboxingUI(pack, cards) {
             nxTrail('unbox2d');
             currentUnboxingCards = cards;
+            unboxDupeIdx = {}; unboxListedIdx = {}; // b143: новое вскрытие — новые повторки
 
             document.getElementById('unboxing-title').innerText = `Вскрытие пака: ${pack.title}`;
             const container = document.getElementById('unboxing-cards-container');
@@ -10669,7 +11083,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 updateCoinDisplay();
                 state.stats.duplicatesSold++;
                 state.stats.coinsFromDupes += refund;
-                statusEl.innerHTML = `<span class="inline-flex items-center space-x-1 px-2 py-1 bg-amber-950/90 text-amber-300 rounded border border-amber-500/50 text-[11px] backdrop-blur-sm"><i class="fa-solid fa-coins"></i><span>♻️ Повторка ×${cardCopies(card.id)} (+${refund})</span></span>`;
+                unboxDupeIdx[idx] = true; // b143: помним повторку для массовой продажи
+                const mkPrice = marketRecommendPrice(card);
+                const mkBtn = CLOUD.connected()
+                    ? `<button id="mk-sell-${idx}" onclick="marketSellRevealed(${idx})" class="inline-flex items-center gap-1 px-2 py-1 bg-teal-600/90 hover:bg-teal-500 text-white rounded border border-teal-400/50 text-[11px] font-bold backdrop-blur-sm transition shadow-md shadow-teal-950/40"><i class="fa-solid fa-tag"></i><span>Продать на бирже за ${fmtCoins(mkPrice)}</span></button>`
+                    : '';
+                statusEl.innerHTML = `<span class="inline-flex items-center flex-wrap gap-1.5 px-2 py-1 bg-amber-950/90 text-amber-300 rounded border border-amber-500/50 text-[11px] backdrop-blur-sm"><i class="fa-solid fa-coins"></i><span>♻️ Повторка ×${cardCopies(card.id)} (+${refund})</span>${mkBtn}</span>`;
                 showToast(`Повторная карта ${card.name} продана за ${refund} монет!`, 'refund');
                 SoundFX.play('coin');
                 updateMissions('sell_dupe', 1);
@@ -11253,6 +11672,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                         <h2 class="text-lg sm:text-2xl font-black text-white break-words leading-tight">${pack.title}</h2>
                                         <p class="text-[11px] sm:text-xs text-slate-400 mt-1">Собрано: <span class="text-slate-200 font-semibold">${collectedCount} / ${packCards.length}</span> (${progressPct}%)${dupesTotal > 0 ? ` • повторок: ${dupesTotal}` : ''}${state.albumBonus && state.albumBonus[pack.id] ? ' • <span class="text-amber-300 font-semibold"><i class="fa-solid fa-book-open mr-0.5"></i>бонус альбома получен</span>' : ''}</p>
                                     </div>
+                                    <button onclick="sellAlbumDupes('${pack.id}')" title="Выставить все лишние копии карт этого альбома на биржу по рекомендуемой цене (одна копия каждой карты останется в коллекции)" class="shrink-0 px-2.5 sm:px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] sm:text-[11px] font-bold transition shadow-lg shadow-amber-950/30"><i class="fa-solid fa-sack-coins mr-1"></i><span class="hidden sm:inline">Продать все повторки</span><span class="sm:hidden">Повторки</span></button>
                                     <div class="sm:hidden shrink-0">${albumRingHTML(progressPct, 48, 5)}</div>
                                     <div class="hidden sm:flex items-center gap-3 shrink-0 pr-1">
                                         ${albumRingHTML(progressPct, 68, 6)}
@@ -11381,6 +11801,28 @@ Check your Browserslist config to be sure that your targets are set up correctly
             renderAlbumsList();
         }
 
+        // b144: продать все повторки альбома — лишние копии уходят на биржу по рекомендуемой цене
+        function sellAlbumDupes(packId) {
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
+            const cards = state.cards.filter(c => c.packId === packId);
+            let ok = 0, sum = 0;
+            cards.forEach(c => {
+                // одну копию каждой карты оставляем в коллекции — продаём только лишние
+                let excess = cardCopies(c.id) - 1;
+                while (excess-- > 0 && cardCopies(c.id) >= 1) {
+                    const price = marketRecommendPrice(c);
+                    if (marketListCardFor(c.id, String(price), true)) { ok++; sum += price; }
+                    else break;
+                }
+            });
+            if (ok) {
+                marketEnforceLimit(); // b142: защита от наводнения одинаковыми лотами
+                showToast('💰 Повторки альбома отправлены на биржу: ' + ok + ' на сумму ' + fmtCoins(sum), 'success');
+                try { renderAlbumsList(); } catch (e) {}
+            } else {
+                showToast('В этом альбоме нет лишних копий для продажи', 'info');
+            }
+        }
         function openAlbum(packId) {
             state.currentAlbumPackId = packId;
             renderAlbumsHub();
@@ -11462,6 +11904,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             updateInspectNav();
             updateInspectSlotsBtn();
+            updateInspectMarketBtn();
             document.getElementById('modal-inspect').classList.remove('hidden');
         }
 
@@ -11597,6 +12040,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             remotePacks: 0,   // b33: сколько паков/карт реально лежит в комнате (статус + страховки)
             remoteCards: 0,
             ownerUnknown: false, // b23: в облаке ещё нет метки создателя (old payload / пустая комната)
+            market: [],          // b136: лоты биржи дубликатов (общесайтовый канал)
+            ledger: [],          // b136: квитанции продаж (продавец получает монеты)
             remoteAuth: null,    // b24: { login, hash, salt } — логин и хэш пароля комнаты из облака
             remoteFilled: false, // b24: в комнате уже есть опубликованный каталог
             remoteOwnerId: '',   // b24: метка устройства создателя из облака
@@ -13424,7 +13869,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 msg: String(msg || ''),
                 vw: window.innerWidth, vh: window.innerHeight,
                 orient: (screen.orientation && screen.orientation.type) || (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'),
-                tab: (['store', 'albums', 'battle', 'rewards', 'studio'].find(t => { const el = document.getElementById('tab-' + t); return el && !el.classList.contains('hidden'); }) || '?'),
+                tab: (['store', 'albums', 'battle', 'rewards', 'market', 'studio'].find(t => { const el = document.getElementById('tab-' + t); return el && !el.classList.contains('hidden'); }) || '?'),
                 modals: ['modal-unboxing', 'modal-inspect', 'modal-export', 'modal-reset', 'modal-pack3d', 'modal-daily'].filter(id => { const m = document.getElementById(id); return m && !m.classList.contains('hidden'); }),
                 trail: NX_TRAIL.slice(),
                 // b65: строка:колонка внутри файла игры, если браузер их отдал
