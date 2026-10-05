@@ -1250,7 +1250,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-dharmachakra text-amber-300 mr-2"></i>Колесо Фортуны</h2>
-                                <p class="text-sm text-slate-400 mt-1">3D-колесо с призами: множители ставки до ×5, случайная карта сайта, кирка +1 и золотой сектор JACKPOT — срывает весь общий банк сайта! Каждая ставка кормит банк на 100%, а проигрыш отдаёт банку ещё 100% потерянной суммы. Крутить можно тапом по самому колесу — кнопка не обязательна!</p>
+                                <p class="text-sm text-slate-400 mt-1">3D-колесо с призами: множители ставки до ×5, случайная карта сайта, кирка +1 и два золотых сектора JACKPOT (1 из 8 спинов) — срывают весь общий банк сайта! Каждая ставка кормит банк на 100%, а проигрыш отдаёт банку ещё 100% потерянной суммы. Крутить можно тапом по самому колесу — кнопка не обязательна!</p>
                                                     </div>
                         </div>
                         <div class="wheel-lights mt-4" aria-hidden="true"></div>
@@ -1268,7 +1268,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
                                 <li>Выбери ставку и нажми <b>«Крутить»</b> — или просто тапни по самому колесу.</li>
-                                <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> — весь общий банк сайта.</li>
+                                <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> (их два — 1 из 8 спинов) — весь общий банк сайта.</li>
                                 <li>Пустой сектор: ставка сгорает и уходит в общий джекпот на <b>100%</b>; 100% каждой ставки капают в банк всегда, а проигрыш докидывает ещё 100% потерянной суммы.</li>
                             </ol>
                         </div>
@@ -6308,7 +6308,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // ==== b71: синхронизация общего банка джекпота между всеми игроками ====
-        let jpT = null, jpBusy = false, jpLastAt = 0;
+        let jpT = null, jpBusy = false, jpLastAt = 0, jpPending = false; // b183: jpPending — отложенный пуш вместо потерянного
         function jpPath() {
             try { if (CLOUD.db) return CLOUD.db + '/nexus-jackpot-v2.json'; } catch (e) {}
             return 'https://textdb.dev/api/data/nexus-tcg-jackpot-v2';
@@ -6335,31 +6335,71 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 body: JSON.stringify(doc)
             }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
         }
+        // b183: наш локальный реестр (max-слияние всего, что мы видели) знает больше, чем облако —
+        // значит чей-то пуш перезаписал документ и часть взносов/выплат/побед потерялась. Возвращаем их повторным циклом.
+        function jpAheadOf(remote) {
+            const rem = remote || {};
+            const flds = ['led', 'won', 'wins'];
+            for (let i = 0; i < flds.length; i++) {
+                const src = jackpot[flds[i]] || {};
+                const dst = (rem[flds[i]] && typeof rem[flds[i]] === 'object') ? rem[flds[i]] : {};
+                for (const k in src) { if ((Math.floor(src[k]) || 0) > (Math.floor(dst[k]) || 0)) return true; }
+            }
+            const hall = Array.isArray(rem.hall) ? rem.hall : [];
+            const seen = {};
+            hall.forEach(h => { if (h && h.t) seen[h.t] = 1; });
+            for (const h of (jackpot.hall || [])) { if (h && h.t && !seen[h.t]) return true; }
+            return false;
+        }
         function jpSyncNow() {
-            if (jpBusy) return;
+            // b183: раньше пуш во время занятого канала молча отбрасывался — так терялись победы
+            // (игрок срывал банк, вкладка закрывалась, и облако про это никогда не узнавало).
+            if (jpBusy) { jpPending = true; return; }
             jpBusy = true;
             const cycle = depth => jpFetch().then(remote => {
                 jackpotMerge(remote && remote.jp ? remote.jp : remote);
                 marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
-                const doc = {
-                    jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall },
-                    mk: marketDoc(), // b136
-                    updatedAt: Date.now() + '-' + JACKPOT_CID
-                };
+                const doc = jpDoc(); // b183
                 return jpPush(doc).then(() => jpFetch().then(chk => {
-                    // кто-то перезаписал документ между записью и чтением — повторим слияние
-                    if (chk && chk.updatedAt && chk.updatedAt !== doc.updatedAt && depth < 1) return cycle(depth + 1);
-                    jackpotMerge(chk && chk.jp ? chk.jp : chk);
+                    const rj = (chk && chk.jp) ? chk.jp : chk;
+                    jackpotMerge(rj);
                     marketMerge(chk && chk.mk); // b136
+                    // b183: документ перезаписали между нашей записью и чтением ИЛИ в облаке не хватает
+                    // того, что мы уже знаем (чужая выплата/взнос) — повторяем цикл, пока не сойдётся
+                    const clobbered = chk && chk.updatedAt && chk.updatedAt !== doc.updatedAt;
+                    if (depth < 3 && (clobbered || jpAheadOf(rj))) return cycle(depth + 1);
                     marketCreditLedger();       // b136: продавцу прилетели монеты
                     marketEnforceLimit();       // b142: выкуп лишних одинаковых лотов
                     renderMarketIfVisible();
                 }));
             }).catch(() => { /* офлайн или облако недоступно — банк дождётся следующей синхронизации */ })
-              .then(() => { jpBusy = false; jpLastAt = Date.now(); });
+              .then(() => { jpBusy = false; jpLastAt = Date.now(); if (jpPending) { jpPending = false; jpSyncNow(); } }); // b183: догоняющий пуш
             cycle(0);
         }
         function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }
+        // b183: документ общего банка (тот же, что пушит jpSyncNow) — нужен и для аварийной отправки
+        function jpDoc() {
+            return {
+                jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall },
+                mk: marketDoc(), // b136
+                updatedAt: Date.now() + '-' + JACKPOT_CID
+            };
+        }
+        // b183: аварийная отправка при скрытии/закрытии вкладки: sendBeacon (textdb) или keepalive-fetch (firebase).
+        // Без неё игрок, сорвавший банк и закрывший страницу, уносил выплату с собой — банк у остальных не уменьшался.
+        function jpFlush() {
+            try {
+                const body = JSON.stringify(jpDoc());
+                if (CLOUD.db) {
+                    fetch(jpPath(), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(() => {});
+                    return;
+                }
+                if (typeof navigator !== 'undefined' && navigator.sendBeacon && typeof Blob !== 'undefined') {
+                    if (navigator.sendBeacon(jpPath(), new Blob([body], { type: 'text/plain' }))) return;
+                }
+                fetch(jpPath(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body, keepalive: true }).catch(() => {});
+            } catch (e) { /* офлайн — банк дождётся следующей синхронизации */ }
+        }
 
         // ============ b136: БИРЖА ДУБЛИКАТОВ — игроки продают и покупают карты ============
         // Лоты и квитанции живут в общесайтовом облаке (там же, где джекпот): пишут все,
@@ -6698,13 +6738,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // взвешенный выбор символа: JACKPOT редок (вес 2 против 10)
-        function slotsWeightedRand() {
+        // b183: джекпот срывают чаще — свой вес золотого символа у Слотов и у Сетки.
+        // Слоты: вес 6 из 56 = 10.7% на барабан (было 2 из 52 = 3.8%) → три подряд ≈ 1 из 820 спинов (было 1 из 20 800).
+        // Сетка: вес 4 из 54 = 7.4% на ячейку, поле 20 ячеек → 3+ карт JACKPOT ≈ 1 из 6 спинов (было 1 из 25).
+        const SLOTS_JP_W = 6, GRID_JP_W = 4;
+        function slotsWeightedRand(jw) {
             const syms = slots.symbols;
             if (!syms.length) return 0;
+            const wJp = (Number.isFinite(+jw) && +jw > 0) ? +jw : SLOTS_JP_W;
             let tot = 0;
-            for (let i = 0; i < syms.length; i++) tot += syms[i].jackpot ? 2 : 10;
+            for (let i = 0; i < syms.length; i++) tot += syms[i].jackpot ? wJp : 10;
             let r = Math.random() * tot;
-            for (let i = 0; i < syms.length; i++) { r -= syms[i].jackpot ? 2 : 10; if (r <= 0) return i; }
+            for (let i = 0; i < syms.length; i++) { r -= syms[i].jackpot ? wJp : 10; if (r <= 0) return i; }
             return syms.length - 1;
         }
 
@@ -7333,11 +7378,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
         // Без WebGL — прежний DOM-фолбэк с теми же правилами и выплатой.
         const GRID_CHAIN = [1, 1.5, 2, 3, 5, 8];
         const GRID_COLS = 5, GRID_ROWS = 4;
-        const grid = { cells: [], spinning: false, bet: 100, lastWin: 0, chain: 0, total: 0, phase3d: '' };
+        const grid = { cells: [], spinning: false, bet: 100, lastWin: 0, chain: 0, total: 0, phase3d: '', jpPaid: 0 }; // b183: jpPaid — сколько из total уже начислил jackpotWin
         const grid3d = { renderer: null, scene: null, camera: null, reels: [], ready: false, failed: false, animId: null, lastT: 0, bursts: [], hl: {}, drops: [], cellW: 0.98, cellH: 1.5 };
         function gridRandSym() {
             if (!slots.symbols.length) slots.symbols = slotsSymbols();
-            return slots.symbols[slotsWeightedRand()]; // b56: взвешенно (JACKPOT редок)
+            return slots.symbols[slotsWeightedRand(GRID_JP_W)]; // b183: свой вес JACKPOT для Сетки
         }
         function gridPay(count, rarity) {
             if (count < 8) return 0;
@@ -7702,7 +7747,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             updateMissions('spin_grid', 1); // b122: задание дня
             jackpotFeed(bet); // b96: 100% ставки в банк
             saveState(); updateCoinDisplay(); renderGridUI();
-            grid.spinning = true; grid.chain = 0; grid.total = 0; grid.lastBet = bet; // b57
+            grid.spinning = true; grid.chain = 0; grid.total = 0; grid.jpPaid = 0; grid.lastBet = bet; // b57 / b183
             try { SoundFX.play('click'); } catch (e) {}
             if (grid3d.ready) {
                 grid.phase3d = 'spinning';
@@ -7721,7 +7766,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const jg = groups.find(gp => gp.jackpot && gp.count >= 3);
             if (jg) {
                 const idxSet = new Set(jg.idxs);
-                const prize = jackpotWin();
+                const prize = jackpotWin(); // b183: монеты уже начислены внутри jackpotWin
+                grid.jpPaid = (grid.jpPaid || 0) + prize; // b183: gridEnd эту часть второй раз не платит
                 grid.total += prize;
                 grid.chain = Math.max(grid.chain, 1);
                 gridShowChainText('👑 JACKPOT!  +' + fmtCoins(prize));
@@ -7769,7 +7815,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             grid.spinning = false;
             grid.phase3d = '';
             if (grid.total > 0) {
-                state.coins += grid.total;
+                // b183: раньше банк начислялся дважды (jackpotWin + gridEnd) — монеты печатались из воздуха.
+                // В статистику и тосты по-прежнему идёт весь выигрыш, а в баланс — только не-джекпотная часть.
+                const addCoins = Math.max(0, grid.total - (grid.jpPaid || 0));
+                if (addCoins > 0) state.coins += addCoins;
                 state.stats.gridWins = (state.stats.gridWins || 0) + 1;
                 updateMissions('win_grid', 1); // b121: задание дня
                 updateMissions('grid_coins', grid.total); // b122: задание дня
@@ -9178,10 +9227,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
             for (let i = 0; i < slots.symbols.length; i++) if (slots.symbols[i].jackpot) jp = slots.symbols[i];
             lines.pool = pick.concat([jp || { id: 'sym-jackpot', name: 'JACKPOT', rarity: 'legendary', image: '', jackpot: true }]);
         }
+        // b183: JACKPOT в Линиях выпадает чаще — 3 из 25 на ячейку (было 1 из 25),
+        // остальные 22 равномерно делятся между тремя картами линии. Три JACKPOT подряд ≈ 1 из 70 спинов (было 1 из 1730).
+        const LINES_JP_W = 3;
         function linesRand() {
             const r = Math.random() * 25;
-            if (r < 1) return 3; // JACKPOT
-            return Math.min(2, Math.floor((r - 1) / 8));
+            if (r < LINES_JP_W) return 3; // JACKPOT
+            return Math.min(2, Math.floor((r - LINES_JP_W) / ((25 - LINES_JP_W) / 3)));
         }
         function linesTileHtml(sym, win) {
             if (!sym) return '<i class="fa-solid fa-question text-slate-600 text-sm"></i>';
@@ -9610,6 +9662,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         // ============ b74: КОЛЕСО ФОРТУНЫ (3D) ============
         // 16 секторов-призов: множители ставки, случайная карта сайта, кирка +1.
+        // b183: золотых секторов JACKPOT теперь два (1 из 8 спинов) — один пустой сектор отдали джекпоту.
         // Пустые сектора пополняют общий джекпот (как проигрышный спин).
         const WHEEL_SECTORS = [
             { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
@@ -9624,7 +9677,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             { t: 'mult', m: 1.5, label: '×1.5', color: 0x14b8a6 },
             { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
             { t: 'mine',          label: 'КИРКА', color: 0xd97706 },
-            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
+            { t: 'jackpot',       label: 'JACKPOT', color: 0xfbbf24 }, // b183: второй золотой сектор вместо пустого — 1 из 8 (было 1 из 16)
             { t: 'mult', m: 3,   label: '×3',   color: 0xd946ef },
             { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
             { t: 'mult', m: 5,   label: '×5',   color: 0xeab308 }
@@ -15400,7 +15453,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             // Облачная синхронизация общего каталога паков
             cloudInit();
             // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
-            try { jpSyncNow(); setInterval(jpSyncNow, 60000); document.addEventListener('visibilitychange', () => { if (!document.hidden) jpSyncNow(); }); } catch (e) {}
+            // b183: уходим со страницы — срочно отправляем банк (jpFlush), вернулись — полная синхронизация
+            try {
+                jpSyncNow(); setInterval(jpSyncNow, 60000);
+                document.addEventListener('visibilitychange', () => { if (document.hidden) jpFlush(); else jpSyncNow(); });
+                window.addEventListener('pagehide', jpFlush);
+            } catch (e) {}
             // b148: тик таймеров продажи паков — countdown и автоснятие по истечении
             try { saleTick(); setInterval(saleTick, 1000); } catch (e) {} // b149: секундный обратный отсчёт
             // b91/b127: имя игрока для джекпота — поле в шапке рядом с балансом
