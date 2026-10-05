@@ -814,9 +814,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
         /* ===== b167: магазин — адаптация под планшеты и телефоны ===== */
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
-        /* индикатор жалости: длинный текст с многоточием, не выдавливает счётчик */
-        #pity-indicator { min-width: 0; }
-        #pity-indicator-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         @media (max-width: 639px) {
             /* статы героя: компактные, цифры не вылезают из сетки */
             .store-stat { min-width: 0; padding: 8px 10px; gap: 7px; border-radius: 14px; }
@@ -829,7 +826,6 @@ Check your Browserslist config to be sure that your targets are set up correctly
             .sale-timer:not(.sale-inline) b { width: 119px; left: -27px; top: 20px; font-size: 9px; padding: 4px 0; letter-spacing: .04em; }
             /* чипы в горизонтальных лентах не сжимаются — лента свайпится */
             #sale-banner-list > *, #upcoming-list > * { flex-shrink: 0; }
-            #pity-indicator { max-width: 52vw; }
         }
         @media (max-width: 400px) {
             .sale-timer:not(.sale-inline) { width: 88px; height: 88px; }
@@ -1069,16 +1065,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             <div id="store-carousel" class="pack-carousel relative overflow-hidden rounded-[28px] border px-2 py-5 sm:px-6">
                 <div class="pointer-events-none absolute inset-x-0 top-1/3 h-1/2 bg-[radial-gradient(ellipse_at_center,rgba(52,211,153,0.08),transparent_65%)]"></div>
-                <div class="relative flex items-center justify-between gap-3 px-1 sm:px-2">
-                    <p class="text-[10px] sm:text-[11px] text-slate-500 min-w-0 truncate"><i class="fa-solid fa-compact-disc text-teal-400 mr-1.5"></i><span class="sm:hidden">Карусель: свайп или стрелки</span><span class="hidden sm:inline">Карусель паков: листайте стрелками, свайпом или колесом мыши — смена пака каждые 15 секунд</span></p>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <div id="pity-indicator" class="items-center space-x-1.5 text-[11px] bg-purple-500/10 border border-purple-500/30 text-purple-300 px-2.5 py-1 rounded-lg min-w-0 overflow-hidden" style="display:none;">
-                            <i class="fa-solid fa-shield-halved"></i>
-                            <span id="pity-indicator-text"></span>
-                        </div>
-                        <span id="carousel-counter" class="text-[11px] font-mono text-slate-500">0 / 0</span>
-                    </div>
-                </div>
+                <!-- b223: строка-подсказка карусели с бейджем гаранта и счётчиком убрана по просьбе -->
 
                 <div id="carousel-stage" class="carousel-stage mt-1" ontouchstart="carouselTouchStart(event)" ontouchmove="carouselTouchMove(event)" ontouchend="carouselTouchEnd(event)" onmousedown="carouselDragStart(event)">
                     <div class="carousel-spot"></div>
