@@ -11085,6 +11085,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 el.classList.toggle('sale-hot', mode === 'end' && ms > 0 && ms < 3600000);
                 el.classList.toggle('sale-crit', mode === 'end' && ms > 0 && ms < 10 * 60000);
             });
+            // b181: живой отсчёт на кнопке панели витрины («Премьера через …» / «Продажа через …»)
+            document.querySelectorAll('[data-btn-cd]').forEach(el => {
+                const p = state.packs.find(x => x.id === el.getAttribute('data-btn-cd'));
+                if (!p) return;
+                const mode = el.getAttribute('data-btn-cd-mode') || 'prem';
+                const w = packScheduleWindow(p);
+                const target = mode === 'prem' ? (p.premiereAt || 0) : (w ? w.start : 0);
+                if (!target) return;
+                el.textContent = saleClockStr(target - now);
+            });
             // b161: напоминания: за час до старта окна и в момент открытия
             try {
                 state.packs.forEach(p => {
@@ -11477,7 +11487,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 ${hasDisc ? `<span class="text-[9px] uppercase tracking-widest text-rose-300 font-black">-${Math.round(100 - salePrice / pack.price * 100)}%</span>` : '<span class="text-[9px] uppercase tracking-widest text-amber-200/60 font-bold">монет</span>'}
                             </span>
                             <button id="carousel-open-btn" onclick="buyPack('${pack.id}')" class="flex-1 px-5 py-3 font-black text-sm tracking-wide rounded-2xl transition-all duration-200 ${canBuy ? 'btn-cta bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-300/60 hover:scale-[1.02] active:scale-[0.99]' : 'bg-slate-800/50 text-slate-500 border border-slate-700/70 shadow-none cursor-not-allowed'}">
-                                <i class="fa-solid ${prem || pre ? 'fa-clock' : afford ? 'fa-box-open' : 'fa-lock'} mr-2"></i>${prem ? '🎬 Премьера через ' + saleClockStr(pack.premiereAt - Date.now()) : pre ? 'Продажа через ' + saleClockStr(sw.start - Date.now()) : canBuy ? 'Открыть пак' : 'Не хватает монет'}
+                                <i class="fa-solid ${prem || pre ? 'fa-clock' : afford ? 'fa-box-open' : 'fa-lock'} mr-2"></i>${prem ? '🎬 Премьера через <b data-btn-cd="' + pack.id + '" data-btn-cd-mode="prem" class="font-black tabular-nums">' + saleClockStr(pack.premiereAt - Date.now()) + '</b>' : pre ? 'Продажа через <b data-btn-cd="' + pack.id + '" data-btn-cd-mode="pre" class="font-black tabular-nums">' + saleClockStr(sw.start - Date.now()) + '</b>' : canBuy ? 'Открыть пак' : 'Не хватает монет'}
                             </button>
                         </div>
                     </div>
