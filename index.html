@@ -801,6 +801,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
         .sale-banner::before { content: ''; position: absolute; inset: 0;
             background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.16) 50%, transparent 58%);
             background-size: 220% 100%; animation: saleShine 3.4s ease-in-out infinite; }
+        /* b174: лента «Скоро в продаже» — нижняя полоса hero-блока */
+        .upcoming-banner { border-top: 1px solid rgba(45,212,191,.22);
+            background: linear-gradient(120deg, rgba(45,212,191,.10), rgba(13,148,136,.05) 55%, rgba(56,189,248,.09));
+            box-shadow: inset 0 12px 24px -20px rgba(45,212,191,.5); }
+
         .sale-drop:hover { box-shadow: 0 0 20px -6px rgba(56,189,248,.55); background: rgba(2,6,23,.85); }
         .sale-drop:hover > span:nth-child(2) { color: #7dd3fc; }
         .store-tile-shade { position: absolute; inset: 0;
@@ -979,12 +984,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <span class="relative z-10 inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-sky-200"><i class="fa-solid fa-fire-flame-curved text-rose-400"></i><span id="sale-banner-label">Лимитированный дроп</span></span>
                     <div id="sale-banner-list" class="relative z-10 flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 no-scrollbar sm:pb-0 sm:flex-wrap sm:overflow-visible"></div>
                 </div>
-            </div>
-
-            <!-- b161: витрина ближайших окон продажи -->
-            <div id="upcoming-block" class="hidden mb-3 rounded-2xl border border-slate-800 bg-slate-900/50 px-4 py-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <span class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 shrink-0"><i class="fa-solid fa-hourglass-start text-teal-300 mr-1"></i>Скоро в продаже</span>
-                <div id="upcoming-list" class="w-full sm:w-auto min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 no-scrollbar sm:pb-0 sm:flex-wrap sm:overflow-visible"></div>
+                <!-- b174: лента «Скоро в продаже» интегрирована в hero-блок магазина -->
+                <div id="upcoming-block" class="hidden upcoming-banner relative z-10 px-5 sm:px-8 py-3 flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <span class="relative z-10 inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-teal-200/90 shrink-0"><i class="fa-solid fa-hourglass-start text-teal-300"></i>Скоро в продаже</span>
+                    <div id="upcoming-list" class="relative z-10 min-w-0 flex-1 flex items-center gap-2 flex-nowrap overflow-x-auto pb-1 no-scrollbar sm:pb-0 sm:flex-wrap sm:overflow-visible"></div>
+                </div>
             </div>
 
             <div id="store-carousel" class="pack-carousel relative overflow-hidden rounded-[28px] border px-2 py-5 sm:px-6">
@@ -1560,17 +1564,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="marketRefresh()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-rotate mr-1"></i>Обновить</button>
                 </div>
                 <!-- b138: поиск и фильтры, чтобы удобно искать карты для покупки -->
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <input id="market-search" oninput="renderMarket()" placeholder="Поиск: имя или № карты (14, #014)…" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:border-teal-500 focus:outline-none">
-                    <select id="market-pack" onchange="renderMarket()" class="sm:w-52 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none"></select>
-                    <select id="market-rarity" onchange="renderMarket()" class="sm:w-40 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none">
+                <!-- b176: на планшетах (sm…lg) поиск сжимался в щёлку между селектами — теперь он на отдельной строке, селекты компактные -->
+                <div class="flex flex-col sm:flex-row sm:flex-wrap gap-2">
+                    <input id="market-search" oninput="renderMarket()" placeholder="Поиск: имя или № карты (14, #014)…" class="min-w-0 sm:w-full lg:w-auto lg:flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 placeholder-slate-600 focus:border-teal-500 focus:outline-none">
+                    <select id="market-pack" onchange="renderMarket()" class="sm:w-44 md:w-52 max-w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none"></select>
+                    <select id="market-rarity" onchange="renderMarket()" class="sm:w-36 md:w-40 max-w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none">
                         <option value="">Любая редкость</option>
                         <option value="common">Обычная</option>
                         <option value="rare">Редкая</option>
                         <option value="epic">Эпическая</option>
                         <option value="legendary">Легендарная</option>
                     </select>
-                    <select id="market-sort" onchange="renderMarket()" class="sm:w-44 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none">
+                    <select id="market-sort" onchange="renderMarket()" class="sm:w-40 md:w-44 max-w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs text-slate-200 focus:border-teal-500 focus:outline-none">
                         <option value="new">Сначала новые</option>
                         <option value="cheap">Сначала дешёвые</option>
                         <option value="exp">Сначала дорогие</option>
@@ -12084,7 +12089,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             wrap.innerHTML = u.view === 'rows'
                 ? `<div class="flex flex-col gap-2 sm:gap-3">${packs.map((p, i) => albumCardRow(p, i)).join('')}</div>`
-                : `<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">${packs.map((p, i) => albumCardTile(p, i)).join('')}</div>`;
+                : `<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">${packs.map((p, i) => albumCardTile(p, i)).join('')}</div>`;
         }
 
         function renderAlbumsHub() {
@@ -12113,46 +12118,62 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
                 container.innerHTML = `
                     <div class="space-y-3 sm:space-y-4">
-                        <div class="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/70">
+                        <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/70">
                             <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-sky-500/10 pointer-events-none"></div>
                             <div class="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
-                            <div class="relative p-4 sm:p-6 space-y-3.5 sm:space-y-4">
-                                <div class="flex items-center gap-3 sm:gap-4">
-                                    <button onclick="backToAlbumsHub()" class="w-10 h-10 shrink-0 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/60 flex items-center justify-center text-slate-300 hover:text-white transition" title="Ко всем альбомам">
-                                        <i class="fa-solid fa-arrow-left"></i>
+                            <div class="relative p-3 sm:p-6">
+                                <!-- b175: строка 1 — выход, обложка, название, кольцо прогресса -->
+                                <div class="flex items-center gap-2.5 sm:gap-5">
+                                    <button onclick="backToAlbumsHub()" class="w-9 h-9 sm:w-11 sm:h-11 shrink-0 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/60 flex items-center justify-center text-slate-300 hover:text-white transition" title="Ко всем альбомам">
+                                        <i class="fa-solid fa-arrow-left text-sm sm:text-base"></i>
                                     </button>
-                                    <div class="w-12 h-[4.5rem] sm:w-14 sm:h-24 rounded-xl overflow-hidden border border-slate-700/70 shadow-lg shrink-0">
-                                        <img src="${mediaUrl(pack.image)}" alt="" class="w-full h-full object-cover" onerror="this.onerror=null;imgErrorChain(this);">
+                                    <div class="relative w-14 h-20 sm:w-20 sm:h-28 shrink-0 rounded-lg sm:rounded-xl overflow-hidden border border-slate-700/70 ring-1 ring-white/10 shadow-lg shadow-black/40">
+                                        <img src="${mediaUrl(pack.image)}" alt="" class="absolute inset-0 w-full h-full object-cover" onerror="this.onerror=null;imgErrorChain(this);">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-white/10 pointer-events-none"></div>
                                     </div>
                                     <div class="min-w-0 flex-1">
-                                        <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300/80">Альбом</div>
-                                        <h2 class="text-lg sm:text-2xl font-black text-white break-words leading-tight">${pack.title}</h2>
-                                        <p class="text-[11px] sm:text-xs text-slate-400 mt-1">Собрано: <span class="text-slate-200 font-semibold">${collectedCount} / ${packCards.length}</span> (${progressPct}%)${dupesTotal > 0 ? ` • повторок: ${dupesTotal}` : ''}${state.albumBonus && state.albumBonus[pack.id] ? ' • <span class="text-amber-300 font-semibold"><i class="fa-solid fa-book-open mr-0.5"></i>бонус альбома получен</span>' : ''}</p>
+                                        <div class="flex items-center gap-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300/80">Альбом${progressPct >= 100 ? ' <span class="tracking-normal text-amber-300"><i class="fa-solid fa-crown mr-0.5"></i>собран</span>' : ''}</div>
+                                        <h2 class="mt-0.5 sm:mt-1 text-base sm:text-2xl font-black text-white break-words leading-tight">${pack.title}</h2>
+                                        <p class="mt-1 sm:mt-1.5 text-[11px] sm:text-xs text-slate-400">Собрано: <span class="text-slate-200 font-semibold">${collectedCount} / ${packCards.length}</span> (${progressPct}%)${dupesTotal > 0 ? ` • повторок: ${dupesTotal}` : ''}${state.albumBonus && state.albumBonus[pack.id] ? ' • <span class="text-amber-300 font-semibold"><i class="fa-solid fa-book-open mr-0.5"></i>бонус альбома получен</span>' : ''}</p>
+                                        <div class="mt-2 sm:hidden h-1.5 rounded-full bg-slate-800/80 overflow-hidden"><div class="h-full rounded-full transition-all duration-500" style="width:${progressPct}%;background:${progressPct >= 100 ? '#fbbf24' : '#34d399'}"></div></div>
                                     </div>
-                                    <button onclick="sellAlbumDupes('${pack.id}')" title="Выставить все лишние копии карт этого альбома на биржу по рекомендуемой цене (одна копия каждой карты останется в коллекции)" class="shrink-0 px-2.5 sm:px-3 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-[10px] sm:text-[11px] font-bold transition shadow-lg shadow-amber-950/30"><i class="fa-solid fa-sack-coins mr-1"></i><span class="hidden sm:inline">Продать все повторки</span><span class="sm:hidden">Повторки</span></button>
-                                    <div class="sm:hidden shrink-0">${albumRingHTML(progressPct, 48, 5)}</div>
+                                    <div class="sm:hidden shrink-0 pr-0.5">${albumRingHTML(progressPct, 46, 5)}</div>
                                     <div class="hidden sm:flex items-center gap-3 shrink-0 pr-1">
-                                        ${albumRingHTML(progressPct, 68, 6)}
+                                        ${albumRingHTML(progressPct, 72, 7)}
                                         <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 leading-relaxed">общий<br>прогресс</div>
                                     </div>
                                 </div>
 
+                                <!-- b175: редкости — равные плитки: 2 колонки на телефоне, 4 на планшете и выше -->
                                 ${rarStat.length ? `
-                                <div class="flex flex-wrap gap-1.5 sm:gap-2">
+                                <div class="mt-3 sm:mt-5 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5">
                                     ${rarStat.map(x => {
                                         const col = RAR_COLORS[x.r] || '#94a3b8';
                                         const rp = x.all ? Math.round(x.have / x.all * 100) : 0;
                                         return `
-                                        <span class="flex items-center gap-2 rounded-xl bg-slate-950/60 border border-slate-800/80 pl-2 pr-2.5 py-1.5">
-                                            <i class="fa-solid fa-circle text-[7px]" style="color:${col}"></i>
-                                            <span class="text-[10px] font-black uppercase tracking-wide" style="color:${col}">${RARITY_LABELS_RU[x.r] || x.r}</span>
-                                            <span class="w-14 sm:w-16 h-1 rounded-full bg-slate-800/80 overflow-hidden"><span class="block h-full rounded-full transition-all duration-500" style="width:${rp}%;background:${col}"></span></span>
-                                            <span class="text-[10px] font-mono text-slate-300">${x.have}/${x.all}</span>
-                                        </span>`;
+                                        <div class="rounded-xl bg-slate-950/60 border border-slate-800/80 px-2.5 sm:px-3 py-2 sm:py-2.5 min-w-0">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="flex items-center gap-1.5 min-w-0">
+                                                    <i class="fa-solid fa-circle text-[6px] sm:text-[7px] shrink-0" style="color:${col}"></i>
+                                                    <span class="text-[9px] sm:text-[10px] font-black uppercase tracking-wide truncate" style="color:${col}">${RARITY_LABELS_RU[x.r] || x.r}</span>
+                                                </span>
+                                                <span class="text-[10px] sm:text-[11px] font-mono text-slate-300 shrink-0">${x.have}/${x.all}</span>
+                                            </div>
+                                            <div class="mt-1.5 h-1 sm:h-1.5 rounded-full bg-slate-800/80 overflow-hidden"><div class="h-full rounded-full transition-all duration-500" style="width:${rp}%;background:${col}"></div></div>
+                                        </div>`;
                                     }).join('')}
                                 </div>` : ''}
+
+                                <!-- b175: действия — на телефоне кнопка во всю ширину, на десктопе справа -->
+                                <div class="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                                    <button onclick="sellAlbumDupes('${pack.id}')" title="Выставить все лишние копии карт этого альбома на биржу по рекомендуемой цене (одна копия каждой карты останется в коллекции)" class="order-1 sm:order-2 w-full sm:w-auto shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 text-[11px] sm:text-xs font-bold transition shadow-lg shadow-amber-950/30"><i class="fa-solid fa-sack-coins mr-1.5"></i>Продать все повторки${dupesTotal > 0 ? ` <span class="font-mono">(${dupesTotal})</span>` : ''}</button>
+                                    <div class="order-2 sm:order-1 flex-1 min-w-0 text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
+                                        ${progressPct >= 100 ? '<span class="text-amber-300 font-semibold"><i class="fa-solid fa-trophy mr-1"></i>Альбом собран полностью!</span>' : `Осталось собрать: <span class="text-slate-300 font-semibold">${packCards.length - collectedCount}</span> ${pluralRu(packCards.length - collectedCount, 'карта', 'карты', 'карт')}`}
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
 
                         <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-2.5 sm:p-3 space-y-2.5">
                             <div class="flex flex-wrap items-center gap-2">
@@ -12163,8 +12184,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             </div>
                             <div class="h-px bg-slate-800/70"></div>
                             <div class="grid gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
-                                <div class="flex rounded-xl border border-slate-700 overflow-hidden shrink-0 justify-self-start" title="Вид карточек: сетка, альбом, строки, компактно, крупно">
-                                    ${Object.keys(ALBUM_CARD_VIEWS).map(k => `<button onclick="setAlbumsCardView('${k}')" title="${ALBUM_CARD_VIEWS[k]}" class="px-2.5 py-2 text-[11px] transition ${u.cardView === k ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid ${ALBUM_CARD_VIEW_ICONS[k]}"></i><span class="hidden lg:inline ml-1">${ALBUM_CARD_VIEWS[k]}</span></button>`).join('')}
+                                <div class="flex w-full sm:w-auto rounded-xl border border-slate-700 overflow-hidden shrink-0 justify-self-start" title="Вид карточек: сетка, альбом, строки, компактно, крупно">
+                                    ${Object.keys(ALBUM_CARD_VIEWS).map(k => `<button onclick="setAlbumsCardView('${k}')" title="${ALBUM_CARD_VIEWS[k]}" class="flex-1 sm:flex-none px-2.5 py-2 text-[11px] transition ${u.cardView === k ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid ${ALBUM_CARD_VIEW_ICONS[k]}"></i><span class="hidden lg:inline ml-1">${ALBUM_CARD_VIEWS[k]}</span></button>`).join('')}
                                 </div>
                                 <div class="relative">
                                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] pointer-events-none"></i>
