@@ -4641,7 +4641,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
         const STD_MOD_REMOTE_KEY = 'nexus_std_mod_remote';
         // b46: списки полей для patch-записей правок стандарта. Объявлены здесь (а не в облачном
         // разделе): загрузочная миграция работает раньше и иначе ловила бы TDZ-ошибку
-        const STD_PACK_FIELDS = ['title', 'description', 'image', 'price', 'color', 'shimmer', 'musicUrl', 'musicOff'];
+        // b173: таймеры продажи, премьера, график и снятие с продажи стандартного пака — тоже часть комнаты
+        const STD_PACK_FIELDS = ['title', 'description', 'image', 'price', 'color', 'shimmer', 'musicUrl', 'musicOff', 'saleUntil', 'premiereAt', 'schedule', 'retired'];
         const STD_CARD_FIELDS = ['name', 'description', 'rarity', 'image', 'layout', 'aura', 'atk', 'hp', 'musicUrl'];
 
         let state = {
@@ -4791,6 +4792,22 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     if (ownerish2) {
                         state.packs.forEach(p => { if (STANDARD_IDS[p.id]) cloudStdTouch(p); });
                         state.cards.forEach(c => { if (STANDARD_IDS[c.id]) cloudStdTouch(c); });
+                    }
+                }
+            } catch (e) {}
+            // b173: таймеры/снятие с продажи стандартных паков, поставленные ДО этой сборки,
+            // в patch-записях не фиксировались — фиксируем один раз на устройстве-создателе,
+            // чтобы они доехали до комнаты
+            try {
+                if (LS.getItem('nexus_stdmod_timer_init') !== '1') {
+                    LS.setItem('nexus_stdmod_timer_init', '1');
+                    let ownerish3 = false;
+                    try {
+                        const rc3 = String(LS.getItem('nexus_cloud_room') || '').trim();
+                        ownerish3 = !!rc3 && (LS.getItem('nexus_cloud_owner_room') === rc3 || !!LS.getItem('nexus_cloud_auth_' + rc3));
+                    } catch (e) {}
+                    if (ownerish3) {
+                        state.packs.forEach(p => { if (STANDARD_IDS[p.id]) cloudStdTouch(p); });
                     }
                 }
             } catch (e) {}
@@ -13007,6 +13024,35 @@ Check your Browserslist config to be sure that your targets are set up correctly
             cloudStdModSave(list);
         }
         // применить локальные patch-записи к состоянию (идемпотентно)
+        // b173: пересборка стандартной позиции ЦЕЛИКОМ из базы + patch. Раньше patch только
+        // дописывал поля: если создатель убирал таймер/снятие с продажи (поле возвращалось
+        // к базовому значению и исчезало из patch), у участников старое значение залипало
+        // навсегда. Теперь поля из белого списка сначала сбрасываются к базе, затем
+        // применяется patch — отмена правки тоже доезжает до комнаты.
+        function applyStdPatchTo(it, patch) {
+            if (!it || !it.id) return false;
+            const isP = !!cloudStdFindPack(it.id);
+            const base = isP ? cloudStdFindPack(it.id) : cloudStdFindCard(it.id);
+            const fields = isP ? STD_PACK_FIELDS : STD_CARD_FIELDS;
+            let changed = false;
+            if (base) fields.forEach(f => {
+                const b = base[f];
+                const have = it[f];
+                const hv = (have === undefined) ? null : have;
+                if (b === undefined) {
+                    if (have !== undefined) { delete it[f]; changed = true; }
+                } else if (JSON.stringify(b) !== JSON.stringify(hv)) {
+                    it[f] = (b && typeof b === 'object') ? JSON.parse(JSON.stringify(b)) : b;
+                    changed = true;
+                }
+            });
+            if (patch && typeof patch === 'object') Object.keys(patch).forEach(k => {
+                const v = patch[k];
+                if (v === null) { if (it[k] !== undefined) { delete it[k]; changed = true; } }
+                else if (JSON.stringify(it[k]) !== JSON.stringify(v)) { it[k] = v; changed = true; }
+            });
+            return changed;
+        }
         function applyStdPatches() {
             const mod = cloudStdMod();
             let changed = false;
@@ -13014,11 +13060,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 if (!e.patch) return;
                 const it = state.packs.find(p => p.id === e.id) || state.cards.find(c => c.id === e.id);
                 if (!it) return;
-                Object.keys(e.patch).forEach(k => {
-                    if (e.patch[k] === null) delete it[k];
-                    else it[k] = e.patch[k];
-                    changed = true;
-                });
+                if (applyStdPatchTo(it, e.patch)) changed = true; // b173
             });
             return changed;
         }
@@ -13177,12 +13219,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     // b46: правка полей стандартного пака/карты (patch поверх базы и локального состояния)
                     if (e.patch && typeof e.patch === 'object') {
                         const it = state.packs.find(p => p.id === e.id) || state.cards.find(c => c.id === e.id);
-                        if (it) {
-                            Object.keys(e.patch).forEach(k => {
-                                if (e.patch[k] === null) delete it[k]; else it[k] = e.patch[k];
-                            });
-                            modChanged = true;
-                        }
+                        if (it) { applyStdPatchTo(it, e.patch); modChanged = true; } // b173: база + patch целиком
                     }
                 });
                 cloudStdModSave(localMod.concat(remoteMod));
@@ -14124,6 +14161,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 p.retired = false;
             }
             p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: график стандартного пака уезжает в комнату
             saveState();
             cloudPublishSoon();
             SHOP_LIST = shopPacks();
@@ -14145,6 +14183,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 delete p.saleUntil;
             }
             p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: таймер стандартного пака уезжает в комнату
             saveState();
             cloudPublishSoon();
             SHOP_LIST = shopPacks();
@@ -14174,6 +14213,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 p.retired = false; // премьерный пак всегда виден в витрине — как «Скоро»
             }
             p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: премьера стандартного пака уезжает в комнату
             saveState();
             cloudPublishSoon();
             SHOP_LIST = shopPacks();
@@ -14192,8 +14232,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!p) return;
             p.retired = !p.retired;
             p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: снятие/возврат стандартного пака уезжает в комнату
             saveState();
             cloudPublishSoon();
+            if (p.retired) cloudPushUrgent(); // b173: скрытие критично — отправляем без дебаунса
             SHOP_LIST = shopPacks();
             renderStudio();
             refreshVisibleTabs();
