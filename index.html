@@ -4859,10 +4859,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
             try {
                 const u = String(el.src || '');
                 if (!u || u.indexOf('data:') === 0) return false;
+                const raw = el.__nxOrig || u;
+                el.__nxOrig = raw;
+                // b248: мобильные сети рвут загрузку — сперва 2 ретрая оригинала, потом заглушка
+                el.__nxRetry = (el.__nxRetry || 0) + 1;
+                if (el.__nxRetry <= 2 && !el.__nxPh) {
+                    el.onerror = null;
+                    const n = el.__nxRetry;
+                    setTimeout(() => {
+                        if (el.__nxPh) return;
+                        el.src = raw + (raw.indexOf('?') >= 0 ? '&' : '?') + 'nxr=' + n;
+                    }, 350 * n);
+                    return true;
+                }
                 const b = mediaBase();
-                if (!el.__nxMir && b && u.indexOf(MEDIA_DEAD_BASE) === 0) {
+                if (!el.__nxMir && b && raw.indexOf(MEDIA_DEAD_BASE) === 0) {
                     el.__nxMir = 1; el.onerror = null; el.style.display = '';
-                    el.src = b + '/' + u.slice(MEDIA_DEAD_BASE.length);
+                    el.src = b + '/' + raw.slice(MEDIA_DEAD_BASE.length);
                     return true;
                 }
                 if (!el.__nxPh) {
@@ -4873,6 +4886,33 @@ Check your Browserslist config to be sure that your targets are set up correctly
             } catch (e) {}
             return false;
         }
+        // b248: watchdog — «зависшие» картинки (ни load, ни error) дожигаются в цепочку
+        setInterval(() => {
+            try {
+                const imgs = document.images;
+                for (let i = 0; i < imgs.length; i++) {
+                    const el = imgs[i];
+                    if (el.__nxPh || el.__nxWatch) continue;
+                    if (el.complete || !el.src || el.src.indexOf('data:') === 0) continue;
+                    el.__nxWatch = setTimeout(() => { if (!el.complete && !el.__nxPh) imgErrorChain(el); }, 9000);
+                    el.addEventListener('load', () => clearTimeout(el.__nxWatch), { once: true });
+                    el.addEventListener('error', () => clearTimeout(el.__nxWatch), { once: true });
+                }
+            } catch (e) {}
+        }, 6000);
+        // b248: вернулись в сеть / в приложение — заглушки перепроверяются боевыми URL
+        function nxRecheckImgs() {
+            try {
+                document.querySelectorAll('img').forEach(el => {
+                    if (el.__nxPh && el.__nxOrig) {
+                        el.__nxPh = 0; el.__nxRetry = 0;
+                        el.src = el.__nxOrig + (el.__nxOrig.indexOf('?') >= 0 ? '&' : '?') + 'nxr=' + (Date.now() % 100000);
+                    }
+                });
+            } catch (e) {}
+        }
+        window.addEventListener('online', nxRecheckImgs);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) nxRecheckImgs(); });
         // Делегированный обработчик: ловит ошибки ВСЕХ <img> (capture), включая те,
         // у которых inline-onerror прятал элемент — вместо чёрной дыры будет заглушка с названием
         document.addEventListener('error', ev => {
