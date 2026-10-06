@@ -1589,7 +1589,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <li>Соперник атакует — бейте старшей картой той же масти или козырем; не можете побить — забираете карты со стола.</li>
                                 <li>После боя добор до 6 карт: у кого карты кончились — тот победил, оставшийся с картами — <b>дурак</b>.</li>
                                 <li>Победа: <b>+150 монет</b> (×2 за первую победу дня, бонусы за серию), идеальная победа без взятых карт — ещё щедрее.</li>
-                                <li>Подкидывать можно карты тех же достоинств, что уже лежат на столе; за один кон на столе <b>не больше 6 карт</b> (3 пары). Первым ходит игрок с младшим козырем.</li>
+                                <li>Подкидывать можно карты тех же достоинств, что уже лежат на столе; за один кон на столе <b>не больше 6 карт</b> суммарно (атаки и крышки). Первым ходит игрок с младшим козырем.</li>
                             </ol>
                         </div>
                 </div>
@@ -10462,9 +10462,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return s;
         }
 
+        function durakTableCards() { return durak.table.reduce((n, p) => n + 1 + (p.defend ? 1 : 0), 0); } // b250: сколько карт лежит на столе
         function durakCanAdd(card) {
             if (!durak.table.length) return false;
-            if (durak.table.length >= 3) return false; // b249: отбой за кон — не больше 6 карт (3 пары)
+            if (durakTableCards() + 1 > 6) return false; // b250: не больше 6 карт НА столе за кон (атаки + крышки)
             if (!durakTableRanks().has(card.rank)) return false;
             if (!durak.taking) {
                 const defender = durak.attacker === 'player' ? 'ai' : 'player';
@@ -10542,6 +10543,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!card) return;
 
             if (durak.taking) { // ИИ забирается — подкидываем
+                if (durakTableCards() + 1 > 6) { showToast('На столе уже 6 карт — подкинуть нельзя', 'error'); return; } // b250
                 if (!durakCanAdd(card)) { showToast('Подкидывать можно только достоинства со стола', 'error'); return; }
                 durakPlayToTable('player', card);
                 durakLog(`Вы подкинули ${card.rank}${card.suit}`);
@@ -10553,6 +10555,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const unresolved = durak.table.filter(p => !p.defend);
             if (durak.table.length && unresolved.length) { // защищаемся
                 const pair = unresolved[0];
+                if (durakTableCards() + 1 > 6) { showToast('На столе 6 карт — побить нельзя, забирайте', 'error'); return; } // b250
                 if (!durakCanBeat(card, pair.attack, durak.trumpSuit)) {
                     showToast(`Этой картой не отбить ${pair.attack.rank}${pair.attack.suit}`, 'error');
                     return;
@@ -10568,7 +10571,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             // атака: открытие или подкидывание
             if (durak.table.length && !durakCanAdd(card)) { showToast('Подкидывать можно только достоинства со стола', 'error'); return; }
-            if (durak.table.length >= 3) { showToast('Больше 6 карт за кон не кладётся', 'error'); return; }
+            if (durakTableCards() + 1 > 6) { showToast('На столе уже 6 карт — подкинуть нельзя', 'error'); return; }
             durakPlayToTable('player', card);
             durakLog(`Вы ходите картой ${card.rank}${card.suit}`);
             SoundFX.play('swap');
@@ -10622,6 +10625,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const unresolved = durak.table.filter(p => !p.defend);
             if (durak.table.length && unresolved.length) { // ИИ защищается
                 const pair = unresolved[0];
+                if (durakTableCards() + 1 > 6) { // b250: стол забит 6 картами — крыть нечем по правилу, ИИ забирает
+                    durak.taking = true;
+                    durakLog('Стол полон (6 карт) — ИИ забирает карты…');
+                    renderDurakUI(); durak3dSync();
+                    return;
+                }
                 const opts = hand.filter(c => durakCanBeat(c, pair.attack, durak.trumpSuit))
                     .sort((a, b) => ((a.suit === durak.trumpSuit ? 100 : 0) + a.val) - ((b.suit === durak.trumpSuit ? 100 : 0) + b.val));
                 const use = opts[0];
