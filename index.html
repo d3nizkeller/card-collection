@@ -625,10 +625,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
             position: absolute; top: 44%; transform: translateY(-50%); z-index: 12;
             width: 46px; height: 46px; border-radius: 9999px;
             display: flex; align-items: center; justify-content: center;
-            background: rgba(15,23,42,.85); border: 1px solid rgba(148,163,184,.28);
+            background:
+                radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 42%),
+                linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 48%, rgba(255,255,255,.05) 100%);
+            -webkit-backdrop-filter: blur(14px) saturate(160%);
+            backdrop-filter: blur(14px) saturate(160%);
+            border: 1px solid rgba(255,255,255,.20);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(255,255,255,.07), 0 6px 18px rgba(2,6,23,.35);
             color: #e2e8f0; cursor: pointer; transition: all .2s ease;
         }
-        .carousel-arrow:hover { background: rgba(16,185,129,.9); color: #04121a; transform: translateY(-50%) scale(1.09); }
+        .carousel-arrow:hover { border-color: rgba(110,231,183,.6); color: #99f6e4; transform: translateY(-50%) scale(1.09); box-shadow: inset 0 1px 0 rgba(255,255,255,.32), inset 0 -1px 0 rgba(255,255,255,.09), 0 8px 24px rgba(2,6,23,.45); }
         .carousel-arrow.prev { left: 2px; }
         .carousel-arrow.next { right: 2px; }
         .carousel-slot.active .pack3d-front {
@@ -783,7 +789,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
         .sale-timer.sale-inline { position: static; width: auto; height: auto; overflow: visible;
             display: inline-block; vertical-align: middle; margin-left: 6px; pointer-events: auto; }
         .sale-timer.sale-inline b { position: static; transform: none; width: auto; display: inline-block;
-            padding: 4px 10px; border-radius: 8px; font-size: 10px; }
+            padding: 5px 12px; border-radius: 9999px; font-size: 10px;
+            background:
+                radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,.18) 0%, rgba(255,255,255,0) 46%),
+                linear-gradient(135deg, color-mix(in srgb, var(--rc1) 32%, transparent), color-mix(in srgb, var(--rc2) 20%, transparent));
+            -webkit-backdrop-filter: blur(14px) saturate(160%);
+            backdrop-filter: blur(14px) saturate(160%);
+            border: 1px solid color-mix(in srgb, var(--rc2) 55%, transparent);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 -1px 0 rgba(255,255,255,.08), 0 6px 16px var(--rg);
+            text-shadow: 0 1px 2px rgba(0,0,0,.45); }
         /* b153: блик на главной CTA-кнопке */
         .btn-cta { position: relative; overflow: hidden; }
         .btn-cta::after { content: ''; position: absolute; inset: 0;
@@ -814,6 +828,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
         /* ===== b167: магазин — адаптация под планшеты и телефоны ===== */
         .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        /* b227b: лента чипов ставки на мобильных — скролл с мягким растворением краёв */
+        .bets-strip { -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+        .bets-strip > * { scroll-snap-align: start; }
+        @media (max-width: 1023px) {
+            .bets-strip {
+                -webkit-mask-image: linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+                mask-image: linear-gradient(to right, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+                padding-bottom: 2px;
+            }
+        }
         @media (max-width: 639px) {
             /* статы героя: компактные, цифры не вылезают из сетки */
             .store-stat { min-width: 0; padding: 8px 10px; gap: 7px; border-radius: 14px; }
@@ -981,19 +1005,19 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             <!-- Coin Balance -->
             <div id="hdr-controls" class="flex items-center space-x-1.5 sm:space-x-3 lg:space-x-4 xl:space-x-6 shrink-0">
-                <div class="flex items-center space-x-2 bg-slate-900/90 border border-slate-700/60 px-2.5 sm:px-4 py-1.5 rounded-full shadow-inner">
+                <div class="lqg lqg-amber flex items-center space-x-2 px-2.5 sm:px-4 py-1.5">
                     <i class="fa-solid fa-coins text-amber-400 text-sm"></i>
                     <span id="coin-balance" class="font-bold text-amber-300 tracking-wider text-sm sm:text-base">1000</span>
                 </div>
 
                 <!-- Player Name (for jackpot) -->
-                <div class="flex items-center space-x-1.5 bg-slate-900/90 border border-slate-700/60 px-2.5 sm:px-3.5 py-1.5 rounded-full shadow-inner">
+                <div class="lqg lqg-teal flex items-center space-x-1.5 px-2.5 sm:px-3.5 py-1.5">
                     <i class="fa-solid fa-user-pen text-teal-300 text-sm"></i>
                     <input id="player-name-input" maxlength="18" placeholder="Имя для джекпота" oninput="setPlayerName(this.value)" class="bg-transparent w-[clamp(40px,14vw,144px)] text-[11px] sm:text-xs font-bold text-teal-200 placeholder-slate-500 focus:outline-none">
                 </div>
 
                 <!-- Sound Toggle -->
-                <button onclick="toggleSound()" class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-slate-900/90 border border-slate-700/60 rounded-full text-slate-300 hover:text-white transition shrink-0" title="Звук вкл/выкл">
+                <button onclick="toggleSound()" class="lqg lqg-slate w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center transition shrink-0" title="Звук вкл/выкл">
                     <i id="sound-icon" class="fa-solid fa-volume-high text-sm"></i>
                 </button>
 
@@ -1002,7 +1026,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button onclick="switchTab('store')" id="nav-store" class="px-3 py-2 rounded-lg text-sm font-medium transition-all bg-emerald-600 text-white shadow">Магазин</button>
                     <button onclick="switchTab('albums')" id="nav-albums" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Альбомы</button>
                     <button onclick="switchTab('battle')" id="nav-battle" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Игры</button>
-                    <button onclick="switchTab('rewards')" id="nav-rewards" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Награды</button>
+                    <button onclick="switchTab('rewards')" id="nav-rewards" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Награды<span class="daily-dot hidden ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-amber-400 align-middle shadow-[0_0_6px_rgba(251,191,36,.8)]"></span></button>
                     <button onclick="switchTab('market')" id="nav-market" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Обмен</button>
                     <button onclick="switchTab('studio')" id="nav-studio" style="display:none" class="px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white">Студия</button>
                 </nav>
@@ -1020,7 +1044,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <button onclick="switchTab('battle')" id="mob-nav-battle" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-gamepad text-[15px] mb-0.5"></i> Игры
             </button>
-            <button onclick="switchTab('rewards')" id="mob-nav-rewards" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
+            <button onclick="switchTab('rewards')" id="mob-nav-rewards" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400"><span class="daily-dot hidden w-1.5 h-1.5 rounded-full bg-amber-400 mb-0.5 shadow-[0_0_6px_rgba(251,191,36,.8)]"></span>
                 <i class="fa-solid fa-gift text-[15px] mb-0.5"></i> Награды
             </button>
             <button onclick="switchTab('market')" id="mob-nav-market" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
@@ -1102,18 +1126,19 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         <!-- BATTLE TAB -->
         <section id="tab-battle" class="space-y-6 hidden">
+            <!-- b239: переключатель режимов живёт вне лобби — виден всегда -->
+                <div class="grid grid-cols-8 gap-1 sm:gap-2 w-full py-0.5">
+                    <button onclick="setBattleMode('arena')" id="mode-arena-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-rose-600 text-white shadow"><i class="fa-solid fa-hand-fist mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Арена</span></button>
+                    <button onclick="setBattleMode('durak')" id="mode-durak-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-diamond mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Дурак</span></button>
+                    <button onclick="setBattleMode('miner')" id="mode-miner-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-helmet-safety mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Шахта</span></button>
+                    <button onclick="setBattleMode('slots')" id="mode-slots-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-lemon mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Слоты</span></button>
+                    <button onclick="setBattleMode('grid')" id="mode-grid-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-border-all mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Сетка</span></button>
+                <button onclick="setBattleMode('lines')" id="mode-lines-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-table-cells mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Линии</span></button>
+                <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Мины</span></button>
+                <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Колесо</span></button>
+                </div>
             <!-- Battle Lobby -->
             <div id="battle-lobby" class="space-y-6">
-                <div class="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
-                    <button onclick="setBattleMode('arena')" id="mode-arena-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-rose-600 text-white shadow"><i class="fa-solid fa-hand-fist mr-1 sm:mr-1.5"></i>Арена</button>
-                    <button onclick="setBattleMode('durak')" id="mode-durak-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-diamond mr-1 sm:mr-1.5"></i>Дурак</button>
-                    <button onclick="setBattleMode('miner')" id="mode-miner-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-helmet-safety mr-1 sm:mr-1.5"></i>Шахта</button>
-                    <button onclick="setBattleMode('slots')" id="mode-slots-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-lemon mr-1 sm:mr-1.5"></i>Слоты</button>
-                    <button onclick="setBattleMode('grid')" id="mode-grid-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-border-all mr-1 sm:mr-1.5"></i>Сетка</button>
-                <button onclick="setBattleMode('lines')" id="mode-lines-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-table-cells mr-1 sm:mr-1.5"></i>Линии</button>
-                <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-1 sm:mr-1.5"></i>Мины</button>
-                <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-1 sm:mr-1.5"></i>Колесо</button>
-                </div>
                 <!-- b49: 3D-игровой автомат: на барабанах крутятся карты сайта -->
                 <div id="lobby-slots" class="space-y-6 hidden">
                     <!-- b182: стат-блоки БАЛАНС/СПИНОВ/ПОБЕД убраны из шапок лобби (slots/grid/wheel/mines/lines/miner) -->
@@ -1145,13 +1170,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         </div>
                         <div id="slots-container" class="relative mt-4 rounded-xl overflow-hidden bg-slate-950/70 border border-slate-800" style="height:520px"></div>
                         <div id="slots-fallback" class="hidden grid grid-cols-3 gap-2 mt-4"></div>
-                        <div class="flex flex-wrap items-center gap-2 mt-4">
-                            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
-                            <span id="slots-bets" class="inline-flex items-center gap-1.5"></span>
-                            <input id="slots-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('slots', this.value)">
-                            <button id="slots-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
-                                                        <button id="slots-spin" onclick="slotsSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
-                            <button id="slots-auto-btn" onclick="slotsToggleAuto()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
+                        <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-2 sm:p-3 flex flex-wrap items-center justify-center gap-2">
+                            
+                            <span id="slots-bets" class="bets-strip hidden items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible min-w-0 w-full sm:w-auto sm:flex-1 py-0.5"></span>
+                            <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('slots',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="slots-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('slots', this.value)"><button type="button" onclick="stepBet('slots',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
+                            <button id="slots-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
+                            <div class="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto shrink-0">
+                                <button id="slots-spin" onclick="slotsSpin()" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
+                                <button id="slots-auto-btn" onclick="slotsToggleAuto()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
+                            </div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
                             <span id="slots-last">Последний выигрыш: —</span>
@@ -1206,13 +1233,15 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div id="grid-chain" class="grid-chain pointer-events-none absolute inset-x-0 top-1/3 z-20 text-center text-2xl sm:text-3xl font-black text-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,.9)] opacity-0"></div>
                             <div id="grid-wrap" class="grid grid-cols-5 gap-1.5 sm:gap-2"></div>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2 mt-4">
-                            <span class="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-1">Ставка:</span>
-                            <span id="grid-bets" class="inline-flex items-center gap-1.5"></span>
-                            <input id="grid-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('grid', this.value)">
-                            <button id="grid-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
-                            <button id="grid-spin" onclick="gridSpin()" class="ml-auto w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
-                            <button id="grid-auto-btn" onclick="gridToggleAuto()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
+                        <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-2 sm:p-3 flex flex-wrap items-center justify-center gap-2">
+                            
+                            <span id="grid-bets" class="bets-strip hidden items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible min-w-0 w-full sm:w-auto sm:flex-1 py-0.5"></span>
+                            <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('grid',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="grid-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('grid', this.value)"><button type="button" onclick="stepBet('grid',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
+                            <button id="grid-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
+                            <div class="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto shrink-0">
+                                <button id="grid-spin" onclick="gridSpin()" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40"><i class="fa-solid fa-rotate mr-1"></i>Крутить — 50</button>
+                                <button id="grid-auto-btn" onclick="gridToggleAuto()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
+                            </div>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-slate-400">
                             <span id="grid-last">Последний выигрыш: —</span>
@@ -1245,9 +1274,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div id="wheel-container" class="relative rounded-xl overflow-hidden border border-amber-500/40" style="height:420px"></div>
                         <div class="wheel-lights" aria-hidden="true"></div>
                         <div id="wheel-fallback" class="hidden mt-4 flex-col items-center"></div>
-                        <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
-                            <div id="wheel-bets" class="flex flex-wrap justify-center gap-1.5"></div>
-                            <input id="wheel-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('wheel', this.value)">
+                        <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-2 sm:p-3 flex flex-wrap items-center justify-center gap-2">
+                            <div id="wheel-bets" class="bets-strip hidden items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible sm:justify-center min-w-0 w-full sm:w-auto order-first sm:order-none py-0.5"></div>
+                            <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('wheel',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="wheel-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('wheel', this.value)"><button type="button" onclick="stepBet('wheel',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
                             <button id="wheel-spin" onclick="wheelSpin()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-dharmachakra mr-1"></i>Крутить</button>
                         </div>
                         <p id="wheel-result" class="text-xs text-slate-400 mt-2 text-center">Выбери ставку и крути колесо!</p>
@@ -1272,9 +1301,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         </div>
                         <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
                             <div class="flex flex-col items-center gap-1.5">
-                                <span class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Ставка</span>
-                                <div id="mines-bets" class="flex flex-wrap justify-center gap-1.5"></div>
-                            <input id="mines-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('mines', this.value)">
+                                
+                                <div id="mines-bets" class="bets-strip hidden items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible sm:justify-center min-w-0 w-full sm:w-full max-w-full py-0.5"></div>
+                            <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('mines',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="mines-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('mines', this.value)"><button type="button" onclick="stepBet('mines',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
                             </div>
                             <div class="flex flex-col items-center gap-1.5">
                                 <span class="text-[10px] uppercase font-black text-slate-500 tracking-wider">Мин на игровом поле: <b id="mines-count-label" class="text-slate-200">5</b></span>
@@ -1338,18 +1367,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             </div>
                             <div id="lines-chips-r" class="flex flex-col justify-between gap-1 py-0.5"></div>
                         </div>
-                        <div class="flex flex-wrap items-center gap-1.5 mt-3 justify-center">
-                            <span class="text-[10px] uppercase font-bold text-slate-500 mr-1">Ставка:</span>
-                            <div id="lines-bets" class="flex flex-wrap gap-1.5 justify-center"></div>
-                            <input id="lines-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('lines', this.value)">
-                            <button id="lines-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
-                        </div>
-                        <div class="bor-panel mt-3">
-                            <div class="bor-cell"><span>Баланс:</span><b id="lines-credit" class="font-mono text-amber-200">0</b></div>
-                            <div class="bor-cell"><span>Общая ставка:</span><b id="lines-bet-label" class="font-mono text-amber-200">100</b></div>
-                            <div class="bor-cell"><span>Линии:</span><b class="font-mono text-amber-200">10</b></div>
-                            <div class="flex gap-1.5 ml-auto">
-                                <button onclick="linesMaxBet()" class="bor-btn bor-btn-gray">МАКС СТАВКА</button>
+                        <div class="mt-3 rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-2 sm:p-3 flex flex-wrap items-center justify-center gap-2">
+                            <div id="lines-bets" class="bets-strip hidden items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible sm:justify-center min-w-0 w-full sm:w-auto py-0.5"></div>
+                            <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('lines',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="lines-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('lines', this.value)"><button type="button" onclick="stepBet('lines',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
+                            <button id="lines-cards-btn" onclick="openSlotCardPicker()" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold border border-teal-600/50 bg-teal-900/30 text-teal-200 hover:bg-teal-800/40 transition"><i class="fa-solid fa-layer-group mr-1"></i>Карты: стандарт</button>
+                            <div class="flex flex-wrap justify-center gap-1.5">
                                 <button id="lines-spin" onclick="linesSpin()" class="bor-btn bor-btn-green">СТАРТ</button>
                                 <button id="lines-auto-btn" onclick="linesToggleAuto()" class="bor-btn bor-btn-cyan">АВТО</button>
                             </div>
@@ -1371,7 +1393,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-helmet-safety text-amber-400 mr-2"></i>Шахта «Коллекционер карт»</h2>
-                                <p class="text-sm text-slate-400 mt-1">Пассивная добыча: монеты капают в общий баланс каждую секунду — даже офлайн (до 24 часов). Улучшение кирки покупается за те же монеты: +1 монета/сек за уровень.</p>
+                                <p class="text-sm text-slate-400 mt-1">Пассивная добыча: монеты капают в общий баланс каждую секунду — даже офлайн (до 2 часов). Улучшение кирки покупается за те же монеты: +1 монета/сек за уровень.</p>
                                 <p class="text-[10px] text-slate-500 mt-1"><i class="fa-solid fa-hand-pointer text-teal-400 mr-1"></i>На телефоне: тап по машине в Слотах и Сетке = спин, кнопки крупные.</p>
                                                     </div>
                         </div>
@@ -1400,9 +1422,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             </div>
                             <div class="h-2 rounded-full bg-slate-800 overflow-hidden"><div id="miner-prog" class="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500" style="width:0%"></div></div>
                         </div>
-                        <div class="flex flex-wrap items-center gap-2 mt-4">
+                        <div class="flex flex-col items-center gap-2 mt-4 text-center">
                             <button id="miner-btn" onclick="minerUpgrade()" class="px-4 py-2.5 rounded-xl bg-amber-500/90 hover:bg-amber-400 text-slate-950 text-xs sm:text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — 20</button>
-                            <span class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Каждый уровень: +1 монета/сек. Цена растёт ×1.9.</span>
+                            <span class="text-[10px] text-slate-500"><i class="fa-solid fa-circle-info text-teal-400 mr-1"></i>Каждый уровень: +1 монета/сек. Офлайн-добыча — до 2 часов. Цена растёт ×1.22.</span>
                         </div>
                         <!-- b178: котик-шахтёр: спит в панели прокачки, на новом уровне мяукает и танцует (тап по котику = «мяу») -->
                         <div id="miner-cat-box" class="mt-4 rounded-2xl bg-slate-950/60 border border-slate-800 p-2.5">
@@ -1476,7 +1498,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
                                 <li>Шахта копает монеты <b>каждую секунду</b>: кирка уровня N даёт <b>N монет/сек</b>.</li>
-                                <li>Копка идёт даже <b>офлайн — до 24 часов</b>: вернётесь в игру, и она начислит монеты за пропущенное время.</li>
+                                <li>Копка идёт даже <b>офлайн — до 2 часов</b>: вернётесь в игру, и она начислит монеты за пропущенное время.</li>
                                 <li>Кнопка <b>«Улучшить кирку»</b> покупает следующий уровень за монеты (цена растёт ×1.22 — дёшево).</li>
                             </ol>
                         </div>
@@ -1505,8 +1527,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <span class="text-xs font-normal text-slate-400">(3–5 карт)</span>
                             </h3>
                             <div class="flex items-center gap-2">
-                                <button onclick="autoBuildDeck()" title="Собрать колоду из 5 сильнейших собранных карт" class="px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-white text-[11px] font-bold transition shadow-lg shadow-emerald-950/40"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Авто-колода</button>
-                                <button onclick="clearDeck()" title="Очистить колоду" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[11px] font-bold transition"><i class="fa-solid fa-broom mr-1"></i>Очистить</button>
+                                <button onclick="autoBuildDeck()" title="Собрать колоду из 5 сильнейших собранных карт" class="lqg lqg-emerald px-3 py-1.5 text-[11px] font-bold transition"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Авто-колода</button>
+                                <button onclick="clearDeck()" title="Очистить колоду" class="lqg lqg-slate px-3 py-1.5 text-[11px] font-bold transition"><i class="fa-solid fa-broom mr-1"></i>Очистить</button>
                             </div>
                         </div>
                         <div id="deck-slots" class="flex flex-wrap gap-3"></div>
@@ -1557,7 +1579,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <p class="text-xs text-slate-500 mt-1"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>Победа: +150 монет • достижение «Не дурак!»</p>
                                                     <p id="durak-reward-note" class="text-xs text-emerald-400/90 mt-1 font-semibold"></p>
                         </div>
-                        <button onclick="startDurak()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 shrink-0"><i class="fa-solid fa-play mr-2"></i>Играть в дурака</button>
+                        <button onclick="startDurak()" class="lqg lqg-emerald px-6 py-3 font-bold text-sm shrink-0 transition"><i class="fa-solid fa-play mr-2"></i>Играть в дурака</button>
                     </div>
                     <div class="text-center text-xs text-slate-500">Побед: <span id="durak-wins-label" class="text-emerald-400 font-bold">0</span> • Поражений: <span id="durak-loss-label" class="text-rose-400 font-bold">0</span></div>
 <div class="rules-card">
@@ -1579,12 +1601,14 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <!-- Durak view -->
             <div id="durak-view" class="hidden space-y-4 max-w-3xl mx-auto">
                 <div id="durak-topbar"></div>
-                <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900" style="position:relative;height:clamp(260px,44vh,380px);overflow:hidden;">
+                <div class="relative rounded-2xl overflow-hidden border border-emerald-900/70 shadow-[inset_0_0_70px_rgba(0,0,0,.55)]" style="position:relative;height:clamp(300px,48vh,440px);overflow:hidden;background:radial-gradient(120% 95% at 50% 38%, #166534 0%, #052e16 58%, #021a0d 100%);">
+                    <div class="pointer-events-none absolute inset-x-6 top-5 bottom-9 rounded-[50%] border border-emerald-200/15" aria-hidden="true"></div>
+                    <div class="pointer-events-none absolute inset-x-14 top-9 bottom-12 rounded-[50%] border border-emerald-200/10" aria-hidden="true"></div>
                     <div id="durak-3d-container" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
                     <div id="durak-status" style="position:absolute;bottom:8px;left:8px;right:8px;z-index:10;pointer-events:none;text-align:center;"></div>
                 </div>
                 <div id="durak-actions"></div>
-                <div id="durak-hand" class="flex flex-wrap justify-center gap-2 pb-2"></div>
+                <div id="durak-hand" class="flex justify-center items-end px-2 sm:px-6 pt-8 pb-2 overflow-visible"></div>
             </div>
         </section>
 
@@ -1636,22 +1660,33 @@ Check your Browserslist config to be sure that your targets are set up correctly
         <!-- STUDIO TAB -->
         <!-- MARKET TAB (b136: биржа дубликатов между игроками) -->
         <section id="tab-market" class="space-y-4 sm:space-y-6 hidden">
-            <div class="relative overflow-hidden rounded-[28px] border border-teal-500/20 bg-[#050b10] p-5 sm:p-7">
+            <div class="relative overflow-hidden rounded-[28px] border border-teal-500/25 bg-[#050b10] p-5 sm:p-7">
                 <div class="store-hero-glow" aria-hidden="true"></div>
-                <div class="relative flex flex-col sm:flex-row sm:items-end gap-4">
+                <!-- b226: декоративные кольца и искра в углу баннера -->
+                <div class="pointer-events-none absolute -right-20 -top-20 w-64 h-64 rounded-full border border-teal-400/15" aria-hidden="true"></div>
+                <div class="pointer-events-none absolute -right-8 -top-28 w-44 h-44 rounded-full border border-emerald-400/10" aria-hidden="true"></div>
+                <div class="pointer-events-none absolute right-10 bottom-8 w-2 h-2 rounded-full bg-teal-300/60 blur-[1px]" aria-hidden="true"></div>
+                <div class="relative flex flex-col lg:flex-row lg:items-center gap-5 lg:gap-8">
                     <div class="flex-1 min-w-0">
                         <div class="inline-flex items-center gap-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.28em] text-teal-300 bg-teal-500/10 border border-teal-500/25 rounded-full px-3 py-1"><i class="fa-solid fa-right-left"></i>Биржа дубликатов</div>
                         <h2 class="mt-3 text-2xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-teal-200 via-emerald-100 to-amber-200">Обмен картами</h2>
                         <p class="text-xs sm:text-sm text-slate-400 mt-2 max-w-xl leading-relaxed">Выставьте копию карты за свою цену — игроки увидят лот и купят карту себе в коллекцию. Монеты продавцу приходят сами, даже если он офлайн.</p>
                     </div>
-                    <div class="store-stat coins shrink-0"><i class="fa-solid fa-coins"></i><div><span>баланс</span><b id="market-stat-coins">0</b></div></div>
+                    <div class="flex flex-wrap items-center gap-3 shrink-0">
+                        <div class="flex items-center gap-3 rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-400/15 via-amber-500/5 to-transparent px-4 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.08)]">
+                            <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-300 to-amber-600 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-900/40"><i class="fa-solid fa-coins text-sm"></i></span>
+                            <div class="leading-tight">
+                                <span class="block text-[9px] font-black uppercase tracking-[.18em] text-amber-200/70">баланс</span>
+                                <b id="market-stat-coins" class="block text-sm sm:text-base font-black text-amber-200 font-mono">0</b>
+                            </div>
+                        </div>
+                        <!-- b225: тумблер «Покупка/Продажа» живёт внутри баннера — пилюлей рядом с балансом -->
+                        <div class="flex gap-1 p-1 rounded-full border border-teal-500/25 bg-slate-950/70 backdrop-blur-sm">
+                            <button id="market-subtab-buy" onclick="marketSubTab('buy')" class="px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 shadow-lg shadow-teal-500/30"><i class="fa-solid fa-cart-shopping mr-1.5"></i>Покупка</button>
+                            <button id="market-subtab-sell" onclick="marketSubTab('sell')" class="px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap bg-transparent text-slate-400 hover:text-white"><i class="fa-solid fa-tag mr-1.5"></i>Продажа</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            <!-- b141: зоны покупки и продажи разделены -->
-            <div class="flex gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 w-fit max-w-full">
-                <button id="market-subtab-buy" onclick="marketSubTab('buy')" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-teal-600 text-white shadow"><i class="fa-solid fa-cart-shopping mr-1.5"></i>Покупка</button>
-                <button id="market-subtab-sell" onclick="marketSubTab('sell')" class="px-4 py-2 rounded-lg text-xs font-bold transition bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-tag mr-1.5"></i>Продажа</button>
             </div>
 
             <div id="market-panel-sell" class="hidden bg-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
@@ -1659,16 +1694,23 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="flex flex-col sm:flex-row gap-2">
                     <select id="market-card-select" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-teal-500"></select>
                     <input id="market-price-input" inputmode="numeric" maxlength="12" placeholder="Цена: 500, 2k…" class="sm:w-44 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-200 placeholder-slate-600 focus:border-amber-400/70 focus:outline-none" onkeydown="if(event.key==='Enter')marketListCard()">
-                    <button onclick="marketListCard()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 whitespace-nowrap"><i class="fa-solid fa-upload mr-1.5"></i>Выставить</button>
+                    <button onclick="marketListCard()" class="lqg lqg-emerald px-4 py-2.5 text-xs font-bold transition whitespace-nowrap"><i class="fa-solid fa-upload mr-1.5"></i>Выставить</button>
                 </div>
                 <p class="text-[10px] text-slate-500">Продаётся одна копия из коллекции: пока лот активен, она недоступна вам; сняли лот — вернулась. Цена любая: от 1 до 1 млрд монет.</p>
-                <div id="market-my-lots" class="grid grid-cols-1 xl:grid-cols-2 gap-1.5"></div>
+                <div id="market-my-lots" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-1.5"></div>
             </div>
 
             <div id="market-panel-buy" class="bg-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-sm sm:text-base font-black text-white flex items-center gap-2"><i class="fa-solid fa-store text-teal-400"></i>Лоты игроков</h3>
-                    <button onclick="marketRefresh()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-rotate mr-1"></i>Обновить</button>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <!-- b224: вид списка лотов — сетка или строки, как в альбомах -->
+                        <div class="flex rounded-xl border border-slate-700 overflow-hidden" title="Вид списка: сетка или строки">
+                            <button onclick="setMarketView('grid')" id="market-view-grid" class="px-2.5 py-2 text-xs transition bg-emerald-600 text-white"><i class="fa-solid fa-table-cells-large"></i></button>
+                            <button onclick="setMarketView('rows')" id="market-view-rows" class="px-2.5 py-2 text-xs transition bg-slate-900 text-slate-400 hover:text-white"><i class="fa-solid fa-list"></i></button>
+                        </div>
+                        <button onclick="marketRefresh()" class="lqg lqg-slate px-3 py-1.5 text-[10px] font-bold transition"><i class="fa-solid fa-rotate mr-1"></i>Обновить</button>
+                    </div>
                 </div>
                 <!-- b138: поиск и фильтры, чтобы удобно искать карты для покупки -->
                 <!-- b176: на планшетах (sm…lg) поиск сжимался в щёлку между селектами — теперь он на отдельной строке, селекты компактные -->
@@ -1690,7 +1732,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </select>
                 </div>
                 <p id="market-found" class="text-[10px] text-slate-500"></p>
-                <div id="market-list" class="grid grid-cols-1 xl:grid-cols-2 gap-1.5"></div>
+                <div id="market-list" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-1.5"></div>
             </div>
         </section>
 
@@ -2187,10 +2229,10 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <div class="flex flex-wrap items-center justify-center w-full max-w-4xl gap-2 px-1 sm:px-4 text-center">
                 <h3 class="text-base sm:text-xl font-bold text-white min-w-0 truncate" id="unboxing-title">Вскрытие пака</h3>
                 <div class="grid grid-cols-2 gap-2 w-full md:flex md:w-auto md:gap-3 md:flex-nowrap md:whitespace-nowrap md:justify-center">
-                    <button onclick="sellAllDupesToMarket()" title="Выставить все раскрытые повторки этого вскрытия на биржу по рекомендуемой цене" class="rounded-full border border-amber-400/50 bg-slate-900/70 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold text-amber-300 hover:bg-amber-400/15 hover:border-amber-300 transition shadow-lg shadow-amber-950/30"><i class="fa-solid fa-tag mr-1.5"></i>Продать все повторки</button>
-                    <button onclick="scratchAllCards()" class="rounded-full border border-emerald-400/50 bg-slate-900/70 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold text-emerald-300 hover:bg-emerald-400/15 hover:border-emerald-300 transition shadow-lg shadow-emerald-950/30"><i class="fa-solid fa-eraser mr-1.5"></i>Стереть всё</button>
-                    <button id="unboxing-buy-btn" onclick="buyPackFromUnboxing()" title="Купить ещё один пак этого же набора, не закрывая окно вскрытия" class="rounded-full border border-teal-300/70 bg-teal-400 px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-black text-slate-950 hover:bg-teal-300 transition shadow-lg shadow-teal-500/40"><i class="fa-solid fa-cart-plus mr-1.5"></i>Купить пак</button>
-                    <button onclick="closeUnboxingModal()" class="rounded-full border border-slate-700 bg-slate-900/70 backdrop-blur-sm px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition"><i class="fa-solid fa-xmark mr-1.5"></i>Закрыть</button>
+                    <button onclick="sellAllDupesToMarket()" title="Выставить все раскрытые повторки этого вскрытия на биржу по рекомендуемой цене" class="lqg lqg-amber px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold transition"><i class="fa-solid fa-tag mr-1.5"></i>Продать все повторки</button>
+                    <button onclick="scratchAllCards()" class="lqg lqg-emerald px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold transition"><i class="fa-solid fa-eraser mr-1.5"></i>Стереть всё</button>
+                    <button id="unboxing-buy-btn" onclick="buyPackFromUnboxing()" title="Купить ещё один пак этого же набора, не закрывая окно вскрытия" class="lqg lqg-teal px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-black transition"><i class="fa-solid fa-cart-plus mr-1.5"></i>Купить пак</button>
+                    <button onclick="closeUnboxingModal()" class="lqg lqg-slate px-3 sm:px-4 py-2 sm:py-1.5 text-[11px] sm:text-xs font-bold transition"><i class="fa-solid fa-xmark mr-1.5"></i>Закрыть</button>
                 </div>
             </div>
 
@@ -2251,9 +2293,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             <p class="text-xs text-slate-400 mt-1">Выберите до <b class="text-teal-300">5 карт</b> из своей коллекции — они будут крутиться на барабанах и поле. Не выбрали — работают стандартные карты сайта.</p>
             <div id="slotcards-list" class="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-4 max-h-[50vh] overflow-y-auto pr-1"></div>
             <div class="flex flex-wrap gap-2 mt-4">
-                <button onclick="saveSlotCards()" class="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl transition"><i class="fa-solid fa-check mr-1"></i>Сохранить выбор</button>
-                <button onclick="resetSlotCards()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl transition"><i class="fa-solid fa-rotate-left mr-1"></i>Стандартные карты</button>
-                <button onclick="closeSlotCardPicker()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold rounded-xl transition">Отмена</button>
+                <button onclick="saveSlotCards()" class="lqg lqg-teal px-4 py-2 text-xs font-bold transition"><i class="fa-solid fa-check mr-1"></i>Сохранить выбор</button>
+                <button onclick="resetSlotCards()" class="lqg lqg-slate px-4 py-2 text-xs font-bold transition"><i class="fa-solid fa-rotate-left mr-1"></i>Стандартные карты</button>
+                <button onclick="closeSlotCardPicker()" class="lqg lqg-slate px-4 py-2 text-xs font-bold transition">Отмена</button>
             </div>
         </div>
     </div>
@@ -2435,9 +2477,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
     #lines-board.spinning .lines-face { animation: linesReel .12s linear infinite; filter: blur(.4px); }
     @keyframes linesReel { 0% { transform: translateY(-7%); } 50% { transform: translateY(0); } 100% { transform: translateY(7%); } }
     /* b105: панель управления в стиле классического автомата */
-    .bor-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-radius: 14px; border: 1px solid rgba(251, 191, 36, .4); background: linear-gradient(180deg, #2a2108, #14100a); padding: 8px 10px; box-shadow: inset 0 0 0 1px rgba(251, 191, 36, .12), 0 4px 18px rgba(0, 0, 0, .4); }
-    .bor-cell { display: flex; align-items: center; gap: 6px; background: rgba(2, 6, 23, .72); border: 1px solid rgba(251, 191, 36, .25); border-radius: 10px; padding: 6px 10px; font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; }
-    .bor-btn { border-radius: 10px; padding: 9px 16px; font-size: 12px; font-weight: 900; letter-spacing: .05em; transition: .15s; border: 1px solid rgba(2, 6, 23, .65); }
+    .bor-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; border-radius: 16px; border: 1px solid rgba(148,163,184,.18); background: linear-gradient(135deg, rgba(255,255,255,.06), rgba(255,255,255,.02) 48%, rgba(255,255,255,.04)); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); padding: 10px 12px; box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 6px 18px rgba(0,0,0,.35); }
+    .bor-cell { display: flex; align-items: center; gap: 6px; background: rgba(2,6,23,.55); border: 1px solid rgba(251,191,36,.28); border-radius: 9999px; padding: 6px 12px; font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; font-weight: 800; box-shadow: inset 0 1px 0 rgba(255,255,255,.10); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+    .bor-btn { border-radius: 9999px; padding: 9px 16px; font-size: 12px; font-weight: 900; letter-spacing: .05em; transition: .15s; border: 1px solid rgba(2,6,23,.65); }
     .bor-btn:active { transform: scale(.96); }
     .bor-btn-gray { background: linear-gradient(180deg, #e5e7eb, #9ca3af); color: #111827; }
     .bor-btn-green { background: linear-gradient(180deg, #4ade80, #16a34a); color: #052e16; box-shadow: 0 0 14px rgba(74, 222, 128, .45); }
@@ -2483,7 +2525,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 Пропустить анимацию <i class="fa-solid fa-arrow-right ml-1"></i>
             </button>
             <!-- b19: музыка вскрытия — вкл/выкл прямо во время анимации -->
-            <button id="pack3d-music-btn" onclick="toggleUnboxMusic()" class="mt-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[11px] font-semibold rounded-xl transition hidden"><i class="fa-solid fa-music mr-1"></i><span id="pack3d-music-label">Музыка</span></button>
+            <!-- b243: кнопка «Музыка: вкл/выкл» убрана по просьбе; управление музыкой — в Студии -->
             </div>
         </div>
     </div>
@@ -2534,6 +2576,181 @@ Check your Browserslist config to be sure that your targets are set up correctly
     @media (max-width:640px){
         #toast-container{ left:12px; right:12px; top: calc(env(safe-area-inset-top, 0px) + 96px); transform:none; width:auto; max-width:none; }
     }
+
+    /* ===== b229: кнопки игр — Liquid Glass ===== */
+    .step-btn,
+    #slots-spin, #grid-spin, #wheel-spin, #lines-spin,
+    #slots-auto-btn, #grid-auto-btn, #lines-auto-btn,
+    #slots-cards-btn, #grid-cards-btn, #lines-cards-btn,
+    #mines-start, #mines-cash, #lines-max-btn{
+        position: relative; overflow: hidden;
+        border-radius: 9999px;
+        border: 1px solid rgba(255,255,255,.18);
+        background:
+            radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 42%),
+            radial-gradient(90% 120% at 88% 118%, var(--lq-tint, rgba(148,163,184,.14)) 0%, rgba(255,255,255,0) 55%),
+            linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 48%, rgba(255,255,255,.05) 100%);
+        -webkit-backdrop-filter: blur(14px) saturate(160%);
+        backdrop-filter: blur(14px) saturate(160%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(255,255,255,.07), 0 6px 18px rgba(2,6,23,.35);
+        color: var(--lq-text, rgba(255,255,255,.9));
+        text-shadow: 0 1px 2px rgba(2,6,23,.4);
+        transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .step-btn::before,
+    #slots-spin::before, #grid-spin::before, #wheel-spin::before, #lines-spin::before,
+    #slots-auto-btn::before, #grid-auto-btn::before, #lines-auto-btn::before,
+    #slots-cards-btn::before, #grid-cards-btn::before, #lines-cards-btn::before,
+    #mines-start::before, #mines-cash::before, #lines-max-btn::before{
+        content:""; position:absolute; left:8%; right:8%; top:0; height:46%;
+        background: linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,0));
+        border-radius: 9999px 9999px 60% 60% / 9999px 9999px 30% 30%;
+        pointer-events:none;
+    }
+    .step-btn:hover,
+    #slots-spin:hover, #grid-spin:hover, #wheel-spin:hover, #lines-spin:hover,
+    #slots-auto-btn:hover, #grid-auto-btn:hover, #lines-auto-btn:hover,
+    #slots-cards-btn:hover, #grid-cards-btn:hover, #lines-cards-btn:hover,
+    #mines-start:hover, #mines-cash:hover, #lines-max-btn:hover{
+        border-color: rgba(255,255,255,.34);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.32), inset 0 -1px 0 rgba(255,255,255,.09), 0 8px 24px rgba(2,6,23,.45);
+    }
+    .step-btn:active,
+    #slots-spin:active, #grid-spin:active, #wheel-spin:active, #lines-spin:active,
+    #slots-auto-btn:active, #grid-auto-btn:active, #lines-auto-btn:active,
+    #mines-start:active, #mines-cash:active, #lines-max-btn:active{ transform: scale(.97); }
+    /* цветовые акценты по играм */
+    #slots-spin{ --lq-tint: rgba(217,70,239,.24); --lq-text:#f5d0fe; }
+    #grid-spin{ --lq-tint: rgba(139,92,246,.24); --lq-text:#ddd6fe; }
+    #wheel-spin{ --lq-tint: rgba(245,158,11,.24); --lq-text:#fde68a; }
+    #lines-spin{ --lq-tint: rgba(74,222,128,.24); --lq-text:#bbf7d0; }
+    #mines-start{ --lq-tint: rgba(244,63,94,.24); --lq-text:#fecdd3; }
+    #mines-cash{ --lq-tint: rgba(16,185,129,.26); --lq-text:#a7f3d0; }
+    #slots-auto-btn, #grid-auto-btn, #lines-auto-btn, #lines-max-btn{ --lq-tint: rgba(148,163,184,.14); --lq-text:#cbd5e1; }
+    #slots-cards-btn, #grid-cards-btn, #lines-cards-btn{ --lq-tint: rgba(45,212,191,.18); --lq-text:#99f6e4; }
+    .step-btn{ --lq-tint: rgba(245,158,11,.16); --lq-text:#fcd34d; }
+    /* включённое авто — стекло подкрашивается и пульсирует */
+    #slots-auto-btn.lq-on{ --lq-tint: rgba(217,70,239,.30); --lq-text:#f5d0fe; border-color: rgba(240,171,252,.45); }
+    #grid-auto-btn.lq-on{ --lq-tint: rgba(139,92,246,.30); --lq-text:#ddd6fe; border-color: rgba(196,181,253,.45); }
+    #lines-auto-btn.on{ --lq-tint: rgba(251,191,36,.28); --lq-text:#fde68a; border-color: rgba(252,211,77,.45); }
+
+    /* ===== b231: чипы выбора мин — тоже Liquid Glass ===== */
+    #mines-counts button{
+        position:relative; overflow:hidden;
+        border-radius:9999px;
+        border:1px solid rgba(255,255,255,.18);
+        background:
+            radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 42%),
+            radial-gradient(90% 120% at 88% 118%, var(--lq-tint, rgba(148,163,184,.14)) 0%, rgba(255,255,255,0) 55%),
+            linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 48%, rgba(255,255,255,.05) 100%);
+        -webkit-backdrop-filter: blur(14px) saturate(160%);
+        backdrop-filter: blur(14px) saturate(160%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(255,255,255,.07), 0 6px 18px rgba(2,6,23,.35);
+        color: var(--lq-text, rgba(255,255,255,.9));
+        text-shadow: 0 1px 2px rgba(2,6,23,.4);
+        --lq-tint: rgba(148,163,184,.12); --lq-text:#cbd5e1;
+        transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    #mines-counts button::before{
+        content:""; position:absolute; left:8%; right:8%; top:0; height:46%;
+        background: linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,0));
+        border-radius: 9999px 9999px 60% 60% / 9999px 9999px 30% 30%;
+        pointer-events:none;
+    }
+    #mines-counts button:hover{ border-color: rgba(255,255,255,.34); }
+    #mines-counts button:active{ transform: scale(.97); }
+    #mines-counts button:disabled{ opacity:.5; }
+    /* активный чип мин — розовое стекло с подсветкой */
+    #mines-counts button.bg-slate-200{
+        --lq-tint: rgba(244,63,94,.30); --lq-text:#ffe4e6;
+        border-color: rgba(253,164,175,.55);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.08), 0 8px 22px rgba(244,63,94,.25);
+    }
+
+    /* ===== b231: переключатель режимов игр и кнопка шахты — тоже стекло ===== */
+    #mode-arena-btn, #mode-durak-btn, #mode-miner-btn, #mode-slots-btn,
+    #mode-grid-btn, #mode-wheel-btn, #mode-mines-btn, #mode-lines-btn, #miner-btn{
+        position:relative; overflow:hidden;
+        border-radius:9999px;
+        border:1px solid rgba(255,255,255,.18);
+        background:
+            radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 42%),
+            radial-gradient(90% 120% at 88% 118%, var(--lq-tint, rgba(148,163,184,.14)) 0%, rgba(255,255,255,0) 55%),
+            linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 48%, rgba(255,255,255,.05) 100%);
+        -webkit-backdrop-filter: blur(14px) saturate(160%);
+        backdrop-filter: blur(14px) saturate(160%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(255,255,255,.07), 0 6px 18px rgba(2,6,23,.35);
+        color: var(--lq-text, rgba(255,255,255,.9));
+        text-shadow: 0 1px 2px rgba(2,6,23,.4);
+        --lq-tint: rgba(148,163,184,.12); --lq-text:#cbd5e1;
+        transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    #mode-arena-btn::before, #mode-durak-btn::before, #mode-miner-btn::before, #mode-slots-btn::before,
+    #mode-grid-btn::before, #mode-wheel-btn::before, #mode-mines-btn::before, #mode-lines-btn::before, #miner-btn::before{
+        content:""; position:absolute; left:8%; right:8%; top:0; height:46%;
+        background: linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,0));
+        border-radius: 9999px 9999px 60% 60% / 9999px 9999px 30% 30%;
+        pointer-events:none;
+    }
+    #mode-arena-btn:hover, #mode-durak-btn:hover, #mode-miner-btn:hover, #mode-slots-btn:hover,
+    #mode-grid-btn:hover, #mode-wheel-btn:hover, #mode-mines-btn:hover, #mode-lines-btn:hover, #miner-btn:hover{
+        border-color: rgba(255,255,255,.34);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.32), inset 0 -1px 0 rgba(255,255,255,.09), 0 8px 24px rgba(2,6,23,.45);
+    }
+    #mode-arena-btn:active, #mode-durak-btn:active, #mode-miner-btn:active, #mode-slots-btn:active,
+    #mode-grid-btn:active, #mode-wheel-btn:active, #mode-mines-btn:active, #mode-lines-btn:active, #miner-btn:active{ transform: scale(.97); }
+    /* активный режим подсвечивается своим цветом стекла */
+    #mode-arena-btn.lq-on, #mode-mines-btn.lq-on{ --lq-tint: rgba(244,63,94,.28); --lq-text:#fecdd3; border-color: rgba(253,164,175,.5); }
+    #mode-durak-btn.lq-on{ --lq-tint: rgba(16,185,129,.28); --lq-text:#a7f3d0; border-color: rgba(110,231,183,.5); }
+    #mode-miner-btn.lq-on, #mode-wheel-btn.lq-on, #miner-btn{ --lq-tint: rgba(245,158,11,.26); --lq-text:#fde68a; border-color: rgba(252,211,77,.45); }
+    #mode-slots-btn.lq-on{ --lq-tint: rgba(217,70,239,.28); --lq-text:#f5d0fe; border-color: rgba(240,171,252,.5); }
+    #mode-grid-btn.lq-on{ --lq-tint: rgba(139,92,246,.28); --lq-text:#ddd6fe; border-color: rgba(196,181,253,.5); }
+    #mode-lines-btn.lq-on{ --lq-tint: rgba(14,165,233,.28); --lq-text:#bae6fd; border-color: rgba(125,211,252,.5); }
+
+    /* ===== b232: универсальное стекло для кнопок Арены и Дурака ===== */
+    .lqg{
+        position:relative; overflow:hidden;
+        border-radius:9999px;
+        border:1px solid rgba(255,255,255,.18);
+        background:
+            radial-gradient(120% 140% at 12% -10%, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 42%),
+            radial-gradient(90% 120% at 88% 118%, var(--lq-tint, rgba(148,163,184,.14)) 0%, rgba(255,255,255,0) 55%),
+            linear-gradient(135deg, rgba(255,255,255,.08) 0%, rgba(255,255,255,.02) 48%, rgba(255,255,255,.05) 100%);
+        -webkit-backdrop-filter: blur(14px) saturate(160%);
+        backdrop-filter: blur(14px) saturate(160%);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(255,255,255,.07), 0 6px 18px rgba(2,6,23,.35);
+        color: var(--lq-text, rgba(255,255,255,.9));
+        text-shadow: 0 1px 2px rgba(2,6,23,.4);
+        transition: transform .15s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    .lqg::before{
+        content:""; position:absolute; left:8%; right:8%; top:0; height:46%;
+        background: linear-gradient(to bottom, rgba(255,255,255,.16), rgba(255,255,255,0));
+        border-radius: 9999px 9999px 60% 60% / 9999px 9999px 30% 30%;
+        pointer-events:none;
+    }
+    .lqg:hover{ border-color: rgba(255,255,255,.34); box-shadow: inset 0 1px 0 rgba(255,255,255,.32), inset 0 -1px 0 rgba(255,255,255,.09), 0 8px 24px rgba(2,6,23,.45); }
+    .lqg:active{ transform: scale(.97); }
+    .lqg:disabled{ opacity:.5; }
+    .lqg-emerald{ --lq-tint: rgba(16,185,129,.22); --lq-text:#a7f3d0; }
+    .lqg-rose{ --lq-tint: rgba(244,63,94,.24); --lq-text:#fecdd3; border-color: rgba(253,164,175,.4); }
+    .lqg-amber{ --lq-tint: rgba(245,158,11,.22); --lq-text:#fde68a; }
+    .lqg-slate{ --lq-tint: rgba(148,163,184,.14); --lq-text:#cbd5e1; }
+    .lqg-sky{ --lq-tint: rgba(14,165,233,.18); --lq-text:#bae6fd; }
+    .lqg-teal{ --lq-tint: rgba(45,212,191,.18); --lq-text:#99f6e4; }
+    .lqg.lqg-card{ border-radius: 14px; }
+    .lqg.lqg-card::before{ border-radius: 14px 14px 60% 60% / 14px 14px 30% 30%; }
+    #unboxing-buy-btn.lqg{ --lq-tint: rgba(45,212,191,.30); --lq-text:#ccfbf1; border-color: rgba(94,234,212,.6); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(255,255,255,.08), 0 8px 24px rgba(45,212,191,.35); }
+
+    /* ===== b235: веер руки Дурака — карты дугой, играбельно на любом телефоне ===== */
+    #durak-hand{ flex-wrap: nowrap; }
+    .durak-fan{
+        transform: rotate(var(--ang, 0deg)) translateY(var(--lift, 0px));
+        transform-origin: 50% 100%;
+        z-index: var(--z, 1);
+        transition: transform .18s ease;
+    }
+    .durak-fan.can:hover{ transform: rotate(0deg) translateY(-16px) scale(1.06); z-index: 60; }
     .lq-toast{
         position: relative;
         border-radius: 22px;
@@ -5492,8 +5709,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function canClaimDaily() { return state.daily.lastClaimDate !== todayStr(); }
 
         function updateDailyDot() {
-            const dot = document.getElementById('daily-dot');
-            if (dot) dot.classList.toggle('hidden', !canClaimDaily());
+            // b244: янтарная точка на обеих кнопках «Награды», пока дневная награда не собрана
+            document.querySelectorAll('.daily-dot').forEach(d => d.classList.toggle('hidden', !canClaimDaily()));
         }
 
         function dailyStripHTML() {
@@ -5564,7 +5781,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 ${dailyStripHTML()}
                 <div class="pt-4">
                     ${claimable
-                        ? `<button onclick="claimDailyReward()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-600/30 flex items-center justify-center space-x-2"><i class="fa-solid fa-gift"></i><span>Забрать +${DAILY_REWARDS[nextDay - 1]} монет (день ${nextDay})</span></button>`
+                        ? `<button onclick="claimDailyReward()" class="lqg lqg-emerald w-full py-3 font-bold transition flex items-center justify-center space-x-2"><i class="fa-solid fa-gift"></i><span>Забрать +${DAILY_REWARDS[nextDay - 1]} монет (день ${nextDay})</span></button>`
                         : `<div class="w-full py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-center text-sm text-slate-300">✅ Награда получена. Следующая через: <span class="js-countdown text-emerald-400"></span></div>`}
                 </div>
                 <div class="flex justify-center pt-3">
@@ -5697,7 +5914,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const action = document.getElementById('rewards-daily-action');
             if (canClaimDaily()) {
                 const nextDay = (state.daily.streak % 7) + 1;
-                action.innerHTML = `<button onclick="claimDailyReward()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition shadow-lg shadow-emerald-600/20 flex items-center justify-center space-x-2"><i class="fa-solid fa-gift"></i><span>Забрать награду дня ${nextDay}: +${DAILY_REWARDS[nextDay - 1]} монет</span></button>`;
+                action.innerHTML = `<button onclick="claimDailyReward()" class="lqg lqg-emerald w-full py-3 font-bold transition flex items-center justify-center space-x-2"><i class="fa-solid fa-gift"></i><span>Забрать награду дня ${nextDay}: +${DAILY_REWARDS[nextDay - 1]} монет</span></button>`;
             } else {
                 action.innerHTML = `<div class="w-full py-3 bg-slate-800/60 border border-slate-700 text-slate-300 font-semibold rounded-xl text-center text-sm">✅ Награда за сегодня получена. Следующая через: <span class="js-countdown text-emerald-400"></span></div>`;
             }
@@ -5713,11 +5930,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const progTxt = isCoinM ? `${fmtCoins(Math.min(m.progress, m.target))} / ${fmtCoins(m.target)}` : `${Math.min(m.progress, m.target)} / ${m.target}`;
                 let btn;
                 if (m.claimed) {
-                    btn = `<span class="px-3 py-1.5 rounded-lg bg-emerald-950/60 border border-emerald-700/50 text-emerald-400 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i>Получено</span>`;
+                    btn = `<span class="lqg lqg-emerald px-3 py-1.5 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i>Получено</span>`;
                 } else if (done) {
-                    btn = `<button onclick="claimMission(${i})" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 text-slate-950 text-xs font-black whitespace-nowrap transition animate-pulse shadow-lg shadow-amber-500/25">Забрать +${fmtCoins(m.reward)}</button>`;
+                    btn = `<button onclick="claimMission(${i})" class="lqg lqg-amber px-3 py-1.5 text-xs font-black whitespace-nowrap transition animate-pulse">Забрать +${fmtCoins(m.reward)}</button>`;
                 } else {
-                    btn = `<span class="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>${fmtCoins(m.reward)}</span>`;
+                    btn = `<span class="lqg lqg-slate px-3 py-1.5 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>${fmtCoins(m.reward)}</span>`;
                 }
                 return `
                     <div class="relative bg-slate-950/80 border ${done && !m.claimed ? 'border-amber-500/40' : 'border-slate-800'} rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 overflow-hidden">
@@ -5867,7 +6084,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
             battleMode = m;
             const la = document.getElementById('lobby-arena'), ld = document.getElementById('lobby-durak'), lm = document.getElementById('lobby-miner'), lsl = document.getElementById('lobby-slots'), lg = document.getElementById('lobby-grid');
             if (la) la.classList.toggle('hidden', m !== 'arena');
-            if (ld) ld.classList.toggle('hidden', m !== 'durak');
+            if (ld) ld.classList.add('hidden'); // b236: лобби-заглушка Дурака упразднена
             if (lm) lm.classList.toggle('hidden', m !== 'miner');
             if (lsl) lsl.classList.toggle('hidden', m !== 'slots');
             if (lg) lg.classList.toggle('hidden', m !== 'grid');
@@ -5879,20 +6096,20 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (ll) ll.classList.toggle('hidden', m !== 'lines');
             // b125: базовые классы кнопок режимов вынесены в константу —
             // мобильная сетка 4 колонки (2 ряда), десктоп — как раньше
-            const MODE_BTN_BASE = 'px-1.5 sm:px-4 py-2 rounded-xl text-[11px] sm:text-sm font-bold transition whitespace-nowrap overflow-hidden';
+            const MODE_BTN_BASE = 'w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2'; // b242: плитка во всю ширину колонки, на lg — горизонтальная пилюля
             const MODE_BTN_OFF = 'bg-slate-800 text-slate-300 border border-slate-700';
             const setModeBtn = (id, on, onCls) => {
                 const el = document.getElementById(id);
                 if (el) el.className = MODE_BTN_BASE + ' ' + (on ? onCls : MODE_BTN_OFF);
             };
-            setModeBtn('mode-arena-btn', m === 'arena', 'bg-rose-600 text-white shadow');
-            setModeBtn('mode-durak-btn', m === 'durak', 'bg-emerald-600 text-white shadow');
-            setModeBtn('mode-miner-btn', m === 'miner', 'bg-amber-500 text-slate-950 shadow');
-            setModeBtn('mode-slots-btn', m === 'slots', 'bg-fuchsia-600 text-white shadow');
-            setModeBtn('mode-grid-btn', m === 'grid', 'bg-violet-600 text-white shadow');
-            setModeBtn('mode-wheel-btn', m === 'wheel', 'bg-amber-500 text-slate-950 shadow');
-            setModeBtn('mode-mines-btn', m === 'mines', 'bg-rose-500 text-white shadow');
-            setModeBtn('mode-lines-btn', m === 'lines', 'bg-sky-500 text-slate-950 shadow');
+            setModeBtn('mode-arena-btn', m === 'arena', 'lq-on');
+            setModeBtn('mode-durak-btn', m === 'durak', 'lq-on');
+            setModeBtn('mode-miner-btn', m === 'miner', 'lq-on');
+            setModeBtn('mode-slots-btn', m === 'slots', 'lq-on');
+            setModeBtn('mode-grid-btn', m === 'grid', 'lq-on');
+            setModeBtn('mode-wheel-btn', m === 'wheel', 'lq-on');
+            setModeBtn('mode-mines-btn', m === 'mines', 'lq-on');
+            setModeBtn('mode-lines-btn', m === 'lines', 'lq-on');
             if (m === 'miner') renderMiner();
             if (m !== 'slots' && slots.auto) slotsAutoStop(false); // b93
             if (m !== 'grid' && grid.auto) gridAutoStop(false); // b93
@@ -5902,6 +6119,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (m === 'mines') { renderMinesUI(); } // b79
             if (m === 'lines') { linesEnsure(); renderLinesUI(); } // b103
             if (m === 'durak') {
+                // b236: сразу открываем игровое поле, а не лобби
+                renderDurakUI();
                 const w = document.getElementById('durak-wins-label'), l = document.getElementById('durak-loss-label');
                 if (w) w.innerText = state.stats.durakWins || 0;
                 if (l) l.innerText = state.stats.durakLosses || 0;
@@ -5914,13 +6133,31 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     note.innerHTML = `<i class="fa-solid fa-sack-coins mr-1"></i>${bits.join(' • ')}`;
                 }
             }
+            // b239b: кнопки режимов всегда переключают экраны: бой → арена,
+            // дурак → поле, остальные режимы → лобби соответствующей игры
+            const lobbyV = document.getElementById('battle-lobby');
+            const arenaV = document.getElementById('battle-arena');
+            const dviewV = document.getElementById('durak-view');
+            if (battle) {
+                if (lobbyV) lobbyV.classList.add('hidden');
+                if (dviewV) dviewV.classList.add('hidden');
+                if (arenaV) arenaV.classList.remove('hidden');
+            } else if (m === 'durak') {
+                if (lobbyV) lobbyV.classList.add('hidden');
+                if (arenaV) arenaV.classList.add('hidden');
+                if (dviewV) dviewV.classList.remove('hidden');
+            } else {
+                if (arenaV) arenaV.classList.add('hidden');
+                if (dviewV) dviewV.classList.add('hidden');
+                if (lobbyV) lobbyV.classList.remove('hidden');
+            }
         }
 
         // ============ b47: ШАХТА «КОЛЛЕКЦИОНЕР КАРТ» (idle-добыча во вкладке «Бой») ============
         // Привязка к балансу прямая: добыча капает в state.coins каждую секунду,
         // улучшение кирки покупается за те же монеты. 1 уровень = +1 монета/сек.
         const MINER_KEY = 'nexus_miner';
-        const MINER_OFFLINE_CAP = 24 * 3600; // b71: офлайн-добыча до 24 часов (было 2)
+        const MINER_OFFLINE_CAP = 2 * 3600; // b246: офлайн-добыча до 2 часов (правка игрока)
         function minerLoad() {
             try {
                 const m = JSON.parse(LS.getItem(MINER_KEY) || 'null');
@@ -5932,7 +6169,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         let minerTickT = null, minerTickN = 0;
         function minerSave() { miner.last = Date.now(); try { LS.setItem(MINER_KEY, JSON.stringify(miner)); } catch (e) {} }
         function minerRate() { return miner.lvl; } // 1 сек = 1 монета × уровень
-        function minerCost() { return Math.floor(20 * Math.pow(1.22, miner.lvl - 1)); } // b73: шахта ещё дешевле (было 50×1.4, до того 100×1.9)
+        function minerCost() { return Math.floor(10000 * Math.pow(1.22, miner.lvl - 1)); } // b245: стартовая кирка 10k (просьба игрока)
         function minerDur(sec) {
             const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
             return h ? (h + ' ч ' + m + ' мин') : (m + ' мин ' + (sec % 60) + ' сек');
@@ -6710,14 +6947,61 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-1.5 min-w-0">
                         <span class="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0" style="color:${rar};border-color:${rar}55;background:${rar}14">${RARITY_LABELS_RU[c.rarity] || c.rarity || ''}</span>
-                        <h3 class="font-bold text-white text-[12px] sm:text-[13px] leading-tight truncate">${cloudEsc(c.name || 'Карта')}</h3>
+                        <h3 class="font-bold text-white text-[12px] sm:text-[13px] leading-tight truncate min-w-0 flex-1">${cloudEsc(c.name || 'Карта')}</h3>
+                        <span class="shrink-0 text-[12px] sm:text-[13px] font-mono font-black text-teal-200 bg-slate-950/85 border border-teal-400/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm shadow-lg shadow-black/40" title="Номер карты в её паке">#${getCardLocalNumber(c)}</span>
                     </div>
                     <p class="text-[9px] text-slate-500 truncate mt-0.5">${mine ? 'ваш лот' : 'продавец: ' + cloudEsc(l.sname || 'игрок')}${pack ? ' • ' + cloudEsc(pack.title) : ''}</p>
                 </div>
-                <span class="inline-flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-lg bg-amber-400/95 text-slate-950 shrink-0" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
+                <span class="lqg lqg-amber inline-flex items-center justify-center gap-1 text-[11px] font-black px-2 py-1 shrink-0 w-16" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
                 ${mine
-                    ? `<button onclick="marketCancel('${l.id}')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-xmark mr-1"></i><span class="hidden sm:inline">Снять лот</span><span class="sm:hidden">Снять</span></button>`
-                    : `<button onclick="marketBuy('${l.id}')" class="px-2.5 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold transition shadow-md shadow-emerald-950/40 shrink-0"><i class="fa-solid fa-cart-shopping mr-1"></i><span class="hidden sm:inline">Купить</span><span class="sm:hidden">&#10003;</span></button>`}
+                    ? `<button onclick="marketCancel('${l.id}')" class="lqg lqg-slate px-2.5 py-1.5 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-xmark mr-1"></i><span class="hidden sm:inline">Снять лот</span><span class="sm:hidden">Снять</span></button>`
+                    : `<button onclick="marketBuy('${l.id}')" class="lqg lqg-emerald px-2.5 py-1.5 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-cart-shopping mr-1"></i><span class="hidden sm:inline">Купить</span><span class="sm:hidden">&#10003;</span></button>`}
+            </div>`;
+        }
+        // b224: вид списка лотов в «Обмене» — сетка (2 колонки на широких экранах)
+        // или строки (1 колонка): тот же сегмент-тумблер, что в альбомах; выбор запоминается
+        let marketViewMode = 'grid';
+        try { if (LS.getItem('nexus_market_view') === 'rows') marketViewMode = 'rows'; } catch (e) {}
+        function setMarketView(v) {
+            marketViewMode = (v === 'rows') ? 'rows' : 'grid';
+            try { LS.setItem('nexus_market_view', marketViewMode); } catch (e) {}
+            applyMarketView();
+            renderMarketIfVisible(); // b224b: перерисовать лоты новым видом плиток
+        }
+        function applyMarketView() {
+            const on = 'px-2.5 py-2 text-xs transition bg-emerald-600 text-white';
+            const off = 'px-2.5 py-2 text-xs transition bg-slate-900 text-slate-400 hover:text-white';
+            const g = document.getElementById('market-view-grid');
+            const r = document.getElementById('market-view-rows');
+            if (g) g.className = marketViewMode === 'grid' ? on : off;
+            if (r) r.className = marketViewMode === 'rows' ? on : off;
+            // b224b: сетка — вертикальные плитки в 2–4 колонки; строки — горизонтальные лоты в 1 колонку
+            const cls = marketViewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-1.5' : 'grid grid-cols-1 gap-1.5';
+            const a = document.getElementById('market-list'); if (a) a.className = cls;
+            const b = document.getElementById('market-my-lots'); if (b) b.className = cls;
+        }
+        applyMarketView();
+
+        // b224b: компактная вертикальная плитка лота для режима «Сетка» —
+        // 2–4 колонки на любой ширине, чтобы тумблер реально менял вид даже на телефоне
+        function lotCardHTML(l) {
+            const mine = marketIsMine(l);
+            const c = l.card || {};
+            const rar = RAR_COLORS[c.rarity] || '#94a3b8';
+            return `<div class="group relative rounded-xl border p-1.5 transition-all duration-200 flex flex-col gap-1.5 ${mine ? 'border-teal-500/40 bg-teal-500/[.04]' : 'border-slate-800/80 bg-slate-900/60'} hover:border-teal-500/40 hover:bg-slate-900">
+                <div class="relative w-full rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">
+                    <span class="absolute top-1 left-1 text-[7px] font-black uppercase tracking-wider px-1 py-0.5 rounded border" style="color:${rar};border-color:${rar}55;background:${rar}22">${RARITY_LABELS_RU[c.rarity] || c.rarity || ''}</span>
+                    <span class="absolute top-1.5 right-1.5 text-[12px] sm:text-[13px] font-mono font-black text-teal-200 bg-slate-950/85 border border-teal-400/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm shadow-lg shadow-black/40">#${getCardLocalNumber(c)}</span>
+                </div>
+                <h3 class="font-bold text-white text-[11px] leading-tight truncate">${cloudEsc(c.name || 'Карта')}</h3>
+                <p class="text-[8px] text-slate-500 truncate">${mine ? 'ваш лот' : cloudEsc(l.sname || 'игрок')}</p>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="lqg lqg-amber inline-flex items-center justify-center gap-1 text-[10px] font-black px-1.5 py-1 shrink-0" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
+                    ${mine
+                        ? `<button onclick="marketCancel('${l.id}')" title="Снять лот" class="lqg lqg-slate px-2 py-1 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-xmark"></i></button>`
+                        : `<button onclick="marketBuy('${l.id}')" title="Купить" class="lqg lqg-emerald px-2 py-1 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-cart-shopping"></i></button>`}
+                </div>
             </div>`;
         }
         function renderMarket() {
@@ -6726,7 +7010,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const owned = state.cards.filter(c => cardCopies(c.id) > 0);
                 const keep = sel.value;
                 sel.innerHTML = owned.length
-                    ? owned.map(c => `<option value="${c.id}">${cloudEsc(c.name)} • ${RARITY_LABELS_RU[c.rarity] || c.rarity} • копий: ${cardCopies(c.id)}</option>`).join('')
+                    ? owned.map(c => `<option value="${c.id}">#${getCardLocalNumber(c)} ${cloudEsc(c.name)} • ${RARITY_LABELS_RU[c.rarity] || c.rarity} • копий: ${cardCopies(c.id)}</option>`).join('')
                     : '<option value="">В коллекции нет карт</option>';
                 if (keep && owned.some(c => c.id === keep)) sel.value = keep;
             }
@@ -6768,11 +7052,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const found = document.getElementById('market-found');
             if (found) found.innerHTML = 'Найдено лотов: <b class="text-teal-300">' + others.length + '</b>' + (q || fpk || frar ? ' по фильтру' : '');
             const myBox = document.getElementById('market-my-lots');
-            if (myBox) myBox.innerHTML = my.length ? my.map(lotTileHTML).join('') : '<p class="text-[11px] text-slate-500 col-span-full">У вас пока нет активных лотов.</p>';
+            const tileFn = marketViewMode === 'grid' ? lotCardHTML : lotTileHTML; // b224b
+            if (myBox) myBox.innerHTML = my.length ? my.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">У вас пока нет активных лотов.</p>';
             const listBox = document.getElementById('market-list');
             if (listBox) {
                 if (!CLOUD.connected()) listBox.innerHTML = '<p class="text-[11px] text-slate-500 col-span-full">Биржа недоступна: облако отключено.</p>';
-                else listBox.innerHTML = others.length ? others.map(lotTileHTML).join('') : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>';
+                else listBox.innerHTML = others.length ? others.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>';
             }
             const sc = document.getElementById('market-stat-coins');
             if (sc) sc.textContent = fmtCoins(state.coins);
@@ -6785,8 +7070,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const onBuy = which !== 'sell';
             if (buy) buy.classList.toggle('hidden', !onBuy);
             if (sell) sell.classList.toggle('hidden', onBuy);
-            if (bb) bb.className = 'px-4 py-2 rounded-lg text-xs font-bold transition ' + (onBuy ? 'bg-teal-600 text-white shadow' : 'bg-slate-800 text-slate-300 border border-slate-700');
-            if (bs) bs.className = 'px-4 py-2 rounded-lg text-xs font-bold transition ' + (!onBuy ? 'bg-teal-600 text-white shadow' : 'bg-slate-800 text-slate-300 border border-slate-700');
+            if (bb) bb.className = 'px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap ' + (onBuy ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 shadow-lg shadow-teal-500/30' : 'bg-transparent text-slate-400 hover:text-white');
+            if (bs) bs.className = 'px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap ' + (!onBuy ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-slate-950 shadow-lg shadow-teal-500/30' : 'bg-transparent text-slate-400 hover:text-white');
             try { LS.setItem('nexus_market_subtab', onBuy ? 'buy' : 'sell'); } catch (e) {}
         }
         function renderMarketIfVisible() {
@@ -6887,7 +7172,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     box.innerHTML = cards.map(c => {
                         const on = slotCardPick.indexOf(c.id) >= 0;
                         const rar = RAR_COLORS[c.rarity] || '#e2e8f0';
-                        return '<button type="button" onclick="toggleSlotCard(\'' + c.id + '\')" class="rounded-xl border p-2 text-left transition ' + (on ? 'border-teal-400 bg-teal-900/40' : 'border-slate-700 bg-slate-800/60 hover:bg-slate-700/60') + '">' +
+                        return '<button type="button" onclick="toggleSlotCard(\'' + c.id + '\')" class="lqg lqg-card p-2 text-left transition ' + (on ? 'lqg-teal' : 'lqg-slate') + '"' + (on ? ' style="border-color:rgba(94,234,212,.55)"' : '') + '>' +
                             '<p class="text-[11px] font-bold text-white truncate">' + (c.name || c.id) + '</p>' +
                             '<p class="text-[9px] font-bold uppercase mt-0.5" style="color:' + rar + '">' + (RARITY_LABELS_RU[c.rarity] || c.rarity || '') + '</p>' +
                             '<p class="text-[9px] text-slate-400 mt-0.5">' + (on ? '<i class="fa-solid fa-check mr-1"></i>выбрана' : 'выбрать') + '</p>' +
@@ -7388,12 +7673,35 @@ Check your Browserslist config to be sure that your targets are set up correctly
             else if (game === 'lines') linesSetBet(b);
             else if (game === 'wheel') wheelSetBet(b);
             else if (game === 'mines') minesSetBet(b);
+            else if (game === 'durak') durakSetBet(b);
             syncBetInput(game);
         }
+        // b228: степпер ставки — стрелки «−/+» листают пресеты (100…1q);
+        // если вписана своя сумма, прыжок к ближайшей ступени вверх/вниз
+        function stepBet(game, dir) {
+            const cur = game === 'slots' ? slots.bet : game === 'grid' ? grid.bet : game === 'lines' ? lines.bet : game === 'wheel' ? wheel.bet : game === 'durak' ? durakBet : mines.bet;
+            const arr = SLOTS_BETS;
+            let idx = arr.indexOf(cur);
+            if (idx === -1) {
+                if (dir > 0) { idx = arr.findIndex(v => v > cur); if (idx === -1) idx = arr.length - 1; }
+                else { idx = -1; for (let i = arr.length - 1; i >= 0; i--) if (arr[i] < cur) { idx = i; break; } if (idx === -1) idx = 0; }
+            } else {
+                idx = Math.min(arr.length - 1, Math.max(0, idx + dir));
+            }
+            const b = normBet(arr[idx]);
+            if (game === 'slots') slotsSetBet(b);
+            else if (game === 'grid') gridSetBet(b);
+            else if (game === 'lines') linesSetBet(b);
+            else if (game === 'wheel') wheelSetBet(b);
+            else if (game === 'mines') minesSetBet(b);
+            else if (game === 'durak') durakSetBet(b);
+            syncBetInput(game);
+        }
+
         function syncBetInput(game) {
             const el = document.getElementById(game + '-bet-input');
             if (!el || document.activeElement === el) return;
-            const cur = game === 'slots' ? slots.bet : game === 'grid' ? grid.bet : game === 'lines' ? lines.bet : game === 'wheel' ? wheel.bet : mines.bet;
+            const cur = game === 'slots' ? slots.bet : game === 'grid' ? grid.bet : game === 'lines' ? lines.bet : game === 'wheel' ? wheel.bet : game === 'durak' ? durakBet : mines.bet;
             el.value = fmtCoins(cur);
         }
 
@@ -7422,12 +7730,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const b = document.getElementById('slots-balance'); if (b) b.textContent = fmtCoins(state.coins);
             const bets = document.getElementById('slots-bets');
             if (bets) {
-                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="slotsSetBet(${v})" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ${slots.bet === v ? 'bg-fuchsia-600/90 border-fuchsia-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
+                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="slotsSetBet(${v})" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ${slots.bet === v ? 'bg-fuchsia-600/90 border-fuchsia-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
             }
             const ab = document.getElementById('slots-auto-btn');
             if (ab) {
                 ab.innerHTML = slots.auto ? '<i class="fa-solid fa-pause mr-1"></i>Авто: ВКЛ' : '<i class="fa-solid fa-play mr-1"></i>Авто: выкл';
-                ab.className = slots.auto ? 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40 animate-pulse' : 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition';
+                ab.className = slots.auto ? 'lq-on w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40 animate-pulse' : 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition';
             }
             const spin = document.getElementById('slots-spin');
             if (spin) {
@@ -7912,12 +8220,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const b = document.getElementById('grid-balance'); if (b) b.textContent = fmtCoins(state.coins);
             const bets = document.getElementById('grid-bets');
             if (bets) {
-                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="gridSetBet(${v})" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ${grid.bet === v ? 'bg-violet-600/90 border-violet-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
+                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="gridSetBet(${v})" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ${grid.bet === v ? 'bg-violet-600/90 border-violet-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
             }
             const gb = document.getElementById('grid-auto-btn');
             if (gb) {
                 gb.innerHTML = grid.auto ? '<i class="fa-solid fa-pause mr-1"></i>Авто: ВКЛ' : '<i class="fa-solid fa-play mr-1"></i>Авто: выкл';
-                gb.className = grid.auto ? 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40 animate-pulse' : 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition';
+                gb.className = grid.auto ? 'lq-on w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40 animate-pulse' : 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition';
             }
             const spin = document.getElementById('grid-spin');
             if (spin) {
@@ -7939,11 +8247,11 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 dview.classList.add('hidden');
                 arena.classList.remove('hidden');
                 renderArena();
-            } else if (durak) {
+            } else if (durak || battleMode === 'durak') {
+                // b236: без лобби-заглушки — поле открыто сразу, старт через уведомление
                 lobby.classList.add('hidden');
                 arena.classList.add('hidden');
                 dview.classList.remove('hidden');
-                durak3dEnsure();
                 renderDurakUI();
             } else {
                 arena.classList.add('hidden');
@@ -7953,7 +8261,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 renderMiner(); // b47
                 renderSlotsUI(); // b49
                 renderGridUI(); // b53
-                setBattleMode(battleMode);
+                // b239b: setBattleMode здесь не зовём — видимость синхронизирует он сам
             }
         }
 
@@ -8031,7 +8339,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 ${wins > 0 ? `<span class="mx-1.5 text-slate-700">•</span><span class="text-emerald-400">побед: ${wins}</span>` : ''}
                             </p>
                         </div>
-                        <button onclick="startBattle('${o.id}')" ${deckReady ? '' : 'disabled title="Соберите колоду минимум из 3 карт"'} class="px-4 py-2 ${deckReady ? 'bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-600/20' : 'bg-slate-800 text-slate-500 cursor-not-allowed'} text-white font-bold text-xs rounded-xl transition shrink-0">
+                        <button onclick="startBattle('${o.id}')" ${deckReady ? '' : 'disabled title="Соберите колоду минимум из 3 карт"'} class="lqg ${deckReady ? 'lqg-rose' : 'lqg-slate opacity-60 cursor-not-allowed'} px-4 py-2 text-xs font-bold transition shrink-0">
                             <i class="fa-solid fa-hand-fist mr-1"></i> В бой!
                         </button>
                     </div>`;
@@ -8939,7 +9247,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         ${win ? `<p class="text-sm text-emerald-200">Награда: <b>+${battle.opp.reward}</b> монет${battle.player.every(f => !f.dead) ? ' • <span class="text-amber-300 font-bold">★ Безупречная победа!</span>' : ''}</p>` : '<p class="text-sm text-rose-200">Соберите колоду сильнее и попробуйте снова!</p>'}
                         <div class="flex justify-center space-x-3 pt-2">
                             <button onclick="rematch()" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-rose-600/20"><i class="fa-solid fa-rotate-right mr-1.5"></i>Реванш</button>
-                            <button onclick="exitBattle()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm rounded-xl transition">В лобби</button>
+                            <button onclick="exitBattle()" class="lqg lqg-slate px-5 py-2.5 font-semibold text-sm transition">В лобби</button>
                         </div>
                     </div>`;
             }
@@ -9187,9 +9495,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function renderMinesUI() {
             syncBetInput('mines');
             const bets = document.getElementById('mines-bets');
-            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="minesSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (mines.bet === v ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '>' + fmtCoins(v) + '</button>').join('');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="minesSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (mines.bet === v ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '>' + fmtCoins(v) + '</button>').join('');
             const cnts = document.getElementById('mines-counts');
-            if (cnts) cnts.innerHTML = MINES_COUNTS.map(m => '<button type="button" onclick="minesSetCount(' + m + ')" title="Мин на поле: ' + m + '" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (mines.m === m ? 'bg-slate-200 border-slate-100 text-slate-900' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '><i class="fa-solid fa-bomb mr-1"></i>Мины: ' + m + '</button>').join('');
+            if (cnts) cnts.innerHTML = MINES_COUNTS.map(m => '<button type="button" onclick="minesSetCount(' + m + ')" title="Мин на поле: ' + m + '" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (mines.m === m ? 'bg-slate-200 border-slate-100 text-slate-900' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '><i class="fa-solid fa-bomb mr-1"></i>Мины: ' + m + '</button>').join('');
             // b126: надпись над кнопками — сколько мин будет на игровом поле
             const mcl = document.getElementById('mines-count-label');
             if (mcl) mcl.textContent = mines.m;
@@ -9362,7 +9670,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function renderLinesUI() {
             syncBetInput('lines');
             const bets = document.getElementById('lines-bets');
-            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="linesSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (lines.bet === v ? 'bg-sky-500 border-sky-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="linesSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (lines.bet === v ? 'bg-sky-500 border-sky-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
             const spin = document.getElementById('lines-spin');
             if (spin) { spin.disabled = lines.spinning || state.coins < lines.bet; spin.classList.toggle('opacity-40', lines.spinning || state.coins < lines.bet); }
             const ab = document.getElementById('lines-auto-btn');
@@ -9969,7 +10277,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         function renderWheelUI() {
             syncBetInput('wheel');
             const bets = document.getElementById('wheel-bets');
-            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="wheelSetBet(' + v + ')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition ' + (wheel.bet === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="wheelSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (wheel.bet === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
             const spin = document.getElementById('wheel-spin');
             if (spin) {
                 spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet);
@@ -10125,7 +10433,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
             return true;
         }
 
+        // b237: ставка партии в Дурака — хранится, листается степпером, списывается при раздаче
+        let durakBet = 100;
+        try { durakBet = normBet(Number(LS.getItem('nexus_durak_bet')) || 100); } catch (e) {}
+        function durakSetBet(b) {
+            durakBet = normBet(b);
+            try { LS.setItem('nexus_durak_bet', String(durakBet)); } catch (e) {}
+            syncBetInput('durak');
+            if (!durak || durak.over) renderDurakUI(); // обновить ценник на стартовой панели
+        }
+
         function startDurak() {
+            if (state.coins < durakBet) { showToast('Недостаточно монет для ставки ' + fmtCoins(durakBet), 'error'); return; }
             const deck = makeDurakDeck();
             const trump = deck[0];
             const hands = { player: [], ai: [] };
@@ -10135,9 +10454,12 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const attacker = (at && (!pt || at.val < pt.val)) ? 'ai' : 'player';
             durak = {
                 deck, trump, trumpSuit: trump.suit, hands, table: [], discard: [],
-                attacker, taking: false, over: false, winner: null, log: [], busy: false
+                attacker, taking: false, over: false, winner: null, log: [], busy: false,
+                bet: durakBet // b237: ставка партии
             };
-            durakLog(`Козырь: ${trump.rank}${trump.suit}. Первым ходит ${attacker === 'player' ? 'игрок' : 'ИИ'}.`);
+            state.coins -= durakBet; saveState(); updateCoinDisplay(); SoundFX.play('coin'); // b237: ставка списана
+            jackpotFeed(durakBet); // b238: Дурак кормит общий джекпот — 100% ставки в банк
+            durakLog(`Козырь: ${trump.rank}${trump.suit}. Первым ходит ${attacker === 'player' ? 'игрок' : 'ИИ'}. Ставка: ${fmtCoins(durakBet)}.`);
             SoundFX.play('swap');
             battle = null;
             renderBattleTab();
@@ -10331,16 +10653,18 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         // Сколько монет принесёт победа прямо сейчас (база + бонусы)
         function durakCalcWinReward(perfect) {
-            const parts = ['Победа: +150'];
-            let total = 150;
-            if (state.daily.lastDurakWinDate !== todayStr()) { total += 150; parts.push('Первая победа дня ×2: +150'); }
+            // b237: награда масштабируется ставкой партии: победа возвращает ставку ×2 плюс бонусы
+            const bet = (durak && durak.bet) || durakBet;
+            const parts = [`Ставка ${fmtCoins(bet)} ×2: +${fmtCoins(bet * 2)}`];
+            let total = bet * 2;
+            if (state.daily.lastDurakWinDate !== todayStr()) { total += bet; parts.push(`Первая победа дня: +${fmtCoins(bet)}`); }
             const streak = (state.stats.durakStreak || 0) + 1;
             if (streak >= 2) {
-                const b = Math.min(streak - 1, 3) * 50;
+                const b = Math.min(streak - 1, 3) * Math.round(bet * 0.35);
                 total += b;
-                parts.push(`Серия побед ×${streak}: +${b}`);
+                parts.push(`Серия побед ×${streak}: +${fmtCoins(b)}`);
             }
-            if (perfect) { total += 50; parts.push('Ни разу не забрали карты: +50'); }
+            if (perfect) { const p = Math.round(bet * 0.5); total += p; parts.push(`Ни разу не забрали карты: +${fmtCoins(p)}`); }
             return { total, parts, streak };
         }
 
@@ -10364,14 +10688,16 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 state.stats.durakLosses = (state.stats.durakLosses || 0) + 1;
                 state.stats.durakStreak = 0;
                 durak.rewardTotal = 0;
-                durak.rewardParts = ['Поражение: серия побед сброшена'];
+                durak.rewardParts = [`Поражение: ставка ${fmtCoins(durak.bet || 0)} сгорела и ушла в общий джекпот, серия побед сброшена`];
+                jackpotOnLoss(durak.bet || 0); // b238: проигрыш кормит банк на 100%
                 saveState();
                 SoundFX.play('lose');
                 showToast('В этот раз вы дурак… Реванш?', 'error');
             } else {
                 state.stats.durakStreak = 0;
                 durak.rewardTotal = 0;
-                durak.rewardParts = ['Ничья: монеты не начисляются'];
+                state.coins += durak.bet || 0; updateCoinDisplay(); // b238: ничья возвращает ставку
+                durak.rewardParts = [`Ничья: ставка ${fmtCoins(durak.bet || 0)} возвращена`];
                 saveState();
                 showToast('Ничья — оба сбросили карты!', 'success');
             }
@@ -10379,15 +10705,68 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         // ----- Интерфейс -----
+        // b233: фарфоровая игральная карта — крупные индексы по углам, большая масть,
+        // внутренняя рамка и тени; используется в руке, на столе и в отбое
+        function durakCardFace(c, cls) {
+            const red = c.suit === '\u2665' || c.suit === '\u2666';
+            const col = red ? 'text-rose-600' : 'text-slate-900';
+            return `
+            <div class="durak-card relative rounded-xl overflow-hidden border border-slate-300/70 bg-gradient-to-br from-white via-slate-50 to-slate-300 shadow-[0_10px_24px_rgba(2,6,23,.45),inset_0_1px_0_rgba(255,255,255,.9)] ${cls}">
+                <div class="absolute inset-[5px] rounded-lg border ${red ? 'border-rose-200/90' : 'border-slate-300/90'} bg-gradient-to-br from-white to-slate-100"></div>
+                <span class="absolute top-1 left-1.5 ${col} font-black leading-none text-sm sm:text-base">${c.rank}<span class="block text-[11px] sm:text-[13px]">${c.suit}</span></span>
+                <span class="absolute bottom-1 right-1.5 rotate-180 ${col} font-black leading-none text-sm sm:text-base">${c.rank}<span class="block text-[11px] sm:text-[13px]">${c.suit}</span></span>
+                <span class="absolute inset-0 flex items-center justify-center ${col} text-3xl sm:text-4xl drop-shadow-[0_2px_2px_rgba(15,23,42,.25)]">${c.suit}</span>
+            </div>`;
+        }
+        function durakCardBack(cls) {
+            return `
+            <div class="durak-card relative rounded-xl overflow-hidden border border-indigo-400/40 bg-gradient-to-br from-indigo-700 via-indigo-900 to-slate-950 shadow-[0_8px_18px_rgba(2,6,23,.5),inset_0_1px_0_rgba(255,255,255,.25)] ${cls}">
+                <div class="absolute inset-[5px] rounded-lg border border-indigo-300/30" style="background:repeating-linear-gradient(45deg, rgba(165,180,252,.16) 0 6px, rgba(30,27,75,.0) 6px 12px)"></div>
+                <span class="absolute inset-0 flex items-center justify-center text-indigo-200/70 text-xl">♠</span>
+            </div>`;
+        }
+
         function renderDurakUI() {
-            if (!durak) return;
-            const topbar = document.getElementById('durak-topbar');
+            const topbar0 = document.getElementById('durak-topbar');
+            const status0 = document.getElementById('durak-status');
+            const hand0 = document.getElementById('durak-hand');
+            const actions0 = document.getElementById('durak-actions');
+            const cont0 = document.getElementById('durak-3d-container');
+            if (!durak) {
+                // b236: поле открыто сразу; вместо заглушки — уведомление «Начать игру»
+                if (topbar0) topbar0.innerHTML = '';
+                if (hand0) hand0.innerHTML = '';
+                if (status0) status0.innerHTML = '';
+                if (actions0) actions0.innerHTML = '';
+                // b238: уведомление-облачко по центру сукна, а не панель под столом
+                if (cont0) cont0.innerHTML = `
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;">
+                        <div class="rounded-3xl border border-teal-500/35 bg-slate-950/85 backdrop-blur-md px-5 py-4 sm:px-8 sm:py-5 text-center space-y-2.5 shadow-2xl shadow-black/60 pop-in max-w-[94%]">
+                            <h3 class="text-base sm:text-lg font-black text-white"><i class="fa-solid fa-bell text-teal-300 mr-1.5"></i>Начать игру?</h3>
+                            <p class="text-[11px] sm:text-xs text-slate-400">36 карт, козырь из-под колоды, бей или забирай.<br>Победа вернёт ставку ×2 плюс бонусы; ставка кормит общий джекпот.</p>
+                            <div class="flex justify-center">
+                                <div class="flex flex-col items-center gap-1 shrink-0">
+                                    <span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" onclick="stepBet('durak',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button>
+                                        <input id="durak-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('durak', this.value)">
+                                        <button type="button" onclick="stepBet('durak',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onclick="startDurak()" class="lqg lqg-emerald px-6 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-play mr-1.5"></i>Начать игру — ${fmtCoins(durakBet)}</button>
+                        </div>
+                    </div>`;
+                return;
+            }
+            const topbar = topbar0;
             if (topbar) topbar.innerHTML = `
                 <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3">
                     <button onclick="exitDurak()" class="text-xs font-semibold text-slate-400 hover:text-rose-400 transition flex items-center space-x-1.5"><i class="fa-solid fa-arrow-left"></i><span>Выйти</span></button>
                     <div class="flex flex-wrap items-center gap-3 text-xs">
                         <span class="text-slate-300">Колода: <b class="text-white">${durak.deck.length}</b>${durak.deck.length ? ` <span class="text-amber-300 font-bold">козырь ${durak.trump.rank}${durak.trump.suit}</span>` : ''}</span>
                         <span class="text-slate-300">Отбой: <b class="text-white">${durak.discard.length}</b></span>
+                        <span class="text-slate-300">Ставка: <b class="text-amber-200">${fmtCoins(durak.bet || 0)}</b></span>
                         <span class="text-slate-300">ИИ: <b class="text-rose-300">${durak.hands.ai.length}</b> карт</span>
                     </div>
                     <span class="text-[10px] text-slate-500 max-w-[180px] truncate">${durak.log.length ? durak.log[durak.log.length - 1] : ''}</span>
@@ -10415,8 +10794,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <h3 class="text-xl font-black ${win ? 'text-emerald-400' : durak.winner === 'ai' ? 'text-rose-400' : 'text-slate-300'}">${win ? 'ПОБЕДА!' : durak.winner === 'ai' ? 'ВЫ ДУРАК…' : 'НИЧЬЯ'}</h3>
                             ${durak.rewardParts ? `<div class="text-xs space-y-0.5 ${win ? 'text-emerald-200' : 'text-slate-400'}">${durak.rewardParts.map(p => `<p>• ${p}</p>`).join('')}${win ? `<p class="pt-1 text-sm font-black text-amber-300">Итого: +${durak.rewardTotal} монет</p>` : ''}</div>` : ''}
                             <div class="flex justify-center space-x-3 pt-1">
-                                <button onclick="startDurak()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-600/20"><i class="fa-solid fa-rotate-right mr-1.5"></i>Ещё партию</button>
-                                <button onclick="exitDurak()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-sm rounded-xl transition">В лобби</button>
+                                <button onclick="startDurak()" class="lqg lqg-emerald px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-rotate-right mr-1.5"></i>Ещё партию</button>
+                                <button onclick="exitDurak()" class="lqg lqg-slate px-5 py-2.5 font-semibold text-sm transition">В лобби</button>
                             </div>
                         </div>`;
                 } else {
@@ -10426,9 +10805,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     const canDone = actor === 'player' && durak.taking && durak.attacker === 'player';
                     actions.innerHTML = `
                         <div class="flex justify-center gap-3">
-                            ${canTake ? '<button onclick="durakPlayerTake()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-amber-600/20"><i class="fa-solid fa-hand mr-1.5"></i>Забрать</button>' : ''}
-                            ${canBito ? '<button onclick="durakPlayerBito()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-600/20"><i class="fa-solid fa-check mr-1.5"></i>Бито</button>' : ''}
-                            ${canDone ? '<button onclick="durakPlayerDone()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-600/20"><i class="fa-solid fa-check mr-1.5"></i>Готово — ИИ забирает</button>' : ''}
+                            ${canTake ? '<button onclick="durakPlayerTake()" class="lqg lqg-amber px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-hand mr-1.5"></i>Забрать</button>' : ''}
+                            ${canBito ? '<button onclick="durakPlayerBito()" class="lqg lqg-emerald px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-check mr-1.5"></i>Бито</button>' : ''}
+                            ${canDone ? '<button onclick="durakPlayerDone()" class="lqg lqg-emerald px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-check mr-1.5"></i>Готово — ИИ забирает</button>' : ''}
                         </div>`;
                 }
             }
@@ -10436,15 +10815,19 @@ Check your Browserslist config to be sure that your targets are set up correctly
             const handEl = document.getElementById('durak-hand');
             if (handEl) {
                 const myTurn = durakActor() === 'player' && !durak.over;
+                const handN = durak.hands.player.length;
+                const handMid = (handN - 1) / 2;
+                const fanSpread = Math.min(46, 6 + handN * 5); // b235: дуга веера в градусах
                 handEl.innerHTML = durak.hands.player.map((c, i) => {
-                    const red = c.suit === '♥' || c.suit === '♦';
                     const isTrump = c.suit === durak.trumpSuit;
+                    const ang = handN > 1 ? (-fanSpread / 2 + fanSpread * i / (handN - 1)) : 0;
+                    const lift = Math.round(Math.pow(Math.abs(i - handMid), 1.5) * 1.6);
+                    // b235: перекрытие считаем под ширину телефона: весь веер влезает в ~320px
+                    const ov = handN > 1 ? Math.max(24, Math.min(62, Math.round(80 - 240 / (handN - 1)))) : 0;
                     return `
-                        <button onclick="durakHandClick(${i})" class="relative w-16 h-24 rounded-lg border-2 ${red ? 'border-rose-400/60 text-rose-400' : 'border-slate-500 text-slate-100'} bg-slate-950 ${myTurn ? 'hover:-translate-y-2 hover:shadow-xl cursor-pointer' : 'opacity-50 cursor-not-allowed'} transition shadow-lg flex flex-col items-center justify-center select-none">
-                            <span class="absolute top-1 left-1.5 text-sm font-black leading-none">${c.rank}<span class="text-xs">${c.suit}</span></span>
-                            <span class="text-3xl mt-2">${c.suit}</span>
-                            <span class="absolute bottom-1 right-1.5 text-sm font-black leading-none rotate-180">${c.rank}<span class="text-xs">${c.suit}</span></span>
-                            ${isTrump ? '<span class="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold text-amber-300 bg-slate-900 border border-amber-500/40 rounded px-1">КОЗЫРЬ</span>' : ''}
+                        <button onclick="durakHandClick(${i})" style="--ang:${ang.toFixed(1)}deg; --lift:${lift}px; --z:${i + 1}; margin-left:${i ? -ov : 0}px" class="durak-fan relative shrink-0 select-none focus:outline-none ${myTurn ? 'can cursor-pointer' : 'opacity-60 cursor-not-allowed'}">
+                            ${durakCardFace(c, 'w-20 h-28 sm:w-24 sm:h-36')}
+                            ${isTrump ? '<span class="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-amber-400/70 shadow-[0_0_18px_rgba(251,191,36,.35)]"></span><span class="pointer-events-none absolute -top-2.5 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black tracking-wider text-amber-200 bg-slate-950/90 border border-amber-400/60 rounded-full px-1.5 py-0.5 shadow-lg shadow-amber-900/40 whitespace-nowrap">КОЗЫРЬ</span>' : ''}
                         </button>`;
                 }).join('') || '<p class="text-xs text-slate-500 py-6">Рука пуста</p>';
             }
@@ -10457,14 +10840,26 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const cont = document.getElementById('durak-3d-container');
                 if (cont) {
                     cont.innerHTML = `
-                        <div class="w-full h-full flex flex-col items-center justify-center gap-2 p-4" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;width:100%;height:100%;">
-                            <p class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Стол</p>
-                            <div class="flex flex-wrap justify-center gap-2">
-                                ${durak.table.length ? durak.table.map(p => `
-                                    <div class="flex flex-col items-center gap-1">
-                                        <span class="px-2 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-sm font-bold ${p.attack.suit === '♥' || p.attack.suit === '♦' ? 'text-rose-400' : 'text-slate-100'}">${p.attack.rank}${p.attack.suit}</span>
-                                        ${p.defend ? `<span class="px-2 py-1.5 rounded-lg bg-slate-900 border border-emerald-600/50 text-sm font-bold ${p.defend.suit === '♥' || p.defend.suit === '♦' ? 'text-rose-400' : 'text-slate-100'}">${p.defend.rank}${p.defend.suit}</span>` : '<span class="text-[10px] text-amber-400">не отбита</span>'}
-                                    </div>`).join('') : '<span class="text-xs text-slate-600 italic">пусто</span>'}
+                        <div class="w-full h-full" style="position:relative;width:100%;height:100%;">
+                            <div class="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-[5]">
+                                ${durak.deck.length ? `<div class="w-20 h-14 sm:w-24 sm:h-16 flex items-center justify-center"><div class="rotate-90">${durakCardFace(durak.trump, 'w-14 h-20 sm:w-16 sm:h-24')}</div></div><span class="text-[9px] sm:text-[10px] font-bold text-emerald-100/70">колода · ${durak.deck.length}</span>` : ''}
+                            </div>
+                            <div class="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-[5]">
+                                ${durak.discard.length ? `<div class="relative w-12 h-16 sm:w-14 sm:h-20">${durakCardBack('w-full h-full')}<div class="absolute left-1 top-1 w-full h-full opacity-60">${durakCardBack('w-full h-full')}</div></div><span class="text-[9px] sm:text-[10px] font-bold text-emerald-100/70">отбой · ${durak.discard.length}</span>` : ''}
+                            </div>
+                            <div class="w-full h-full flex flex-col items-center justify-center gap-2 sm:gap-3" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 72px;width:100%;height:100%;">
+                                <div class="flex justify-center -space-x-6 sm:-space-x-5">
+                                    ${Array.from({ length: Math.min(durak.hands.ai.length, 8) }).map(() => durakCardBack('w-12 h-16 sm:w-14 sm:h-20')).join('') || '<span class="text-[10px] text-emerald-100/50 italic">у ИИ пусто</span>'}
+                                </div>
+                                <div class="flex flex-wrap justify-center gap-3 sm:gap-6 pb-8 pt-3">
+                                    ${durak.table.length ? durak.table.map(p => `
+                                        <div class="relative w-20 h-28 sm:w-24 sm:h-36">
+                                            ${durakCardFace(p.attack, 'absolute inset-0 w-full h-full')}
+                                            ${p.defend
+                                                ? `<div class="absolute left-3 top-3 w-full h-full rotate-[16deg]">${durakCardFace(p.defend, 'w-full h-full')}</div>`
+                                                : '<span class="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-amber-300 whitespace-nowrap drop-shadow">не отбита</span>'}
+                                        </div>`).join('') : '<span class="text-xs text-emerald-100/50 italic">стол пуст — начните атаку</span>'}
+                                </div>
                             </div>
                         </div>`;
                 }
@@ -10573,6 +10968,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
         }
 
         function durak3dEnsure() {
+            return; // b234: 3D-стол отключён — карты были далеко и крутились; поле теперь 2D
             if (durak3d) return;
             const container = document.getElementById('durak-3d-container');
             if (!container || !durak) return;
@@ -10588,8 +10984,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             const scene = new THREE.Scene();
             scene.fog = new THREE.Fog(0x050a08, 14, 26);
-            const camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 100);
-            camera.position.set(0, 5.5, 8.9);
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100); // b233: карты ближе
+            camera.position.set(0, 4.7, 7.3); // b233: стол крупнее в кадре
             camera.lookAt(0, 0.5, -0.1);
             if (!window._nx3dDurak) { // b58: стол не растягивается при повороте экрана
                 window._nx3dDurak = 1;
@@ -11288,8 +11684,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             </div>
                             <div class="p-2 flex items-center justify-between gap-1.5 border-t border-slate-800/70">
                                 ${packInPremiere(pack)
-                                    ? `<button onclick="buyPack('${pack.id}')" class="flex-1 px-2.5 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] sm:text-[11px] font-bold transition whitespace-nowrap" title="Премьера: скоро откроется — продажа начнётся, когда отсчёт закончится"><i class="fa-solid fa-clapperboard mr-1"></i>Премьера</button>`
-                                    : `<button onclick="buyPack('${pack.id}')" class="flex-1 px-2.5 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] sm:text-[11px] font-bold transition shadow-md shadow-emerald-950/40 whitespace-nowrap"><i class="fa-solid fa-box-open mr-1"></i>Открыть</button>`}
+                                    ? `<button onclick="buyPack('${pack.id}')" class="lqg lqg-amber flex-1 px-2.5 py-1.5 text-[10px] sm:text-[11px] font-bold transition whitespace-nowrap" title="Премьера: скоро откроется — продажа начнётся, когда отсчёт закончится"><i class="fa-solid fa-clapperboard mr-1"></i>Премьера</button>`
+                                    : `<button onclick="buyPack('${pack.id}')" class="lqg lqg-emerald flex-1 px-2.5 py-1.5 text-[10px] sm:text-[11px] font-bold transition whitespace-nowrap"><i class="fa-solid fa-box-open mr-1"></i>Открыть</button>`}
                                 <button onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });" title="Показать в карусели" class="w-8 h-8 shrink-0 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/70 text-slate-300 hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-compact-disc text-xs"></i></button>
                             </div>
                         </div>
@@ -11333,7 +11729,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 const list = document.getElementById('sale-banner-list');
                 if (list) list.innerHTML = timed.map(p => {
                     const i = SHOP_LIST.indexOf(p);
-                    return `<button type="button" onclick="carouselGoTo(${i})" class="sale-drop relative z-10 inline-flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl bg-slate-950/60 border border-sky-500/25 hover:border-sky-400/60 transition" title="Показать пак в карусели">
+                    return `<button type="button" onclick="carouselGoTo(${i})" class="sale-drop lqg lqg-sky relative z-10 inline-flex items-center gap-2.5 pl-3 pr-2 py-1.5 transition" title="Показать пак в карусели">
                         <i class="fa-solid fa-box-open text-sky-300/80 text-[11px]"></i>
                         <span class="text-[11px] sm:text-xs font-bold text-white truncate max-w-[150px] sm:max-w-[280px]">${cloudEsc(p.title)}</span>
                         <span class="text-[9px] uppercase tracking-wider font-bold text-sky-200/70">успевай до</span>
@@ -11353,7 +11749,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     if (ups.length) {
                         upList.innerHTML = ups.map(x => {
                             const when = (x.m === 'prem' ? '🎬 Премьера ' : '') + new Date(x.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                            return `<button type="button" onclick="carouselGoTo(${x.i})" class="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/70 pl-3 pr-2 py-1.5 hover:border-teal-400 transition" title="Показать пак в карусели">
+                            return `<button type="button" onclick="carouselGoTo(${x.i})" class="lqg lqg-slate inline-flex items-center gap-2 pl-3 pr-2 py-1.5 transition" title="Показать пак в карусели">
                                 <b class="text-[11px] font-bold text-slate-200 truncate max-w-[130px]">${cloudEsc(x.p.title)}</b>
                                 <span class="text-[9px] text-slate-400 font-bold">${when}</span>${saleTimerChip(x.p, 'sale-inline')}</button>`;
                         }).join('');
@@ -11583,7 +11979,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <span class="text-base sm:text-lg leading-none tracking-wide ${hasDisc ? 'text-rose-300' : ''}">${fmtCoins(salePrice)}</span>
                                 ${hasDisc ? `<span class="text-[9px] uppercase tracking-widest text-rose-300 font-black">-${Math.round(100 - salePrice / pack.price * 100)}%</span>` : '<span class="text-[9px] uppercase tracking-widest text-amber-200/60 font-bold">монет</span>'}
                             </span>
-                            <button id="carousel-open-btn" onclick="buyPack('${pack.id}')" class="flex-1 px-5 py-3 font-black text-sm tracking-wide rounded-2xl transition-all duration-200 ${canBuy ? 'btn-cta bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 hover:from-emerald-400 hover:to-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/30 ring-1 ring-emerald-300/60 hover:scale-[1.02] active:scale-[0.99]' : 'bg-slate-800/50 text-slate-500 border border-slate-700/70 shadow-none cursor-not-allowed'}">
+                            <button id="carousel-open-btn" onclick="buyPack('${pack.id}')" class="flex-1 px-5 py-3 font-black text-sm tracking-wide rounded-2xl transition-all duration-200 ${canBuy ? 'lqg lqg-emerald hover:scale-[1.02] active:scale-[0.99]' : 'lqg lqg-slate opacity-60 cursor-not-allowed'}">
                                 <i class="fa-solid ${prem || pre ? 'fa-clock' : afford ? 'fa-box-open' : 'fa-lock'} mr-2"></i>${prem ? '🎬 Премьера через <b data-btn-cd="' + pack.id + '" data-btn-cd-mode="prem" class="font-black tabular-nums">' + saleClockStr(pack.premiereAt - Date.now()) + '</b>' : pre ? 'Продажа через <b data-btn-cd="' + pack.id + '" data-btn-cd-mode="pre" class="font-black tabular-nums">' + saleClockStr(sw.start - Date.now()) + '</b>' : canBuy ? 'Открыть пак' : 'Не хватает монет'}
                             </button>
                         </div>
@@ -12502,7 +12898,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <i class="fa-solid fa-filter-circle-xmark text-3xl text-slate-700"></i>
                         <p class="mt-3 text-sm font-semibold text-slate-400">Под фильтр ничего не подошло</p>
                         <p class="text-xs text-slate-600 mt-1">Показано 0 из ${packCards.length}</p>
-                        <button onclick="resetAlbumFilter()" class="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Сбросить фильтры</button>
+                        <button onclick="resetAlbumFilter()" class="lqg lqg-slate mt-4 px-4 py-2 text-xs font-semibold transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Сбросить фильтры</button>
                     </div>
                 `;
             } else {
@@ -12709,7 +13105,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 </div>
                                 <div class="pt-2 sm:pt-3 border-t border-slate-800/70 flex items-center justify-between gap-2">
                                     <span class="text-[10px] sm:text-[11px] text-slate-400 truncate"><i class="fa-solid fa-layer-group text-slate-500 mr-1 sm:mr-1.5"></i>${collectedCount} / ${s.total}${copiesNote ? `<span class="hidden sm:inline">${copiesNote}</span>` : ''}</span>
-                                    <span class="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center justify-center transition-all duration-300 group-hover:bg-emerald-500 group-hover:text-slate-950"><i class="fa-solid fa-arrow-right text-[10px] sm:text-xs"></i></span>
+                                    <span class="lqg lqg-emerald w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center transition-all duration-300"><i class="fa-solid fa-arrow-right text-[10px] sm:text-xs"></i></span>
                                 </div>
                             </div>
                         </div>
@@ -12747,7 +13143,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             </div>` : ''}
                         </div>
                         <div class="hidden sm:block shrink-0">${albumRingHTML(s.pct, 44, 4)}</div>
-                        <span class="w-8 h-8 sm:w-9 sm:h-9 shrink-0 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 flex items-center justify-center transition-all duration-300 group-hover:bg-emerald-500 group-hover:text-slate-950"><i class="fa-solid fa-arrow-right text-xs"></i></span>
+                        <span class="lqg lqg-emerald w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center transition-all duration-300"><i class="fa-solid fa-arrow-right text-xs"></i></span>
                     </div>
                 </div>`;
         }
@@ -12783,7 +13179,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <div class="text-center py-14 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl">
                         <i class="fa-solid fa-filter-circle-xmark text-3xl text-slate-700"></i>
                         <p class="mt-3 text-sm font-semibold text-slate-400">Ничего не нашлось по запросу «${albumEsc(u.q)}»</p>
-                        <button onclick="clearAlbumsSearch()" class="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Сбросить поиск</button>
+                        <button onclick="clearAlbumsSearch()" class="lqg lqg-slate mt-4 px-4 py-2 text-xs font-semibold transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Сбросить поиск</button>
                     </div>`;
                 return;
             }
@@ -12813,7 +13209,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
                 const chip = (key, label, color) => {
                     const on = albumFilter.rarity === key;
-                    return `<button onclick="setAlbumRarity('${key}')" class="px-3 py-1.5 rounded-xl text-[11px] font-bold border transition ${on ? 'text-slate-950 shadow-lg' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:border-slate-500'}"${on ? ` style="background:${color};border-color:${color}"` : ''}>${label}</button>`;
+                    return `<button onclick="setAlbumRarity('${key}')" class="lqg px-3 py-1.5 text-[11px] font-bold transition ${on ? '' : 'lqg-slate'}"${on ? ` style="--lq-tint:${color}2e; --lq-text:${color}; border-color:${color}80"` : ''}>${label}</button>`;
                 };
                 const u = albumsUiState(); // вид карточек внутри альбома
 
@@ -12825,7 +13221,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div class="relative p-3 sm:p-6">
                                 <!-- b175: строка 1 — выход, обложка, название, кольцо прогресса -->
                                 <div class="flex items-center gap-2.5 sm:gap-5">
-                                    <button onclick="backToAlbumsHub()" class="w-9 h-9 sm:w-11 sm:h-11 shrink-0 rounded-xl bg-slate-800/90 hover:bg-slate-700 border border-slate-700/60 flex items-center justify-center text-slate-300 hover:text-white transition" title="Ко всем альбомам">
+                                    <button onclick="backToAlbumsHub()" class="lqg lqg-slate w-9 h-9 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center transition" title="Ко всем альбомам">
                                         <i class="fa-solid fa-arrow-left text-sm sm:text-base"></i>
                                     </button>
                                     <div class="relative w-14 h-20 sm:w-20 sm:h-28 shrink-0 rounded-lg sm:rounded-xl overflow-hidden border border-slate-700/70 ring-1 ring-white/10 shadow-lg shadow-black/40">
@@ -12867,7 +13263,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
                                 <!-- b175: действия — на телефоне кнопка во всю ширину, на десктопе справа -->
                                 <div class="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
-                                    <button onclick="sellAlbumDupes('${pack.id}')" title="Выставить все лишние копии карт этого альбома на биржу по рекомендуемой цене (одна копия каждой карты останется в коллекции)" class="order-1 sm:order-2 w-full sm:w-auto shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 text-[11px] sm:text-xs font-bold transition shadow-lg shadow-amber-950/30"><i class="fa-solid fa-sack-coins mr-1.5"></i>Продать все повторки${dupesTotal > 0 ? ` <span class="font-mono">(${dupesTotal})</span>` : ''}</button>
+                                    <button onclick="sellAlbumDupes('${pack.id}')" title="Выставить все лишние копии карт этого альбома на биржу по рекомендуемой цене (одна копия каждой карты останется в коллекции)" class="lqg lqg-amber order-1 sm:order-2 w-full sm:w-auto shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition active:scale-[0.98]"><i class="fa-solid fa-sack-coins mr-1.5"></i>Продать все повторки${dupesTotal > 0 ? ` <span class="font-mono">(${dupesTotal})</span>` : ''}</button>
                                     <div class="order-2 sm:order-1 flex-1 min-w-0 text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
                                         ${progressPct >= 100 ? '<span class="text-amber-300 font-semibold"><i class="fa-solid fa-trophy mr-1"></i>Альбом собран полностью!</span>' : `Осталось собрать: <span class="text-slate-300 font-semibold">${packCards.length - collectedCount}</span> ${pluralRu(packCards.length - collectedCount, 'карта', 'карты', 'карт')}`}
                                     </div>
@@ -12880,7 +13276,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div class="flex flex-wrap items-center gap-2">
                                 ${chip('all', 'Все', '#34d399')}
                                 ${RARITY_ORDER.map(r => chip(r, RARITY_LABELS_RU[r], RAR_COLORS[r])).join('')}
-                                <button onclick="toggleAlbumMissing()" class="px-3 py-1.5 rounded-xl text-[11px] font-bold border transition ${albumFilter.missing ? 'bg-rose-500 border-rose-400 text-slate-950 shadow-lg' : 'bg-slate-950/60 border-slate-700 text-slate-300 hover:border-slate-500'}"><i class="fa-solid fa-lock mr-1"></i>Только не найденные</button>
+                                <button onclick="toggleAlbumMissing()" class="lqg px-3 py-1.5 text-[11px] font-bold transition ${albumFilter.missing ? 'lqg-rose' : 'lqg-slate'}"><i class="fa-solid fa-lock mr-1"></i>Только не найденные</button>
                                 <span id="album-shown-count" class="ml-auto text-[10px] font-mono text-slate-500 pr-1 whitespace-nowrap"></span>
                             </div>
                             <div class="h-px bg-slate-800/70"></div>
@@ -12968,8 +13364,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 ${Object.keys(ALBUMS_SORTS).map(k => `<option value="${k}"${u.sort === k ? ' selected' : ''}>${ALBUMS_SORTS[k]}</option>`).join('')}
                             </select>
                             <div class="flex rounded-xl border border-slate-700 overflow-hidden shrink-0" title="Вид списка">
-                                <button onclick="setAlbumsView('grid')" title="Сетка" class="px-2.5 py-2 text-xs transition ${u.view === 'grid' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid fa-table-cells-large"></i></button>
-                                <button onclick="setAlbumsView('rows')" title="Строки" class="px-2.5 py-2 text-xs transition ${u.view === 'rows' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid fa-list"></i></button>
+                                <button onclick="setAlbumsView('grid')" title="Сетка" class="px-2.5 py-2 text-xs transition ${u.view === 'grid' ? 'lqg lqg-emerald' : 'lqg lqg-slate'}"><i class="fa-solid fa-table-cells-large"></i></button>
+                                <button onclick="setAlbumsView('rows')" title="Строки" class="px-2.5 py-2 text-xs transition ${u.view === 'rows' ? 'lqg lqg-emerald' : 'lqg lqg-slate'}"><i class="fa-solid fa-list"></i></button>
                             </div>
                         </div>
                         <p id="albums-shown-count" class="text-[11px] text-slate-500 font-mono"></p>
