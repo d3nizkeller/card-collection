@@ -14418,7 +14418,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             if (m.add) bits.push(`новых: ${m.add}`);
                             if (m.upd) bits.push(`обновлено: ${m.upd}`);
                             if (m.mirror) bits.push(`не из комнаты: ${m.mirror} (сохранено в архив)`);
-                            showToast('☁️ Обновление из комнаты ' + cloudEsc(CLOUD.room) + (bits.length ? ': ' + bits.join(', ') : ': изменения применены'), 'success');
+                            showToast('Обновление системы: ' + (bits.length ? bits.join(', ') : 'изменения применены'), 'success'); // b247: без имени комнаты
                         }
                     }
                 }
