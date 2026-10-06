@@ -1589,7 +1589,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <li>Соперник атакует — бейте старшей картой той же масти или козырем; не можете побить — забираете карты со стола.</li>
                                 <li>После боя добор до 6 карт: у кого карты кончились — тот победил, оставшийся с картами — <b>дурак</b>.</li>
                                 <li>Победа: <b>+150 монет</b> (×2 за первую победу дня, бонусы за серию), идеальная победа без взятых карт — ещё щедрее.</li>
-                                <li>Подкидывать можно карты тех же достоинств, что уже лежат на столе (до 6 пар); первым ходит игрок с младшим козырем.</li>
+                                <li>Подкидывать можно карты тех же достоинств, что уже лежат на столе; за один кон на столе <b>не больше 6 карт</b> (3 пары). Первым ходит игрок с младшим козырем.</li>
                             </ol>
                         </div>
                 </div>
@@ -10464,7 +10464,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
         function durakCanAdd(card) {
             if (!durak.table.length) return false;
-            if (durak.table.length >= 6) return false;
+            if (durak.table.length >= 3) return false; // b249: отбой за кон — не больше 6 карт (3 пары)
             if (!durakTableRanks().has(card.rank)) return false;
             if (!durak.taking) {
                 const defender = durak.attacker === 'player' ? 'ai' : 'player';
@@ -10568,7 +10568,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 
             // атака: открытие или подкидывание
             if (durak.table.length && !durakCanAdd(card)) { showToast('Подкидывать можно только достоинства со стола', 'error'); return; }
-            if (durak.table.length >= 6) { showToast('Максимум 6 пар', 'error'); return; }
+            if (durak.table.length >= 3) { showToast('Больше 6 карт за кон не кладётся', 'error'); return; }
             durakPlayToTable('player', card);
             durakLog(`Вы ходите картой ${card.rank}${card.suit}`);
             SoundFX.play('swap');
