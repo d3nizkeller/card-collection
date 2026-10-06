@@ -10466,10 +10466,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
             if (!durak.table.length) return false;
             if (durak.table.length >= 6) return false; // b251: классика — не больше 6 карт атаки за кон
             if (!durakTableRanks().has(card.rank)) return false;
-            if (!durak.taking) {
-                const defender = durak.attacker === 'player' ? 'ai' : 'player';
-                if (durak.table.length >= durak.hands[defender].length) return false;
-            }
+            // b252: лимит по руке защищающегося убран по просьбе игрока —
+            // подкидывать можно любые достоинства со стола (до 6 карт атаки)
             return true;
         }
 
