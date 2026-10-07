@@ -1411,6 +1411,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="mt-4 rounded-2xl border border-slate-800 bg-slate-900/50 backdrop-blur-sm p-2 sm:p-3 flex flex-wrap items-center justify-center gap-2">
                             <div id="wheel-bets" class="bets-strip hidden items-center gap-1.5 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-visible sm:justify-center min-w-0 w-full sm:w-auto order-first sm:order-none py-0.5"></div>
                             <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('wheel',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="wheel-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('wheel', this.value)"><button type="button" onclick="stepBet('wheel',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
+                            <button id="wheel-auto" type="button" onclick="wheelAutoToggle()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-bold transition" title="Автоматическая прокрутка: колесо крутится само, пока не выключите или не кончатся монеты"><i class="fa-solid fa-rotate mr-1"></i>Авто: выкл</button>
                             <button id="wheel-spin" onclick="wheelSpin()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-dharmachakra mr-1"></i>Крутить</button>
                         </div>
                         <p id="wheel-result" class="text-xs text-slate-400 mt-2 text-center">Выбери ставку и крути колесо!</p>
@@ -7280,6 +7281,7 @@ min-height:56vh}
             if (m !== 'slots' && slots.auto) slotsAutoStop(false, 'смена игры');
             if (m !== 'grid' && grid.auto) gridAutoStop(false, 'смена игры');
             if (m !== 'lines' && lines.auto) linesAutoStop(false, 'смена игры');
+            if (m !== 'wheel' && wheel.auto) { wheel.auto = false; try { wheelAutoUI(); } catch (e) {} } // b314
             nx3dReleaseHidden(m); // b305: скрытые игры отдают WebGL-контексты
             if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
@@ -11728,10 +11730,8 @@ min-height:56vh}
 
         function wheelEnsure() {
             if (wheel.ready) return;
-            if (nxWeakGpu() && !nxForce3d()) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; } // b309
-            if (wheel.fallback && !wheel.retry3d) { wheel.retry3d = true; wheel.fallback = false; } // b307: одна повторная попытка 3D за сессию
-            if (wheel.fallback) return;
-            if (typeof THREE === 'undefined' || !webglAvailable()) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
+            // b310: новое колесо — всегда 2D (canvas + CSS): без WebGL, без контекстов, без крашей
+            wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return;
             const container = document.getElementById('wheel-container');
             if (!container) return;
             let renderer;
@@ -11909,26 +11909,94 @@ min-height:56vh}
         }
 
         function wheelBuildFallback() {
-            const wch = document.getElementById('wheel-container'); if (wch) wch.classList.add('hidden'); // b307: пустая коробка не остаётся
-            if (nxWeakGpu() && !window.__nxWeakToast) { // b309: один раз объясняем, что происходит и что делать
-                window.__nxWeakToast = 1;
-                setTimeout(() => { try { showToast('Устройство тяжело держит 3D — включён надёжный плоский режим. Вернуть 3D: Настройки → «3D: …»', 'error'); } catch (e) {} }, 1500);
-            }
-            const box = document.getElementById('wheel-fallback');
-            if (!box || box.dataset.built) { if (box) box.classList.remove('hidden'); return; }
-            box.dataset.built = '1';
-            box.classList.remove('hidden');
-            const stops = WHEEL_SECTORS.map((sec, i) => {
-                const c = '#' + sec.color.toString(16).padStart(6, '0');
-                return c + ' ' + (i * 22.5) + 'deg ' + ((i + 1) * 22.5) + 'deg';
-            }).join(', ');
-            box.innerHTML = '<div style="position:relative;width:280px;height:280px;">' +
-                '<div id="wheel-fb-disc" onclick="wheelSpin()" style="cursor:pointer;width:280px;height:280px;border-radius:50%;border:6px solid #f59e0b;background:conic-gradient(' + stops + ');box-shadow:0 0 30px rgba(245,158,11,.35);"></div>' +
-                '<div style="position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:22px solid #ef4444;"></div>' +
-                '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:56px;height:56px;border-radius:50%;background:#fbbf24;box-shadow:inset 0 0 8px rgba(2,6,23,.5);"></div>' +
+            // b310: новое колесо Фортуны — чистый 2D: рисуется один раз на canvas,
+            // крутится CSS-трансформом. Ни одного WebGL-контекста: нечему падать.
+            const box = document.getElementById('wheel-fallback'); if (box) box.classList.add('hidden');
+            const cont = document.getElementById('wheel-container'); if (!cont) return;
+            cont.classList.remove('hidden');
+            cont.classList.add('flex', 'items-center', 'justify-center');
+            if (cont.dataset.nx2d) return;
+            cont.dataset.nx2d = '1';
+            cont.innerHTML = '<div onclick="wheelSpin()" style="position:relative;width:min(88vw,390px);aspect-ratio:1/1;cursor:pointer;">' + // b313: тап в любую точку колеса (включая ступицу и указчик) крутит
+                '<div id="wheel-fb-disc" onclick="wheelSpin()" style="position:absolute;inset:0;cursor:pointer;will-change:transform;border-radius:50%;box-shadow:0 0 34px rgba(245,158,11,.38), 0 10px 40px rgba(2,6,23,.6);">' + // b312: тап по колесу крутит (защита от двойного спина уже в wheelSpin)
+                '<canvas id="wheel-2d-cv" style="width:100%;height:100%;display:block;border-radius:50%;"></canvas></div>' +
+                '<div style="position:absolute;left:50%;top:-10px;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #ef4444;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));z-index:20;"></div>' +
+                '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:16%;height:16%;border-radius:50%;background:radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 60%, #b45309);box-shadow:0 0 18px rgba(245,158,11,.8), inset 0 -4px 10px rgba(120,53,15,.6);z-index:10;"></div>' +
                 '</div>';
+            wheelDraw2d(document.getElementById('wheel-2d-cv'));
+        }
+        function wheelDraw2d(cv) {
+            // b310: одна отрисовка в высоком разрешении — дальше ноль нагрузки на GPU
+            if (!cv) return;
+            try {
+                const S = 780;
+                cv.width = S; cv.height = S;
+                const g = cv.getContext('2d');
+                if (!g) return;
+                const R = S / 2, cx = R, cy = R;
+                const n = WHEEL_SECTORS.length, step = Math.PI * 2 / n;
+                g.fillStyle = '#0b1220';
+                g.beginPath(); g.arc(cx, cy, R - 2, 0, 7); g.fill();
+                const bulbs = 32; // гирлянда по ободу
+                for (let i = 0; i < bulbs; i++) {
+                    const a = i / bulbs * Math.PI * 2;
+                    g.beginPath(); g.arc(cx + Math.cos(a) * (R - 14), cy + Math.sin(a) * (R - 14), 6, 0, 7);
+                    g.fillStyle = i % 2 ? '#fde68a' : '#f59e0b'; g.fill();
+                }
+                for (let i = 0; i < n; i++) {
+                    const sec = WHEEL_SECTORS[i];
+                    const a0 = i * step - Math.PI / 2;
+                    g.beginPath(); g.moveTo(cx, cy);
+                    g.arc(cx, cy, R - 26, a0, a0 + step); g.closePath();
+                    g.fillStyle = '#' + sec.color.toString(16).padStart(6, '0'); g.fill();
+                    g.strokeStyle = 'rgba(2,6,23,.55)'; g.lineWidth = 3; g.stroke();
+                    g.save(); g.translate(cx, cy); g.rotate(a0 + step / 2);
+                    const gr = g.createLinearGradient(0, 0, R - 26, 0);
+                    gr.addColorStop(0, 'rgba(255,255,255,.16)'); gr.addColorStop(0.55, 'rgba(255,255,255,0)');
+                    g.fillStyle = gr;
+                    g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R - 26, -step / 2, step / 2); g.closePath(); g.fill();
+                    const lum = ((sec.color >> 16 & 255) * 0.299 + (sec.color >> 8 & 255) * 0.587 + (sec.color & 255) * 0.114);
+                    g.fillStyle = lum > 150 ? '#1f2937' : '#ffffff';
+                    g.font = 'bold ' + (sec.label.length > 4 ? 40 : 52) + 'px Inter, sans-serif';
+                    g.textAlign = 'center'; g.textBaseline = 'middle';
+                    g.fillText(sec.label, (R - 26) * 0.66, 0);
+                    g.restore();
+                }
+                g.beginPath(); g.arc(cx, cy, R * 0.24, 0, 7); g.fillStyle = 'rgba(2,6,23,.35)'; g.fill();
+            } catch (e) {}
         }
 
+        // ---- b314: авто-прокрутка колеса ----
+        function wheelAutoUI() {
+            const b = document.getElementById('wheel-auto');
+            if (!b) return;
+            const on = !!wheel.auto;
+            b.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Авто: ' + (on ? 'вкл' : 'выкл');
+            b.className = on
+                ? 'px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/50 text-white text-sm font-bold transition'
+                : 'px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-bold transition';
+        }
+        function wheelAutoToggle() {
+            wheel.auto = !wheel.auto;
+            wheelAutoUI();
+            if (wheel.auto) {
+                try { showToast('Авто-прокрутка включена: колесо крутится само, пока не выключите или не кончатся монеты', 'success'); } catch (e) {}
+                wheelAutoStep();
+            } else {
+                try { showToast('Авто-прокрутка выключена', 'success'); } catch (e) {}
+            }
+        }
+        function wheelAutoStep() {
+            try {
+                if (!wheel.auto || wheel.spinning) return; // следующий шаг запустит wheelAward
+                if (state.coins < wheel.bet) {
+                    wheel.auto = false; wheelAutoUI();
+                    showToast('Монет не хватает для авто-прокрутки — авто остановлено', 'error');
+                    return;
+                }
+                wheelSpin();
+            } catch (e) {}
+        }
         function wheelSetBet(b) {
             b = normBet(b);
             wheel.bet = b;
@@ -11976,7 +12044,7 @@ min-height:56vh}
                     disc.style.transition = 'transform 4.6s cubic-bezier(.12,.8,.2,1)';
                     disc.style.transform = 'rotate(' + wheel.fbAngle + 'deg)';
                 }
-                setTimeout(() => { wheel.spinning = false; wheelAward(idx); }, 4750);
+                setTimeout(() => { wheel.spinning = false; wheelAward(idx); try { setTimeout(wheelAutoStep, 800); } catch (e) {} }, 4750);
                 renderWheelUI();
                 return;
             }
