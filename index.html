@@ -13544,9 +13544,6 @@ min-height:56vh}
                         </div>
 
                         <p class="text-[11px] sm:text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">${pack.description || ''}</p>
-                        <div class="flex flex-wrap gap-1.5 mt-2">
-                            ${PackMusic.resolveUrl(pack) ? `<span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30 inline-flex items-center gap-1 max-w-[220px]" title="Трек играет при вскрытии и стирании фольги"><i class="fa-solid fa-music"></i><span class="truncate">${PackMusic.trackNameFor(PackMusic.resolveUrl(pack))}</span></span>` : ''}
-                        </div>
                         <div id="carousel-odds" class="mt-3">${renderPackOdds(pack)}</div>
                         <div class="mt-auto pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
                             <span id="carousel-price" class="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-br from-amber-400/15 via-amber-500/10 to-amber-600/15 border ${hasDisc ? 'border-rose-500/60' : 'border-amber-500/40'} px-4 py-3 font-black text-amber-300 shadow-inner shadow-amber-950/40 sm:min-w-[132px]">
