@@ -8375,6 +8375,18 @@ function nxToggle3d() {
             (Array.isArray(rmk.lots) ? rmk.lots : []).forEach(l => { if (l && l.id) cur[l.id] = l; });
             Object.keys(cur).forEach(id => { if (removed[id]) delete cur[id]; });
             CLOUD.market = Object.values(cur);
+            // b326: лоты хранят снапшот карты БЕЗ base64 (чтобы не раздувать облако) —
+            // восстанавливаем арт лота по id карты из коллекции/стандарта/облака
+            try {
+                CLOUD.market.forEach(l => {
+                    const c = l && l.card;
+                    if (!c) return;
+                    if (!c.image || String(c.image).indexOf('blob:') === 0) {
+                        const def = state.cards.find(x => x.id === c.id) || cloudStdFindCard(c.id) || ((CLOUD.cards || []).find(x => x && x.id === c.id));
+                        if (def && def.image) c.image = def.image;
+                    }
+                });
+            } catch (e) {}
             const led = {};
             (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).forEach(r => { if (r && r.id) led[r.id] = r; });
             (Array.isArray(rmk.ledger) ? rmk.ledger : []).forEach(r => { if (r && r.id) led[r.id] = r; });
@@ -18897,6 +18909,14 @@ function nxAutoCacheOnce() {
         if (i >= jobs.length || done >= CAP) {
             nxAutoRunning = false;
             if (fresh) { try { showToast('Автокэш артов: +' + fresh + ' сохранено в устройстве', 'success'); } catch (e) {} }
+            // b327: хост ожил и всё дотянулось — радуемся один раз
+            try {
+                if (fresh && !window.__nxAllCached && i >= jobs.length) {
+                    let miss = 0;
+                    jobs.forEach(u => { if (!IMG_OBJ.has(u)) miss++; });
+                    if (miss === 0) { window.__nxAllCached = 1; showToast('Все арты коллекции закэшированы! Игра полностью офлайн-готова', 'success'); }
+                }
+            } catch (e) {}
             // b325: автовшивание — если кэш полон и опция включена, собираем файл сами
             try {
                 if (LS.getItem('nx_autoembed') === '1' && !sessionStorage.getItem('nx_autoembed_done')) {
@@ -18995,6 +19015,15 @@ function nxShowDiag() {
         if (pm) L.push('heap: ' + Math.round(pm.usedJSHeapSize / 1048576) + ' МБ из ' + Math.round(pm.jsHeapSizeLimit / 1048576) + ' МБ');
     } catch (e) {}
     try { L.push('режим: ' + battleMode); } catch (e) {}
+    try {
+        const jobs = [];
+        nxAllMediaUrls().forEach(raw => { let eff = raw; try { eff = mediaUrl(raw); } catch (e) {} if (eff && eff.indexOf('http') === 0) jobs.push(eff); });
+        L.push('ссылок на внешние арты: ' + jobs.length + ' (0 = всё вшито в файл)');
+        Promise.all(jobs.map(u => imgCacheObjUrl(u).then(ou => ou ? 1 : 0, () => 0))).then(h => {
+            const line = 'в авто-кэше устройства: ' + h.reduce((a, b) => a + b, 0) + '/' + jobs.length;
+            try { window.prompt('Диагностика (обновлено): нажмите и удерживайте → копировать', L.concat(line).join('\n')); } catch (e) {}
+        });
+    } catch (e) {}
     try {
         const arr = JSON.parse(LS.getItem('nx_crash_log') || '[]');
         if (!arr.length) L.push('журнал аварий пуст');
