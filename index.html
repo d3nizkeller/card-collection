@@ -5726,11 +5726,20 @@ min-height:56vh}
                             if (img.__nxThumb || !nowShowing) {
                                 img.__nxFull = url; // HTTP-кэш прогрет предзагрузкой — подмена мгновенная
                                 img.__nxOrig = url;
+                                img.__nxWait = 0;
                                 img.src = url;
                             }
                         } catch (e) {}
                     };
-                    pre.onerror = () => { NX_FULL_LOADING.delete(url); fin(); };
+                    pre.onerror = () => {
+                        NX_FULL_LOADING.delete(url);
+                        fin();
+                        try { // b252: полный арт не пришёл — временная заглушка становится постоянной
+                            if (img.__nxWait && img.__nxFullUrl === url && !img.__nxPh) {
+                                img.__nxWait = 0; img.__nxPh = 1;
+                            }
+                        } catch (e) {}
+                    };
                     pre.src = url;
                 });
                 nxFullPump();
@@ -5822,9 +5831,12 @@ min-height:56vh}
                 if (!u || u.indexOf('data:') === 0) return false;
                 const raw = el.__nxOrig || u;
                 el.__nxOrig = raw;
+                // b252: пустой/битый src (не http) ретраить бессмысленно — сразу заглушка
+                const nxHttp = raw.indexOf('http') === 0;
                 // b248: мобильные сети рвут загрузку — сперва 2 ретрая оригинала, потом заглушка
                 el.__nxRetry = (el.__nxRetry || 0) + 1;
-                if (el.__nxRetry <= 2 && !el.__nxPh) {
+                const nxThumbFail = !!(el.__nxThumb && u === el.__nxThumbFor); // b252: сервер отверг миниатюру — ретраить её бессмысленно
+                if (nxHttp && !nxThumbFail && el.__nxRetry <= 2 && !el.__nxPh && !el.__nxWait) {
                     el.onerror = null;
                     const n = el.__nxRetry;
                     setTimeout(() => {
@@ -5842,14 +5854,14 @@ min-height:56vh}
                     el.src = b + '/' + raw.slice(MEDIA_DEAD_BASE.length);
                     return true;
                 }
-                // b251: миниатюра могла дать 404 (файл без деривата), а полный арт
-                // в этот момент ещё докачивается фоном — не ставим заглушку раньше времени
+                // b252: миниатюра дала 404 (у файла нет деривата / ещё не сгенерирован),
+                // а полный арт докачивается фоном — ставим ВРЕМЕННУЮ заглушку вместо
+                // битой картинки WebKit; когда арт придёт, он подменит её сам
                 if (!el.__nxPh && el.__nxThumb && el.__nxFullUrl && NX_FULL_LOADING.has(el.__nxFullUrl)) {
-                    el.onerror = null;
-                    setTimeout(() => {
-                        try { if (!el.__nxPh && !(el.complete && el.naturalWidth > 0)) imgErrorChain(el); } catch (e) {}
-                    }, 2500);
-                    return true;
+                    el.__nxWait = 1;
+                    el.onerror = null; el.style.display = '';
+                    const phw = mediaPlaceholderFor(el);
+                    if (phw) { el.src = phw; return true; }
                 }
                 if (!el.__nxPh) {
                     el.__nxPh = 1; el.onerror = null; el.style.display = '';
@@ -5873,6 +5885,23 @@ min-height:56vh}
                 }
             } catch (e) {}
         }, 6000);
+        // b252: СТОРОЖ БИТЫХ КАРТИНОК — раз в 5 секунд долечиваем всё, что показывает
+        // «битый img» (complete && naturalWidth===0): событие ошибки могло потеряться
+        // (ререндер сетки, гонка миниатюры, повторный onerror) — карта не должна
+        // оставаться со значком «?» на экране
+        setInterval(() => {
+            try {
+                if (document.hidden) return;
+                const imgs = document.images;
+                for (let i = 0; i < imgs.length; i++) {
+                    const el = imgs[i];
+                    if (!el || el.__nxPh) continue;
+                    const s = el.src || '';
+                    if (!s || s.indexOf('http') !== 0) continue;
+                    if (el.complete && el.naturalWidth === 0) imgErrorChain(el);
+                }
+            } catch (e) {}
+        }, 5000);
         // b248: вернулись в сеть / в приложение — заглушки перепроверяются боевыми URL
         let nxLastRecheck = 0;
         function nxRecheckImgs() {
