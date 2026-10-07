@@ -4226,10 +4226,29 @@ min-height:56vh}
             try {
                 renderer.domElement.addEventListener('webglcontextlost', function (ev) {
                     ev.preventDefault();
+                    if (window.__nxPlannedDrop === renderer) { window.__nxPlannedDrop = null; return; } // b305: освободили сами — тихо
                     nxTrail('ctxlost:' + tag);
                     try { onLost && onLost(); } catch (e) {}
                     try { nxErrorToast('браузер освободил 3D-контекст (' + tag + ') — сцена переведена в плоский режим'); } catch (e) {}
                 }, false);
+            } catch (e) {}
+        }
+        // b305: плановое освобождение контекста: канвас убирается из DOM сразу,
+        // а собственное событие webglcontextlost глушится (это не авария)
+        function nx3dDrop(r) {
+            if (!r) return;
+            try { window.__nxPlannedDrop = r; } catch (e) {}
+            try { const c = r.domElement; if (c && c.parentNode) c.parentNode.removeChild(c); } catch (e) {}
+            try { r.forceContextLoss && r.forceContextLoss(); } catch (e) {}
+            try { r.dispose && r.dispose(); } catch (e) {}
+        }
+        function nx3dReleaseHidden(m) {
+            // скрытая игра не держит WebGL-контекст: мобильный Chrome держит ~8-16
+            // контекстов, потом начинает убивать их сам — прямо во время игры
+            try {
+                if (m !== 'slots' && slots.renderer) { cancelAnimationFrame(slots.animId); slots.animId = 0; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; slots.fallback = false; }
+                if (m !== 'grid' && grid3d.renderer) { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; }
+                if (m !== 'wheel' && wheel.renderer) { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.fallback = false; }
             } catch (e) {}
         }
         window.addEventListener('resize', () => { nxTrail('resize ' + window.innerWidth + 'x' + window.innerHeight); clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 200); });
@@ -7228,6 +7247,7 @@ min-height:56vh}
             if (m !== 'slots' && slots.auto) slotsAutoStop(false, 'смена игры');
             if (m !== 'grid' && grid.auto) gridAutoStop(false, 'смена игры');
             if (m !== 'lines' && lines.auto) linesAutoStop(false, 'смена игры');
+            nx3dReleaseHidden(m); // b305: скрытые игры отдают WebGL-контексты
             if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
             if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
@@ -8893,7 +8913,7 @@ min-height:56vh}
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; });
+            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 60); // b52: шире кадр — маркиза целиком
             camera.position.set(0, 0.3, 7.9);
@@ -9105,7 +9125,7 @@ min-height:56vh}
                     slotsFinish(slots.lastResult, slots.bet);
                 }
                 renderer.render(scene, camera);
-                } catch (e) { nx3dLoopBail('slots', e, () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; }); }
+                } catch (e) { nx3dLoopBail('slots', e, () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; }); }
             };
             loop();
         }
@@ -9384,7 +9404,7 @@ min-height:56vh}
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; });
+            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 80);
             camera.position.set(0, 0, 10.6); // b54: весь автомат с лампочками и полом в кадре
@@ -9579,7 +9599,7 @@ min-height:56vh}
                     gridStep(grid.bet);
                 }
                 renderer.render(scene, camera);
-                } catch (e) { nx3dLoopBail('grid', e, () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; }); }
+                } catch (e) { nx3dLoopBail('grid', e, () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; }); }
             };
             loop();
         }
@@ -10477,7 +10497,7 @@ min-height:56vh}
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
             renderer.setSize(w, h);
             container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'battle', () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; });
+            nxGuardContextLoss(renderer, 'battle', () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; nx3dDrop(battle3d.renderer); battle3d.renderer = null; });
 
             const scene = new THREE.Scene();
             scene.fog = new THREE.Fog(0x070a18, 14, 30);
@@ -10764,7 +10784,7 @@ min-height:56vh}
             }
 
             B.renderer.render(B.scene, B.camera);
-            } catch (e) { nx3dLoopBail('battle', e, () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; }); }
+            } catch (e) { nx3dLoopBail('battle', e, () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; nx3dDrop(battle3d.renderer); battle3d.renderer = null; }); }
         }
 
         function otherSide(side) { return side === 'player' ? 'enemy' : 'player'; }
@@ -11478,6 +11498,7 @@ min-height:56vh}
             ];
             nxGuardContextLoss(renderer, 'lines', () => {
                 lines.mode3d = false; lines.no3d = true;
+                try { nx3dDrop(lines3d.renderer); lines3d.renderer = null; } catch (e) {}
                 try { cancelAnimationFrame(lines3d.animId); lines3d.animId = 0; } catch (e) {}
                 box.classList.add('hidden');
                 if (board) board.classList.remove('hidden');
@@ -11621,6 +11642,7 @@ min-height:56vh}
                 nx3dLoopBail('lines', e, () => {
                     cancelAnimationFrame(lines3d.animId); lines3d.animId = 0;
                     lines.mode3d = false; lines.no3d = true;
+                    try { nx3dDrop(lines3d.renderer); lines3d.renderer = null; } catch (e) {}
                     const box = document.getElementById('lines-3d-box'); const board = document.getElementById('lines-board');
                     if (box) box.classList.add('hidden');
                     if (board) { board.classList.remove('hidden'); linesRenderBoard(); }
@@ -11680,7 +11702,7 @@ min-height:56vh}
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; wheel.fallback = true; wheelBuildFallback(); });
+            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; wheel.fallback = true; wheelBuildFallback(); nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
             camera.position.set(0, 0, 8.6);
@@ -11838,7 +11860,7 @@ min-height:56vh}
                 } catch (e) {
                     // b77: одиночный сбой кадра не убивает колесо: гасим после 30 сбоев подряд
                     wheel.errs = (wheel.errs || 0) + 1;
-                    if (wheel.errs > 30) nx3dLoopBail('wheel', e, () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; });
+                    if (wheel.errs > 30) nx3dLoopBail('wheel', e, () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.fallback = true; wheelBuildFallback(); });
                 }
             };
             loop();
@@ -12573,7 +12595,7 @@ min-height:56vh}
             renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
             renderer.setSize(w, h);
             container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'durak', () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; });
+            nxGuardContextLoss(renderer, 'durak', () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; nx3dDrop(durak3d.renderer); durak3d.renderer = null; });
 
             const scene = new THREE.Scene();
             scene.fog = new THREE.Fog(0x050a08, 14, 26);
@@ -12763,7 +12785,7 @@ min-height:56vh}
                 D.trumpGlow.material.opacity = 0.35 + Math.sin(now / 400) * 0.18;
             }
             D.renderer.render(D.scene, D.camera);
-            } catch (e) { nx3dLoopBail('durak', e, () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; }); }
+            } catch (e) { nx3dLoopBail('durak', e, () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; nx3dDrop(durak3d.renderer); durak3d.renderer = null; }); }
         }
 
         // b47: формат больших чисел баланса: 1000 → 1k, 1 000 000 → 1m, 1e9 → 1b
