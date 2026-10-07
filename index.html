@@ -1958,6 +1958,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button type="button" id="nx-cache-all-btn" onclick="nxCacheAll()" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Скачать все арты всех паков и карт в постоянный кэш этого устройства"><i class="fa-solid fa-boxes-stacked mr-1"></i>Скачать все арты</button>
                     <button type="button" id="nx-export-btn" onclick="nxExportEmbedded()" class="px-2.5 py-2 bg-violet-700/70 hover:bg-violet-600 border border-violet-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Собрать копию файла игры со всеми закэшированными артами внутри (base64) и скачать её"><i class="fa-solid fa-file-export mr-1"></i>Сборка с артами</button>
                     <button type="button" onclick="nxShowDiag()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Показать журнал сбоев и состояние памяти — скопируйте и пришлите создателю, если игра ломается"><i class="fa-solid fa-stethoscope mr-1"></i>Диагностика</button>
+                    <button type="button" id="nx-3d-btn" onclick="nxToggle3d()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Если игра падает или уходит в плоский режим: переключить режим 3D (авто / выкл / вручную вкл)"><i class="fa-solid fa-cube mr-1"></i>3D: авто</button>
                 </div>
                 <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-wand-magic-sparkles text-violet-400 mr-1"></i><b class="text-slate-300">Офлайн-запас:</b> «Скачать все арты» тянет всю коллекцию в постоянный кэш устройства (нужен живой источник: оригинал или зеркало) — после этого альбомы открываются без сети. «Сборка с артами» собирает НОВЫЙ файл игры со всем скачанным внутри: залейте его вместо текущего — и арты перестанут зависеть от внешних хостов навсегда.</p>
                 <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Все игроки сайта автоматически подключены к главной комнате <span class="text-violet-300">7j8uytui</span> — вводить код не нужно.</b> Регистрация не нужна, но у комнаты есть логин и пароль: «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья уже в главной комнате автоматически (или вводят её код → «Подключить») и сразу видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». <b class="text-slate-300">Изменения отправляются в комнату автоматически</b> сразу после сохранения — даже если создатель тут же закрыл игру: правки допубликуются при следующем запуске. Участники получают обновления сами, примерно каждые 20 секунд (или мгновенно при возврате на вкладку) — без перезагрузки страницы. С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
@@ -4236,6 +4237,30 @@ min-height:56vh}
         }
         // b305: плановое освобождение контекста: канвас убирается из DOM сразу,
         // а собственное событие webglcontextlost глушится (это не авария)
+        function nxWeakGpu() { // b309: устройство доказало, что 3D его роняет (помнится между сессиями)
+            try { return LS.getItem('nx_weak_gpu') === '1'; } catch (e) { return false; }
+        }
+        function nxForce3d() { // ручной переключатель «включить 3D несмотря ни на что»
+            try { return LS.getItem('nx_force3d') === '1'; } catch (e) { return false; }
+        }
+        function nxToggle3d() {
+            try {
+                if (nxForce3d()) LS.setItem('nx_force3d', '');
+                else LS.setItem('nx_force3d', '1');
+            } catch (e) {}
+            try {
+                showToast(nxForce3d()
+                    ? '3D включён вручную: проверяем после перезагрузки. Если игра упадёт — оно само снова перейдёт в плоский режим'
+                    : '3D выключен: игры работают в плоском, но надёжном режиме', 'success');
+            } catch (e) {}
+            setTimeout(() => location.reload(), 900);
+        }
+        function nx3dBtnInit() {
+            const b = document.getElementById('nx-3d-btn');
+            if (!b) return;
+            const t = nxForce3d() ? '3D: включено вручную' : (nxWeakGpu() ? '3D: выключено (слабое устройство)' : '3D: авто');
+            b.innerHTML = '<i class="fa-solid fa-cube mr-1"></i>' + t;
+        }
         function nxPixelRatio() { // b308: слабый GPU держит контекст живее без ретины 2x
             try {
                 const d = window.devicePixelRatio || 1;
@@ -8910,6 +8935,7 @@ min-height:56vh}
             // b49: символы собираем ДО попытки создать WebGL — они нужны и фолбэку
             slots.symbols = slotsSymbols();
             slots.symKey = slots.symbols.map(sl => sl.id).join(',');
+            if (nxWeakGpu() && !nxForce3d()) { slots.fallback = true; slotsRenderFallback(); return; } // b309
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { slots.fallback = true; slotsRenderFallback(); return; }
@@ -8923,7 +8949,7 @@ min-height:56vh}
             container.appendChild(renderer.domElement);
             container.classList.remove('hidden'); // b307
             const sfbx = document.getElementById('slots-fallback'); if (sfbx) sfbx.classList.add('hidden');
-            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; slots.ctxLoss = (slots.ctxLoss || 0) + 1; if (slots.ctxLoss <= 2) { slots.fallback = false; setTimeout(() => { try { if (battleMode === 'slots') slotsEnsure(); } catch (e) {} }, 1200 * slots.ctxLoss); } else { slots.fallback = true; try { slotsRenderFallback(); } catch (e) {} } });
+            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; slots.ctxLoss = (slots.ctxLoss || 0) + 1; if (slots.ctxLoss >= 2) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} } if (slots.ctxLoss <= 2) { slots.fallback = false; setTimeout(() => { try { if (battleMode === 'slots') slotsEnsure(); } catch (e) {} }, 1200 * slots.ctxLoss); } else { slots.fallback = true; try { slotsRenderFallback(); } catch (e) {} } });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 60); // b52: шире кадр — маркиза целиком
             camera.position.set(0, 0.3, 7.9);
@@ -9401,6 +9427,7 @@ min-height:56vh}
         }
         function grid3dEnsure() {
             if (grid3d.ready || grid3d.failed) return;
+            if (nxWeakGpu() && !nxForce3d()) { grid3d.failed = true; return; } // b309
             const container = document.getElementById('grid3d-container');
             if (!container) return;
             let renderer;
@@ -9414,7 +9441,7 @@ min-height:56vh}
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; grid3d.ctxLoss = (grid3d.ctxLoss || 0) + 1; if (grid3d.ctxLoss <= 2) { setTimeout(() => { try { if (battleMode === 'grid') { grid3dEnsure(); gridEnsure(); } } catch (e) {} }, 1200 * grid3d.ctxLoss); } else { try { gridEnsure(); } catch (e) {} } });
+            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; grid3d.ctxLoss = (grid3d.ctxLoss || 0) + 1; if (grid3d.ctxLoss >= 2) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} } if (grid3d.ctxLoss <= 2) { setTimeout(() => { try { if (battleMode === 'grid') { grid3dEnsure(); gridEnsure(); } } catch (e) {} }, 1200 * grid3d.ctxLoss); } else { try { gridEnsure(); } catch (e) {} } });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 80);
             camera.position.set(0, 0, 10.6); // b54: весь автомат с лампочками и полом в кадре
@@ -11701,6 +11728,7 @@ min-height:56vh}
 
         function wheelEnsure() {
             if (wheel.ready) return;
+            if (nxWeakGpu() && !nxForce3d()) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; } // b309
             if (wheel.fallback && !wheel.retry3d) { wheel.retry3d = true; wheel.fallback = false; } // b307: одна повторная попытка 3D за сессию
             if (wheel.fallback) return;
             if (typeof THREE === 'undefined' || !webglAvailable()) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
@@ -11708,7 +11736,7 @@ min-height:56vh}
             if (!container) return;
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
-            catch (e) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
+            catch (e) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e2) {} wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
             const w = container.clientWidth || 640, h = container.clientHeight || 420;
             renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
@@ -11716,7 +11744,7 @@ min-height:56vh}
             container.appendChild(renderer.domElement);
             container.classList.remove('hidden'); // b307
             const wfbx = document.getElementById('wheel-fallback'); if (wfbx) wfbx.classList.add('hidden');
-            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.ctxLoss = (wheel.ctxLoss || 0) + 1; if (wheel.ctxLoss <= 3) { wheel.fallback = false; try { const c = document.getElementById('wheel-container'); if (c) c.classList.add('hidden'); } catch (e) {} setTimeout(() => { try { if (battleMode === 'wheel') wheelEnsure(); } catch (e) {} }, 1200 * wheel.ctxLoss); } else { wheel.fallback = true; wheelBuildFallback(); } });
+            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.ctxLoss = (wheel.ctxLoss || 0) + 1; if (wheel.ctxLoss >= 2) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} } if (wheel.ctxLoss <= 3) { wheel.fallback = false; try { const c = document.getElementById('wheel-container'); if (c) c.classList.add('hidden'); } catch (e) {} setTimeout(() => { try { if (battleMode === 'wheel') wheelEnsure(); } catch (e) {} }, 1200 * wheel.ctxLoss); } else { wheel.fallback = true; wheelBuildFallback(); } });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
             camera.position.set(0, 0, 8.6);
@@ -11882,6 +11910,10 @@ min-height:56vh}
 
         function wheelBuildFallback() {
             const wch = document.getElementById('wheel-container'); if (wch) wch.classList.add('hidden'); // b307: пустая коробка не остаётся
+            if (nxWeakGpu() && !window.__nxWeakToast) { // b309: один раз объясняем, что происходит и что делать
+                window.__nxWeakToast = 1;
+                setTimeout(() => { try { showToast('Устройство тяжело держит 3D — включён надёжный плоский режим. Вернуть 3D: Настройки → «3D: …»', 'error'); } catch (e) {} }, 1500);
+            }
             const box = document.getElementById('wheel-fallback');
             if (!box || box.dataset.built) { if (box) box.classList.remove('hidden'); return; }
             box.dataset.built = '1';
@@ -18752,7 +18784,8 @@ function qrxApplyProgress(d) {
     showToast('Прогресс принят! Баланс и коллекция теперь такие же, как на устройстве-отправителе', 'success');
 }
 // ---- b306: анти-краш: журнал аварий, сторож памяти, диагностика ----
-const NX_BUILD = 'b306-2026-10-07';
+const NX_BUILD = 'b309-2026-10-07';
+try { nx3dBtnInit(); } catch (e) {}
 function nxCrashLog(msg) {
     try {
         const arr = JSON.parse(LS.getItem('nx_crash_log') || '[]');
@@ -18803,6 +18836,7 @@ setInterval(() => {
             const last = parseInt(LS.getItem('nx_memreload') || '0', 10);
             if (Date.now() - last > 600000) {
                 LS.setItem('nx_memreload', String(Date.now()));
+                try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} // b309
                 nxCrashLog('memguard: мягкая перезагрузка при heap ' + Math.round(mb) + ' МБ');
                 try { saveState(); } catch (e) {}
                 try { showToast('Память устройства на пределе — перезагружаю игру, прогресс сохранён', 'error'); } catch (e) {}
