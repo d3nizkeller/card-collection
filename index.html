@@ -8914,6 +8914,8 @@ min-height:56vh}
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
+            container.classList.remove('hidden'); // b307
+            const sfbx = document.getElementById('slots-fallback'); if (sfbx) sfbx.classList.add('hidden');
             nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 60); // b52: шире кадр — маркиза целиком
@@ -11691,7 +11693,9 @@ min-height:56vh}
         }
 
         function wheelEnsure() {
-            if (wheel.ready || wheel.fallback) return;
+            if (wheel.ready) return;
+            if (wheel.fallback && !wheel.retry3d) { wheel.retry3d = true; wheel.fallback = false; } // b307: одна повторная попытка 3D за сессию
+            if (wheel.fallback) return;
             if (typeof THREE === 'undefined' || !webglAvailable()) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
             const container = document.getElementById('wheel-container');
             if (!container) return;
@@ -11703,6 +11707,8 @@ min-height:56vh}
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
+            container.classList.remove('hidden'); // b307
+            const wfbx = document.getElementById('wheel-fallback'); if (wfbx) wfbx.classList.add('hidden');
             nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; wheel.fallback = true; wheelBuildFallback(); nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
@@ -11868,6 +11874,7 @@ min-height:56vh}
         }
 
         function wheelBuildFallback() {
+            const wch = document.getElementById('wheel-container'); if (wch) wch.classList.add('hidden'); // b307: пустая коробка не остаётся
             const box = document.getElementById('wheel-fallback');
             if (!box || box.dataset.built) { if (box) box.classList.remove('hidden'); return; }
             box.dataset.built = '1';
