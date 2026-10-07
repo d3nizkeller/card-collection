@@ -4236,6 +4236,13 @@ min-height:56vh}
         }
         // b305: плановое освобождение контекста: канвас убирается из DOM сразу,
         // а собственное событие webglcontextlost глушится (это не авария)
+        function nxPixelRatio() { // b308: слабый GPU держит контекст живее без ретины 2x
+            try {
+                const d = window.devicePixelRatio || 1;
+                const mob = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+                return Math.min(d, mob ? 1.5 : 2);
+            } catch (e) { return 1; }
+        }
         function nx3dDrop(r) {
             if (!r) return;
             try { window.__nxPlannedDrop = r; } catch (e) {}
@@ -5067,7 +5074,7 @@ min-height:56vh}
             }
             const w = container.clientWidth || window.innerWidth;
             const h = container.clientHeight || Math.round(window.innerHeight * 0.62);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
             // b39: анизотропия из возможностей GPU — текстуры не мерцают под углом (мобильные GPU)
             try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) { PACK3D_ANISO = 4; }
@@ -8910,13 +8917,13 @@ min-height:56vh}
             try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) {}
             try { renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
             const w = container.clientWidth || 640, h = container.clientHeight || 340;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
             container.classList.remove('hidden'); // b307
             const sfbx = document.getElementById('slots-fallback'); if (sfbx) sfbx.classList.add('hidden');
-            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; });
+            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; slots.ctxLoss = (slots.ctxLoss || 0) + 1; if (slots.ctxLoss <= 2) { slots.fallback = false; setTimeout(() => { try { if (battleMode === 'slots') slotsEnsure(); } catch (e) {} }, 1200 * slots.ctxLoss); } else { slots.fallback = true; try { slotsRenderFallback(); } catch (e) {} } });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 60); // b52: шире кадр — маркиза целиком
             camera.position.set(0, 0.3, 7.9);
@@ -9403,11 +9410,11 @@ min-height:56vh}
             try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) {}
             try { renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
             const w = container.clientWidth || 900, h = container.clientHeight || 540;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
-            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; });
+            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; grid3d.ctxLoss = (grid3d.ctxLoss || 0) + 1; if (grid3d.ctxLoss <= 2) { setTimeout(() => { try { if (battleMode === 'grid') { grid3dEnsure(); gridEnsure(); } } catch (e) {} }, 1200 * grid3d.ctxLoss); } else { try { gridEnsure(); } catch (e) {} } });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 80);
             camera.position.set(0, 0, 10.6); // b54: весь автомат с лампочками и полом в кадре
@@ -10497,7 +10504,7 @@ min-height:56vh}
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { battle3d = null; return; }
             const w = container.clientWidth || 800, h = container.clientHeight || 360;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
             container.appendChild(renderer.domElement);
             nxGuardContextLoss(renderer, 'battle', () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; nx3dDrop(battle3d.renderer); battle3d.renderer = null; });
@@ -11488,7 +11495,7 @@ min-height:56vh}
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { lines.no3d = true; return; }
             const w = box.clientWidth || 640, h = box.clientHeight || 360;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
             try { renderer.localClippingEnabled = true; } catch (e) {}
             box.innerHTML = '';
@@ -11703,13 +11710,13 @@ min-height:56vh}
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
             const w = container.clientWidth || 640, h = container.clientHeight || 420;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
             container.innerHTML = '';
             container.appendChild(renderer.domElement);
             container.classList.remove('hidden'); // b307
             const wfbx = document.getElementById('wheel-fallback'); if (wfbx) wfbx.classList.add('hidden');
-            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; wheel.fallback = true; wheelBuildFallback(); nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; });
+            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.ctxLoss = (wheel.ctxLoss || 0) + 1; if (wheel.ctxLoss <= 3) { wheel.fallback = false; try { const c = document.getElementById('wheel-container'); if (c) c.classList.add('hidden'); } catch (e) {} setTimeout(() => { try { if (battleMode === 'wheel') wheelEnsure(); } catch (e) {} }, 1200 * wheel.ctxLoss); } else { wheel.fallback = true; wheelBuildFallback(); } });
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
             camera.position.set(0, 0, 8.6);
@@ -12600,7 +12607,7 @@ min-height:56vh}
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { durak3d = null; return; }
             const w = container.clientWidth || 800, h = container.clientHeight || 380;
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            renderer.setPixelRatio(nxPixelRatio()); // b308
             renderer.setSize(w, h);
             container.appendChild(renderer.domElement);
             nxGuardContextLoss(renderer, 'durak', () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; nx3dDrop(durak3d.renderer); durak3d.renderer = null; });
