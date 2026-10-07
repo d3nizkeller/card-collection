@@ -1957,6 +1957,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                 <div class="flex flex-col sm:flex-row gap-2">
                     <button type="button" id="nx-cache-all-btn" onclick="nxCacheAll()" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Скачать все арты всех паков и карт в постоянный кэш этого устройства"><i class="fa-solid fa-boxes-stacked mr-1"></i>Скачать все арты</button>
                     <button type="button" id="nx-export-btn" onclick="nxExportEmbedded()" class="px-2.5 py-2 bg-violet-700/70 hover:bg-violet-600 border border-violet-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Собрать копию файла игры со всеми закэшированными артами внутри (base64) и скачать её"><i class="fa-solid fa-file-export mr-1"></i>Сборка с артами</button>
+                    <button type="button" onclick="nxShowDiag()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Показать журнал сбоев и состояние памяти — скопируйте и пришлите создателю, если игра ломается"><i class="fa-solid fa-stethoscope mr-1"></i>Диагностика</button>
                 </div>
                 <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-wand-magic-sparkles text-violet-400 mr-1"></i><b class="text-slate-300">Офлайн-запас:</b> «Скачать все арты» тянет всю коллекцию в постоянный кэш устройства (нужен живой источник: оригинал или зеркало) — после этого альбомы открываются без сети. «Сборка с артами» собирает НОВЫЙ файл игры со всем скачанным внутри: залейте его вместо текущего — и арты перестанут зависеть от внешних хостов навсегда.</p>
                 <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Все игроки сайта автоматически подключены к главной комнате <span class="text-violet-300">7j8uytui</span> — вводить код не нужно.</b> Регистрация не нужна, но у комнаты есть логин и пароль: «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья уже в главной комнате автоматически (или вводят её код → «Подключить») и сразу видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». <b class="text-slate-300">Изменения отправляются в комнату автоматически</b> сразу после сохранения — даже если создатель тут же закрыл игру: правки допубликуются при следующем запуске. Участники получают обновления сами, примерно каждые 20 секунд (или мгновенно при возврате на вкладку) — без перезагрузки страницы. С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
@@ -5604,7 +5605,7 @@ min-height:56vh}
         const IMG_CACHE_MAX_BYTES = 120 * 1024 * 1024; // LRU-лимит постоянного кэша ~120 МБ
         const IMG_CACHE_MAX_BLOB = 8 * 1024 * 1024;    // одиночные файлы крупнее 8 МБ не храним
         const IMG_OBJ = new Map();   // url -> blob:URL (память сессии, для мгновенной подмены)
-        const IMG_OBJ_MAX = 100;     // сколько blob:URL держим в памяти одновременно
+        const IMG_OBJ_MAX = 40;      // b306: было 100 — на слабых WebView это лишний расход памяти; сколько blob:URL держим в памяти одновременноо
         const IMG_FAIL = new Set();  // URL, не отдавшие копию (CORS/сеть) — не мучаем повторно
         let imgSaving = new Set();   // прямо сейчас сохраняем
         let imgDbPromise = null;
@@ -18735,6 +18736,84 @@ function qrxApplyProgress(d) {
     switchTab('store');
     checkAchievements();
     showToast('Прогресс принят! Баланс и коллекция теперь такие же, как на устройстве-отправителе', 'success');
+}
+// ---- b306: анти-краш: журнал аварий, сторож памяти, диагностика ----
+const NX_BUILD = 'b306-2026-10-07';
+function nxCrashLog(msg) {
+    try {
+        const arr = JSON.parse(LS.getItem('nx_crash_log') || '[]');
+        arr.push({ t: Date.now(), m: String(msg).slice(0, 300) });
+        while (arr.length > 6) arr.shift();
+        LS.setItem('nx_crash_log', JSON.stringify(arr));
+    } catch (e) {}
+}
+window.addEventListener('error', ev => {
+    try {
+        if (ev.target && ev.target !== window && !ev.message) return; // битая картинка и т.п. — не авария
+        nxCrashLog('error: ' + (ev.message || '?') + ' @' + String(ev.filename || '').slice(-24) + ':' + ev.lineno);
+    } catch (e) {}
+}, true);
+window.addEventListener('unhandledrejection', ev => {
+    try { nxCrashLog('rejection: ' + String((ev.reason && ev.reason.message) || ev.reason || '?')); } catch (e) {}
+});
+// детект «прошлая сессия умерла без прощания» (белый экран / убийство WebView)
+(function () {
+    try {
+        const bye = LS.getItem('nx_bye');
+        const beat = parseInt(LS.getItem('nx_beat') || '0', 10);
+        LS.setItem('nx_bye', '');
+        if (!bye && beat && Date.now() - beat < 180000) {
+            nxCrashLog('подозрение на аварийное завершение прошлой сессии (белый экран/OOM)');
+            setTimeout(() => { try { showToast('Прошлая сессия оборвалась аварийно. Если это повторяется: Настройки → «Диагностика» → пришлите код создателю', 'error'); } catch (e) {} }, 2500);
+        }
+        setInterval(() => { try { LS.setItem('nx_beat', String(Date.now())); } catch (e) {} }, 5000);
+        const byeFn = () => { try { LS.setItem('nx_bye', '1'); } catch (e) {} };
+        window.addEventListener('pagehide', byeFn);
+        window.addEventListener('beforeunload', byeFn);
+    } catch (e) {}
+})();
+// сторож памяти: на слабых WebView Telegram кэш и 3D съедают всё — разгружаемся заранее
+setInterval(() => {
+    try {
+        const pm = (window.performance && performance.memory) ? performance.memory : null;
+        if (!pm) return;
+        const mb = pm.usedJSHeapSize / 1048576;
+        if (mb < 700) return;
+        try { IMG_OBJ.forEach(ou => { try { URL.revokeObjectURL(ou); } catch (e) {} }); IMG_OBJ.clear(); } catch (e) {}
+        try { imgQueue.length = 0; } catch (e) {}
+        try { nx3dReleaseHidden('__all__'); } catch (e) {}
+        try { if (battleMode !== 'arena' && typeof battle3d !== 'undefined' && battle3d) battle3dDispose(); } catch (e) {}
+        try { if (battleMode !== 'durak' && typeof durak3dDispose === 'function') durak3dDispose(); } catch (e) {}
+        nxCrashLog('memguard: heap ' + Math.round(mb) + ' МБ — разгружены blob-кэш и 3D');
+        if (mb > 1100) {
+            const last = parseInt(LS.getItem('nx_memreload') || '0', 10);
+            if (Date.now() - last > 600000) {
+                LS.setItem('nx_memreload', String(Date.now()));
+                nxCrashLog('memguard: мягкая перезагрузка при heap ' + Math.round(mb) + ' МБ');
+                try { saveState(); } catch (e) {}
+                try { showToast('Память устройства на пределе — перезагружаю игру, прогресс сохранён', 'error'); } catch (e) {}
+                setTimeout(() => location.reload(), 1500);
+            }
+        }
+    } catch (e) {}
+}, 10000);
+function nxShowDiag() {
+    const L = [];
+    L.push('сборка: ' + NX_BUILD);
+    L.push('устройство: ' + String(navigator.userAgent).slice(0, 120));
+    try {
+        const pm = (window.performance && performance.memory) ? performance.memory : null;
+        if (pm) L.push('heap: ' + Math.round(pm.usedJSHeapSize / 1048576) + ' МБ из ' + Math.round(pm.jsHeapSizeLimit / 1048576) + ' МБ');
+    } catch (e) {}
+    try { L.push('режим: ' + battleMode); } catch (e) {}
+    try {
+        const arr = JSON.parse(LS.getItem('nx_crash_log') || '[]');
+        if (!arr.length) L.push('журнал аварий пуст');
+        arr.forEach(x => L.push(new Date(x.t).toLocaleString() + ' — ' + x.m));
+    } catch (e) {}
+    const text = L.join('\n');
+    try { console.log(text); } catch (e) {}
+    try { window.prompt('Диагностика: нажмите и удерживайте текст → копировать → пришлите создателю', text); } catch (e) { showToast(text, 'error'); }
 }
 // ---- b304: автозакачка артов и экспорт сборки со встроенными артами ----
 function nxAllMediaUrls() { // все ссылки артов: стандарт + авторские паки/карты
