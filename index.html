@@ -2769,7 +2769,7 @@ min-height:56vh}
 
             <!-- вид: мой код -->
             <div id="qr-view-show" class="space-y-3 text-center">
-                <div id="qr-canvas-wrap" class="mx-auto w-fit bg-white rounded-2xl p-3 shadow-lg shadow-teal-500/10 hidden"><canvas id="qr-canvas" class="block w-[220px] h-[220px] sm:w-[260px] sm:h-[260px]"></canvas></div>
+                <div id="qr-canvas-wrap" class="mx-auto w-fit bg-white rounded-2xl p-3 shadow-lg shadow-teal-500/10 hidden"><canvas id="qr-canvas" class="block w-[240px] h-[240px] sm:w-[280px] sm:h-[280px]"></canvas></div>
                 <p id="qr-show-status" class="text-xs text-slate-400">Готовим код…</p>
                 <div id="qr-self-chips" class="flex flex-wrap justify-center gap-1.5"></div>
                 <button onclick="qrGoScan()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm rounded-xl transition shadow-lg shadow-emerald-600/20"><i class="fa-solid fa-camera mr-2"></i>Отсканировать код</button>
@@ -2783,7 +2783,7 @@ min-height:56vh}
             <!-- вид: сканер -->
             <div id="qr-view-scan" class="space-y-3 text-center hidden">
                 <div class="relative rounded-2xl overflow-hidden border border-slate-700 bg-black mx-auto w-full max-w-[320px] aspect-square">
-                    <video id="qr-video" playsinline muted class="w-full h-full object-cover"></video>
+                    <video id="qr-video" playsinline muted autoplay class="w-full h-full object-cover"></video>
                     <div class="absolute inset-0 pointer-events-none flex items-center justify-center"><div class="w-3/5 h-3/5 rounded-2xl border-2 border-teal-400/80 shadow-[0_0_24px_rgba(45,212,191,.35)]"></div></div>
                 </div>
                 <p id="qr-scan-status" class="text-xs text-slate-400">Наведите камеру на QR-код второго устройства…</p>
@@ -17904,10 +17904,10 @@ async function qrxRelayFetch(key) {
 // ---- отрисовка QR на canvas ----
 function qrxRender(text) {
     const cv = document.getElementById('qr-canvas'); if (!cv) throw new Error('нет canvas');
-    const qr = qrcode(0, 'M');
+    const qr = qrcode(0, 'L'); // b280: уровень L — меньше модулей, камере проще прочитать плотный код
     qr.addData(text, 'Byte');
     qr.make();
-    const n = qr.getModuleCount(), qz = 4, m = 6;
+    const n = qr.getModuleCount(), qz = 4, m = 8; // b280: крупнее модуль в canvas — резче на hiDPI
     cv.width = cv.height = (n + qz * 2) * m;
     const ctx = cv.getContext('2d');
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
@@ -17968,6 +17968,56 @@ async function qrxBuild() {
         if (status) status.innerHTML = '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Не удалось собрать код: ' + String((e && e.message) || e) + '. Ниже можно скопировать прогресс текстом.</span>';
     } finally { qrxBuilding = false; }
 }
+// ---- b280: нативный сканер Telegram (для мини-приложения) ----
+(function () {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return; // b280: вне браузера нечего делать
+    if (window.Telegram && window.Telegram.WebApp) return;
+    try {
+        const s = document.createElement('script');
+        s.src = 'https://telegram.org/js/telegram-web-app.js';
+        s.async = true;
+        s.onload = function () { try { if (window.Telegram && Telegram.WebApp && Telegram.WebApp.isInit) Telegram.WebApp.ready(); } catch (e) {} };
+        document.head.appendChild(s);
+    } catch (e) {}
+})();
+function qrxTg() {
+    const tw = typeof window !== 'undefined' && window.Telegram && window.Telegram.WebApp;
+    if (!tw || typeof tw.showScanQrPopup !== 'function') return null;
+    if (!tw.platform || tw.platform === 'unknown') return null; // обычный браузер — не Telegram
+    return tw;
+}
+function qrxLooksLikeCode(s) {
+    const t = String(s == null ? '' : s).trim();
+    if (!t) return false;
+    if (t.indexOf(QRX_DIRECT) === 0 || t.indexOf(QRX_RELAY) === 0) return true;
+    return t.charAt(0) === '{';
+}
+let qrxTgHandler = null;
+function qrxStartTgScan(tw) { // true = системный сканер открыт, false = fallback на веб-камеру
+    const st = document.getElementById('qr-scan-status');
+    const h = function (ev) {
+        const txt = ev && ev.data != null ? String(ev.data) : '';
+        if (!qrxLooksLikeCode(txt)) { // чужой код — не закрываем сканер, ждём наш
+            try { tw.HapticFeedback && tw.HapticFeedback.notificationOccurred && tw.HapticFeedback.notificationOccurred('error'); } catch (e) {}
+            return;
+        }
+        qrxTgHandler = null;
+        try { tw.offEvent('qrTextReceived', h); } catch (e) {}
+        try { tw.closeScanQrPopup(); } catch (e) {}
+        qrxHandleCode(txt);
+    };
+    try {
+        qrxTgHandler = h;
+        tw.onEvent('qrTextReceived', h);
+        tw.showScanQrPopup({ text: 'Наведите камеру на код переноса со второго устройства' });
+    } catch (e) {
+        qrxTgHandler = null;
+        try { tw.offEvent('qrTextReceived', h); } catch (e) {}
+        return false;
+    }
+    if (st) st.innerHTML = '<i class="fa-solid fa-qrcode text-teal-300 mr-1"></i>Системный сканер Telegram открыт поверх приложения — наведите его на код второго устройства. Закрыли случайно — нажмите «Отсканировать код» ещё раз.';
+    return true;
+}
 // ---- сканер камеры ----
 function qrGoScan() { qrxView('scan'); qrxStartScan(); }
 function qrxBackShow() {
@@ -17979,6 +18029,8 @@ async function qrxStartScan() {
     const st = document.getElementById('qr-scan-status');
     const video = document.getElementById('qr-video');
     qrxStopScan();
+    const tw = qrxTg(); // b280: в Telegram мини-приложении веб-камера часто заблокирована — берём системный сканер
+    if (tw && qrxStartTgScan(tw)) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         if (st) st.innerHTML = '<span class="text-amber-300">Камера в этом браузере недоступна — вставьте код вручную ниже.</span>';
         return;
@@ -17992,23 +18044,42 @@ async function qrxStartScan() {
     }
     if (video) { video.srcObject = qrxStream; try { await video.play(); } catch (e) {} }
     if (st) st.innerHTML = '<i class="fa-solid fa-camera text-teal-300 mr-1"></i>Наведите камеру на QR-код второго устройства…';
-    qrxTimer = setInterval(qrxTick, 140);
+    qrxTimer = setInterval(qrxTick, 150);
+    setTimeout(function () { // b280: сторож — камера включилась, но кадр не пошёл (WebView без медиа)
+        if (qrxTimer && video && !video.videoWidth) {
+            if (st) st.innerHTML = '<span class="text-amber-300">Камера включилась, но картинка не пошла — система мини-приложения блокирует поток. Откройте сканер ещё раз или вставьте код текстом ниже.</span>';
+        }
+    }, 3000);
+}
+function qrxDecodeOnce(img, w, h, inv) {
+    try { return jsQR(img.data, w, h, { inversionAttempts: inv }); } catch (e) { return null; }
 }
 function qrxTick() {
     const video = document.getElementById('qr-video');
     if (!video || !video.videoWidth) return;
-    const w = Math.min(640, video.videoWidth);
-    const h = Math.max(1, Math.round(video.videoHeight * (w / video.videoWidth)));
+    const vw = video.videoWidth, vh = video.videoHeight;
     let cv = document.getElementById('qr-scan-canvas');
     if (!cv) {
         cv = document.createElement('canvas'); cv.id = 'qr-scan-canvas'; cv.style.display = 'none';
         document.body.appendChild(cv);
     }
-    cv.width = w; cv.height = h;
     const ctx = cv.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(video, 0, 0, w, h);
-    let img = null; try { img = ctx.getImageData(0, 0, w, h); } catch (e) { return; }
-    let res = null; try { res = jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' }); } catch (e) { return; }
+    let res = null, img = null;
+    // b280 проход 1: весь кадр до 1100px — плотные коды не рассыпаются при уменьшении
+    const w1 = Math.min(1100, vw);
+    const h1 = Math.max(1, Math.round(vh * (w1 / vw)));
+    cv.width = w1; cv.height = h1;
+    ctx.drawImage(video, 0, 0, w1, h1);
+    try { img = ctx.getImageData(0, 0, w1, h1); res = qrxDecodeOnce(img, w1, h1, 'dontInvert'); } catch (e) { img = null; }
+    if (!res) {
+        // b280 проход 2: зум в центр в родном разрешении — код далеко или мелкий на экране
+        const sw = Math.round(vw * 0.62), sh = Math.round(vh * 0.62);
+        const sx = Math.round((vw - sw) / 2), sy = Math.round((vh - sh) / 2);
+        const w2 = Math.min(900, sw), h2 = Math.max(1, Math.round(sh * (w2 / sw)));
+        cv.width = w2; cv.height = h2;
+        ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w2, h2);
+        try { img = ctx.getImageData(0, 0, w2, h2); res = qrxDecodeOnce(img, w2, h2, 'attemptBoth'); } catch (e) { img = null; }
+    }
     if (res && res.data) {
         const code = res.data;
         qrxStopScan();
@@ -18016,6 +18087,11 @@ function qrxTick() {
     }
 }
 function qrxStopScan() {
+    if (qrxTgHandler) { // b280: гасим системный сканер Telegram и подписку
+        const tw = qrxTg();
+        if (tw) { try { tw.offEvent('qrTextReceived', qrxTgHandler); tw.closeScanQrPopup(); } catch (e) {} }
+        qrxTgHandler = null;
+    }
     if (qrxTimer) { clearInterval(qrxTimer); qrxTimer = null; }
     if (qrxStream) { qrxStream.getTracks().forEach(t => t.stop()); qrxStream = null; }
     const video = document.getElementById('qr-video'); if (video) video.srcObject = null;
