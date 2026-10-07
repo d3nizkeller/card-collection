@@ -3,6 +3,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ru" class="dark">
 <head>
@@ -5482,7 +5483,11 @@ min-height:56vh}
         // ============ b130: МГНОВЕННЫЕ КАРТИНКИ — фоновая предзагрузка, пользователь не видит загрузку ============
         const IMG_PRELOADED = new Set();
         let imgQueue = [], imgRunning = 0;
-        const IMG_CONC = 4; // параллельно, чтобы не забивать канал
+        // b251: 4 потока на мобильной сети забивали канал целиком — витрина и
+        // альбомы стояли без картинок. Скромнее: 2 потока, в save-data/2G — один.
+        const NX_CONN = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+        const NX_SLOW = !!(NX_CONN && (NX_CONN.saveData || /(^|-)2g/.test(NX_CONN.effectiveType || '')));
+        const IMG_CONC = NX_SLOW ? 1 : 2; // параллельно, чтобы не забивать канал
         function imgPreloadOne(url) {
             return new Promise(res => {
                 const done = () => { IMG_PRELOADED.add(url); res(); };
@@ -5524,6 +5529,7 @@ min-height:56vh}
             (state.cards || []).forEach(c => {                              // затем собранные карты, потом остальные
                 if (state.collection && state.collection[c.id]) urls.push(c.image); else rest.push(c.image);
             });
+            if (NX_SLOW) rest.length = 0; // b251: на эконом-канале — только обложки и собранное
             preloadImages(urls.concat(rest));
         }
         function startImagePreload() {
@@ -5658,6 +5664,78 @@ min-height:56vh}
                 })
                 .catch(() => { imgSaving.delete(url); IMG_FAIL.add(url); return null; });
         }
+        // ============ b251: МГНОВЕННЫЕ МИНИАТЮРЫ ============
+        // archive.org для каждого файла сам делает миниатюру *_thumb.jpg (~10 КБ).
+        // Полный арт 0.5–2 МБ на слабом канале грузится десятки секунд: карта стоит
+        // заглушкой и ещё забивает канал. Теперь: мгновенно показываем миниатюру,
+        // полный арт тихо доказывается фоном и подменяется, когда готов.
+        function nxThumbUrl(url) {
+            try {
+                const s = String(url || '');
+                if (s.indexOf('archive.org/download/') < 0) return '';
+                if (s.indexOf('_thumb.') >= 0) return '';
+                const q = s.lastIndexOf('?');
+                const base = q >= 0 ? s.slice(0, q) : s;
+                const slash = base.lastIndexOf('/');
+                const dot = base.lastIndexOf('.');
+                if (dot <= slash + 1) return '';
+                return base.slice(0, dot) + '_thumb.jpg' + (q >= 0 ? s.slice(q) : '');
+            } catch (e) { return ''; }
+        }
+        const NX_FULL_LOADING = new Set(); // url — полный арт уже в очереди/качается
+        const NX_FULL_QUEUE = [];
+        let NX_FULL_ACTIVE = 0;
+        function nxFullPump() { // b251: не больше 2 фоновых артов за раз (1 на эконом-канале)
+            const cap = (typeof NX_SLOW !== 'undefined' && NX_SLOW) ? 1 : 2;
+            while (NX_FULL_ACTIVE < cap && NX_FULL_QUEUE.length) {
+                const job = NX_FULL_QUEUE.shift();
+                NX_FULL_ACTIVE++;
+                try { job(); } catch (e) { NX_FULL_ACTIVE--; }
+            }
+        }
+        function nxProgressiveAttach(img) {
+            try {
+                if (!img || img.__nxPh) return;
+                const raw = img.getAttribute && img.getAttribute('src');
+                if (!raw || raw.indexOf('data:') === 0 || raw.indexOf('blob:') === 0) return;
+                const url = img.src;
+                if (!url || url.indexOf('http') !== 0) return;
+                const thumb = nxThumbUrl(url);
+                if (!thumb) return;
+                if (img.__nxFull === url) return;
+                const showing = img.complete && img.naturalWidth > 0;
+                if (!showing && img.__nxThumbFor !== thumb) { // миниатюра на карту — мгновенно
+                    img.__nxThumb = 1;
+                    img.__nxThumbFor = thumb;
+                    img.src = thumb;
+                }
+                if (NX_FULL_LOADING.has(url)) return;
+                NX_FULL_LOADING.add(url);
+                img.__nxFullUrl = url;
+                NX_FULL_QUEUE.push(() => {
+                    const pre = new Image();
+                    pre.decoding = 'async';
+                    const fin = () => { NX_FULL_ACTIVE--; nxFullPump(); };
+                    pre.onload = () => {
+                        NX_FULL_LOADING.delete(url);
+                        fin();
+                        try { imgCacheStoreFromNetwork(url); } catch (e) {} // копия в постоянный кэш
+                        try {
+                            if (img.__nxPh || !img.isConnected || img.__nxFull === url) return;
+                            const nowShowing = img.complete && img.naturalWidth > 0;
+                            if (img.__nxThumb || !nowShowing) {
+                                img.__nxFull = url; // HTTP-кэш прогрет предзагрузкой — подмена мгновенная
+                                img.__nxOrig = url;
+                                img.src = url;
+                            }
+                        } catch (e) {}
+                    };
+                    pre.onerror = () => { NX_FULL_LOADING.delete(url); fin(); };
+                    pre.src = url;
+                });
+                nxFullPump();
+            } catch (e) {}
+        }
         function imgCacheAttach(img) { // подключить один <img> к постоянному кэшу
             try {
                 if (!img || img.__nxC || img.__nxPh) return;
@@ -5669,21 +5747,22 @@ min-height:56vh}
                 const mem = IMG_OBJ.get(url);
                 if (mem) { // мгновенная подмена из памяти — без единого сетевого запроса
                     imgCacheTouch(url, mem);
-                    if (!img.complete || !img.naturalWidth) img.src = mem;
+                    if (!img.complete || !img.naturalWidth || img.__nxThumb) img.src = mem;
                     return;
                 }
+                nxProgressiveAttach(img); // b251: лёгкая миниатюра сразу, полный арт — фоном
                 imgCacheObjUrl(url).then(ou => {
                     if (ou) {
                         if (img.__nxPh || img.__nxMir) return; // уже ушёл в заглушку/зеркало
-                        if (img.complete && img.naturalWidth > 0) return; // сеть оказалась быстрее — не мигаем
+                        if (img.complete && img.naturalWidth > 0 && !img.__nxThumb) return; // сеть оказалась быстрее — не мигаем
                         const cur = img.getAttribute('src') || '';
                         if (!cur || cur.indexOf('blob:') === 0 || cur.indexOf('data:') === 0) return;
                         img.src = ou;
                         return;
                     }
                     // в кэше нет: грузится как раньше, но копию сохраним на следующий раз
-                    if (img.complete && img.naturalWidth > 0) { imgCacheStoreFromNetwork(url); return; }
-                    img.addEventListener('load', () => { if (!img.__nxPh) imgCacheStoreFromNetwork(url); }, { once: true });
+                    if (img.complete && img.naturalWidth > 0 && !img.__nxThumb) { imgCacheStoreFromNetwork(url); return; }
+                    img.addEventListener('load', () => { if (!img.__nxPh && !img.__nxThumb) imgCacheStoreFromNetwork(url); }, { once: true });
                 }).catch(() => {});
             } catch (e) {}
         }
@@ -5750,14 +5829,26 @@ min-height:56vh}
                     const n = el.__nxRetry;
                     setTimeout(() => {
                         if (el.__nxPh) return;
-                        el.src = raw + (raw.indexOf('?') >= 0 ? '&' : '?') + 'nxr=' + n;
-                    }, 350 * n);
+                        // b251: ретрай тем же URL, без cache-buster (?nxr=…): на мобильной
+                        // сети каждый «новый» URL качал арт заново с нуля — карты не
+                        // успевали прогрузиться до следующего ретрая
+                        el.src = raw;
+                    }, 600 * n);
                     return true;
                 }
                 const b = mediaBase();
                 if (!el.__nxMir && b && raw.indexOf(MEDIA_DEAD_BASE) === 0) {
                     el.__nxMir = 1; el.onerror = null; el.style.display = '';
                     el.src = b + '/' + raw.slice(MEDIA_DEAD_BASE.length);
+                    return true;
+                }
+                // b251: миниатюра могла дать 404 (файл без деривата), а полный арт
+                // в этот момент ещё докачивается фоном — не ставим заглушку раньше времени
+                if (!el.__nxPh && el.__nxThumb && el.__nxFullUrl && NX_FULL_LOADING.has(el.__nxFullUrl)) {
+                    el.onerror = null;
+                    setTimeout(() => {
+                        try { if (!el.__nxPh && !(el.complete && el.naturalWidth > 0)) imgErrorChain(el); } catch (e) {}
+                    }, 2500);
                     return true;
                 }
                 if (!el.__nxPh) {
@@ -5776,19 +5867,26 @@ min-height:56vh}
                     const el = imgs[i];
                     if (el.__nxPh || el.__nxWatch) continue;
                     if (el.complete || !el.src || el.src.indexOf('data:') === 0) continue;
-                    el.__nxWatch = setTimeout(() => { if (!el.complete && !el.__nxPh) imgErrorChain(el); }, 9000);
+                    el.__nxWatch = setTimeout(() => { if (!el.complete && !el.__nxPh) imgErrorChain(el); }, 22000); // b251: 9 c на мобильной сети мало для арта 1–2 МБ
                     el.addEventListener('load', () => clearTimeout(el.__nxWatch), { once: true });
                     el.addEventListener('error', () => clearTimeout(el.__nxWatch), { once: true });
                 }
             } catch (e) {}
         }, 6000);
         // b248: вернулись в сеть / в приложение — заглушки перепроверяются боевыми URL
+        let nxLastRecheck = 0;
         function nxRecheckImgs() {
+            // b251: не чаще раза в 2 минуты и БЕЗ cache-buster: раньше при каждом
+            // возврате в приложение все заглушки разом перекачивались с новыми
+            // ?nxr=… — это и есть «игра подвисает» на слабых устройствах
+            const now = Date.now();
+            if (now - nxLastRecheck < 120000) return;
+            nxLastRecheck = now;
             try {
                 document.querySelectorAll('img').forEach(el => {
                     if (el.__nxPh && el.__nxOrig) {
-                        el.__nxPh = 0; el.__nxRetry = 0;
-                        el.src = el.__nxOrig + (el.__nxOrig.indexOf('?') >= 0 ? '&' : '?') + 'nxr=' + (Date.now() % 100000);
+                        el.__nxPh = 0; el.__nxRetry = 0; el.__nxThumbFor = ''; el.__nxFull = '';
+                        nxProgressiveAttach(el); // миниатюра сразу + полный арт фоном
                     }
                 });
             } catch (e) {}
@@ -7047,8 +7145,11 @@ min-height:56vh}
             setModeBtn('mode-mines-btn', m === 'mines', 'lq-on');
             setModeBtn('mode-lines-btn', m === 'lines', 'lq-on');
             if (m === 'miner') renderMiner();
-            if (m !== 'slots' && slots.auto) slotsAutoStop(false); // b93
-            if (m !== 'grid' && grid.auto) gridAutoStop(false); // b93
+            // b250: ушли в другую игру — автостарт предыдущей гасим сразу
+            // (раньше «Линии» при смене игры продолжали крутиться в фоне)
+            if (m !== 'slots' && slots.auto) slotsAutoStop(false, 'смена игры');
+            if (m !== 'grid' && grid.auto) gridAutoStop(false, 'смена игры');
+            if (m !== 'lines' && lines.auto) linesAutoStop(false, 'смена игры');
             if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
             if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
@@ -9870,6 +9971,7 @@ min-height:56vh}
         }
 
         function startBattle(oppId) {
+            stopAllGameAutos('начало боя'); // b250
             const opp = OPPONENTS.find(o => o.id === oppId);
             if (!opp) return;
             const deck = getDeckCards();
@@ -11078,18 +11180,34 @@ min-height:56vh}
             if (sp) sp.textContent = state.stats.linesSpins || 0;
         }
         function linesToggleAuto() {
-            if (lines.auto) { lines.auto = false; clearInterval(lines.autoT); lines.autoT = null; renderLinesUI(); return; }
+            if (lines.auto) { linesAutoStop(false); return; }
             lines.auto = true;
             lines.autoT = setInterval(() => {
                 try {
                     if (!lines.auto) return;
                     if (document.hidden || lines.spinning) return;
-                    if (state.coins < lines.bet) { lines.auto = false; clearInterval(lines.autoT); lines.autoT = null; renderLinesUI(); showToast('📖 Авто остановлено: не хватает монет', 'refund'); return; }
+                    if (state.coins < lines.bet) { linesAutoStop(false, 'не хватает монет'); return; }
                     linesSpin();
                 } catch (e) {}
             }, 1000);
             renderLinesUI();
             showToast('📖 Линии: автопрокрутка включена', 'success');
+        }
+        // b250: отдельный стоп для «Линий» (раньше остановка была только инлайном)
+        function linesAutoStop(byWin, reason) {
+            lines.auto = false;
+            clearInterval(lines.autoT); lines.autoT = null;
+            try { renderLinesUI(); } catch (e) {}
+            if (byWin) showToast('📖 Автопрокрутка остановлена: крупный выигрыш!', 'success');
+            else if (reason) showToast('📖 Автопрокрутка остановлена: ' + reason, 'refund');
+        }
+        // b250: полная остановка АВТО всех автоматов. Вызывается при переходе на другую
+        // вкладку и при смене игры, чтобы интервалы не крутили спины «в фоне»
+        // (это же съедало CPU/батарею на слабых устройствах).
+        function stopAllGameAutos(reason) {
+            try { if (slots.auto) slotsAutoStop(false, reason); } catch (e) {}
+            try { if (grid.auto) gridAutoStop(false, reason); } catch (e) {}
+            try { if (lines.auto) linesAutoStop(false, reason); } catch (e) {}
         }
         function linesSpin() {
             if (lines.spinning) return;
@@ -11839,6 +11957,7 @@ min-height:56vh}
         }
 
         function startDurak() {
+            stopAllGameAutos('начало партии в дурака'); // b250
             if (statsBlockGuard('ставка в Дурака')) return; // b277
             if (state.coins < durakBet) { showToast('Недостаточно монет для ставки ' + fmtCoins(durakBet), 'error'); return; }
             const deck = makeDurakDeck();
@@ -12772,6 +12891,9 @@ min-height:56vh}
         }
         function switchTab(tabId) {
             nxTrail('tab:' + tabId);
+            // b250: ушли с вкладки «Игры» — автостарт автоматов выключается сразу,
+            // спины не крутятся и не тратят монеты/CPU на других вкладках
+            if (tabId !== 'battle') stopAllGameAutos('переход на другую вкладку');
             // b133: Студия — только по паролю комнаты облака
             if (tabId === 'studio' && studioGateNeeded()) { openStudioPassModal(); return; }
             // скрытый раздел недоступен, пока не открыт жестом
@@ -14222,7 +14344,7 @@ min-height:56vh}
             if (compact) {
                 return `
                     <div onclick="inspectCard('${card.id}')" class="relative w-full card-aspect rounded-xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-1.5 sm:p-2 flex flex-col justify-between cursor-pointer shadow-lg hover:scale-[1.03] transition overflow-hidden group">
-                        <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                        <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
                         <div class="relative z-10 flex justify-between items-start gap-1">
                             <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
@@ -14250,7 +14372,7 @@ min-height:56vh}
             const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, statsHtml);
             return `
                 <div onclick="inspectCard('${card.id}')" class="relative w-full card-aspect rounded-2xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-3 sm:p-4 flex flex-col justify-between cursor-pointer shadow-xl hover:scale-[1.02] transition overflow-hidden group">
-                    <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                    <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
 
                     ${Z.top}
@@ -15780,6 +15902,7 @@ min-height:56vh}
             return changed ? sum : null;
         }
         function refreshVisibleTabs() {
+            if (document.hidden) return; // b251: фоновая перерисовка DOM = подвисания на слабых устройствах
             const vis = id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); };
             if (vis('tab-store')) renderStore();
             if (vis('tab-albums')) renderAlbumsHub();
