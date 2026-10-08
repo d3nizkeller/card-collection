@@ -19053,6 +19053,53 @@ function nxInjectExtras(out, extras) {
     }
 // ---- b330: «Вшить в сайт»: коммит собранного файла прямо в репозиторий GitHub ----
 function nxGhToken() { try { return String(LS.getItem('nx_gh_token') || '').trim(); } catch (e) { return ''; } }
+/*PATCH-b342-solo*/
+function nxStatus(msg, kind) { // b342-solo: видимая статус-строка вместо тишины
+    try {
+        var b = document.getElementById('nx-status-bar');
+        if (!b) {
+            var anchor = document.getElementById('nx-autoembed-btn') || document.getElementById('nx-gh-token');
+            if (!anchor || !anchor.parentNode) return;
+            b = document.createElement('div'); b.id = 'nx-status-bar';
+            b.setAttribute('style', 'display:none;margin-top:6px;padding:6px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;color:#cbd5e1;font-size:11px;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word');
+            anchor.parentNode.insertBefore(b, anchor.nextSibling);
+        }
+        if (!msg) { b.style.display = 'none'; b.textContent = ''; return; }
+        b.style.display = 'block';
+        b.style.borderColor = kind === 'err' ? '#7f1d1d' : (kind === 'ok' ? '#14532d' : '#334155');
+        b.style.color = kind === 'err' ? '#fca5a5' : (kind === 'ok' ? '#86efac' : '#cbd5e1');
+        b.textContent = msg;
+        try { console.log('[status] ' + msg); } catch (e) {}
+    } catch (e) {}
+}
+function nxSayOnce(key, msg) { // одна запись в журнал на причину, без спама
+    try {
+        var k = 'nx_said_' + key;
+        if (LS.getItem(k)) return;
+        LS.setItem(k, String(Date.now()));
+        nxCrashLog(msg);
+    } catch (e) {}
+}
+function nxAutoEmbedOn() { // b342: эта функция была ПОТЕРЯНА — из-за неё автовшивание молча не работало
+    try { return LS.getItem('nx_autoembed') === '1'; } catch (e) { return false; }
+}
+function nxSrcGet() { // b342: исходник без повторной загрузки всех мегабайт на каждый пуш
+    var C = window.__nxSrcCache || (window.__nxSrcCache = { text: '', etag: '', lm: '', ts: 0 });
+    var TTL = 15 * 60 * 1000;
+    var h = {};
+    if (C.etag) h['If-None-Match'] = C.etag;
+    if (C.lm) h['If-Modified-Since'] = C.lm;
+    return fetch(location.href, { cache: 'no-store', headers: h }).then(function (r) {
+        if (r.status === 304 && C.text) { C.ts = Date.now(); return C.text; }
+        if (!r.ok) throw new Error('исходник HTTP ' + r.status);
+        C.etag = r.headers.get('ETag') || ''; C.lm = r.headers.get('Last-Modified') || '';
+        return r.text().then(function (t) { C.text = t; C.ts = Date.now(); return t; });
+    }).catch(function (e) {
+        if (C.text && Date.now() - C.ts < TTL) { try { nxCrashLog('автовшивание: исходник из кэша вкладки (сеть недоступна)'); } catch (e2) {} return C.text; }
+        throw e;
+    });
+}
+
 function nxSaveGhToken() {
     const i = document.getElementById('nx-gh-token');
     const r = document.getElementById('nx-gh-repo');
@@ -19117,16 +19164,18 @@ function nxPushEmbedded(auto) {
     }
     const repo = ((document.getElementById('nx-gh-repo') || {}).value || '').trim() || (LS.getItem('nx_gh_repo') || '').trim() || 'd3nizkeller/card-collection';
     const btn = document.getElementById('nx-push-embed'); if (btn) btn.disabled = true;
+    nxStatus('Собираю файл для вшивания…');
     const say = m => { try { showToast(m, 'success'); } catch (e) {} };
-    const err = m => { if (btn) btn.disabled = false; try { showToast(m, 'error'); } catch (e) {} };
-    fetch(location.href, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error('исходник HTTP ' + r.status); return r.text(); }).then(src => {
+    const err = m => { if (btn) btn.disabled = false; try { showToast(m, 'error'); } catch (e) {} nxStatus(m, 'err'); };
+    nxSrcGet().then(src => { // b342-solo: было fetch(location.href,{cache:'no-store'}) — перезакачка всего файла каждый раз
         const pairs = [];
         nxAllMediaUrls().forEach(raw => { let eff = raw; try { eff = mediaUrl(raw); } catch (e) {} pairs.push({ raw: raw, eff: eff }); });
         let out = src, pending = pairs.length, replaced = 0; const extras = []; // b340
         const finalize = () => { out = nxInjectExtras(out, extras); // b340
-            if (!replaced) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
-            say((auto ? 'Автовшивание: ' : '') + 'файл собран (' + replaced + ' артов). Пушу коммит в GitHub…');
-            nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say((auto ? 'Автовшивание: ' : '') + 'вшито в сайт! Pages обновится за 1–2 минуты'); try { nxCrashLog('push-embed ok: ' + replaced + ' артов'); } catch (e) {} }, err);
+            if (!replaced && !extras.length) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
+            say((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов). Пушу коммит в GitHub…');
+            nxStatus((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов), загружаю ~' + (out.length / 1048576).toFixed(1) + ' МБ в GitHub…');
+            nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say((auto ? 'Автовшивание: ' : '') + 'вшито в сайт! Pages обновится за 1–2 минуты'); try { nxCrashLog('push-embed ok: ' + (replaced + extras.length) + ' артов'); } catch (e) {} nxStatus('Готово: вшито ' + (replaced + extras.length) + ' артов. Pages обновится за 1–2 минуты', 'ok'); }, err);
         };
         const apply = (raw, dataUrl) => { if (dataUrl) { if (out.indexOf(raw) >= 0) { out = out.split(raw).join(dataUrl); replaced++; } try { const bb = nxMediaKey(raw); if (bb) extras.push([bb, dataUrl]); } catch (e) {} } if (--pending === 0) finalize(); };
         if (!pending) { finalize(); return; }
@@ -19200,7 +19249,7 @@ function nxMediaUrlForBase(b) { // любая внешняя ссылка с э�
 function nxScheduleAutoPush() {
     try {
         const last = parseInt(LS.getItem('nx_last_autopush') || '0', 10);
-        if (Date.now() - last < 1800000) return; // не чаще раза в 30 минут — не спамим коммитами
+        if (Date.now() - last < 600000) return; // b342-solo: не чаще раза в 10 минут (было 30)
         if (window.__nxAutoPushT) return;
         window.__nxAutoPushT = setTimeout(() => {
             window.__nxAutoPushT = 0;
@@ -19213,17 +19262,22 @@ function nxScheduleAutoPush() {
                     if (!have) return;
                     LS.setItem('nx_last_autopush', String(Date.now()));
                     try { nxCrashLog('autoembed: авто-пуш ' + have + ' новых артов на сайт'); } catch (e) {}
+                    nxStatus('Автовшивание: собираю и пушу файл…');
                     nxPushEmbedded(true);
                 });
-            } catch (e) {}
+            } catch (e) { try { nxCrashLog('autoembed-schedule: ' + ((e && e.message) || e)); } catch (e2) {} }
         }, 120000); // дебаунс 2 минуты: копим пачку нового
     } catch (e) {}
 }
 setInterval(() => { // фоновая проверка раз в 5 минут: появилось ли новое для авто-пуша
     try {
-        if (!nxAutoEmbedOn() || !nxGhToken() || document.hidden || !navigator.onLine) return;
-        if (nxNewBasesForMap().length) nxScheduleAutoPush();
-    } catch (e) {}
+        if (!nxAutoEmbedOn()) { nxSayOnce('autoembed_off', 'Автовшивание выключено (кнопка «Автовшивание: выкл») — авто-пуша не будет'); nxStatus('Автовшивание выключено — новые арты сами не уходят. Нажмите «Автовшивание: выкл», чтобы включить'); return; }
+        if (!nxGhToken()) { nxSayOnce('autoembed_notoken', 'Автовшивание: нет токена GitHub — коммитить нечем'); nxStatus('Автовшивание: нет токена GitHub — сохраните токен в настройках', 'err'); return; }
+        if (document.hidden) { nxSayOnce('autoembed_hidden', 'Автовшивание: вкладка в фоне — браузер глушит таймеры, пуш откладывается'); return; }
+        if (!navigator.onLine) { nxSayOnce('autoembed_offline', 'Автовшивание: нет сети'); return; }
+        var nb = nxNewBasesForMap();
+        if (nb.length) { nxStatus('Автовшивание: новых артов — ' + nb.length + ', скоро соберу файл и запушу'); nxScheduleAutoPush(); }
+    } catch (e) { try { nxCrashLog('autoembed-check: ' + ((e && e.message) || e)); } catch (e2) {} }
 }, 300000);
 // ---- b328: лампочка-индикатор у полей ссылки на арт: вшит / в кэше / нет ----
 const NX_LAMP_COLORS = { off: '#475569', emb: '#22c55e', cache: '#eab308', none: '#ef4444' };
@@ -19301,7 +19355,7 @@ function nxAutoCacheOnce() {
                 if (nxAutoEmbedOn() && nxGhToken() && (fresh > 0 || nxNewBasesForMap().length)) {
                     nxScheduleAutoPush();
                 }
-            } catch (e) {}
+            } catch (e) { try { nxCrashLog('autoembed-after-cache: ' + ((e && e.message) || e)); } catch (e2) {} }
             return;
         }
         const u = jobs[i++];
@@ -19460,10 +19514,7 @@ function nxCacheAll() { // фоном тянет всю коллекцию в п
 function nxExportEmbedded() { // собирает копию файла игры с кэшированными артами внутри
     const btn = document.getElementById('nx-export-btn'); if (btn) btn.disabled = true;
     const fin = (m, t) => { if (btn) btn.disabled = false; showToast(m, t || 'success'); };
-    fetch(location.href, { cache: 'no-store' }).then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.text();
-    }).then(src => {
+    nxSrcGet().then(src => { // b342-solo
         const pairs = [];
         nxAllMediaUrls().forEach(raw => {
             let eff = raw;
@@ -19479,7 +19530,7 @@ function nxExportEmbedded() { // собирает копию файла игры
             a.download = 'index_embedded.html';
             document.body.appendChild(a); a.click();
             setTimeout(() => { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 4000);
-            fin('Сборка скачана: артов вшито — ' + replaced + '. Залейте index_embedded.html как новую версию игры');
+            fin('Сборка скачана: артов вшито — ' + (replaced + extras.length) + '. Залейте index_embedded.html как новую версию игры');
         };
         const apply = (raw, dataUrl) => {
             if (dataUrl) {
@@ -19519,472 +19570,5 @@ function qrxPasteApply() {
     qrxHandleCode(ta ? ta.value : '');
 }
 </script>
-
-<!-- ============================ b343: MEDIA MODE ============================ -->
-<script>
-/*NX_MEDIA_MODE_B343*/
-(function () {
-    'use strict';
-    var MANIFEST = 'media/manifest.json';
-    var NX_HYBRID = true;
-    var BATCH = 8;                 // артов в одном коммите
-    var MAX_SIDE = 768;            // до какого размера ужимаем перед пушем (как при миграции)
-    var QUALITY = 0.70;
-    var NX_MEDIA_LIST = null;      // имена файлов, которые уже лежат на сервере
-    var NX_PUSH_BUSY = false;
-
-    function log(m) { try { nxCrashLog('media: ' + m); } catch (e) {} }
-    function toast(m, t) { try { showToast(m, t || 'success'); } catch (e) {} }
-
-    // страховка: в некоторых сборках функция nxAutoEmbedOn потеряна (именно из-за
-    // этого авто-пуш молча не работал). Определяем, если её нет.
-    if (typeof window.nxAutoEmbedOn !== 'function') {
-        window.nxAutoEmbedOn = function () {
-            try { return LS.getItem('nx_autoembed') === '1'; } catch (e) { return false; }
-        };
-    }
-
-    // ---------------- статус-строка ----------------
-    function bar() {
-        var b = document.getElementById('nx-media-status');
-        if (b) return b;
-        var anchor = document.getElementById('nx-autoembed-btn') ||
-            document.getElementById('nx-embed-all') ||
-            document.getElementById('nx-gh-token');
-        if (!anchor || !anchor.parentNode) return null;
-        b = document.createElement('div');
-        b.id = 'nx-media-status';
-        b.setAttribute('style', 'display:none;align-items:center;gap:8px;margin-top:6px;' +
-            'padding:6px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;' +
-            'color:#cbd5e1;font-size:11px;line-height:1.35;font-family:ui-monospace,monospace;' +
-            'white-space:pre-wrap;word-break:break-word');
-        var row = anchor.parentNode;
-        if (anchor.nextSibling) row.insertBefore(b, anchor.nextSibling); else row.appendChild(b);
-        return b;
-    }
-    function status(msg, kind) {
-        var b = bar();
-        if (!b) return;
-        if (!msg) { b.style.display = 'none'; b.textContent = ''; return; }
-        b.style.display = 'flex';
-        b.style.borderColor = kind === 'err' ? '#7f1d1d' : (kind === 'ok' ? '#14532d' : '#334155');
-        b.style.color = kind === 'err' ? '#fca5a5' : (kind === 'ok' ? '#86efac' : '#cbd5e1');
-        b.textContent = msg;
-        try { console.log('[media] ' + msg); } catch (e) {}
-    }
-    window.nxMediaStatus = status;
-
-    // ---------------- manifest ----------------
-    function manifestLoad(force) {
-        if (NX_MEDIA_LIST && !force) return Promise.resolve(NX_MEDIA_LIST);
-        try {
-            var c = JSON.parse(LS.getItem('nx_media_manifest') || 'null');
-            if (Array.isArray(c) && !force) { NX_MEDIA_LIST = c; }
-        } catch (e) {}
-        return fetch(MANIFEST + '?t=' + Date.now(), { cache: 'no-store' })
-            .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (j) {
-                if (j && Array.isArray(j.files)) {
-                    NX_MEDIA_LIST = j.files;
-                    try { LS.setItem('nx_media_manifest', JSON.stringify(j.files)); } catch (e) {}
-                    j.files.forEach(function (n) {
-                        try { if (!NX_EMBED_MEDIA[n]) NX_EMBED_MEDIA[n] = 'media/' + encodeURI(n); } catch (e) {}
-                    });
-                } else if (!NX_MEDIA_LIST) { NX_MEDIA_LIST = []; }
-                return NX_MEDIA_LIST;
-            })
-            .catch(function () { if (!NX_MEDIA_LIST) NX_MEDIA_LIST = []; return NX_MEDIA_LIST; });
-    }
-    window.nxManifestLoad = manifestLoad;
-    window.nxManifestAdd = function (names) {
-        names.forEach(function (n) {
-            if (NX_MEDIA_LIST && NX_MEDIA_LIST.indexOf(n) < 0) NX_MEDIA_LIST.push(n);
-            try { if (!NX_EMBED_MEDIA[n]) NX_EMBED_MEDIA[n] = 'media/' + encodeURI(n); } catch (e) {}
-        });
-        try { LS.setItem('nx_media_manifest', JSON.stringify(NX_MEDIA_LIST || [])); } catch (e) {}
-    };
-
-    // ---------------- сжатие арта перед пушем ----------------
-    function nxArtCompress(blob) {
-        return new Promise(function (res) {
-            if (!blob || !blob.size) return res(null);
-            var url = '';
-            try {
-                url = URL.createObjectURL(blob);
-                var im = new window.Image();
-                im.onload = function () {
-                    try {
-                        var w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
-                        if (!w || !h) throw new Error('no size');
-                        var k = Math.min(1, MAX_SIDE / Math.max(w, h));
-                        var cw = Math.max(1, Math.round(w * k)), ch = Math.max(1, Math.round(h * k));
-                        var cv = document.createElement('canvas');
-                        cv.width = cw; cv.height = ch;
-                        var ctx = cv.getContext('2d');
-                        ctx.imageSmoothingQuality = 'high';
-                        ctx.drawImage(im, 0, 0, cw, ch);
-                        cv.toBlob(function (nb) {
-                            try { URL.revokeObjectURL(url); } catch (e) {}
-                            if (!nb || !nb.size) return res(null);
-                            res(nb.size < blob.size ? nb : blob);
-                        }, 'image/jpeg', QUALITY);
-                    } catch (e) {
-                        try { URL.revokeObjectURL(url); } catch (e2) {}
-                        res(null);
-                    }
-                };
-                im.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} res(null); };
-                im.src = url;
-            } catch (e) { try { URL.revokeObjectURL(url); } catch (e2) {} res(null); }
-        });
-    }
-    window.nxArtCompress = nxArtCompress;
-    window.nxB64sha = b64sha;
-
-    function blobToB64(blob) {
-        return new Promise(function (res, rej) {
-            var fr = new FileReader();
-            fr.onload = function () {
-                var s = String(fr.result || '');
-                var i = s.indexOf(',');
-                res(i >= 0 ? s.slice(i + 1) : s);
-            };
-            fr.onerror = function () { rej(fr.error || new Error('FileReader')); };
-            fr.readAsDataURL(blob);
-        });
-    }
-
-    function b64sha(b64) { // git blob sha1 = sha1("blob <len>\0" + bytes)
-        var bin = atob(b64);
-        var bytes = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        var head = new TextEncoder().encode('blob ' + bytes.length + '\u0000');
-        var all = new Uint8Array(head.length + bytes.length);
-        all.set(head, 0); all.set(bytes, head.length);
-        return crypto.subtle.digest('SHA-1', all).then(function (d) {
-            return Array.prototype.map.call(new Uint8Array(d), function (x) {
-                return ('0' + x.toString(16)).slice(-2);
-            }).join('');
-        });
-    }
-
-    // ---------------- коммит пачки артов ----------------
-    function commitBatch(repo, branch, headSha, treeSha, items, msg, n) {
-        var refPath = '/repos/' + repo + '/git/refs/heads/' + branch;
-        return nxGhApi('/repos/' + repo + '/git/commits', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: msg, tree: treeSha, parents: [headSha] })
-        }).then(function (c) {
-            return nxGhApi(refPath, {
-                method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sha: c.sha, force: false })
-            }).catch(function (e) {
-                if (n < 4 && /not a fast forward|422/i.test(String((e && e.message) || e))) {
-                    return nxGhApi(refPath).then(function (r) {
-                        return commitBatch(repo, branch, r.object.sha, treeSha, items, msg, n + 1);
-                    });
-                }
-                throw e;
-            });
-        });
-    }
-
-    function pushItems(repo, items, msg) {
-        // items: [{ path:'media/x.jpg', b64:'...' }]  -> один коммит
-        return nxGhApi('/repos/' + repo).then(function (info) {
-            var branch = info.default_branch || 'main';
-            return nxGhApi('/repos/' + repo + '/git/ref/heads/' + branch).then(function (ref) {
-                return nxGhApi('/repos/' + repo + '/git/commits/' + ref.object.sha).then(function (cm) {
-                    var chain = Promise.resolve([]);
-                    items.forEach(function (it) {
-                        chain = chain.then(function (acc) {
-                            return nxGhApi('/repos/' + repo + '/git/blobs', {
-                                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ content: it.b64, encoding: 'base64' })
-                            }).then(function (bl) {
-                                acc.push({ path: it.path, mode: '100644', type: 'blob', sha: bl.sha });
-                                return acc;
-                            });
-                        });
-                    });
-                    return chain.then(function (tree) {
-                        return nxGhApi('/repos/' + repo + '/git/trees', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ base_tree: cm.tree.sha, tree: tree })
-                        });
-                    }).then(function (tr) {
-                        return commitBatch(repo, branch, ref.object.sha, tr.sha, items, msg, 0);
-                    });
-                });
-            });
-        });
-    }
-
-    // ---------------- что нового: арты, которых ещё нет в media/ ----------------
-    function newItems() {
-        var out = [], seen = {};
-        try {
-            nxAllMediaUrls().forEach(function (raw) {
-                var eff = raw;
-                try { eff = mediaUrl(raw); } catch (e) {}
-                if (!eff || eff.indexOf('http') !== 0) return;
-                var b = nxMediaKey(eff);
-                if (!b || seen[b]) return;
-                if (NX_MEDIA_LIST && NX_MEDIA_LIST.indexOf(b) >= 0) return;
-                seen[b] = 1;
-                out.push({ base: b, eff: eff });
-            });
-        } catch (e) { log('newItems: ' + e); }
-        return out;
-    }
-    window.nxNewMediaItems = newItems;
-
-    // ---------------- главный пуш ----------------
-    function pushNew(limit) {
-        if (NX_PUSH_BUSY) return Promise.resolve(0);
-        if (!nxGhToken()) { status('Нет токена GitHub — арт не уйдёт на сайт', 'err'); return Promise.resolve(0); }
-        NX_PUSH_BUSY = true;
-        var repo = ((document.getElementById('nx-gh-repo') || {}).value || '').trim() ||
-            (LS.getItem('nx_gh_repo') || '').trim() || 'd3nizkeller/card-collection';
-        var t0 = Date.now();
-        return manifestLoad(true).then(function () {
-            var items = newItems();
-            if (limit) items = items.slice(0, limit);
-            if (!items.length) { status('Новых артов нет — всё уже в media/ (' + (NX_MEDIA_LIST || []).length + ' файлов)', 'ok'); return 0; }
-            var total = items.length, pushed = 0, skipped = 0;
-            status('Найдено новых артов: ' + total + '. Качаю из кэша…');
-            var prepared = [];
-            var chain = Promise.resolve();
-            items.forEach(function (it, idx) {
-                chain = chain.then(function () {
-                    status('Арт ' + (idx + 1) + '/' + total + ': ' + it.base + ' — читаю кэш…');
-                    return imgCacheGetBlob(it.eff).then(function (blob) {
-                        if (!blob || !blob.size) { skipped++; status('Арт ' + (idx + 1) + '/' + total + ': ' + it.base + ' — в кэше пусто, пропускаю'); return null; }
-                        return nxArtCompress(blob).then(function (cb) {
-                            var fin = cb || blob;
-                            status('Арт ' + (idx + 1) + '/' + total + ': ' + it.base + ' — ' +
-                                human2(blob.size) + ' → ' + human2(fin.size) + ', кодирую…');
-                            return blobToB64(fin).then(function (b64) {
-                                prepared.push({ base: it.base, path: 'media/' + it.base, b64: b64, size: fin.size });
-                                return prepared.length;
-                            });
-                        });
-                    }, function () { skipped++; return null; });
-                });
-            });
-            return chain.then(function () {
-                if (!prepared.length) { status('Пушить нечего: кэш пуст (нажмите «Вшить всё»/«Скачать все арты»)', 'err'); return 0; }
-                var batches = [];
-                for (var i = 0; i < prepared.length; i += BATCH) batches.push(prepared.slice(i, i + BATCH));
-                var bc = Promise.resolve(), done = 0;
-                batches.forEach(function (b, bi) {
-                    bc = bc.then(function () {
-                        var mb = b.reduce(function (a, x) { return a + x.size; }, 0) / 1048576;
-                        status('Коммит ' + (bi + 1) + '/' + batches.length + ': ' + b.length + ' артов (' +
-                            mb.toFixed(1) + ' МБ) — загружаю в GitHub…');
-                        return pushItems(repo, b, 'media: арты ' + b.map(function (x) { return x.base; }).join(', ') + ' (b343)').then(function () {
-                            done += b.length;
-                            window.nxManifestAdd(b.map(function (x) { return x.base; }));
-                            pushed += b.length;
-                            status('Коммит ' + (bi + 1) + '/' + batches.length + ' готов (' + done + '/' + prepared.length + ')');
-                            log('push media: +' + b.length + ' (' + mb.toFixed(1) + ' МБ)');
-                        });
-                    });
-                });
-                return bc.then(function () {
-                    return pushManifest(repo, prepared.map(function (x) { return x.base; })).then(function () {
-                        var sec = ((Date.now() - t0) / 1000).toFixed(0);
-                        status('Готово: ' + pushed + ' артов в media/' + (skipped ? ', пропущено ' + skipped : '') +
-                            ' за ' + sec + ' с. Pages обновится за 1–2 минуты', 'ok');
-                        toast('Автовшивание: ' + pushed + ' артов ушло в media/ за ' + sec + ' с');
-                        return pushed;
-                    });
-                });
-            });
-        }).catch(function (e) {
-            var m = String((e && e.message) || e);
-            status('Ошибка авто-пуша: ' + m, 'err');
-            log('push fail: ' + m.slice(0, 200));
-            return 0;
-        }).then(function (r) { NX_PUSH_BUSY = false; return r; });
-    }
-    window.nxPushNewMedia = pushNew;
-
-    function human2(n) { return n > 1048576 ? (n / 1048576).toFixed(1) + ' МБ' : Math.round(n / 1024) + ' КБ'; }
-
-    // manifest.json — отдельным маленьким коммитом после артов
-    function pushManifest(repo, added) {
-        var files = (NX_MEDIA_LIST || []).slice().sort();
-        var body = JSON.stringify({
-            v: 3, updated: new Date().toISOString(), count: files.length, files: files
-        });
-        var b64;
-        try { b64 = nxB64(body); } catch (e) { b64 = btoa(unescape(encodeURIComponent(body))); }
-        return pushItems(repo, [{ path: 'media/manifest.json', b64: b64, size: body.length }],
-            'media: manifest ' + files.length + ' артов (b343)').catch(function (e) {
-                log('manifest push fail: ' + ((e && e.message) || e));
-            });
-    }
-
-    // ---------------- перезапись старых функций (b341/b342 больше не нужны) ----------------
-    window.nxNewBasesForMap = function () { return newItems().map(function (x) { return x.base; }); };
-    window.nxScheduleAutoPush = function () {
-        try {
-            var last = parseInt(LS.getItem('nx_last_autopush') || '0', 10);
-            if (Date.now() - last < 600000) return;      // не чаще раза в 10 минут
-            if (window.__nxAutoPushT) return;
-            window.__nxAutoPushT = setTimeout(function () {
-                window.__nxAutoPushT = 0;
-                try {
-                    if (!navigator.onLine || document.hidden || !nxAutoEmbedOn() || !nxGhToken()) return;
-                    if (!newItems().length) return;
-                    LS.setItem('nx_last_autopush', String(Date.now()));
-                    pushNew(0);
-                } catch (e) { log('schedule: ' + e); }
-            }, 60000);                                    // дебаунс 1 минута (было 2)
-        } catch (e) {}
-    };
-
-    // фоновая проверка раз в 3 минуты — с внятной диагностикой
-    setInterval(function () {
-        try {
-            if (!nxAutoEmbedOn()) { say1('off', 'Автовшивание выключено (кнопка «Автовшивание») — авто-пуша не будет'); return; }
-            if (!nxGhToken()) { say1('notoken', 'Автовшивание: нет токена GitHub — коммитить нечем'); return; }
-            if (document.hidden) { say1('hidden', 'Автовшивание: вкладка в фоне — браузер глушит таймеры'); return; }
-            if (!navigator.onLine) { say1('offline', 'Автовшивание: нет сети'); return; }
-            manifestLoad(false).then(function () {
-                var n = newItems().length;
-                if (n) { say1('found', 'Автовшивание: новых артов ' + n + ' — планирую пуш в media/'); window.nxScheduleAutoPush(); }
-            });
-        } catch (e) { log('check: ' + e); }
-    }, 180000);
-    function say1(k, m) {
-        try {
-            var key = 'nx_said_' + k;
-            if (LS.getItem(key)) return;
-            LS.setItem(key, String(Date.now()));
-            log(m);
-        } catch (e) {}
-    }
-
-    // ---------------- переезд со СТАРОЙ встроенной карты (bridge-сборка) ----------------
-    function dataUrlToBlob(du) {
-        return fetch(du).then(function (r) { return r.ok ? r.blob() : null; }).catch(function () { return null; });
-    }
-    function bootstrapMedia(btn) {
-        if (NX_PUSH_BUSY) return;
-        if (!nxGhToken()) { status('Переезд: сохраните токен GitHub в настройках — без него не закоммитить', 'err'); return; }
-        NX_PUSH_BUSY = true;
-        var repo = ((document.getElementById('nx-gh-repo') || {}).value || '').trim() ||
-            (LS.getItem('nx_gh_repo') || '').trim() || 'd3nizkeller/card-collection';
-        var keys = [];
-        try {
-            Object.keys(NX_EMBED_MEDIA).forEach(function (k) {
-                if (String(NX_EMBED_MEDIA[k]).indexOf('data:') !== 0) return;
-                if (NX_MEDIA_LIST && NX_MEDIA_LIST.indexOf(k) >= 0) return; // уже в media/
-                keys.push(k);
-            });
-        } catch (e) {}
-        if (!keys.length) { status('Переезд не нужен: встроенных артов нет или все уже в media/', 'ok'); NX_PUSH_BUSY = false; return; }
-        status('Переезд: ' + keys.length + ' встроенных артов, сжимаю…');
-        var prepared = [], ch = Promise.resolve();
-        keys.forEach(function (k, idx) {
-            ch = ch.then(function () {
-                status('Переезд: арт ' + (idx + 1) + '/' + keys.length + ' — ' + k);
-                return dataUrlToBlob(NX_EMBED_MEDIA[k]).then(function (raw) {
-                    if (!raw || !raw.size) return null;
-                    return nxArtCompress(raw).then(function (fin) {
-                        return blobToB64(fin).then(function (b64) {
-                            prepared.push({ path: 'media/' + k, b64: b64, size: fin.size });
-                            return 1;
-                        });
-                    });
-                }, function () { return null; });
-            });
-        });
-        ch.then(function () {
-            var batches = [], i;
-            for (i = 0; i < prepared.length; i += BATCH) batches.push(prepared.slice(i, i + BATCH));
-            var bc = Promise.resolve(), done = 0;
-            batches.forEach(function (b, bi) {
-                bc = bc.then(function () {
-                    status('Переезд: коммит ' + (bi + 1) + '/' + batches.length + ' (' + b.length + ' артов)…');
-                    return pushItems(repo, b, 'media: переезд встроенных артов, часть ' + (bi + 1) + '/' + batches.length + ' (b343)').then(function () {
-                        done += b.length;
-                        window.nxManifestAdd(b.map(function (x) { return x.path.slice('media/'.length); }));
-                    });
-                });
-            });
-            return bc.then(function () {
-                return pushManifest(repo, []).then(function () {
-                    status('Переезд готов: ' + done + ' артов теперь в media/. Осталось залить облегчённый index.html (release/index.html) — и всё', 'ok');
-                    toast('Переезд завершён: ' + done + ' артов ушло в media/');
-                    try { if (btn) btn.style.display = 'none'; } catch (e) {}
-                });
-            });
-        }).catch(function (e) {
-            status('Ошибка переезда: ' + ((e && e.message) || e), 'err');
-            log('bootstrap fail: ' + ((e && e.message) || e));
-        }).then(function () { NX_PUSH_BUSY = false; });
-    }
-    window.nxBootstrapMedia = bootstrapMedia;
-
-    // кнопка «Арт → media/» рядом с «Автовшивание»
-    function addButton() {
-        try {
-            var anchor = document.getElementById('nx-autoembed-btn');
-            if (!anchor || !anchor.parentNode || document.getElementById('nx-push-media-btn')) return;
-            var b = document.createElement('button');
-            b.type = 'button';
-            b.id = 'nx-push-media-btn';
-            b.className = anchor.className;
-            b.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-1"></i>Арт → media/';
-            b.title = 'Сжать новые арты и отправить их отдельными файлами в папку media/ репозитория (без перезаписи index.html)';
-            b.onclick = function () { b.disabled = true; pushNew(0).then(function () { b.disabled = false; }); };
-            anchor.parentNode.insertBefore(b, anchor.nextSibling);
-            var need = false;
-            try {
-                need = Object.keys(NX_EMBED_MEDIA).some(function (k) { return String(NX_EMBED_MEDIA[k]).indexOf('data:') === 0; });
-            } catch (e) {}
-            if (need && !NX_HYBRID && !document.getElementById('nx-bootstrap-btn')) {
-                var bb = document.createElement('button');
-                bb.type = 'button';
-                bb.id = 'nx-bootstrap-btn';
-                bb.className = anchor.className;
-                bb.innerHTML = '<i class="fa-solid fa-truck-fast mr-1"></i>Переезд: арты → media/';
-                bb.title = 'Один раз: вынуть встроенные арты из этого файла, сжать и создать папку media/ в репозитории';
-                bb.onclick = function () { bb.disabled = true; bootstrapMedia(bb); };
-                anchor.parentNode.insertBefore(bb, b.nextSibling);
-            }
-        } catch (e) {}
-    }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(addButton, 0); });
-    else setTimeout(addButton, 0);
-
-    // старт: подтянуть manifest и показать состояние
-    setTimeout(function () {
-        manifestLoad(true).then(function () {
-            try {
-                var n = newItems().length;
-                if (NX_HYBRID) {
-                    status('Сборка: арты вшиты в файл (сжатые). Новые арты будут сами уходить в папку media/.' +
-                        (nxAutoEmbedOn() ? '' : ' Автовшивание: выкл.'), 'ok');
-                    return;
-                }
-                var hasData = false;
-                try { hasData = Object.keys(NX_EMBED_MEDIA).some(function (k) { return String(NX_EMBED_MEDIA[k]).indexOf('data:') === 0; }); } catch (e) {}
-                if (!hasData && !(NX_MEDIA_LIST || []).length) {
-                    status('ВНИМАНИЕ: папка media/ на сайте не найдена — арты не покажутся. Залейте папку media/ из архива ЗАЛИТЬ.zip', 'err');
-                    return;
-                }
-                status('media/: на сервере ' + (NX_MEDIA_LIST || []).length + ' артов' +
-                    (n ? ', новых для пуша: ' + n : ', всё на месте') +
-                    (nxAutoEmbedOn() ? '' : ' (автовшивание выкл)'), n ? null : 'ok');
-            } catch (e) {}
-        });
-    }, 2500);
-})();
-</script>
-<!-- ========================== /b343: MEDIA MODE ========================== -->
 </body>
 </html>
