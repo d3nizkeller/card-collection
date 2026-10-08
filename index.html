@@ -1969,7 +1969,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <input type="text" id="nx-gh-repo" placeholder="Репозиторий: владелец/имя" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[12px] text-slate-200 focus:outline-none focus:border-sky-500">
                         <button type="button" onclick="nxSaveGhToken()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[12px] font-bold text-slate-200 transition shrink-0" title="Запомнить токен и репозиторий в этом браузере"><i class="fa-solid fa-floppy-disk mr-1"></i>Сохранить</button>
                     </div>
-                    <p class="text-[10px] text-slate-400 leading-snug"><i class="fa-solid fa-robot text-emerald-400 mr-1"></i><b class="text-slate-200">Автоотправка:</b> включите тумблер — и сайт сам, без кнопок, отправит каждую новую картинку из кэша в папку <b>media/</b> вашего репозитория (не чаще раза в 10 минут). GitHub Pages раздаст её всем игрокам за 1–2 минуты. Токен хранится только в этом браузере.</p>
+                    <div id="nx-migrate-row" style="display:none" class="flex flex-col sm:flex-row gap-2 items-start sm:items-center rounded-lg border border-amber-600/50 bg-amber-950/25 p-2"><button type="button" onclick="nxMigrateOldArts()" class="px-3 py-2.5 bg-amber-700/80 hover:bg-amber-600 border border-amber-500/40 rounded-lg text-[12px] font-bold text-white transition shrink-0" title="Сайт скачает старую версию себя из истории GitHub, достанет оттуда все арты и положит их в media/ одним коммитом"><i class="fa-solid fa-kit-medical mr-1"></i>Вернуть арты из старой версии</button><span class="text-[10px] text-amber-200/90 leading-snug">В папке media/ нет картинок — сайт сам достанет их из старой версии в истории GitHub и зальёт в media/ одним коммитом. Тянуть файлы вручную не нужно.</span></div><p class="text-[10px] text-slate-400 leading-snug"><i class="fa-solid fa-robot text-emerald-400 mr-1"></i><b class="text-slate-200">Автоотправка:</b> включите тумблер — и сайт сам, без кнопок, отправит каждую новую картинку из кэша в папку <b>media/</b> вашего репозитория (не чаще раза в 10 минут). GitHub Pages раздаст её всем игрокам за 1–2 минуты. Токен хранится только в этом браузере.</p>
                     <div id="nx-status-bar" style="display:none;margin-top:2px;padding:6px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;color:#cbd5e1;font-size:11px;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word"></div>
                     <div id="nx-progress-wrap" style="display:none;width:100%;padding:8px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;font-size:11px;color:#cbd5e1;font-family:ui-monospace,monospace"><div id="nx-progress-label" style="margin-bottom:5px;white-space:pre-wrap;word-break:break-word"></div><div style="height:7px;background:#1e293b;border-radius:5px;overflow:hidden"><div id="nx-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#a21caf,#6366f1,#22c55e);transition:width .35s ease;border-radius:5px"></div></div></div>
                     <details class="text-[10px] text-slate-500">
@@ -2032,6 +2032,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
 <div class="flex flex-col">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на обложку (9:16)<span id="pack-image-lamp" style="width:10px;height:10px;border-radius:9999px;display:inline-block;vertical-align:middle;margin-left:6px;background:#475569;box-shadow:0 0 8px rgba(71,85,105,.7);" title="Индикатор арта: зелёный — вшит в сборку сайта; жёлтый — скачан авто-кэшем в устройство; красный — не вшит, грузится по ссылке; серый — ссылки нет"></span></label>
                             <input type="url" id="pack-image" required oninput="renderPackStylePreview();nxEmbedLampRefresh('pack-image')" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <div class="flex items-center gap-2 mt-1"><button type="button" onclick="nxPickFileFor('pack-image')" class="px-2.5 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition" title="Выберите файл картинки на устройстве — сайт сам зальёт его в папку media/ репозитория GitHub и подставит готовую ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>Загрузить с устройства &rarr; GitHub</button><span id="pack-image-upl" class="text-[10px] text-slate-500"></span></div>
                         </div>
 <div class="flex flex-col">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Цена (монеты)</label>
@@ -2333,6 +2334,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на картинку (9:16)<span id="card-image-lamp" style="width:10px;height:10px;border-radius:9999px;display:inline-block;vertical-align:middle;margin-left:6px;background:#475569;box-shadow:0 0 8px rgba(71,85,105,.7);" title="Индикатор арта: зелёный — вшит в сборку сайта; жёлтый — скачан авто-кэшем в устройство; красный — не вшит, грузится по ссылке; серый — ссылки нет"></span></label>
                             <input type="url" id="card-image" required oninput="renderCardPreview();nxEmbedLampRefresh('card-image')" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <div class="flex items-center gap-2 mt-1"><button type="button" onclick="nxPickFileFor('card-image')" class="px-2.5 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition" title="Выберите файл картинки на устройстве — сайт сам зальёт его в папку media/ репозитория GitHub и подставит готовую ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>Загрузить с устройства &rarr; GitHub</button><span id="card-image-upl" class="text-[10px] text-slate-500"></span></div>
                         </div>
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-music text-fuchsia-400 mr-1"></i>Музыка карточки — ссылка на mp3 <span class="text-slate-600">(необязательно)</span></label>
@@ -4200,7 +4202,8 @@ min-height:56vh}
 
         // ушли со вкладки — музыку на паузу, вернулись — продолжаем
         try {
-            document.addEventListener('visibilitychange', () => {
+            setTimeout(function () { try { nxCheckMediaMissing(); } catch (e) {} }, 8000);
+    document.addEventListener('visibilitychange', () => {
                 if (!PackMusic.session || !PackMusic.url) return;
                 if (document.hidden) { if (PackMusic.playing) { PackMusic.muted = true; PackMusic.pause(); } }
                 else if (PackMusic.muted) { PackMusic.muted = false; PackMusic.play(PackMusic.url); }
@@ -19547,6 +19550,98 @@ function nxAutoMediaPushRun(manual, done) {
     }, function () { NX_MEDIA_PUSHING = false; if (manual && btn) btn.disabled = false; if (done) done(0); });
 }
 function nxPushMediaNow() { nxAutoMediaPushRun(true); }
+// ---- b344: прямая загрузка файла с устройства в media/ репозитория ----
+function nxPickFileFor(inputId) {
+    var inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = 'image/*';
+    inp.onchange = function () { var f = inp.files && inp.files[0]; if (f) nxUploadToGithub(f, inputId); };
+    inp.click();
+}
+function nxUploadToGithub(file, inputId) {
+    if (!nxGhToken()) {
+        try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub» (Шаг 3 / автоотправка)', 'error'); } catch (e) {}
+        var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
+        return;
+    }
+    var repo = nxGhRepoName();
+    var ext = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : file.type === 'image/gif' ? '.gif' : '.jpg';
+    var base = String(file.name || '').replace(/\.[a-z0-9]+$/i, '').replace(/[^\wа-яё-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'art';
+    var name = 'card_' + Date.now().toString(36) + '_' + base + ext;
+    var lamp = document.getElementById(inputId + '-upl');
+    if (lamp) lamp.textContent = 'Заливаю ' + name + '…';
+    nxStatus('Заливаю картинку в ' + repo + '/media/…');
+    nxProgress(0.3, 'Загрузка ' + file.name + ' → media/' + name);
+    nxGhPushMedia(repo, [{ name: name, blob: file }], function () {
+        var url = 'media/' + name;
+        try { if (location.protocol === 'http:' || location.protocol === 'https:') url = location.href.replace(/[^/]*$/, '') + url; } catch (e) {}
+        var field = document.getElementById(inputId);
+        if (field) { field.value = url; try { field.dispatchEvent(new Event('input')); } catch (e) {} }
+        try { NX_EMBED_MEDIA[name] = 'media/' + name; } catch (e) {}
+        var s = nxMediaPushedSet(); s.add(name); nxMediaSavePushed(s);
+        nxProgress(1, 'Готово: media/' + name + ' в репозитории. Pages обновится за 1–2 минуты', 'ok');
+        nxStatus('Картинка загружена: media/' + name, 'ok');
+        if (lamp) lamp.textContent = '✓ media/' + name;
+        try { showToast('Картинка загружена на GitHub: media/' + name, 'success'); } catch (e) {}
+    }, function (msg) {
+        nxProgress(0, ''); nxStatus('Ошибка загрузки: ' + msg, 'err');
+        if (lamp) lamp.textContent = 'ошибка загрузки';
+        try { showToast('Ошибка загрузки на GitHub: ' + msg, 'error'); } catch (e) {}
+    });
+}
+
+// ---- b345: возврат артов из старой сборки (если media/ пуста) ----
+function nxOldBuildUrl() { return 'https://raw.githubusercontent.com/' + nxGhRepoName() + '/15b635af139ba580a5f49c38a21f88d4a54ea559/index.html'; }
+function nxCheckMediaMissing() {
+    try {
+        if (!(location.protocol === 'http:' || location.protocol === 'https:')) return;
+        fetch(nxMediaFolder() + '0001_doktor.jpg', { method: 'HEAD' }).then(function (r) {
+            var row = document.getElementById('nx-migrate-row');
+            if (r.status === 404) {
+                if (row) row.style.display = '';
+                nxStatus('В папке media/ нет картинок — нажмите «Вернуть арты из старой версии»', 'err');
+            } else if (row) row.style.display = 'none';
+        }).catch(function () {});
+    } catch (e) {}
+}
+function nxMigrateOldArts() {
+    if (!nxGhToken()) {
+        try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
+        var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
+        return;
+    }
+    var repo = nxGhRepoName();
+    nxStatus('Скачиваю старую версию сайта с артами (одноразово, ~17 МБ)…');
+    nxProgress(0.05, 'Читаю старую сборку из истории GitHub…');
+    fetch(nxOldBuildUrl(), { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(function (t) {
+        var m = 'const NX_EMBED_MEDIA = ';
+        var i = t.indexOf(m); if (i < 0) throw new Error('в старой сборке нет карты артов');
+        var j = t.indexOf('/*NX_EMBED_MEDIA_END', i); if (j < 0) throw new Error('в старой сборке нет карты артов');
+        var obj = JSON.parse(t.slice(i + m.length, j));
+        var names = Object.keys(obj);
+        nxProgress(0.35, 'Распаковываю арты: ' + names.length + '…');
+        var items = [];
+        names.forEach(function (n) {
+            try {
+                var b64 = String(obj[n]).split(',')[1] || '';
+                var bin = atob(b64); var u = new Uint8Array(bin.length);
+                for (var k = 0; k < bin.length; k++) u[k] = bin.charCodeAt(k);
+                items.push({ name: n, blob: new Blob([u], { type: 'image/jpeg' }) });
+            } catch (e) {}
+        });
+        if (!items.length) throw new Error('не удалось распаковать ни одного арта');
+        nxProgress(0.5, 'Отправляю ' + items.length + ' файлов в media/ (один коммит)…');
+        nxGhPushMedia(repo, items, function () {
+            var s = nxMediaPushedSet(); items.forEach(function (it) { s.add(it.name); }); nxMediaSavePushed(s);
+            nxProgress(1, 'Готово: ' + items.length + ' артов лежат в media/. Pages обновится за 1–2 минуты', 'ok');
+            nxStatus('Арты возвращены: ' + items.length + ' файлов в media/', 'ok');
+            try { showToast('Арты возвращены в media/ (' + items.length + ' файлов)! Pages обновится за 1–2 минуты', 'success'); } catch (e) {}
+            var row = document.getElementById('nx-migrate-row'); if (row) row.style.display = 'none';
+        }, function (msg) {
+            nxProgress(0, ''); nxStatus('Ошибка возврата артов: ' + msg, 'err');
+            try { showToast('Ошибка: ' + msg, 'error'); } catch (e) {}
+        });
+    }).catch(function (e) { nxProgress(0, ''); nxStatus('Не удалось скачать старую версию: ' + e.message, 'err'); });
+}
 try {
     nxAutoMediaLabel();
     setTimeout(function () { try { if (nxAutoMediaOn()) nxCollectPendingMedia().then(function (it) { if (it.length) nxMaybeAutoMediaPush(false); }); } catch (e) {} }, 20000);
