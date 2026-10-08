@@ -1963,6 +1963,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button type="button" id="nx-autoembed-btn" onclick="nxToggleAutoEmbed()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Когда авто-кэш соберёт ВСЕ арты: автоматически собрать и скачать файл игры со встроенными артами"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Автовшивание: выкл</button>
                     <button type="button" id="nx-3d-btn" onclick="nxToggle3d()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Если игра падает или уходит в плоский режим: переключить режим 3D (авто / выкл / вручную вкл)"><i class="fa-solid fa-cube mr-1"></i>3D: авто</button>
                 </div>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="password" id="nx-gh-token" placeholder="Токен GitHub (scope: public_repo) — хранится только на этом устройстве" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] text-slate-200 focus:outline-none focus:border-fuchsia-500">
+                    <input type="text" id="nx-gh-repo" placeholder="Репозиторий: владелец/имя (по умолчанию d3nizkeller/card-collection)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] text-slate-200 focus:outline-none focus:border-sky-500">
+                    <button type="button" onclick="nxSaveGhToken()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Сохранить токен и репозиторий в этом браузере"><i class="fa-solid fa-key mr-1"></i>Сохранить</button>
+                    <button type="button" id="nx-push-embed" onclick="nxPushEmbedded()" class="px-2.5 py-2 bg-fuchsia-700/80 hover:bg-fuchsia-600 border border-fuchsia-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Собрать файл со всеми вшитыми артами и ЗАКОММИТИТЬ его прямо в репозиторий сайта через GitHub API — без скачивания на устройство"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Вшить в сайт</button>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-wand-magic-sparkles text-fuchsia-400 mr-1"></i><b class="text-slate-300">«Вшить в сайт»:</b> игра собирает копию своего файла со всеми артами из кэша и сама пушит коммит в репозиторий (GitHub API, токен не покидает устройство). Pages пересобирается за 1–2 минуты — вшивка живёт на сайте у всех игроков. Токен создаётся на github.com → Settings → Developer settings → Personal access tokens → scope только <b>public_repo</b>.</p>
                 <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-wand-magic-sparkles text-violet-400 mr-1"></i><b class="text-slate-300">Офлайн-запас:</b> «Скачать все арты» тянет всю коллекцию в постоянный кэш устройства (нужен живой источник: оригинал или зеркало) — после этого альбомы открываются без сети. «Сборка с артами» собирает НОВЫЙ файл игры со всем скачанным внутри: залейте его вместо текущего — и арты перестанут зависеть от внешних хостов навсегда.</p>
                 <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Все игроки сайта автоматически подключены к главной комнате <span class="text-violet-300">7j8uytui</span> — вводить код не нужно.</b> Регистрация не нужна, но у комнаты есть логин и пароль: «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья уже в главной комнате автоматически (или вводят её код → «Подключить») и сразу видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». <b class="text-slate-300">Изменения отправляются в комнату автоматически</b> сразу после сохранения — даже если создатель тут же закрыл игру: правки допубликуются при следующем запуске. Участники получают обновления сами, примерно каждые 20 секунд (или мгновенно при возврате на вкладку) — без перезагрузки страницы. С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
                 <details class="text-[10px] text-slate-500">
@@ -18891,6 +18898,82 @@ function qrxApplyProgress(d) {
     checkAchievements();
     showToast('Прогресс принят! Баланс и коллекция теперь такие же, как на устройстве-отправителе', 'success');
 }
+// ---- b330: «Вшить в сайт»: коммит собранного файла прямо в репозиторий GitHub ----
+function nxGhToken() { try { return String(LS.getItem('nx_gh_token') || '').trim(); } catch (e) { return ''; } }
+function nxSaveGhToken() {
+    const i = document.getElementById('nx-gh-token');
+    const r = document.getElementById('nx-gh-repo');
+    try { LS.setItem('nx_gh_token', i ? i.value.trim() : ''); if (r) LS.setItem('nx_gh_repo', r.value.trim()); } catch (e) {}
+    try { showToast(nxGhToken() ? 'Токен сохранён (только на этом устройстве)' : 'Токен удалён', 'success'); } catch (e) {}
+}
+function nxGhApi(path, opts) {
+    const o = Object.assign({ headers: {} }, opts || {});
+    o.headers['Accept'] = 'application/vnd.github+json';
+    const t = nxGhToken(); if (t) o.headers['Authorization'] = 'Bearer ' + t;
+    return fetch('https://api.github.com' + path, o).then(r => {
+        if (!r.ok) return r.text().then(t2 => { throw new Error('HTTP ' + r.status + ' ' + String(t2).slice(0, 140)); });
+        return r.json();
+    });
+}
+function nxB64(str) { // base64 для огромных строк — кусками, без переполнения стека
+    const bytes = new TextEncoder().encode(str);
+    let bin = ''; const CH = 0x8000;
+    for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
+    return btoa(bin);
+}
+function nxGhPush(repo, content, ok, fail) {
+    nxGhApi('/repos/' + repo).then(info => {
+        const branch = info.default_branch || 'main';
+        return nxGhApi('/repos/' + repo + '/git/ref/heads/' + branch).then(ref => {
+            const headSha = ref.object.sha;
+            return nxGhApi('/repos/' + repo + '/git/commits/' + headSha).then(cm =>
+                nxGhApi('/repos/' + repo + '/git/blobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: nxB64(content), encoding: 'base64' }) }).then(bl =>
+                    nxGhApi('/repos/' + repo + '/git/trees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base_tree: cm.tree.sha, tree: [{ path: 'index.html', mode: '100644', type: 'blob', sha: bl.sha }] }) }).then(tr =>
+                        nxGhApi('/repos/' + repo + '/git/commits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'авто: вшитые арты из игры (b330)', parents: [headSha], tree: tr.sha }) }).then(nc =>
+                            nxGhApi('/repos/' + repo + '/git/refs/heads/' + branch, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sha: nc.sha }) }).then(() => ok())
+                        )
+                    )
+                )
+            );
+        });
+    }).catch(e => fail('GitHub: ' + e.message));
+}
+function nxPushEmbedded() {
+    if (!nxGhToken()) {
+        try { showToast('Сначала сохраните токен GitHub в этой строке настроек — без него игра не может закоммитить в репозиторий', 'error'); } catch (e) {}
+        const i = document.getElementById('nx-gh-token'); if (i) { i.focus(); i.scrollIntoView({ block: 'center' }); }
+        return;
+    }
+    const repo = ((document.getElementById('nx-gh-repo') || {}).value || '').trim() || (LS.getItem('nx_gh_repo') || '').trim() || 'd3nizkeller/card-collection';
+    const btn = document.getElementById('nx-push-embed'); if (btn) btn.disabled = true;
+    const say = m => { try { showToast(m, 'success'); } catch (e) {} };
+    const err = m => { if (btn) btn.disabled = false; try { showToast(m, 'error'); } catch (e) {} };
+    fetch(location.href, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error('исходник HTTP ' + r.status); return r.text(); }).then(src => {
+        const pairs = [];
+        nxAllMediaUrls().forEach(raw => { let eff = raw; try { eff = mediaUrl(raw); } catch (e) {} pairs.push({ raw: raw, eff: eff }); });
+        let out = src, pending = pairs.length, replaced = 0;
+        const finalize = () => {
+            if (!replaced) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
+            say('Файл собран (' + replaced + ' артов). Пушу коммит в GitHub…');
+            nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say('Вшито в сайт! Pages обновится за 1–2 минуты — проверьте в новой вкладке'); try { nxCrashLog('push-embed ok: ' + replaced + ' артов'); } catch (e) {} }, err);
+        };
+        const apply = (raw, dataUrl) => { if (dataUrl && out.indexOf(raw) >= 0) { out = out.split(raw).join(dataUrl); replaced++; } if (--pending === 0) finalize(); };
+        if (!pending) { finalize(); return; }
+        pairs.forEach(p => {
+            imgCacheGetBlob(p.eff).then(blob => {
+                if (!blob || !blob.size) return apply(p.raw, null);
+                const fr = new FileReader();
+                fr.onload = () => apply(p.raw, String(fr.result));
+                fr.onerror = () => apply(p.raw, null);
+                fr.readAsDataURL(blob);
+            }, () => apply(p.raw, null));
+        });
+    }).catch(e => err('Не удалось собрать файл: ' + e.message));
+}
+try {
+    const gi = document.getElementById('nx-gh-token'); if (gi) gi.value = nxGhToken();
+    const gr = document.getElementById('nx-gh-repo'); if (gr) gr.value = LS.getItem('nx_gh_repo') || '';
+} catch (e) {}
 // ---- b329: кнопка «Вшить всё»: авто-скачивание всех артов + автосборка файла ----
 function nxAutoCacheAll(done) {
     const jobs = [];
