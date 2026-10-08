@@ -1959,6 +1959,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <button type="button" id="nx-cache-all-btn" onclick="nxCacheAll()" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Скачать все арты всех паков и карт в постоянный кэш этого устройства"><i class="fa-solid fa-boxes-stacked mr-1"></i>Скачать все арты</button>
                     <button type="button" id="nx-export-btn" onclick="nxExportEmbedded()" class="px-2.5 py-2 bg-violet-700/70 hover:bg-violet-600 border border-violet-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Собрать копию файла игры со всеми закэшированными артами внутри (base64) и скачать её"><i class="fa-solid fa-file-export mr-1"></i>Сборка с артами</button>
                     <button type="button" onclick="nxShowDiag()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Показать журнал сбоев и состояние памяти — скопируйте и пришлите создателю, если игра ломается"><i class="fa-solid fa-stethoscope mr-1"></i>Диагностика</button>
+                    <button type="button" id="nx-embed-all" onclick="nxEmbedAll()" class="px-2.5 py-2 bg-fuchsia-700/70 hover:bg-fuchsia-600 border border-fuchsia-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Один клик: скачать все арты, до которых дотянется сайт, затем собрать и скачать файл игры со всем вшитым"><i class="fa-solid fa-bolt mr-1"></i>Вшить всё</button>
                     <button type="button" id="nx-autoembed-btn" onclick="nxToggleAutoEmbed()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Когда авто-кэш соберёт ВСЕ арты: автоматически собрать и скачать файл игры со встроенными артами"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Автовшивание: выкл</button>
                     <button type="button" id="nx-3d-btn" onclick="nxToggle3d()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Если игра падает или уходит в плоский режим: переключить режим 3D (авто / выкл / вручную вкл)"><i class="fa-solid fa-cube mr-1"></i>3D: авто</button>
                 </div>
@@ -18889,6 +18890,38 @@ function qrxApplyProgress(d) {
     switchTab('store');
     checkAchievements();
     showToast('Прогресс принят! Баланс и коллекция теперь такие же, как на устройстве-отправителе', 'success');
+}
+// ---- b329: кнопка «Вшить всё»: авто-скачивание всех артов + автосборка файла ----
+function nxAutoCacheAll(done) {
+    const jobs = [];
+    try {
+        nxAllMediaUrls().forEach(raw => { let eff = raw; try { eff = mediaUrl(raw); } catch (e) {} if (eff && eff.indexOf('http') === 0) jobs.push(eff); });
+    } catch (e) { done(0); return; }
+    if (!jobs.length) { done(0); return; }
+    let i = 0, fresh = 0, active = 0, finished = false;
+    const fin = () => { if (!finished && i >= jobs.length && active === 0) { finished = true; done(fresh); } };
+    const next = () => {
+        if (i >= jobs.length) { fin(); return; }
+        const u = jobs[i++]; active++;
+        const step = () => { active--; fin(); next(); };
+        imgCacheObjUrl(u).then(hit => {
+            if (hit) { step(); return; }
+            try { IMG_FAIL.delete(u); } catch (e) {}
+            imgCacheStoreFromNetwork(u).then(ou => { if (ou) fresh++; step(); }, () => step());
+        }, () => step());
+    };
+    next(); next(); next();
+}
+function nxEmbedAll() {
+    const btn = document.getElementById('nx-embed-all'); if (btn) btn.disabled = true;
+    try { showToast('«Вшить всё»: собираю все арты, до которых дотянется сайт…', 'success'); } catch (e) {}
+    nxAutoCacheAll(fresh => {
+        try { showToast('Скачано нового: ' + fresh + '. Собираю файл со вшитыми артами…', 'success'); } catch (e) {}
+        setTimeout(() => {
+            try { nxExportEmbedded(); } catch (e) {}
+            if (btn) btn.disabled = false;
+        }, 600);
+    });
 }
 // ---- b328: лампочка-индикатор у полей ссылки на арт: вшит / в кэше / нет ----
 const NX_LAMP_COLORS = { off: '#475569', emb: '#22c55e', cache: '#eab308', none: '#ef4444' };
