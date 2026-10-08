@@ -2009,8 +2009,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                         <div class="grid sm:grid-cols-2 gap-3 items-start">
                         <div class="flex flex-col gap-3 min-w-0">
 <div class="flex flex-col">
-                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на обложку (9:16)</label>
-                            <input type="url" id="pack-image" required oninput="renderPackStylePreview()" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на обложку (9:16)<span id="pack-image-lamp" style="width:10px;height:10px;border-radius:9999px;display:inline-block;vertical-align:middle;margin-left:6px;background:#475569;box-shadow:0 0 8px rgba(71,85,105,.7);" title="Индикатор арта: зелёный — вшит в сборку сайта; жёлтый — скачан авто-кэшем в устройство; красный — не вшит, грузится по ссылке; серый — ссылки нет"></span></label>
+                            <input type="url" id="pack-image" required oninput="renderPackStylePreview();nxEmbedLampRefresh('pack-image')" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                         </div>
 <div class="flex flex-col">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Цена (монеты)</label>
@@ -2310,8 +2310,8 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     
                         <div class="grid sm:grid-cols-2 gap-3 items-start">
                             <div>
-                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на картинку (9:16)</label>
-                            <input type="url" id="card-image" required oninput="renderCardPreview()" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на картинку (9:16)<span id="card-image-lamp" style="width:10px;height:10px;border-radius:9999px;display:inline-block;vertical-align:middle;margin-left:6px;background:#475569;box-shadow:0 0 8px rgba(71,85,105,.7);" title="Индикатор арта: зелёный — вшит в сборку сайта; жёлтый — скачан авто-кэшем в устройство; красный — не вшит, грузится по ссылке; серый — ссылки нет"></span></label>
+                            <input type="url" id="card-image" required oninput="renderCardPreview();nxEmbedLampRefresh('card-image')" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                         </div>
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-music text-fuchsia-400 mr-1"></i>Музыка карточки — ссылка на mp3 <span class="text-slate-600">(необязательно)</span></label>
@@ -17171,6 +17171,7 @@ function nxToggle3d() {
             document.getElementById('pack-title').value = pack.title;
             document.getElementById('pack-desc').value = pack.description;
             document.getElementById('pack-image').value = pack.image;
+            try { nxEmbedLampRefresh('pack-image'); } catch (e) {}
             document.getElementById('pack-price').value = pack.price;
             const premIn = document.getElementById('pack-premiere'); // b165
             if (premIn) premIn.value = pack.premiereAt ? schedInputValue(pack.premiereAt) : '';
@@ -17447,6 +17448,7 @@ function nxToggle3d() {
             document.getElementById('card-desc').value = card.description || '';
             document.getElementById('card-rarity').value = card.rarity;
             document.getElementById('card-image').value = card.image;
+            try { nxEmbedLampRefresh('card-image'); } catch (e) {}
             document.getElementById('card-atk').value = card.atk || '';
             document.getElementById('card-hp').value = card.hp || '';
             const musicEdit = document.getElementById('card-music');
@@ -18888,6 +18890,48 @@ function qrxApplyProgress(d) {
     checkAchievements();
     showToast('Прогресс принят! Баланс и коллекция теперь такие же, как на устройстве-отправителе', 'success');
 }
+// ---- b328: лампочка-индикатор у полей ссылки на арт: вшит / в кэше / нет ----
+const NX_LAMP_COLORS = { off: '#475569', emb: '#22c55e', cache: '#eab308', none: '#ef4444' };
+function nxLampPaint(inputId, st) {
+    const lamp = document.getElementById(inputId + '-lamp');
+    if (!lamp) return;
+    lamp.dataset.st = st;
+    const c = NX_LAMP_COLORS[st] || NX_LAMP_COLORS.off;
+    lamp.style.background = c;
+    lamp.style.boxShadow = '0 0 8px ' + c;
+}
+function nxEmbedLampRefresh(inputId) {
+    try {
+        const inp = document.getElementById(inputId);
+        if (!inp) return;
+        const url = String(inp.value || '').trim();
+        lamp_url_set: {
+            const lamp = document.getElementById(inputId + '-lamp');
+            if (lamp) lamp.dataset.url = url;
+        }
+        if (!url) { nxLampPaint(inputId, 'off'); return; }
+        let eff = url;
+        try { eff = mediaUrl(url); } catch (e) {}
+        if (eff !== url || String(eff).indexOf('data:') === 0) { nxLampPaint(inputId, 'emb'); return; } // вшит в сборку (base64 или файл media/)
+        nxLampPaint(inputId, 'none'); // пока считаем «не вшит», уточним по кэшу
+        imgCacheObjUrl(url).then(ou => {
+            const lamp = document.getElementById(inputId + '-lamp');
+            if (lamp && lamp.dataset.url !== url) return; // ссылка уже поменялась
+            nxLampPaint(inputId, ou ? 'cache' : 'none');
+        }, () => {});
+    } catch (e) {}
+}
+setInterval(() => { // пока редактор открыт — лампочки живут своей жизнью (кэш мог дотянуться)
+    try {
+        ['pack-image', 'card-image'].forEach(id => {
+            const inp = document.getElementById(id);
+            if (!inp || !inp.offsetParent) return;
+            const lamp = document.getElementById(id + '-lamp');
+            if (lamp && lamp.dataset.st === 'emb') return;
+            nxEmbedLampRefresh(id);
+        });
+    } catch (e) {}
+}, 5000);
 // ---- b324: АВТОзакачка артов по ссылкам в постоянный кэш устройства ----
 let nxAutoRunning = false;
 function nxAutoCacheOnce() {
