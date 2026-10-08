@@ -5961,7 +5961,7 @@ function nxToggle3d() {
                 // b322: если на сайте нет папки media — говорим об этом прямо, вместо тихих дыр
                 if (!window.__nxMediaMissing && u.indexOf('/media/') >= 0 && u.indexOf('http') === 0) {
                     window.__nxMediaMissing = 1;
-                    try { showToast('На сайте не найдена папка media с артами: залейте папку media рядом с index.html или замените файл на однофайловую сборку', 'error'); } catch (e) {}
+                    try { showToast('Картинка из media/ не ответила: обычно помогает обновить страницу (Ctrl+F5). Если артов нет совсем — кнопка «Вернуть арты из старой версии» в настройках', 'error'); } catch (e) {}
                 }
                 if (!u || u.indexOf('data:') === 0) return false;
                 const raw = el.__nxOrig || u;
@@ -6010,6 +6010,12 @@ function nxToggle3d() {
                     el.__nxCacheTried = 1;
                     const mem = IMG_OBJ.get(raw);
                     if (mem) { el.onerror = null; el.style.display = ''; el.src = mem; return true; }
+                    // b346: браузер мог закэшировать 404, пока Pages деплоил media/ — один ретрай мимо кэша
+                    if (!el.__nxCb && nxHttp && raw.indexOf('/media/') >= 0) {
+                        el.__nxCb = 1; el.onerror = null; el.style.display = '';
+                        el.src = raw + (raw.indexOf('?') >= 0 ? '&' : '?') + 'nxcb=' + Date.now();
+                        return true;
+                    }
                     el.__nxWait = 1; el.onerror = null;
                     imgCacheObjUrl(raw).then(ou => {
                         el.__nxWait = 0;
