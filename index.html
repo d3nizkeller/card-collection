@@ -8801,7 +8801,10 @@ function nxToggle3d() {
             try {
                 const ps0 = (document.getElementById('market-pack') || {}).value || '';
                 const as0 = (document.getElementById('market-album') || {}).value || '';
-                const sig = 'M|' + marketViewMode + '|' + marketLots().map(l => l.id + ':' + l.price + ':' + ((l.card && l.card.image) ? 1 : 0)).join(',') + '|' + ps0 + '|' + as0 + '|' +
+                const q0 = String((document.getElementById('market-search') || {}).value || '').trim().toLowerCase();
+                const rar0 = String((document.getElementById('market-rarity') || {}).value || '');
+                const sort0 = String((document.getElementById('market-sort') || {}).value || '');
+                const sig = 'M|' + marketViewMode + '|' + marketLots().map(l => l.id + ':' + l.price + ':' + ((l.card && l.card.image) ? 1 : 0)).join(',') + '|' + ps0 + '|' + as0 + '|' + q0 + '|' + rar0 + '|' + sort0 + '|' +
                     state.cards.filter(c => cardCopies(c.id) > 0).map(c => c.id + cardCopies(c.id)).join(',');
                 if (sig === window.__nxMktSig) return;
                 window.__nxMktSig = sig;
