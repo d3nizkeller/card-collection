@@ -8173,6 +8173,19 @@ function nxToggle3d() {
             showToast('🚫 Вы заблокированы администратором — ' + what + ' недоступны', 'error');
             return true;
         }
+        function nxLockModal(text) { // b334: полноэкранный лок для заблокированных/удалённых
+            let m = document.getElementById('nx-lock-modal');
+            if (!m) {
+                m = document.createElement('div');
+                m.id = 'nx-lock-modal';
+                m.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.97);display:flex;align-items:center;justify-content:center;padding:24px;';
+                m.innerHTML = '<div style="max-width:430px;text-align:center;"><i class="fa-solid fa-ban" style="font-size:56px;color:#f43f5e;"></i><div id="nx-lock-text" style="margin-top:18px;font-size:16px;font-weight:800;color:#fecdd3;line-height:1.55;"></div></div>';
+                document.body.appendChild(m);
+            }
+            const t = document.getElementById('nx-lock-text');
+            if (t) t.textContent = text;
+        }
+        function nxHideLockModal() { const m = document.getElementById('nx-lock-modal'); if (m) m.remove(); }
         function siteStatsApplyToMe() {
             try {
                 const z = Math.floor(siteStats.z[JACKPOT_CID]) || 0;
@@ -8185,6 +8198,28 @@ function nxToggle3d() {
                     }
                 }
                 const on = statsBlocked();
+                // b334: блокировка = полный лок и обнулённый баланс; флаг del или сутки с блокировки = удаление учётки
+                const bm = siteStats.b[JACKPOT_CID];
+                if (on) {
+                    if ((state.coins || 0) !== 0) { state.coins = 0; saveState(); updateCoinDisplay(); }
+                    const del = !!(bm && bm.del);
+                    const over24 = !!(bm && bm.at && (Date.now() - bm.at > 86400000));
+                    if (del || over24) {
+                        try {
+                            if (LS.getItem('nx_wiped_at') !== String(bm.at || 1)) {
+                                const dead = [];
+                                for (let i = 0; i < LS.length; i++) { const k = LS.key(i); if (k && k.indexOf('nexus_') === 0) dead.push(k); }
+                                dead.forEach(k => { try { LS.removeItem(k); } catch (e) {} });
+                                LS.setItem('nx_wiped_at', String(bm.at || 1));
+                            }
+                        } catch (e) {}
+                        nxLockModal('Учётная запись удалена' + (del ? ' администратором' : ': с момента блокировки прошли сутки') + '. Данные стёрты с устройства.', true);
+                    } else {
+                        nxLockModal('Вы заблокированы за нарушение правил игры. Покупки, ставки и вскрытия недоступны. Баланс обнулён.', false);
+                    }
+                } else {
+                    nxHideLockModal();
+                }
                 if (on !== statsWasBlocked) {
                     statsWasBlocked = on;
                     showToast(on ? '🚫 Вы заблокированы администратором: покупки и ставки отключены' : '✅ Блокировка снята — покупки и ставки снова доступны', on ? 'error' : 'success');
@@ -8241,10 +8276,24 @@ function nxToggle3d() {
                 if (statsAdminGuard()) return;
                 cid = String(cid);
                 siteStats.b[cid] = { on: on ? 1 : 0, at: Date.now() };
+                if (on) siteStats.z[cid] = Date.now(); // b334: блокировка обнуляет баланс
                 siteStatsSave();
                 try { jpSyncNow(); } catch (e) {}
                 statsRender();
                 showToast(on ? '🚫 Пользователь заблокирован — после синхронизации у него отключатся покупки и ставки' : '✅ Пользователь разблокирован', on ? 'info' : 'success');
+            });
+        }
+        function statsDeleteUser(cid, btn) { // b334: удаление: лок+обнуление+стирание с устройства+из списка
+            statsConfirm(btn, 'Удалить игрока безвозвратно?', () => {
+                if (statsAdminGuard()) return;
+                cid = String(cid);
+                siteStats.b[cid] = { on: 1, del: 1, at: Date.now() };
+                siteStats.z[cid] = Date.now();
+                delete siteStats.p[cid];
+                siteStatsSave();
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast('🗑 Игрок удалён: баланс обнулён, доступ отключён, из списка исчез', 'info');
             });
         }
         function statsRenderIfVisible() {
@@ -8281,6 +8330,14 @@ function nxToggle3d() {
                 chip('fa-book-open', 'text-violet-300', 'Альбомы собраны', (albPctN ? Math.round(albPctSum / albPctN) : 0) + '%', 'Средний прогресс альбомов по игрокам, о которых есть данные');
             const guest = (typeof cloudGuest === 'function') && cloudGuest();
             const badge = (ic, txt, cls, ttl) => '<span class="inline-flex items-center gap-1 rounded-md bg-slate-950/70 border border-slate-800 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ' + cls + '"' + (ttl ? ' title="' + String(ttl).replace(/"/g, '&quot;') + '"' : '') + '><i class="fa-solid ' + ic + '"></i>' + txt + '</span>'; // b278: + подсказка
+            try { // b334: заблокированные больше суток (или удалённые) убираются из списка
+                const nowTs = Date.now(); let chg = false;
+                for (const k in siteStats.b) {
+                    const bb = siteStats.b[k];
+                    if (bb && (bb.del || (bb.on && bb.at && nowTs - bb.at > 86400000))) { if (siteStats.p[k]) { delete siteStats.p[k]; chg = true; } }
+                }
+                if (chg) siteStatsSave();
+            } catch (e) {}
             const sorted = plist.slice().sort((a, c) => (c.bal || 0) - (a.bal || 0));
             users.innerHTML = sorted.map((e, i) => {
                 const cid = e.cid, me = cid === JACKPOT_CID;
@@ -8294,6 +8351,7 @@ function nxToggle3d() {
                         (blk
                             ? '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 0, this)" title="Снова разрешить покупки и ставки" class="px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 border border-violet-800/60 text-violet-300 hover:text-violet-200 text-[10px] font-bold transition"><i class="fa-solid fa-unlock mr-1"></i>Разблокировать</button>'
                             : '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 1, this)" title="Отключить игроку все покупки и ставки" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-800/60 text-slate-300 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-ban mr-1"></i>Заблокировать</button>') +
+                        '<button type="button" onclick="statsDeleteUser(\'' + cid + '\', this)" title="Удалить игрока: баланс обнуляется, доступ отключается, в течение суток пользователь удаляется" class="px-2 py-1 rounded-lg bg-slate-950 hover:bg-rose-950/80 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-trash-can mr-1"></i>Удалить</button>' +
                       '</span>';
                 return '<div class="rounded-xl border px-2.5 py-2 ' + (blk ? 'border-rose-900/60 bg-rose-950/20' : me ? 'border-violet-700/60 bg-violet-950/20' : 'border-slate-800 bg-slate-950/50') + '">' +
                     '<div class="flex flex-wrap items-center gap-1.5 min-w-0">' +
