@@ -18911,7 +18911,13 @@ function nxGhApi(path, opts) {
     o.headers['Accept'] = 'application/vnd.github+json';
     const t = nxGhToken(); if (t) o.headers['Authorization'] = 'Bearer ' + t;
     return fetch('https://api.github.com' + path, o).then(r => {
-        if (!r.ok) return r.text().then(t2 => { throw new Error('HTTP ' + r.status + ' ' + String(t2).slice(0, 140)); });
+        if (!r.ok) return r.text().then(t2 => {
+            let m = 'HTTP ' + r.status + ' ' + String(t2).slice(0, 140);
+            if (r.status === 403 && /not accessible by personal access token/i.test(t2)) m = 'у токена нет права ЗАПИСИ в репозиторий: classic-токен — отметьте public_repo; fine-grained — Permissions → Contents → Read and write';
+            else if (r.status === 401) m = 'GitHub не принял токен (401): проверьте, что вставили актуальный токен';
+            else if (r.status === 404) m = 'репозиторий не найден (404): проверьте поле «владелец/имя» и что токен имеет доступ к этому репо';
+            throw new Error(m);
+        });
         return r.json();
     });
 }
