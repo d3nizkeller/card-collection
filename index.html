@@ -5959,9 +5959,9 @@ function nxToggle3d() {
             try {
                 const u = String(el.src || '');
                 // b322: если на сайте нет папки media — говорим об этом прямо, вместо тихих дыр
-                if (!window.__nxMediaMissing && u.indexOf('/media/') >= 0 && u.indexOf('http') === 0) {
+                if (!window.__nxMediaMissing && u.indexOf('/media/') >= 0 && u.indexOf('http') === 0 && !el.__nxMediaProbe) {
                     window.__nxMediaMissing = 1;
-                    try { showToast('Картинка из media/ не ответила: обычно помогает обновить страницу (Ctrl+F5). Если артов нет совсем — кнопка «Вернуть арты из старой версии» в настройках', 'error'); } catch (e) {}
+                    try { window.__nxMediaMissing = 1; console.warn('[media] не ответила: ' + nxMediaKey(u)); try { nxCrashLog('media miss: ' + nxMediaKey(u)); } catch (e2) {} } catch (e) {}
                 }
                 if (!u || u.indexOf('data:') === 0) return false;
                 const raw = el.__nxOrig || u;
@@ -5985,7 +5985,7 @@ function nxToggle3d() {
                 }
                 // b343: арт мог быть уже авто-отправлен в media/ — пробуем его оттуда
                 if (!el.__nxMediaTried && nxHttp && !el.__nxThumb) {
-                    el.__nxMediaTried = 1; el.onerror = null; el.style.display = '';
+                    el.__nxMediaTried = 1; el.__nxMediaProbe = 1; el.onerror = null; el.style.display = '';
                     el.src = nxMediaFolder() + nxMediaKey(raw);
                     return true;
                 }
@@ -19600,6 +19600,7 @@ function nxOldBuildUrl() { return 'https://raw.githubusercontent.com/' + nxGhRep
 function nxCheckMediaMissing() {
     try {
         if (!(location.protocol === 'http:' || location.protocol === 'https:')) return;
+        if (!nxGhToken()) return; // b348: служебные плашки видят только владельцы с токеном
         fetch(nxMediaFolder() + '0001_doktor.jpg', { method: 'HEAD' }).then(function (r) {
             var row = document.getElementById('nx-migrate-row');
             if (r.status === 404) {
