@@ -19080,6 +19080,178 @@ function nxSayOnce(key, msg) { // одна запись в журнал на п�
         nxCrashLog(msg);
     } catch (e) {}
 }
+
+function nxProgress(pct, label, kind) { // b342-solo: видимая ШКАЛА прогресса
+    try {
+        var wrap = document.getElementById('nx-progress-wrap');
+        if (!wrap) {
+            var row = null;
+            var a = document.getElementById('nx-autoembed-btn') || document.getElementById('nx-embed-all');
+            if (a && a.parentNode && a.parentNode.parentNode) row = a.parentNode;
+            if (!row) return;
+            wrap = document.createElement('div');
+            wrap.id = 'nx-progress-wrap';
+            wrap.setAttribute('style', 'width:100%;margin-top:8px;padding:8px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;font-size:11px;color:#cbd5e1;font-family:ui-monospace,monospace');
+            wrap.innerHTML = '<div id="nx-progress-label" style="margin-bottom:5px;white-space:pre-wrap;word-break:break-word"></div>' +
+                '<div style="height:7px;background:#1e293b;border-radius:5px;overflow:hidden">' +
+                '<div id="nx-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#a21caf,#6366f1,#22c55e);transition:width .35s ease;border-radius:5px"></div></div>';
+            if (row.parentNode) row.parentNode.insertBefore(wrap, row.nextSibling);
+        }
+        var bar = document.getElementById('nx-progress-bar');
+        var lab = document.getElementById('nx-progress-label');
+        if (lab && label != null) lab.textContent = label;
+        if (bar) {
+            bar.style.width = Math.max(0, Math.min(100, Math.round((pct || 0) * 100))) + '%';
+            bar.style.background = kind === 'err' ? '#ef4444' : (kind === 'ok' ? '#22c55e' : 'linear-gradient(90deg,#a21caf,#6366f1,#22c55e)');
+        }
+        if (label) { try { console.log('[progress ' + Math.round((pct || 0) * 100) + '%] ' + label); } catch (e) {} }
+    } catch (e) {}
+}
+function nxUpdateCounts() { // b342-solo: сколько артов где лежит
+    try {
+        var mapN = 0;
+        try { mapN = Object.keys(NX_EMBED_MEDIA).length; } catch (e) {}
+        var urls = nxAllMediaUrls();
+        Promise.all(urls.map(function (u) {
+            return imgCacheObjUrl(u).then(function (x) { return x ? 1 : 0; }, function () { return 0; });
+        })).then(function (h) {
+            var dev = h.reduce(function (a, b) { return a + b; }, 0);
+            nxStatus('На этом устройстве в кэше: ' + dev + '/' + urls.length +
+                ' • В файле сайта (видно ВСЕМ игрокам): ' + mapN +
+                ' • Автовшивание: ' + (nxAutoEmbedOn() ? 'вкл' : 'выкл'), 'ok');
+        });
+    } catch (e) {}
+}
+
+function nxArtOwners() { // b342-solo: кто ссылается на арты: паки и карточки (стандарт + ваши)
+    var packs = [], cards = [];
+    try { packs = packs.concat(typeof defaultPacks !== 'undefined' ? defaultPacks : []); } catch (e) {}
+    try { cards = cards.concat(typeof defaultCards !== 'undefined' ? defaultCards : []); } catch (e) {}
+    try {
+        if (typeof state !== 'undefined' && state) {
+            packs = packs.concat(state.packs || []);
+            cards = cards.concat(state.cards || []);
+        }
+    } catch (e) {}
+    var pt = {};
+    packs.forEach(function (p) { try { pt[p.id] = p.title || p.name || p.id; } catch (e) {} });
+    var seen = {}, out = [];
+    packs.forEach(function (p) {
+        var u = String(p && p.image || '').trim();
+        if (!u) return;
+        var k = 'p|' + u;
+        if (seen[k]) return; seen[k] = 1;
+        out.push({ kind: 'pack', name: p.title || p.name || p.id, pack: '', url: u });
+    });
+    cards.forEach(function (c) {
+        var u = String(c && c.image || '').trim();
+        if (!u) return;
+        var k = 'c|' + u;
+        if (seen[k]) return; seen[k] = 1;
+        out.push({ kind: 'card', name: c.name || c.id, pack: pt[c.packId] || '', url: u });
+    });
+    return out;
+}
+function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + нет кэша -> сказать, ГДЕ именно
+    try {
+        var items = nxArtOwners();
+        var total = items.length;
+        if (!total) return;
+        var problems = [], doneN = 0;
+        nxProgress(0, 'Проверяю ссылки карточек и паков: 0/' + total);
+        var fin = function () {
+            doneN++;
+            if (doneN % 4 === 0 || doneN === total) nxProgress(doneN / total, 'Проверяю ссылки карточек и паков: ' + doneN + '/' + total);
+            if (doneN < total) return;
+            if (!problems.length) {
+                nxProgress(1, 'Ссылки: все ' + total + ' паков/карточек — картинки рабочие или в кэше', 'ok');
+                if (!silent) { try { showToast('Ссылки на картинки: всё в порядке (' + total + ')', 'success'); } catch (e) {} }
+                return;
+            }
+            var msg = 'Нет картинок (' + problems.length + '): ' + problems.slice(0, 6).join('; ') + (problems.length > 6 ? '… и ещё ' + (problems.length - 6) : '');
+            nxProgress(1, msg, 'err');
+            try { nxCrashLog('check-links: ' + msg); } catch (e) {}
+            if (!silent) { try { showToast(msg, 'error'); } catch (e) {} }
+            else { nxSayOnce('links_bad_' + problems.length, msg); }
+            nxStatus(msg + '  →  замените ссылку или добавьте арт в кэш («Скачать все арты»)', 'err');
+        };
+        items.forEach(function (it) {
+            var eff = it.url;
+            try { eff = mediaUrl(it.url); } catch (e) {}
+            var where = it.kind === 'pack'
+                ? 'пак «' + it.name + '»'
+                : 'карточка «' + it.name + '»' + (it.pack ? ' из пака «' + it.pack + '»' : '');
+            if (String(eff).indexOf('data:') === 0) { // вшито в файл: проверяем читаемость
+                var im = new Image();
+                im.onload = function () { fin(); };
+                im.onerror = function () { problems.push(where + ': вшитая картинка битая'); fin(); };
+                im.src = eff;
+                return;
+            }
+            imgCacheObjUrl(eff).then(function (ou) {
+                if (ou) { fin(); return; } // есть в кэше устройства — покажем из кэша
+                // кэша нет: жива ли ссылка (таймаут 12 сек на «молча мертвый» хост)
+                var done = false;
+                var t = setTimeout(function () {
+                    if (done) return; done = true;
+                    problems.push(where + ': нет кэша, ссылка молчит');
+                    fin();
+                }, 12000);
+                var im2 = new Image();
+                im2.onload = function () { if (done) return; done = true; clearTimeout(t); fin(); };
+                im2.onerror = function () {
+                    if (done) return; done = true; clearTimeout(t);
+                    problems.push(where + ': ссылка не работает и нет кэша');
+                    fin();
+                };
+                im2.src = eff;
+            }, function () { fin(); });
+        });
+    } catch (e) {}
+}
+
+function nxCheckArts(silent) { // b342-solo: проверить, что все картинки реально читаются
+    try {
+        var keys = [];
+        try { keys = Object.keys(NX_EMBED_MEDIA); } catch (e) {}
+        var total = keys.length, ok = 0, bad = [], doneN = 0;
+        if (!total) { nxProgress(1, 'В файле нет встроенных картинок', 'err'); return; }
+        nxProgress(0, 'Проверяю картинки: 0/' + total);
+        var fin = function () {
+            doneN++;
+            nxProgress(doneN / total, 'Проверяю картинки: ' + doneN + '/' + total);
+            if (doneN < total) return;
+            var msg = 'Картинки: ' + ok + '/' + total + ' читаются' +
+                (bad.length ? '; битых: ' + bad.length + ' (' + bad.slice(0, 3).join(', ') + ')' : ' — все целы');
+            nxProgress(1, msg, bad.length ? 'err' : 'ok');
+            try { nxCrashLog('check-arts: ' + msg); } catch (e) {}
+            if (!silent) { try { showToast(msg, bad.length ? 'error' : 'success'); } catch (e) {} }
+            nxUpdateCounts();
+            try { nxCheckLinks(silent); } catch (e) {}
+        };
+        keys.forEach(function (k) {
+            var im = new Image();
+            im.onload = function () { ok++; fin(); };
+            im.onerror = function () { bad.push(k); fin(); };
+            im.src = NX_EMBED_MEDIA[k];
+        });
+    } catch (e) {}
+}
+function nxBuildProgressUI() { // кнопка «Проверить картинки» рядом с остальными
+    try {
+        var a = document.getElementById('nx-autoembed-btn');
+        if (!a || !a.parentNode || document.getElementById('nx-check-arts-btn')) return;
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.id = 'nx-check-arts-btn';
+        b.className = a.className;
+        b.innerHTML = '<i class="fa-solid fa-images mr-1"></i>Проверить картинки';
+        b.title = 'Проверить, что все встроенные картинки читаются, и показать, сколько артов в кэше устройства и в файле сайта';
+        b.onclick = function () { nxCheckArts(false); };
+        a.parentNode.insertBefore(b, a.nextSibling);
+    } catch (e) {}
+}
+
 function nxAutoEmbedOn() { // b342: эта функция была ПОТЕРЯНА — из-за неё автовшивание молча не работало
     try { return LS.getItem('nx_autoembed') === '1'; } catch (e) { return false; }
 }
@@ -19168,16 +19340,17 @@ function nxPushEmbedded(auto) {
     const say = m => { try { showToast(m, 'success'); } catch (e) {} };
     const err = m => { if (btn) btn.disabled = false; try { showToast(m, 'error'); } catch (e) {} nxStatus(m, 'err'); };
     nxSrcGet().then(src => { // b342-solo: было fetch(location.href,{cache:'no-store'}) — перезакачка всего файла каждый раз
+        nxProgress(0.15, 'Читаю исходник и список артов…');
         const pairs = [];
         nxAllMediaUrls().forEach(raw => { let eff = raw; try { eff = mediaUrl(raw); } catch (e) {} pairs.push({ raw: raw, eff: eff }); });
         let out = src, pending = pairs.length, replaced = 0; const extras = []; // b340
-        const finalize = () => { out = nxInjectExtras(out, extras); // b340
+        const finalize = () => { nxProgress(0.65, 'Собираю файл с артами…'); out = nxInjectExtras(out, extras); // b340
             if (!replaced && !extras.length) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
             say((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов). Пушу коммит в GitHub…');
             nxStatus((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов), загружаю ~' + (out.length / 1048576).toFixed(1) + ' МБ в GitHub…');
             nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say((auto ? 'Автовшивание: ' : '') + 'вшито в сайт! Pages обновится за 1–2 минуты'); try { nxCrashLog('push-embed ok: ' + (replaced + extras.length) + ' артов'); } catch (e) {} nxStatus('Готово: вшито ' + (replaced + extras.length) + ' артов. Pages обновится за 1–2 минуты', 'ok'); }, err);
         };
-        const apply = (raw, dataUrl) => { if (dataUrl) { if (out.indexOf(raw) >= 0) { out = out.split(raw).join(dataUrl); replaced++; } try { const bb = nxMediaKey(raw); if (bb) extras.push([bb, dataUrl]); } catch (e) {} } if (--pending === 0) finalize(); };
+        const apply = (raw, dataUrl) => { if (dataUrl) { if (out.indexOf(raw) >= 0) { out = out.split(raw).join(dataUrl); replaced++; } try { const bb = nxMediaKey(raw); if (bb) extras.push([bb, dataUrl]); } catch (e) {} } if (pending > 0) nxProgress(0.15 + 0.45 * (1 - pending / Math.max(1, pairs.length)), 'Достаю арты из кэша устройства: ' + (pairs.length - pending) + '/' + pairs.length); if (--pending === 0) finalize(); };
         if (!pending) { finalize(); return; }
         pairs.forEach(p => {
             imgCacheGetBlob(p.eff).then(blob => {
@@ -19342,6 +19515,7 @@ function nxAutoCacheOnce() {
         if (i >= jobs.length || done >= CAP) {
             nxAutoRunning = false;
             if (fresh) { try { showToast('Автокэш артов: +' + fresh + ' сохранено в устройстве', 'success'); } catch (e) {} }
+            try { nxUpdateCounts(); } catch (e) {}
             // b327: хост ожил и всё дотянулось — радуемся один раз
             try {
                 if (fresh && !window.__nxAllCached && i >= jobs.length) {
@@ -19358,6 +19532,7 @@ function nxAutoCacheOnce() {
             } catch (e) { try { nxCrashLog('autoembed-after-cache: ' + ((e && e.message) || e)); } catch (e2) {} }
             return;
         }
+        nxProgress(done / Math.max(1, jobs.length), 'Автокэш картинок: ' + done + '/' + jobs.length + ' (новых за подход: ' + fresh + ')');
         const u = jobs[i++];
         imgCacheObjUrl(u).then(hit => {
             if (hit) { done++; step(); return; }
@@ -19374,6 +19549,9 @@ window.addEventListener('online', () => { setTimeout(() => { try { nxAutoCacheOn
 const NX_BUILD = 'b323-2026-10-07';
 try { nx3dBtnInit(); } catch (e) {}
 try { nxAutoEmbedUI(); } catch (e) {}
+try { nxBuildProgressUI(); } catch (e) {}
+setTimeout(function () { try { nxCheckArts(true); } catch (e) {} }, 9000);
+setTimeout(function () { try { nxUpdateCounts(); } catch (e) {} }, 3000);
 function nxCrashLog(msg) {
     try {
         const arr = JSON.parse(LS.getItem('nx_crash_log') || '[]');
