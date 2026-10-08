@@ -19158,6 +19158,15 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
         var total = items.length;
         if (!total) return;
         var problems = [], doneN = 0;
+        // если у того же имени уже есть рабочая картинка (вшита или в кэше) —
+        // дубль с мёртвой ссылкой не считаем ошибкой: пользователь видит картинку
+        var good = {};
+        items.forEach(function (it) {
+            var e = it.url;
+            try { e = mediaUrl(it.url); } catch (e2) {}
+            if (String(e).indexOf('data:') === 0) { good[it.name] = 1; return; }
+            try { if (NX_EMBED_MEDIA[nxMediaKey(e)]) good[it.name] = 1; } catch (e2) {}
+        });
         nxProgress(0, 'Проверяю ссылки карточек и паков: 0/' + total);
         var fin = function () {
             doneN++;
@@ -19184,7 +19193,7 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
             if (String(eff).indexOf('data:') === 0) { // вшито в файл: проверяем читаемость
                 var im = new Image();
                 im.onload = function () { fin(); };
-                im.onerror = function () { problems.push(where + ': вшитая картинка битая'); fin(); };
+                im.onerror = function () { if (!good[it.name]) problems.push(where + ': вшитая картинка битая'); fin(); };
                 im.src = eff;
                 return;
             }
@@ -19194,14 +19203,14 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
                 var done = false;
                 var t = setTimeout(function () {
                     if (done) return; done = true;
-                    problems.push(where + ': нет кэша, ссылка молчит');
+                    if (!good[it.name]) problems.push(where + ': нет кэша, ссылка молчит');
                     fin();
                 }, 12000);
                 var im2 = new Image();
                 im2.onload = function () { if (done) return; done = true; clearTimeout(t); fin(); };
                 im2.onerror = function () {
                     if (done) return; done = true; clearTimeout(t);
-                    problems.push(where + ': ссылка не работает и нет кэша');
+                    if (!good[it.name]) problems.push(where + ': ссылка не работает и нет кэша');
                     fin();
                 };
                 im2.src = eff;
