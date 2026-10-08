@@ -1956,22 +1956,34 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <input type="url" id="cloud-media-base" placeholder="Зеркало артов и музыки: URL папки с теми же файлами (если основной хост не отвечает)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] text-slate-200 focus:outline-none focus:border-fuchsia-500">
                     <button type="button" onclick="saveMediaBase()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Загружать арты и музыку с зеркала вместо основного хоста"><i class="fa-solid fa-images mr-1"></i>Сохранить зеркало</button>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <button type="button" id="nx-cache-all-btn" onclick="nxCacheAll()" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Скачать все арты всех паков и карт в постоянный кэш этого устройства"><i class="fa-solid fa-boxes-stacked mr-1"></i>Скачать все арты</button>
-                    <button type="button" id="nx-export-btn" onclick="nxExportEmbedded()" class="px-2.5 py-2 bg-violet-700/70 hover:bg-violet-600 border border-violet-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Собрать копию файла игры со всеми закэшированными артами внутри (base64) и скачать её"><i class="fa-solid fa-file-export mr-1"></i>Сборка с артами</button>
-                    <button type="button" onclick="nxShowDiag()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Показать журнал сбоев и состояние памяти — скопируйте и пришлите создателю, если игра ломается"><i class="fa-solid fa-stethoscope mr-1"></i>Диагностика</button>
-                    <button type="button" id="nx-embed-all" onclick="nxEmbedAll()" class="px-2.5 py-2 bg-fuchsia-700/70 hover:bg-fuchsia-600 border border-fuchsia-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Один клик: скачать все арты, до которых дотянется сайт, затем собрать и скачать файл игры со всем вшитым"><i class="fa-solid fa-bolt mr-1"></i>Вшить всё</button>
-                    <button type="button" id="nx-autoembed-btn" onclick="nxToggleAutoEmbed()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Когда авто-кэш соберёт ВСЕ арты: автоматически собрать и скачать файл игры со встроенными артами"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Автовшивание: выкл</button>
-                    <button type="button" id="nx-3d-btn" onclick="nxToggle3d()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Если игра падает или уходит в плоский режим: переключить режим 3D (авто / выкл / вручную вкл)"><i class="fa-solid fa-cube mr-1"></i>3D: авто</button>
+                <div class="rounded-xl border border-fuchsia-700/40 bg-fuchsia-950/15 p-3 space-y-2">
+                    <p class="text-[12px] font-bold text-fuchsia-200"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Картинки сайта &rarr; GitHub (папка media/)</p>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <button type="button" id="nx-cache-all-btn" onclick="nxCacheAll()" class="flex-1 px-3 py-2.5 bg-emerald-700/80 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[12px] font-bold text-white transition" title="Шаг 1: скачать арты всех карт и паков в память этого браузера"><i class="fa-solid fa-download mr-1"></i>Шаг 1. Скачать все картинки</button>
+                        <button type="button" id="nx-check-arts-btn" onclick="try{nxCheckArts(false)}catch(e){}" class="flex-1 px-3 py-2.5 bg-sky-700/80 hover:bg-sky-600 border border-sky-500/40 rounded-lg text-[12px] font-bold text-white transition" title="Шаг 2: убедиться, что все скачанные картинки открываются"><i class="fa-solid fa-magnifying-glass mr-1"></i>Шаг 2. Проверить</button>
+                        <button type="button" id="nx-push-media-btn" onclick="nxPushMediaNow()" class="flex-1 px-3 py-2.5 bg-fuchsia-700/80 hover:bg-fuchsia-600 border border-fuchsia-500/40 rounded-lg text-[12px] font-bold text-white transition" title="Шаг 3: отправить картинки из кэша в папку media/ репозитория (одним коммитом)"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Шаг 3. Отправить на GitHub</button>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2">
+                        <button type="button" id="nx-automedia-btn" onclick="nxToggleAutoMedia()" class="flex-1 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[12px] font-bold text-slate-100 transition" title="Сайт САМ отправляет каждую новую картинку на GitHub, как только она попала в кэш — кнопки не нужны"></button>
+                        <input type="password" id="nx-gh-token" placeholder="Токен GitHub (classic: галочка public_repo)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[12px] text-slate-200 focus:outline-none focus:border-fuchsia-500">
+                        <input type="text" id="nx-gh-repo" placeholder="Репозиторий: владелец/имя" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[12px] text-slate-200 focus:outline-none focus:border-sky-500">
+                        <button type="button" onclick="nxSaveGhToken()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[12px] font-bold text-slate-200 transition shrink-0" title="Запомнить токен и репозиторий в этом браузере"><i class="fa-solid fa-floppy-disk mr-1"></i>Сохранить</button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 leading-snug"><i class="fa-solid fa-robot text-emerald-400 mr-1"></i><b class="text-slate-200">Автоотправка:</b> включите тумблер — и сайт сам, без кнопок, отправит каждую новую картинку из кэша в папку <b>media/</b> вашего репозитория (не чаще раза в 10 минут). GitHub Pages раздаст её всем игрокам за 1–2 минуты. Токен хранится только в этом браузере.</p>
+                    <div id="nx-status-bar" style="display:none;margin-top:2px;padding:6px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;color:#cbd5e1;font-size:11px;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word"></div>
+                    <div id="nx-progress-wrap" style="display:none;width:100%;padding:8px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;font-size:11px;color:#cbd5e1;font-family:ui-monospace,monospace"><div id="nx-progress-label" style="margin-bottom:5px;white-space:pre-wrap;word-break:break-word"></div><div style="height:7px;background:#1e293b;border-radius:5px;overflow:hidden"><div id="nx-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#a21caf,#6366f1,#22c55e);transition:width .35s ease;border-radius:5px"></div></div></div>
+                    <details class="text-[10px] text-slate-500">
+                        <summary class="cursor-pointer hover:text-slate-300 transition">Служебные кнопки (обычно не нужны)</summary>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <button type="button" id="nx-export-btn" onclick="nxExportEmbedded()" class="px-2.5 py-2 bg-violet-700/70 hover:bg-violet-600 border border-violet-500/40 rounded-lg text-[11px] font-semibold text-white transition" title="Собрать копию файла игры со всеми кэшированными артами внутри (base64) и скачать её"><i class="fa-solid fa-file-export mr-1"></i>Скачать файл-сборку</button>
+                            <button type="button" id="nx-embed-all" onclick="nxEmbedAll()" class="px-2.5 py-2 bg-fuchsia-700/70 hover:bg-fuchsia-600 border border-fuchsia-500/40 rounded-lg text-[11px] font-semibold text-white transition" title="Один клик: скачать все арты и сразу собрать файл-сборку"><i class="fa-solid fa-bolt mr-1"></i>Скачать арты + собрать файл</button>
+                            <button type="button" id="nx-autoembed-btn" onclick="nxToggleAutoEmbed()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition" title="Авто-сборка и авто-пуш файла-сборки (для продвинутых)"></button>
+                            <button type="button" id="nx-push-embed" onclick="nxPushEmbedded()" class="px-2.5 py-2 bg-fuchsia-700/80 hover:bg-fuchsia-600 border border-fuchsia-500/40 rounded-lg text-[11px] font-semibold text-white transition" title="Собрать файл со вшитыми артами и закоммитить его в репозиторий"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Вшить файл в сайт</button>
+                            <button type="button" onclick="nxShowDiag()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition" title="Журнал сбоев и состояние памяти — скопировать и прислать создателю"><i class="fa-solid fa-stethoscope mr-1"></i>Диагностика</button>
+                            <button type="button" id="nx-3d-btn" onclick="nxToggle3d()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition" title="Режим 3D: авто / выкл / вручную"><i class="fa-solid fa-cube mr-1"></i>3D: авто</button>
+                        </div>
+                    </details>
                 </div>
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="password" id="nx-gh-token" placeholder="Токен GitHub (scope: public_repo) — хранится только на этом устройстве" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] text-slate-200 focus:outline-none focus:border-fuchsia-500">
-                    <input type="text" id="nx-gh-repo" placeholder="Репозиторий: владелец/имя (по умолчанию d3nizkeller/card-collection)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] text-slate-200 focus:outline-none focus:border-sky-500">
-                    <button type="button" onclick="nxSaveGhToken()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition shrink-0" title="Сохранить токен и репозиторий в этом браузере"><i class="fa-solid fa-key mr-1"></i>Сохранить</button>
-                    <button type="button" id="nx-push-embed" onclick="nxPushEmbedded()" class="px-2.5 py-2 bg-fuchsia-700/80 hover:bg-fuchsia-600 border border-fuchsia-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Собрать файл со всеми вшитыми артами и ЗАКОММИТИТЬ его прямо в репозиторий сайта через GitHub API — без скачивания на устройство"><i class="fa-solid fa-cloud-arrow-up mr-1"></i>Вшить в сайт</button>
-                </div>
-                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-wand-magic-sparkles text-fuchsia-400 mr-1"></i><b class="text-slate-300">«Вшить в сайт»:</b> игра собирает копию своего файла со всеми артами из кэша и сама пушит коммит в репозиторий (GitHub API, токен не покидает устройство). Pages пересобирается за 1–2 минуты — вшивка живёт на сайте у всех игроков. Токен создаётся на github.com → Settings → Developer settings → Personal access tokens → scope только <b>public_repo</b>.</p>
-                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-wand-magic-sparkles text-violet-400 mr-1"></i><b class="text-slate-300">Офлайн-запас:</b> «Скачать все арты» тянет всю коллекцию в постоянный кэш устройства (нужен живой источник: оригинал или зеркало) — после этого альбомы открываются без сети. «Сборка с артами» собирает НОВЫЙ файл игры со всем скачанным внутри: залейте его вместо текущего — и арты перестанут зависеть от внешних хостов навсегда.</p>
                 <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i><b class="text-slate-300">Все игроки сайта автоматически подключены к главной комнате <span class="text-violet-300">7j8uytui</span> — вводить код не нужно.</b> Регистрация не нужна, но у комнаты есть логин и пароль: «Создать комнату» → придумайте <b class="text-slate-300">логин и пароль комнаты</b> → «Опубликовать». Друзья уже в главной комнате автоматически (или вводят её код → «Подключить») и сразу видят ваши паки. <b class="text-slate-300">Создатель — тот, кто знает логин и пароль:</b> только он редактирует паки и карточки и публикует изменения, остальные — участники в режиме «только просмотр». <b class="text-slate-300">Изменения отправляются в комнату автоматически</b> сразу после сохранения — даже если создатель тут же закрыл игру: правки допубликуются при следующем запуске. Участники получают обновления сами, примерно каждые 20 секунд (или мгновенно при возврате на вкладку) — без перезагрузки страницы. С другого устройства или после очистки данных браузера нажмите «Я создатель — войти» и введите логин и пароль комнаты. В облаке хранится только хэш пароля (не сам пароль), поэтому <b class="text-slate-300">забытый пароль восстановить нельзя</b> — запишите его.</p>
                 <details class="text-[10px] text-slate-500">
                     <summary class="cursor-pointer hover:text-slate-300 transition">Продвинутый режим: своя база Firebase (необязательно — простое хранилище работает и так)</summary>
@@ -5762,6 +5774,7 @@ function nxToggle3d() {
                     if (!blob || !blob.size || blob.size > IMG_CACHE_MAX_BLOB) return null;
                     return imgCachePut(url, blob).then(ok => {
                         if (!ok) return null;
+                        try { nxNoteCachedMedia(url); } catch (e) {}
                         try { const ou = URL.createObjectURL(blob); imgCacheTouch(url, ou); return ou; } catch (e) { return null; }
                     });
                 })
@@ -5965,6 +5978,12 @@ function nxToggle3d() {
                         // успевали прогрузиться до следующего ретрая
                         el.src = raw;
                     }, 600 * n);
+                    return true;
+                }
+                // b343: арт мог быть уже авто-отправлен в media/ — пробуем его оттуда
+                if (!el.__nxMediaTried && nxHttp && !el.__nxThumb) {
+                    el.__nxMediaTried = 1; el.onerror = null; el.style.display = '';
+                    el.src = nxMediaFolder() + nxMediaKey(raw);
                     return true;
                 }
                 const b = mediaBase();
@@ -19100,6 +19119,7 @@ function nxProgress(pct, label, kind) { // b342-solo: видимая ШКАЛА 
                 '<div id="nx-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#a21caf,#6366f1,#22c55e);transition:width .35s ease;border-radius:5px"></div></div>';
             if (row.parentNode) row.parentNode.insertBefore(wrap, row.nextSibling);
         }
+        try { wrap.style.display = 'block'; } catch (e) {}
         var bar = document.getElementById('nx-progress-bar');
         var lab = document.getElementById('nx-progress-label');
         if (lab && label != null) lab.textContent = label;
@@ -19378,6 +19398,160 @@ function nxPushEmbedded(auto) {
 try {
     const gi = document.getElementById('nx-gh-token'); if (gi) gi.value = nxGhToken();
     const gr = document.getElementById('nx-gh-repo'); if (gr) gr.value = LS.getItem('nx_gh_repo') || '';
+} catch (e) {}
+// ---- b343-media: АВТООТПРАВКА картинок в папку media/ репозитория ----
+function nxMediaFolder() { // папка media/ рядом с index.html на GitHub Pages
+    try { return String(location.pathname || '/').replace(/[^/]*$/, '') + 'media/'; } catch (e) { return 'media/'; }
+}
+function nxAutoMediaOn() {
+    try {
+        if (LS.getItem('nx_automedia') == null) return !!nxGhToken(); // токен уже есть -> авто включено по умолчанию
+        return LS.getItem('nx_automedia') === '1';
+    } catch (e) { return false; }
+}
+function nxAutoMediaLabel() {
+    var b = document.getElementById('nx-automedia-btn'); if (!b) return;
+    var on = nxAutoMediaOn();
+    b.innerHTML = '<i class="fa-solid fa-robot mr-1"></i>Автоотправка на GitHub: ' + (on ? 'ВКЛ' : 'выкл');
+    try { b.style.borderColor = on ? '#047857' : '#475569'; b.style.background = on ? 'rgba(4,120,87,.35)' : ''; } catch (e) {}
+}
+function nxToggleAutoMedia() {
+    try { LS.setItem('nx_automedia', nxAutoMediaOn() ? '0' : '1'); } catch (e) {}
+    nxAutoMediaLabel();
+    try { showToast(nxAutoMediaOn() ? 'Автоотправка ВКЛ: новые картинки сами уйдут в media/ репозитория' : 'Автоотправка выключена', 'success'); } catch (e) {}
+    if (nxAutoMediaOn()) nxMaybeAutoMediaPush(true);
+}
+var NX_MEDIA_PUSHED = null, NX_MEDIA_PUSHING = false, NX_MEDIA_LAST = 0, NX_MEDIA_TIMER = 0;
+function nxMediaPushedSet() {
+    if (NX_MEDIA_PUSHED) return NX_MEDIA_PUSHED;
+    try { NX_MEDIA_PUSHED = new Set(JSON.parse(LS.getItem('nx_gh_media_pushed') || '[]')); } catch (e) { NX_MEDIA_PUSHED = new Set(); }
+    return NX_MEDIA_PUSHED;
+}
+function nxMediaSavePushed(set) { try { LS.setItem('nx_gh_media_pushed', JSON.stringify(Array.from(set).slice(-400))); } catch (e) {} }
+function nxNoteCachedMedia(url) { // хук из кэша: пришла новая картинка
+    try {
+        if (!url || String(url).indexOf('http') !== 0) return;
+        var n = nxMediaKey(url); if (!n || NX_EMBED_MEDIA[n]) return;
+        if (nxMediaPushedSet().has(n)) return;
+        nxMaybeAutoMediaPush(false);
+    } catch (e) {}
+}
+function nxGhRepoName() {
+    return ((document.getElementById('nx-gh-repo') || {}).value || '').trim() ||
+        (function () { try { return String(LS.getItem('nx_gh_repo') || '').trim(); } catch (e) { return ''; } })() ||
+        'd3nizkeller/card-collection';
+}
+function nxCollectPendingMedia() { // какие картинки лежат в кэше, но ещё не отправлены
+    var set = nxMediaPushedSet(), pairs = [];
+    try {
+        nxAllMediaUrls().forEach(function (raw) {
+            var eff = raw; try { eff = mediaUrl(raw); } catch (e) {}
+            if (String(eff).indexOf('http') !== 0) return;
+            var n = nxMediaKey(eff); if (!n || NX_EMBED_MEDIA[n] || set.has(n)) return;
+            if (pairs.some(function (p) { return p.name === n; })) return;
+            pairs.push({ name: n, url: eff });
+        });
+    } catch (e) {}
+    var out = [], i = 0;
+    return new Promise(function (res) {
+        var step = function () {
+            if (i >= pairs.length) { res(out); return; }
+            var p = pairs[i++];
+            try {
+                imgCacheGetBlob(p.url).then(function (b) { if (b && b.size) out.push({ name: p.name, blob: b }); step(); }, function () { step(); });
+            } catch (e) { step(); }
+        };
+        step();
+    });
+}
+function nxMaybeAutoMediaPush(force) { // дебаунс + троттлинг: не чаще раза в 10 минут
+    try {
+        if (!nxAutoMediaOn() || !nxGhToken() || !navigator.onLine || NX_MEDIA_PUSHING) return;
+        if (!force && document.hidden) return; // браузер глушит фоновую работу
+        if (!force && Date.now() - NX_MEDIA_LAST < 10 * 60 * 1000) return;
+        if (NX_MEDIA_TIMER) return;
+        NX_MEDIA_TIMER = setTimeout(function () { NX_MEDIA_TIMER = 0; nxAutoMediaPushRun(false); }, force ? 4000 : 90000);
+    } catch (e) {}
+}
+function nxGhPushMedia(repo, items, ok, fail) { // один коммит: все новые файлы в media/
+    function blobOf(it) {
+        return it.blob.arrayBuffer().then(function (ab) {
+            var u = new Uint8Array(ab), bin = '';
+            for (var i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+            return btoa(bin);
+        }).then(function (b64) {
+            return nxGhApi('/repos/' + repo + '/git/blobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: b64, encoding: 'base64' }) }).then(function (bl) { return bl.sha; });
+        });
+    }
+    var attempt = function (n) {
+        nxGhApi('/repos/' + repo).then(function (info) {
+            var branch = info.default_branch || 'main';
+            return nxGhApi('/repos/' + repo + '/git/ref/heads/' + branch).then(function (ref) {
+                var head = ref.object.sha;
+                return nxGhApi('/repos/' + repo + '/git/commits/' + head).then(function (cm) {
+                    var chain = Promise.resolve([]);
+                    items.forEach(function (it) {
+                        chain = chain.then(function (acc) {
+                            return blobOf(it).then(function (sh) { acc.push({ path: 'media/' + it.name, mode: '100644', type: 'blob', sha: sh }); return acc; });
+                        });
+                    });
+                    return chain.then(function (entries) {
+                        return nxGhApi('/repos/' + repo + '/git/trees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base_tree: cm.tree.sha, tree: entries }) }).then(function (tr) {
+                            return nxGhApi('/repos/' + repo + '/git/commits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'авто: картинки из кэша игры -> media/ (' + items.length + ')', parents: [head], tree: tr.sha }) }).then(function (nc) {
+                                return nxGhApi('/repos/' + repo + '/git/refs/heads/' + branch, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sha: nc.sha }) });
+                            });
+                        });
+                    });
+                });
+            });
+        }).then(function () { ok(); }).catch(function (e) {
+            if (n < 3 && /not a fast forward/i.test(String(e && e.message))) { setTimeout(function () { attempt(n + 1); }, 1500); return; }
+            fail(String((e && e.message) || e));
+        });
+    };
+    attempt(1);
+}
+function nxAutoMediaPushRun(manual, done) {
+    if (NX_MEDIA_PUSHING) { if (done) done(0); return; }
+    if (!nxGhToken()) {
+        if (manual) { try { showToast('Сначала сохраните токен GitHub в поле ниже — без него сайт не может отправить файлы', 'error'); } catch (e) {} var ti = document.getElementById('nx-gh-token'); if (ti) { ti.focus(); ti.scrollIntoView({ block: 'center' }); } }
+        return;
+    }
+    var repo = nxGhRepoName();
+    var btn = document.getElementById('nx-push-media-btn'); if (manual && btn) btn.disabled = true;
+    nxStatus((manual ? '' : 'Автоотправка: ') + 'смотрю, какие картинки уже в кэше…');
+    nxCollectPendingMedia().then(function (items) {
+        if (!items.length) {
+            if (manual) { nxStatus('Отправлять нечего: новых картинок в кэше нет. Нажмите «Шаг 1. Скачать все картинки»', 'err'); try { showToast('В кэше нет новых картинок для отправки', 'error'); } catch (e) {} }
+            else nxStatus('');
+            if (manual && btn) btn.disabled = false;
+            if (done) done(0);
+            return;
+        }
+        NX_MEDIA_PUSHING = true;
+        nxProgress(0.15, 'Отправляю ' + items.length + ' картинок в media/ репозитория…');
+        nxGhPushMedia(repo, items, function () {
+            NX_MEDIA_PUSHING = false; NX_MEDIA_LAST = Date.now();
+            var s = nxMediaPushedSet(); items.forEach(function (it) { s.add(it.name); }); nxMediaSavePushed(s);
+            nxProgress(1, 'Готово: ' + items.length + ' картинок ушло в media/. GitHub Pages обновится за 1–2 минуты', 'ok');
+            nxStatus('Отправлено в ' + repo + '/media/: ' + items.map(function (x) { return x.name; }).join(', '), 'ok');
+            try { showToast('Картинки отправлены на GitHub (' + items.length + ' шт. в media/)', 'success'); } catch (e) {}
+            if (manual && btn) btn.disabled = false;
+            if (done) done(items.length);
+        }, function (msg) {
+            NX_MEDIA_PUSHING = false;
+            nxProgress(0, ''); nxStatus('Ошибка отправки на GitHub: ' + msg, 'err');
+            if (manual) { try { showToast('Ошибка отправки: ' + msg, 'error'); } catch (e) {} if (btn) btn.disabled = false; }
+            if (done) done(0);
+        });
+    }, function () { NX_MEDIA_PUSHING = false; if (manual && btn) btn.disabled = false; if (done) done(0); });
+}
+function nxPushMediaNow() { nxAutoMediaPushRun(true); }
+try {
+    nxAutoMediaLabel();
+    setTimeout(function () { try { if (nxAutoMediaOn()) nxCollectPendingMedia().then(function (it) { if (it.length) nxMaybeAutoMediaPush(false); }); } catch (e) {} }, 20000);
+    setInterval(function () { try { if (!nxAutoMediaOn() || document.hidden) return; nxCollectPendingMedia().then(function (it) { if (it.length) nxMaybeAutoMediaPush(false); }); } catch (e) {} }, 5 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) { try { nxMaybeAutoMediaPush(false); } catch (e) {} } });
 } catch (e) {}
 // ---- b329: кнопка «Вшить всё»: авто-скачивание всех артов + автосборка файла ----
 function nxAutoCacheAll(done) {
