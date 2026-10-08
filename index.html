@@ -8800,7 +8800,7 @@ function nxToggle3d() {
             try {
                 const ps0 = (document.getElementById('market-pack') || {}).value || '';
                 const as0 = (document.getElementById('market-album') || {}).value || '';
-                const sig = 'M|' + marketLots().map(l => l.id + ':' + l.price).join(',') + '|' + ps0 + '|' + as0 + '|' +
+                const sig = 'M|' + marketViewMode + '|' + marketLots().map(l => l.id + ':' + l.price).join(',') + '|' + ps0 + '|' + as0 + '|' +
                     state.cards.filter(c => cardCopies(c.id) > 0).map(c => c.id + cardCopies(c.id)).join(',');
                 if (sig === window.__nxMktSig) return;
                 window.__nxMktSig = sig;
