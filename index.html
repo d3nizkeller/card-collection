@@ -19415,6 +19415,16 @@ try {
     const gi = document.getElementById('nx-gh-token'); if (gi) gi.value = nxGhToken();
     const gr = document.getElementById('nx-gh-repo'); if (gr) gr.value = LS.getItem('nx_gh_repo') || '';
 } catch (e) {}
+// ---- b354: системные уведомления (загрузки, автоотправка, лечение) видны ТОЛЬКО в студии ----
+function nxInStudio() {
+    try {
+        var s = document.getElementById('tab-studio');
+        return !!s && !s.classList.contains('hidden') && s.offsetParent !== null;
+    } catch (e) { return false; }
+}
+function nxOwnerToast(msg, kind) {
+    try { if (nxInStudio()) showToast(msg, kind); } catch (e) {}
+}
 // ---- b343-media: АВТООТПРАВКА картинок в папку media/ репозитория ----
 function nxMediaFolder() { // папка media/ рядом с index.html на GitHub Pages
     try { return String(location.pathname || '/').replace(/[^/]*$/, '') + 'media/'; } catch (e) { return 'media/'; }
@@ -19434,7 +19444,7 @@ function nxAutoMediaLabel() {
 function nxToggleAutoMedia() {
     try { LS.setItem('nx_automedia', nxAutoMediaOn() ? '0' : '1'); } catch (e) {}
     nxAutoMediaLabel();
-    try { showToast(nxAutoMediaOn() ? 'Автоотправка ВКЛ: новые картинки сами уйдут в media/ репозитория' : 'Автоотправка выключена', 'success'); } catch (e) {}
+    try { nxOwnerToast(nxAutoMediaOn() ? 'Автоотправка ВКЛ: новые картинки сами уйдут в media/ репозитория' : 'Автоотправка выключена', 'success'); } catch (e) {}
     if (nxAutoMediaOn()) nxMaybeAutoMediaPush(true);
 }
 var NX_MEDIA_PUSHED = null, NX_MEDIA_PUSHING = false, NX_MEDIA_LAST = 0, NX_MEDIA_TIMER = 0;
@@ -19530,7 +19540,7 @@ function nxGhPushMedia(repo, items, ok, fail) { // один коммит: все
 function nxAutoMediaPushRun(manual, done) {
     if (NX_MEDIA_PUSHING) { if (done) done(0); return; }
     if (!nxGhToken()) {
-        if (manual) { try { showToast('Сначала сохраните токен GitHub в поле ниже — без него сайт не может отправить файлы', 'error'); } catch (e) {} var ti = document.getElementById('nx-gh-token'); if (ti) { ti.focus(); ti.scrollIntoView({ block: 'center' }); } }
+        if (manual) { try { nxOwnerToast('Сначала сохраните токен GitHub в поле ниже — без него сайт не может отправить файлы', 'error'); } catch (e) {} var ti = document.getElementById('nx-gh-token'); if (ti) { ti.focus(); ti.scrollIntoView({ block: 'center' }); } }
         return;
     }
     var repo = nxGhRepoName();
@@ -19538,7 +19548,7 @@ function nxAutoMediaPushRun(manual, done) {
     nxStatus((manual ? '' : 'Автоотправка: ') + 'смотрю, какие картинки уже в кэше…');
     nxCollectPendingMedia().then(function (items) {
         if (!items.length) {
-            if (manual) { nxStatus('Отправлять нечего: новых картинок в кэше нет. Нажмите «Шаг 1. Скачать все картинки»', 'err'); try { showToast('В кэше нет новых картинок для отправки', 'error'); } catch (e) {} }
+            if (manual) { nxStatus('Отправлять нечего: новых картинок в кэше нет. Нажмите «Шаг 1. Скачать все картинки»', 'err'); try { nxOwnerToast('В кэше нет новых картинок для отправки', 'error'); } catch (e) {} }
             else nxStatus('');
             if (manual && btn) btn.disabled = false;
             if (done) done(0);
@@ -19551,13 +19561,13 @@ function nxAutoMediaPushRun(manual, done) {
             var s = nxMediaPushedSet(); items.forEach(function (it) { s.add(it.name); }); nxMediaSavePushed(s);
             nxProgress(1, 'Готово: ' + items.length + ' картинок ушло в media/. GitHub Pages обновится за 1–2 минуты', 'ok');
             nxStatus('Отправлено в ' + repo + '/media/: ' + items.map(function (x) { return x.name; }).join(', '), 'ok');
-            try { showToast('Картинки отправлены на GitHub (' + items.length + ' шт. в media/)', 'success'); } catch (e) {}
+            try { nxOwnerToast('Картинки отправлены на GitHub (' + items.length + ' шт. в media/)', 'success'); } catch (e) {}
             if (manual && btn) btn.disabled = false;
             if (done) done(items.length);
         }, function (msg) {
             NX_MEDIA_PUSHING = false;
             nxProgress(0, ''); nxStatus('Ошибка отправки на GitHub: ' + msg, 'err');
-            if (manual) { try { showToast('Ошибка отправки: ' + msg, 'error'); } catch (e) {} if (btn) btn.disabled = false; }
+            if (manual) { try { nxOwnerToast('Ошибка отправки: ' + msg, 'error'); } catch (e) {} if (btn) btn.disabled = false; }
             if (done) done(0);
         });
     }, function () { NX_MEDIA_PUSHING = false; if (manual && btn) btn.disabled = false; if (done) done(0); });
@@ -19573,7 +19583,7 @@ function nxPickFileFor(inputId, kind) {
 }
 function nxUploadToGithub(file, inputId, kind) {
     if (!nxGhToken()) {
-        try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub» (Шаг 3 / автоотправка)', 'error'); } catch (e) {}
+        try { nxOwnerToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub» (Шаг 3 / автоотправка)', 'error'); } catch (e) {}
         var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
         return;
     }
@@ -19598,11 +19608,11 @@ function nxUploadToGithub(file, inputId, kind) {
         nxProgress(1, 'Готово: media/' + name + ' в репозитории. Pages обновится за 1–2 минуты', 'ok');
         nxStatus((audio ? 'Трек загружен' : 'Картинка загружена') + ': media/' + name, 'ok');
         if (lamp) lamp.textContent = '✓ media/' + name;
-        try { showToast((audio ? 'Трек загружен' : 'Картинка загружена') + ' на GitHub: media/' + name, 'success'); } catch (e) {}
+        try { nxOwnerToast((audio ? 'Трек загружен' : 'Картинка загружена') + ' на GitHub: media/' + name, 'success'); } catch (e) {}
     }, function (msg) {
         nxProgress(0, ''); nxStatus('Ошибка загрузки: ' + msg, 'err');
         if (lamp) lamp.textContent = 'ошибка загрузки';
-        try { showToast('Ошибка загрузки на GitHub: ' + msg, 'error'); } catch (e) {}
+        try { nxOwnerToast('Ошибка загрузки на GitHub: ' + msg, 'error'); } catch (e) {}
     });
 }
 
@@ -19635,7 +19645,7 @@ function nxHealAndSave() {
         if (nxHealMediaLinks()) {
             try { saveState(); } catch (e) {}
             try { cloudPublishSoon(); } catch (e) {} // исправленные ссылки уезжают в комнату, чтобы облако тоже вылечилось
-            try { showToast('Ссылки на картинки исправлены на GitHub media/', 'success'); } catch (e) {}
+            try { nxOwnerToast('Ссылки на картинки исправлены на GitHub media/', 'success'); } catch (e) {}
         }
     } catch (e) {}
 }
@@ -19656,7 +19666,7 @@ function nxGhHead(repo) {
 }
 function nxRestoreLastCleanup() {
     if (!nxGhToken()) {
-        try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
+        try { nxOwnerToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
         var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
         return;
     }
@@ -19690,7 +19700,7 @@ function nxRestoreLastCleanup() {
                 }).then(function () {
                     nxProgress(1, 'Готово: ' + entries.length + ' файлов вернулись в media/', 'ok');
                     nxStatus('Восстановлено после уборки: ' + entries.length + ' файлов', 'ok');
-                    try { showToast('Вернул ' + entries.length + ' файлов в media/! Pages обновится за 1–2 минуты', 'success'); } catch (e) {}
+                    try { nxOwnerToast('Вернул ' + entries.length + ' файлов в media/! Pages обновится за 1–2 минуты', 'success'); } catch (e) {}
                 });
             });
         });
@@ -19722,7 +19732,7 @@ function nxMediaUsedNames() { // имена файлов, которые сай�
 }
 function nxMediaAudit() {
     if (!nxGhToken()) {
-        try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
+        try { nxOwnerToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
         var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
         return;
     }
@@ -19739,7 +19749,7 @@ function nxMediaAudit() {
         var r = document.getElementById('nx-audit-result'); if (r) r.textContent = msg;
         var b = document.getElementById('nx-audit-del-btn');
         if (b) { b.disabled = !NX_MEDIA_EXTRA.length; b.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: ' + (NX_MEDIA_EXTRA.length || '—'); }
-        try { showToast(NX_MEDIA_EXTRA.length ? 'Лишних файлов в media/: ' + NX_MEDIA_EXTRA.length + ' — список в статус-строке' : 'Лишних файлов нет: всё в media/ используется сайтом', 'success'); } catch (e) {}
+        try { nxOwnerToast(NX_MEDIA_EXTRA.length ? 'Лишних файлов в media/: ' + NX_MEDIA_EXTRA.length + ' — список в статус-строке' : 'Лишних файлов нет: всё в media/ используется сайтом', 'success'); } catch (e) {}
     }).catch(function (e) { nxStatus('Ошибка аудита: ' + e.message, 'err'); });
 }
 function nxMediaAuditApply() {
@@ -19770,7 +19780,7 @@ function nxMediaAuditApply() {
             var r = document.getElementById('nx-audit-result'); if (r) r.textContent = 'Удалено лишних: ' + del.length + '. В media/ остались только рабочие картинки.';
             nxProgress(1, 'Готово: ' + del.length + ' лишних файл(ов) удалено из media/', 'ok');
             nxStatus('Лишнее удалено: ' + del.join(', '), 'ok');
-            try { showToast('Удалено ' + del.length + ' лишних файл(ов) из media/', 'success'); } catch (e) {}
+            try { nxOwnerToast('Удалено ' + del.length + ' лишних файл(ов) из media/', 'success'); } catch (e) {}
         }).catch(function (e) {
             if (n < 3 && /not a fast forward/i.test(String(e && e.message))) { setTimeout(function () { attempt(n + 1); }, 1500); return; }
             nxProgress(0, ''); nxStatus('Ошибка удаления: ' + e.message, 'err');
@@ -19794,7 +19804,7 @@ function nxCheckMediaMissing() {
 }
 function nxMigrateOldArts() {
     if (!nxGhToken()) {
-        try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
+        try { nxOwnerToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
         var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
         return;
     }
@@ -19823,11 +19833,11 @@ function nxMigrateOldArts() {
             var s = nxMediaPushedSet(); items.forEach(function (it) { s.add(it.name); }); nxMediaSavePushed(s);
             nxProgress(1, 'Готово: ' + items.length + ' артов лежат в media/. Pages обновится за 1–2 минуты', 'ok');
             nxStatus('Арты возвращены: ' + items.length + ' файлов в media/', 'ok');
-            try { showToast('Арты возвращены в media/ (' + items.length + ' файлов)! Pages обновится за 1–2 минуты', 'success'); } catch (e) {}
+            try { nxOwnerToast('Арты возвращены в media/ (' + items.length + ' файлов)! Pages обновится за 1–2 минуты', 'success'); } catch (e) {}
             var row = document.getElementById('nx-migrate-row'); if (row) row.style.display = 'none';
         }, function (msg) {
             nxProgress(0, ''); nxStatus('Ошибка возврата артов: ' + msg, 'err');
-            try { showToast('Ошибка: ' + msg, 'error'); } catch (e) {}
+            try { nxOwnerToast('Ошибка: ' + msg, 'error'); } catch (e) {}
         });
     }).catch(function (e) { nxProgress(0, ''); nxStatus('Не удалось скачать старую версию: ' + e.message, 'err'); });
 }
