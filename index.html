@@ -151,13 +151,13 @@ Check your Browserslist config to be sure that your targets are set up correctly
         .nx-soon-band { position:absolute; top:34px; right:-46px; width:200px; padding:6px 0 7px; transform:rotate(45deg);
             background:linear-gradient(90deg,var(--rbg1),var(--rbg2) 28%,var(--rbg3) 50%,var(--rbg2) 72%,var(--rbg1));
             color:var(--rbt); font-weight:900; font-size:9.5px; letter-spacing:.15em; text-transform:uppercase; text-align:center;
-            border-top:1px solid rgba(255,255,255,.55); border-bottom:1px solid rgba(0,0,0,.35); }
+            border-top:1px solid rgba(255,255,255,.55); border-bottom:1px solid rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center; gap:7px; }
         .nx-soon .b1 { fill:var(--rb1); stroke:var(--rbd); } .nx-soon .b2 { fill:var(--rb2); stroke:var(--rbd); }
         .nx-soon .knot { fill:var(--rb3); stroke:var(--rbd); } .nx-soon .tails { stroke:var(--rbb); }
-        .nx-soon-bow { position:absolute; top:13px; right:13px; width:42px; height:30px; }
+        .nx-soon-bow { width:27px; height:18px; flex:0 0 auto; filter:drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
         .nx-soon-sm { width:76px; height:76px; }
         .nx-soon-sm .nx-soon-band { top:18px; right:-50px; width:150px; padding:4px 0 4.5px; font-size:7px; letter-spacing:.1em; }
-        .nx-soon-sm .nx-soon-bow { top:6px; right:6px; width:26px; height:19px; }
+        .nx-soon-sm .nx-soon-bow { width:18px; height:12px; }
 </style>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -13483,15 +13483,21 @@ function nxToggle3d() {
         function packInPremiere(p) { return !!(p && p.premiereAt && Date.now() < p.premiereAt); }
 
         // b356: ленточка «СКОРО В ПРОДАЖЕ» — включается тумблером в настройках пака в студии
+        // b356: бантик живёт НА ленте по центру: петли с внутренней тенью, узелок с бликом, хвостики с раздвоенными концами
+        const NX_BOW = '<svg class="nx-soon-bow" viewBox="0 0 48 32">' +
+            '<path class="tails" fill="none" d="M21 17 C 17 22, 15 26, 12 30 M27 17 C 31 22, 33 26, 36 30" stroke-width="3.2" stroke-linecap="round"/>' +
+            '<path class="b1" d="M24 16 C 15 3, 3 6, 5.5 15 C 7.5 22.5, 18 21, 24 16 Z" stroke-width="1.3"/>' +
+            '<path d="M22.3 15.4 C 16 8.4, 9.4 9.8, 10.3 14.4 C 11 18.2, 17 17.8, 22.3 15.4 Z" fill="rgba(0,0,0,.25)"/>' +
+            '<path class="b2" d="M24 16 C 33 3, 45 6, 42.5 15 C 40.5 22.5, 30 21, 24 16 Z" stroke-width="1.3"/>' +
+            '<path d="M25.7 15.4 C 32 8.4, 38.6 9.8, 37.7 14.4 C 37 18.2, 31 17.8, 25.7 15.4 Z" fill="rgba(0,0,0,.20)"/>' +
+            '<rect class="knot" x="20.4" y="12" width="7.2" height="8" rx="2.8" stroke-width="1.3"/>' +
+            '<ellipse cx="22.7" cy="14.3" rx="1.6" ry="1" fill="rgba(255,255,255,.6)"/></svg>';
         function soonRibbon(p, small) {
             try { if (!p || !p.soonRibbon) return ''; } catch (e) { return ''; }
             var cc = String(p.soonRibbonColor || '');
             return '<span class="nx-soon' + (cc === 'red' ? ' nx-soon-red' : cc === 'vio' ? ' nx-soon-vio' : '') + (small ? ' nx-soon-sm' : '') + '" aria-hidden="true">' +
-                '<span class="nx-soon-band">Скоро в продаже</span>' +
-                '<svg class="nx-soon-bow" viewBox="0 0 64 44"><path class="b1" d="M32 24 C 20 6, 4 10, 7 22 C 10 32, 25 30, 32 24 Z" stroke-width="2"/>' +
-                '<path class="b2" d="M32 24 C 44 6, 60 10, 57 22 C 54 32, 39 30, 32 24 Z" stroke-width="2"/>' +
-                '<path class="tails" d="M29 28 L22 42 M35 28 L42 42" stroke-width="4" stroke-linecap="round"/>' +
-                '<circle class="knot" cx="32" cy="24" r="5.5" stroke-width="2"/></svg></span>';
+                '<span class="nx-soon-band"><span>Скоро</span>' + NX_BOW + '<span>в продаже</span></span></span>' +
+                ''
         }
         function saleModeOf(p) {
             if (packInPremiere(p)) return 'prem'; // b165
