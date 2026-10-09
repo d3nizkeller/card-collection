@@ -2064,7 +2064,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <input type="url" id="pack-music" oninput="updatePackMusicHint()" placeholder="https://.../track.mp3" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-fuchsia-500">
                                 <button type="button" onclick="previewPackMusic()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition" title="Прослушать 8 секунд"><i class="fa-solid fa-play"></i></button>
                                 <button type="button" onclick="stopPackMusicPreview()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition" title="Остановить"><i class="fa-solid fa-stop"></i></button>
-                                <button type="button" onclick="clearPackMusicField()" class="px-2.5 py-2 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-lg text-xs font-semibold text-slate-300 transition" title="Стереть ссылку mp3 этого пака"><i class="fa-solid fa-eraser"></i></button>
+                                <button type="button" onclick="clearPackMusicField()" class="px-2.5 py-2 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-lg text-xs font-semibold text-slate-300 transition" title="Стереть ссылку mp3 этого пака"><button type="button" onclick="nxPickFileFor('pack-music','audio')" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-xs font-semibold text-white transition shrink-0" title="Выберите файл музыки на устройстве — сайт зальёт его в папку media/ репозитория GitHub и подставит ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>На GitHub</button><span id="pack-music-upl" class="text-[10px] text-slate-500 self-center"></span><i class="fa-solid fa-eraser"></i></button>
                             </div>
                             <label class="flex items-center gap-2 mt-2 cursor-pointer select-none">
                                 <input type="checkbox" id="pack-music-use" checked onchange="updatePackMusicHint()" class="accent-fuchsia-500 w-4 h-4">
@@ -2348,7 +2348,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                                 <input type="url" id="card-music" placeholder="https://.../track.mp3" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-fuchsia-500">
                                 <button type="button" onclick="previewCardMusic()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition" title="Прослушать 8 секунд"><i class="fa-solid fa-play"></i></button>
                                 <button type="button" onclick="stopCardMusicPreview()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition" title="Остановить"><i class="fa-solid fa-stop"></i></button>
-                                <button type="button" onclick="clearCardMusicField()" class="px-2.5 py-2 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-lg text-xs font-semibold text-slate-300 transition" title="Стереть ссылку"><i class="fa-solid fa-eraser"></i></button>
+                                <button type="button" onclick="clearCardMusicField()" class="px-2.5 py-2 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-lg text-xs font-semibold text-slate-300 transition" title="Стереть ссылку"><button type="button" onclick="nxPickFileFor('card-music','audio')" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-xs font-semibold text-white transition shrink-0" title="Выберите файл музыки на устройстве — сайт зальёт его в папку media/ репозитория GitHub и подставит ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>На GitHub</button><span id="card-music-upl" class="text-[10px] text-slate-500 self-center"></span><i class="fa-solid fa-eraser"></i></button>
                             </div>
                             <p class="text-[10px] text-slate-500 mt-1">Трек играет, пока карта открыта в просмотре альбома, и выключается при закрытии.</p>
                         </div>
@@ -16383,7 +16383,8 @@ function nxToggle3d() {
                 if (remote && remote.v) {
                     const m = cloudMerge(remote);
                     if (m) {
-                        saveState(); refreshVisibleTabs();
+                        saveState(); try { if (nxHealMediaLinks()) { saveState(); cloudPublishSoon(); } } catch (e) {} // b352: вылечили ссылки сразу после слияния
+                        refreshVisibleTabs();
                         if (m.media) { // b38: приехало новое зеркало — обновляем поле и экран
                             const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase();
                         }
@@ -19563,26 +19564,30 @@ function nxAutoMediaPushRun(manual, done) {
 }
 function nxPushMediaNow() { nxAutoMediaPushRun(true); }
 // ---- b344: прямая загрузка файла с устройства в media/ репозитория ----
-function nxPickFileFor(inputId) {
+function nxPickFileFor(inputId, kind) {
+    var audio = kind === 'audio';
     var inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*';
-    inp.onchange = function () { var f = inp.files && inp.files[0]; if (f) nxUploadToGithub(f, inputId); };
+    inp.type = 'file'; inp.accept = audio ? 'audio/*' : 'image/*';
+    inp.onchange = function () { var f = inp.files && inp.files[0]; if (f) nxUploadToGithub(f, inputId, kind); };
     inp.click();
 }
-function nxUploadToGithub(file, inputId) {
+function nxUploadToGithub(file, inputId, kind) {
     if (!nxGhToken()) {
         try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub» (Шаг 3 / автоотправка)', 'error'); } catch (e) {}
         var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
         return;
     }
     var repo = nxGhRepoName();
-    var ext = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : file.type === 'image/gif' ? '.gif' : '.jpg';
+    var audio = kind === 'audio';
+    var ext = audio
+        ? (file.type === 'audio/ogg' ? '.ogg' : file.type === 'audio/wav' || file.type === 'audio/x-wav' ? '.wav' : file.type === 'audio/aac' ? '.aac' : file.type === 'audio/mp4' || file.type === 'audio/x-m4a' ? '.m4a' : '.mp3')
+        : (file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : file.type === 'image/gif' ? '.gif' : '.jpg');
     var base = String(file.name || '').replace(/\.[a-z0-9]+$/i, '').replace(/[^\wа-яё-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 40) || 'art';
-    var name = 'card_' + Date.now().toString(36) + '_' + base + ext;
+    var name = (audio ? 'track_' : 'card_') + Date.now().toString(36) + '_' + base + ext;
     var lamp = document.getElementById(inputId + '-upl');
     if (lamp) lamp.textContent = 'Заливаю ' + name + '…';
-    nxStatus('Заливаю картинку в ' + repo + '/media/…');
-    nxProgress(0.3, 'Загрузка ' + file.name + ' → media/' + name);
+    nxStatus('Заливаю ' + (audio ? 'трек' : 'картинку') + ' в ' + repo + '/media/…');
+    nxProgress(0.3, 'Загрузка ' + (audio ? 'трека ' : 'картинки ') + file.name + ' → media/' + name);
     nxGhPushMedia(repo, [{ name: name, blob: file }], function () {
         var url = 'media/' + name;
         try { if (location.protocol === 'http:' || location.protocol === 'https:') url = location.href.replace(/[^/]*$/, '') + url; } catch (e) {}
@@ -19591,9 +19596,9 @@ function nxUploadToGithub(file, inputId) {
         try { NX_EMBED_MEDIA[name] = 'media/' + name; } catch (e) {}
         var s = nxMediaPushedSet(); s.add(name); nxMediaSavePushed(s);
         nxProgress(1, 'Готово: media/' + name + ' в репозитории. Pages обновится за 1–2 минуты', 'ok');
-        nxStatus('Картинка загружена: media/' + name, 'ok');
+        nxStatus((audio ? 'Трек загружен' : 'Картинка загружена') + ': media/' + name, 'ok');
         if (lamp) lamp.textContent = '✓ media/' + name;
-        try { showToast('Картинка загружена на GitHub: media/' + name, 'success'); } catch (e) {}
+        try { showToast((audio ? 'Трек загружен' : 'Картинка загружена') + ' на GitHub: media/' + name, 'success'); } catch (e) {}
     }, function (msg) {
         nxProgress(0, ''); nxStatus('Ошибка загрузки: ' + msg, 'err');
         if (lamp) lamp.textContent = 'ошибка загрузки';
@@ -19601,6 +19606,43 @@ function nxUploadToGithub(file, inputId) {
     });
 }
 
+// ---- b352: авто-лечение ссылок — всё, что лежит в media/, ссылается на GitHub, а не на мёртвые хосты ----
+function nxMediaPublicUrl(name) {
+    var rel = 'media/' + name;
+    try { if (location.protocol === 'http:' || location.protocol === 'https:') return location.href.replace(/[^/]*$/, '') + rel; } catch (e) {}
+    return rel;
+}
+function nxHealMediaLinks() {
+    var fixed = 0;
+    var has = function (n) { try { return !!NX_EMBED_MEDIA[n] || nxMediaPushedSet().has(n); } catch (e) { return false; } };
+    var heal = function (o) {
+        try {
+            if (!o || typeof o.image !== 'string' || !o.image) return;
+            var s = o.image;
+            if (s.indexOf('http') !== 0 && s.indexOf('media/') !== 0) return;
+            var n = nxMediaKey(s); if (!n || !has(n)) return;
+            var want = nxMediaPublicUrl(n);
+            if (s !== want) { o.image = want; o.updatedAt = Date.now(); fixed++; } // свежая дата — слияние комнаты примет лечащую версию
+        } catch (e) {}
+    };
+    try {
+        if (typeof state !== 'undefined' && state) { (state.packs || []).forEach(heal); (state.cards || []).forEach(heal); }
+    } catch (e) {}
+    return fixed;
+}
+function nxHealAndSave() {
+    try {
+        if (nxHealMediaLinks()) {
+            try { saveState(); } catch (e) {}
+            try { cloudPublishSoon(); } catch (e) {} // исправленные ссылки уезжают в комнату, чтобы облако тоже вылечилось
+            try { showToast('Ссылки на картинки исправлены на GitHub media/', 'success'); } catch (e) {}
+        }
+    } catch (e) {}
+}
+try {
+    setTimeout(nxHealAndSave, 3000);
+    setInterval(nxHealAndSave, 60000);
+} catch (e) {}
 // ---- b351: возврат файлов, удалённых уборкой media/ ----
 function nxGhHead(repo) {
     return nxGhApi('/repos/' + repo).then(function (info) {
