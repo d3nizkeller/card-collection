@@ -1988,6 +1988,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                         <button type="button" id="nx-audit-btn" onclick="nxMediaAudit()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[12px] font-bold text-slate-100 transition shrink-0" title="Сравнить папку media/ на GitHub с картинками, которые сайт реально использует: покажет лишние (старые, ненужные) файлы"><i class="fa-solid fa-broom mr-1"></i>Аудит media/ на GitHub</button>
                         <button type="button" id="nx-audit-restore-btn" onclick="nxRestoreLastCleanup()" class="px-3 py-2 bg-amber-800/70 hover:bg-amber-700 border border-amber-600/50 rounded-lg text-[12px] font-bold text-amber-100 transition shrink-0" title="Вернуть все файлы, удалённые последней уборкой media/ (один коммит, из истории GitHub)"><i class="fa-solid fa-rotate-left mr-1"></i>Вернуть удалённое уборкой</button>
+                        <button type="button" id="nx-restore-catalog-btn" onclick="nxRestoreCatalog()" class="px-3 py-2 bg-emerald-800/70 hover:bg-emerald-700 border border-emerald-600/50 rounded-lg text-[12px] font-bold text-emerald-100 transition shrink-0" title="Вернуть встроенные паки и карты каталога, если они пропали. Коллекцию, монеты и имя НЕ трогает"><i class="fa-solid fa-kit-medical mr-1"></i>Вернуть каталог</button>
                         <button type="button" id="nx-audit-del-btn" onclick="nxMediaAuditApply()" disabled class="px-3 py-2 bg-red-900/60 hover:bg-red-800 border border-red-700/60 rounded-lg text-[12px] font-bold text-red-100 transition shrink-0 disabled:opacity-40" title="Удалить лишние файлы из media/ одним коммитом (можно восстановить из истории GitHub)"><i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: —</button>
                         <span id="nx-audit-result" class="text-[10px] text-slate-400 leading-snug flex-1">Проверит, какие файлы в media/ сайт реально использует, а какие лежат зря. Лишние удаляются одним кликом — остаются только рабочие.</span>
                     </div>
@@ -15672,6 +15673,8 @@ function nxToggle3d() {
                 });
             },
             push(catalog) {
+                // b362: пустой каталог не публикуется — защита от затирания комнаты глюком
+                if (catalog && Array.isArray(catalog.packs) && Array.isArray(catalog.cards) && !catalog.packs.length && !catalog.cards.length) { try { nxCrashLog('push пропущен: пустой каталог'); } catch (e) {} return Promise.resolve(false); }
                 if (!this.room) this.newRoom();
                 const body = JSON.stringify(catalog);
                 if (this.db) {
@@ -15689,6 +15692,7 @@ function nxToggle3d() {
             // b25: аварийная отправка при закрытии страницы — sendBeacon/keepalive доставляет данные,
             // даже если вкладка уже закрыта (обычный fetch браузер на закрытии обрывает)
             flush(catalog) {
+                if (catalog && Array.isArray(catalog.packs) && Array.isArray(catalog.cards) && !catalog.packs.length && !catalog.cards.length) return false; // b362
                 if (!this.connected()) return false;
                 const body = JSON.stringify(catalog);
                 try {
@@ -19765,6 +19769,28 @@ function nxRestoreLastCleanup() {
             });
         });
     }).catch(function (e) { nxProgress(0, ''); nxStatus('Ошибка восстановления: ' + e.message, 'err'); });
+}
+// ---- b362: восстановление каталога: вернуть встроенные паки/карты, не трогая коллекцию и монеты ----
+function nxRestoreCatalog() {
+    var addedP = 0, addedC = 0;
+    try {
+        (typeof defaultPacks !== 'undefined' ? defaultPacks : []).forEach(function (dp) {
+            if (!state.packs.some(function (p) { return p.id === dp.id; })) { state.packs.push(JSON.parse(JSON.stringify(dp))); addedP++; }
+        });
+        (typeof defaultCards !== 'undefined' ? defaultCards : []).forEach(function (dc) {
+            if (!state.cards.some(function (c) { return c.id === dc.id; })) { state.cards.push(JSON.parse(JSON.stringify(dc))); addedC++; }
+        });
+    } catch (e) {}
+    if (addedP || addedC) {
+        try { resolveMediaRefs(); } catch (e) {}
+        try { saveState(); } catch (e) {}
+        try { cloudPublishSoon(); } catch (e) {}
+    }
+    try { refreshVisibleTabs(); } catch (e) {}
+    try { renderStoreShowcase(); } catch (e) {}
+    try { renderAlbumsHub(); } catch (e) {}
+    try { renderAlbumsList(); } catch (e) {}
+    nxOwnerToast(addedP || addedC ? 'Каталог восстановлен: паков +' + addedP + ', карт +' + addedC + '. Авторские паки доедут из комнаты' : 'Каталог уже полный — восстанавливать нечего', 'success');
 }
 // ---- b350: аудит media/ — лишние файлы удаляются, остаются только рабочие ----
 var NX_MEDIA_EXTRA = [];
