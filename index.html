@@ -19649,6 +19649,17 @@ function nxMigrateOldArts() {
         });
     }).catch(function (e) { nxProgress(0, ''); nxStatus('Не удалось скачать старую версию: ' + e.message, 'err'); });
 }
+// ---- b349: service worker — вечный кэш media/ в браузерах пользователей, разгрузка GitHub Pages ----
+function nxRegisterMediaSW() {
+    try {
+        if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+        var swUrl = String(location.pathname || '/').replace(/[^/]*$/, '') + 'sw.js';
+        window.addEventListener('load', function () {
+            try { navigator.serviceWorker.register(swUrl).catch(function () {}); } catch (e) {}
+        });
+    } catch (e) {}
+}
+nxRegisterMediaSW();
 try {
     nxAutoMediaLabel();
     setTimeout(function () { try { if (nxAutoMediaOn()) nxCollectPendingMedia().then(function (it) { if (it.length) nxMaybeAutoMediaPush(false); }); } catch (e) {} }, 20000);
