@@ -1965,6 +1965,7 @@ Check your Browserslist config to be sure that your targets are set up correctly
                     </div>
                     <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                         <button type="button" id="nx-audit-btn" onclick="nxMediaAudit()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[12px] font-bold text-slate-100 transition shrink-0" title="Сравнить папку media/ на GitHub с картинками, которые сайт реально использует: покажет лишние (старые, ненужные) файлы"><i class="fa-solid fa-broom mr-1"></i>Аудит media/ на GitHub</button>
+                        <button type="button" id="nx-audit-restore-btn" onclick="nxRestoreLastCleanup()" class="px-3 py-2 bg-amber-800/70 hover:bg-amber-700 border border-amber-600/50 rounded-lg text-[12px] font-bold text-amber-100 transition shrink-0" title="Вернуть все файлы, удалённые последней уборкой media/ (один коммит, из истории GitHub)"><i class="fa-solid fa-rotate-left mr-1"></i>Вернуть удалённое уборкой</button>
                         <button type="button" id="nx-audit-del-btn" onclick="nxMediaAuditApply()" disabled class="px-3 py-2 bg-red-900/60 hover:bg-red-800 border border-red-700/60 rounded-lg text-[12px] font-bold text-red-100 transition shrink-0 disabled:opacity-40" title="Удалить лишние файлы из media/ одним коммитом (можно восстановить из истории GitHub)"><i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: —</button>
                         <span id="nx-audit-result" class="text-[10px] text-slate-400 leading-snug flex-1">Проверит, какие файлы в media/ сайт реально использует, а какие лежат зря. Лишние удаляются одним кликом — остаются только рабочие.</span>
                     </div>
@@ -19600,6 +19601,59 @@ function nxUploadToGithub(file, inputId) {
     });
 }
 
+// ---- b351: возврат файлов, удалённых уборкой media/ ----
+function nxGhHead(repo) {
+    return nxGhApi('/repos/' + repo).then(function (info) {
+        var branch = info.default_branch || 'main';
+        return nxGhApi('/repos/' + repo + '/git/ref/heads/' + branch).then(function (ref) {
+            return nxGhApi('/repos/' + repo + '/git/commits/' + ref.object.sha).then(function (cm) {
+                return { branch: branch, head: ref.object.sha, tree: cm.tree.sha };
+            });
+        });
+    });
+}
+function nxRestoreLastCleanup() {
+    if (!nxGhToken()) {
+        try { showToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
+        var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
+        return;
+    }
+    var repo = nxGhRepoName();
+    nxStatus('Ищу последнюю уборку в истории…');
+    nxGhApi('/repos/' + repo + '/commits?per_page=40').then(function (list) {
+        var target = null;
+        for (var i = 0; i < (list || []).length; i++) {
+            if (String(list[i].commit.message).indexOf('авто: уборка лишних media/') === 0) { target = list[i]; break; }
+        }
+        if (!target) { nxStatus('Уборок в истории не найдено — восстанавливать нечего', 'ok'); return; }
+        var parent = target.parents[0].sha;
+        return nxGhApi('/repos/' + repo + '/commits/' + target.sha).then(function (det) {
+            var deleted = (det.files || []).filter(function (f) { return f.status === 'removed'; });
+            if (!deleted.length) { nxStatus('В последней уборке не было удалений', 'ok'); return; }
+            return nxGhApi('/repos/' + repo + '/contents/media?ref=' + parent).then(function (oldList) {
+                var shaByName = {}; (oldList || []).forEach(function (f) { shaByName[f.name] = f.sha; });
+                var entries = [];
+                deleted.forEach(function (f) {
+                    var name = String(f.filename).replace(/^media\//, '');
+                    if (shaByName[name]) entries.push({ path: f.filename, mode: '100644', type: 'blob', sha: shaByName[name] });
+                });
+                if (!entries.length) { nxStatus('Не нашёл исходники для восстановления', 'err'); return; }
+                nxProgress(0.3, 'Восстанавливаю ' + entries.length + ' файлов из истории…');
+                return nxGhHead(repo).then(function (h) {
+                    return nxGhApi('/repos/' + repo + '/git/trees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base_tree: h.tree, tree: entries }) }).then(function (tr) {
+                        return nxGhApi('/repos/' + repo + '/git/commits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'авто: возврат удалённых media/ (' + entries.length + ')', parents: [h.head], tree: tr.sha }) }).then(function (nc) {
+                            return nxGhApi('/repos/' + repo + '/git/refs/heads/' + h.branch, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sha: nc.sha }) });
+                        });
+                    });
+                }).then(function () {
+                    nxProgress(1, 'Готово: ' + entries.length + ' файлов вернулись в media/', 'ok');
+                    nxStatus('Восстановлено после уборки: ' + entries.length + ' файлов', 'ok');
+                    try { showToast('Вернул ' + entries.length + ' файлов в media/! Pages обновится за 1–2 минуты', 'success'); } catch (e) {}
+                });
+            });
+        });
+    }).catch(function (e) { nxProgress(0, ''); nxStatus('Ошибка восстановления: ' + e.message, 'err'); });
+}
 // ---- b350: аудит media/ — лишние файлы удаляются, остаются только рабочие ----
 var NX_MEDIA_EXTRA = [];
 function nxMediaUsedNames() { // имена файлов, которые сайт реально использует
@@ -19610,8 +19664,17 @@ function nxMediaUsedNames() { // имена файлов, которые сай�
             var eff = raw; try { eff = mediaUrl(raw); } catch (e) {}
             var s = String(eff || '');
             var n = nxMediaKey(s); if (!n) return;
-            if (s.indexOf('/media/') >= 0 || NX_EMBED_MEDIA[n]) used[n] = 1;
+            if (s.indexOf('/media/') >= 0 || s.indexOf('media/') === 0 || NX_EMBED_MEDIA[n]) used[n] = 1;
         });
+    } catch (e) {}
+    try { // b351: прямой скан живой памяти по именам файлов (любые формы ссылок)
+        if (typeof state !== 'undefined' && state) {
+            (state.packs || []).forEach(function (p) { var n = nxMediaKey(p && p.image); if (n) used[n] = 1; });
+            (state.cards || []).forEach(function (c) { var n = nxMediaKey(c && c.image); if (n) used[n] = 1; });
+        }
+    } catch (e) {}
+    try { // b351: всё, что сайт сам заливал на GitHub, по определению в работе
+        nxMediaPushedSet().forEach(function (n) { used[n] = 1; });
     } catch (e) {}
     return used;
 }
@@ -20021,7 +20084,7 @@ function nxAllMediaUrls() { // все ссылки артов: стандарт 
     try {
         defaultPacks.forEach(p => add(p.image));
         defaultCards.forEach(c => add(c.image));
-        if (window.state) {
+        if (typeof state !== 'undefined' && state) { // b351: const state не лежит на window — проверка через typeof
             (state.packs || []).forEach(p => add(p.image));
             (state.cards || []).forEach(c => add(c.image));
         }
