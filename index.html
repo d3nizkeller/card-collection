@@ -4286,7 +4286,7 @@ function nxToggleAutoEmbed() {
     try { LS.setItem('nx_autoembed', LS.getItem('nx_autoembed') === '1' ? '' : '1'); } catch (e) {}
     nxAutoEmbedUI();
     try {
-        showToast(LS.getItem('nx_autoembed') === '1'
+        nxOwnerToast(LS.getItem('nx_autoembed') === '1'
             ? 'Автовшивание включено: новые арты из кэша сами уходят коммитом на сайт (не чаще раза в 30 минут)'
             : 'Автовшивание выключено', 'success');
     } catch (e) {}
@@ -5945,7 +5945,7 @@ function nxToggle3d() {
             const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase();
             refreshVisibleTabs();
             try { renderStudio(); } catch (e) {}
-            showToast(mediaBase()
+            nxOwnerToast(mediaBase()
                 ? 'Зеркало медиа сохранено: арты и музыка будут грузиться с ' + mediaBase()
                 : 'Зеркало отключено: вернулись оригинальные ссылки', 'success');
         }
@@ -16511,7 +16511,7 @@ function nxToggle3d() {
             const fail = msg => {
                 cloudDirtySet(); cloudPushFailAt = Date.now(); // b25: не получилось — повторим позже
                 CLOUD.lastErr = msg; cloudStatus();
-                if (!quiet || !cloudPushErrShown) { cloudPushErrShown = true; showToast('Ошибка публикации: ' + msg, 'error'); }
+                if (!quiet || !cloudPushErrShown) { cloudPushErrShown = true; nxOwnerToast('Ошибка публикации: ' + msg, 'error'); }
             };
             if (!CLOUD.connected()) { if (!quiet) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
             if (cloudGuest()) { if (!quiet) showToast('⛔ Публиковать может только создатель комнаты', 'error'); return; }
@@ -16565,7 +16565,7 @@ function nxToggle3d() {
                     CLOUD.remotePacks = fit.cat.packs.length; CLOUD.remoteCards = fit.cat.cards.length;
                     cloudStatus();
                     if (fit.dropped.length) {
-                        showToast('⚠️ Опубликовано, но без тяжёлых base64-артов (не влезли в лимит облака): ' +
+                        nxOwnerToast('⚠️ Опубликовано, но без тяжёлых base64-артов (не влезли в лимит облака): ' +
                             fit.dropped.slice(0, 3).join(', ') + (fit.dropped.length > 3 ? ' и ещё ' + (fit.dropped.length - 3) : '') +
                             ' — вставьте вместо них ссылки на картинки', 'refund');
                     } else {
@@ -19213,7 +19213,7 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
             if (doneN < total) return;
             if (!problems.length) {
                 nxProgress(1, 'Ссылки: все ' + total + ' паков/карточек — картинки рабочие или в кэше', 'ok');
-                if (!silent) { try { showToast('Ссылки на картинки: всё в порядке (' + total + ')', 'success'); } catch (e) {} }
+                if (!silent) { try { nxOwnerToast('Ссылки на картинки: всё в порядке (' + total + ')', 'success'); } catch (e) {} }
                 return;
             }
             var msg = 'Нет картинок (' + problems.length + '): ' + problems.slice(0, 6).join('; ') + (problems.length > 6 ? '… и ещё ' + (problems.length - 6) : '');
@@ -19378,14 +19378,14 @@ function nxGhPush(repo, content, ok, fail) {
 }
 function nxPushEmbedded(auto) {
     if (!nxGhToken()) {
-        try { showToast('Сначала сохраните токен GitHub в этой строке настроек — без него игра не может закоммитить в репозиторий', 'error'); } catch (e) {}
+        try { nxOwnerToast('Сначала сохраните токен GitHub в этой строке настроек — без него игра не может закоммитить в репозиторий', 'error'); } catch (e) {}
         const i = document.getElementById('nx-gh-token'); if (i) { i.focus(); i.scrollIntoView({ block: 'center' }); }
         return;
     }
     const repo = ((document.getElementById('nx-gh-repo') || {}).value || '').trim() || (LS.getItem('nx_gh_repo') || '').trim() || 'd3nizkeller/card-collection';
     const btn = document.getElementById('nx-push-embed'); if (btn) btn.disabled = true;
     nxStatus('Собираю файл для вшивания…');
-    const say = m => { try { showToast(m, 'success'); } catch (e) {} };
+    const say = m => { try { nxOwnerToast(m, 'success'); } catch (e) {} };
     const err = m => { if (btn) btn.disabled = false; try { showToast(m, 'error'); } catch (e) {} nxStatus(m, 'err'); };
     nxSrcGet().then(src => { // b342-solo: было fetch(location.href,{cache:'no-store'}) — перезакачка всего файла каждый раз
         nxProgress(0.15, 'Читаю исходник и список артов…');
@@ -19881,9 +19881,9 @@ function nxAutoCacheAll(done) {
 }
 function nxEmbedAll() {
     const btn = document.getElementById('nx-embed-all'); if (btn) btn.disabled = true;
-    try { showToast('«Вшить всё»: собираю все арты, до которых дотянется сайт…', 'success'); } catch (e) {}
+    try { nxOwnerToast('«Вшить всё»: собираю все арты, до которых дотянется сайт…', 'success'); } catch (e) {}
     nxAutoCacheAll(fresh => {
-        try { showToast('Скачано нового: ' + fresh + '. Собираю файл со вшитыми артами…', 'success'); } catch (e) {}
+        try { nxOwnerToast('Скачано нового: ' + fresh + '. Собираю файл со вшитыми артами…', 'success'); } catch (e) {}
         setTimeout(() => {
             try { nxExportEmbedded(); } catch (e) {}
             if (btn) btn.disabled = false;
@@ -20005,14 +20005,14 @@ function nxAutoCacheOnce() {
     const step = () => {
         if (i >= jobs.length || done >= CAP) {
             nxAutoRunning = false;
-            if (fresh) { try { showToast('Автокэш артов: +' + fresh + ' сохранено в устройстве', 'success'); } catch (e) {} }
+            if (fresh) { try { nxOwnerToast('Автокэш артов: +' + fresh + ' сохранено в устройстве', 'success'); } catch (e) {} }
             try { nxUpdateCounts(); } catch (e) {}
             // b327: хост ожил и всё дотянулось — радуемся один раз
             try {
                 if (fresh && !window.__nxAllCached && i >= jobs.length) {
                     let miss = 0;
                     jobs.forEach(u => { if (!IMG_OBJ.has(u)) miss++; });
-                    if (miss === 0) { window.__nxAllCached = 1; showToast('Все арты коллекции закэшированы! Игра полностью офлайн-готова', 'success'); }
+                    if (miss === 0) { window.__nxAllCached = 1; nxOwnerToast('Все арты коллекции закэшированы! Игра полностью офлайн-готова', 'success'); }
                 }
             } catch (e) {}
             // b341: автовшивание — любые НОВЫЕ арты из кэша сами уходят коммитом на сайт
@@ -20068,7 +20068,7 @@ window.addEventListener('unhandledrejection', ev => {
         LS.setItem('nx_bye', '');
         if (!bye && beat && Date.now() - beat < 180000) {
             nxCrashLog('подозрение на аварийное завершение прошлой сессии (белый экран/OOM)');
-            setTimeout(() => { try { showToast('Прошлая сессия оборвалась аварийно. Если это повторяется: Настройки → «Диагностика» → пришлите код создателю', 'error'); } catch (e) {} }, 2500);
+            setTimeout(() => { try { nxOwnerToast('Прошлая сессия оборвалась аварийно. Если это повторяется: Настройки → «Диагностика» → пришлите код создателю', 'error'); } catch (e) {} }, 2500);
         }
         setInterval(() => { try { LS.setItem('nx_beat', String(Date.now())); } catch (e) {} }, 5000);
         const byeFn = () => { try { LS.setItem('nx_bye', '1'); } catch (e) {} };
@@ -20153,21 +20153,21 @@ function nxCacheAll() { // фоном тянет всю коллекцию в п
         try { eff = mediaUrl(raw); } catch (e) {}
         if (eff && eff.indexOf('http') === 0) jobs.push({ raw: raw, eff: eff });
     });
-    if (!jobs.length) { showToast('Нечего качать: все арты уже вшиты в файл', 'error'); return; }
+    if (!jobs.length) { nxOwnerToast('Нечего качать: все арты уже вшиты в файл', 'error'); return; }
     nxCacheAllRunning = true;
     const btn = document.getElementById('nx-cache-all-btn'); if (btn) btn.disabled = true;
     const total = jobs.length;
     let done = 0, fresh = 0, ptr = 0;
     const tick = () => {
         done++;
-        if (done % 4 === 0 || done === total) showToast('Качаю арты: ' + done + '/' + total + (fresh ? ', новых: ' + fresh : ''), 'success');
+        if (done % 4 === 0 || done === total) nxOwnerToast('Качаю арты: ' + done + '/' + total + (fresh ? ', новых: ' + fresh : ''), 'success');
         next();
     };
     const next = () => {
         if (ptr >= jobs.length) {
             if (done >= total) {
                 nxCacheAllRunning = false; if (btn) btn.disabled = false;
-                showToast('Готово: коллекция закэширована (' + fresh + ' новых артов). Альбомы откроются без сети', 'success');
+                nxOwnerToast('Готово: коллекция закэширована (' + fresh + ' новых артов). Альбомы откроются без сети', 'success');
             }
             return;
         }
@@ -20177,7 +20177,7 @@ function nxCacheAll() { // фоном тянет всю коллекцию в п
             imgCacheStoreFromNetwork(j.eff).then(ou => { if (ou) fresh++; tick(); }, () => tick());
         }, () => tick());
     };
-    showToast('Старт: ' + total + ' артов в очереди на закачку в кэш', 'success');
+    nxOwnerToast('Старт: ' + total + ' артов в очереди на закачку в кэш', 'success');
     for (let i = 0; i < 3; i++) next();
 }
 function nxExportEmbedded() { // собирает копию файла игры с кэшированными артами внутри
