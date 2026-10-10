@@ -5217,7 +5217,7 @@ function nxToggle3d() {
                         : Math.max(0, profNum(remote.coins) - sumMov); // миграция доков v1 без леджера
                 }
                 const myC = profNum(LS.getItem('nx_prof_movc')) + myDelta;
-                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока // b367: мой взнос по версии дока
+                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока // b367: мой взнос по версии дока // b367: мой взнос по версии дока
                 mov[did] = myC;
                 const mergedCoins = Math.max(0, base + Object.keys(mov).reduce((s, k) => s + mov[k], 0));
                 const unionGrew = !rState
@@ -13603,7 +13603,7 @@ function nxToggle3d() {
                             if (m.add) bits.push(`новых: ${m.add}`);
                             if (m.upd) bits.push(`обновлено: ${m.upd}`);
                             if (m.mirror) bits.push(`не из комнаты: ${m.mirror} (сохранено в архив)`);
-                            showToast('Обновление системы: ' + (bits.length ? bits.join(', ') : 'изменения применены'), 'success'); // b247: без имени комнаты
+                            try { nxOwnerToast('Обновление системы: ' + (bits.length ? bits.join(', ') : 'изменения применены'), 'success'); } catch (e) {} // b369: системное уведомление — только в Студии
                         }
                     }
                 }

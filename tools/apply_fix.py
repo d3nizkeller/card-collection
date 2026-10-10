@@ -69,10 +69,23 @@ APP_EDITS = [
      "        }"),
     ('b367-diff-5189-5189',
      '                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null;',
-     '                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока'),
+     '                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока'),    ('b369-cloud-toast',
+     "showToast('Обновление системы: ' + (bits.length ? bits.join(', ') : 'изменения применены'), 'success'); // b247: без имени комнаты",
+     "try { nxOwnerToast('Обновление системы: ' + (bits.length ? bits.join(', ') : 'изменения применены'), 'success'); } catch (e) {} // b369: системное уведомление — только в Студии"),
+
 ]
 
-QR_EDITS = []
+QR_EDITS = [
+    ('b369-embed-err',
+     "    const err = m => { if (btn) btn.disabled = false; try { showToast(m, 'error'); } catch (e) {} nxStatus(m, 'err'); };",
+     "    const err = m => { if (btn) btn.disabled = false; try { nxOwnerToast(m, 'error'); } catch (e) {} nxStatus(m, 'err'); }; // b369: системные ошибки вшивания — только в Студии (скриншот-жалоба: тост о лимите вшивания пугал игроков посреди игры)"),
+    ('b369-crash-toast',
+     "showToast('Прошлые сессии обрывались браузером (нехватка памяти) — 3D отключено, игры в плоском режиме. Вернуть 3D можно в Студии', 'error')",
+     "nxOwnerToast('Прошлые сессии обрывались браузером (нехватка памяти) — 3D отключено, игры в плоском режиме. Вернуть 3D можно в Студии', 'error')"),
+    ('b369-memguard-toast',
+     "showToast('Память устройства на пределе — перезагружаю игру, прогресс сохранён', 'error')",
+     "nxOwnerToast('Память устройства на пределе — перезагружаю игру, прогресс сохранён', 'error')"),
+]
 
 MONO_EDITS = [
     ('b367-ui-text',

@@ -755,7 +755,7 @@ function nxPushEmbedded(auto) {
     const btn = document.getElementById('nx-push-embed'); if (btn) btn.disabled = true;
     nxStatus('Собираю файл для вшивания…');
     const say = m => { try { nxOwnerToast(m, 'success'); } catch (e) {} };
-    const err = m => { if (btn) btn.disabled = false; try { showToast(m, 'error'); } catch (e) {} nxStatus(m, 'err'); };
+    const err = m => { if (btn) btn.disabled = false; try { nxOwnerToast(m, 'error'); } catch (e) {} nxStatus(m, 'err'); }; // b369: системные ошибки вшивания — только в Студии (скриншот-жалоба: тост о лимите вшивания пугал игроков посреди игры)
     nxSrcGet().then(src => { // b342-solo: было fetch(location.href,{cache:'no-store'}) — перезакачка всего файла каждый раз
         nxProgress(0.15, 'Читаю исходник и список артов…');
         const pairs = [];
@@ -1528,7 +1528,7 @@ window.addEventListener('unhandledrejection', ev => {
                 LS.setItem('nx_hard_crash', String(hc));
                 if (hc >= 2 && !nxForce3d()) {
                     LS.setItem('nx_weak_gpu', '1');
-                    setTimeout(() => { try { showToast('Прошлые сессии обрывались браузером (нехватка памяти) — 3D отключено, игры в плоском режиме. Вернуть 3D можно в Студии', 'error'); } catch (e) {} }, 3200);
+                    setTimeout(() => { try { nxOwnerToast('Прошлые сессии обрывались браузером (нехватка памяти) — 3D отключено, игры в плоском режиме. Вернуть 3D можно в Студии', 'error'); } catch (e) {} }, 3200);
                 }
             } catch (e) {}
             setTimeout(() => { try { nxOwnerToast('Прошлая сессия оборвалась аварийно. Если это повторяется: Настройки → «Диагностика» → пришлите код создателю', 'error'); } catch (e) {} }, 2500);
@@ -1588,7 +1588,7 @@ setInterval(() => {
                 try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} // b309
                 nxCrashLog('memguard: мягкая перезагрузка при heap ' + Math.round(mb) + ' МБ');
                 try { saveState(); } catch (e) {}
-                try { showToast('Память устройства на пределе — перезагружаю игру, прогресс сохранён', 'error'); } catch (e) {}
+                try { nxOwnerToast('Память устройства на пределе — перезагружаю игру, прогресс сохранён', 'error'); } catch (e) {}
                 setTimeout(() => location.reload(), 1500);
             }
         }
