@@ -100,8 +100,18 @@ async function part1_loops(page, errs) {
     await page.evaluate(() => window.__rafReset());
     await page.waitForTimeout(2000);
     const r = await page.evaluate(() => ({ loops: window.__rafIds.size, fired: window.__rafFired }));
-    const s = await page.evaluate(() => window.__snap());
-    console.log(`  экран «${g}»: создано WebGL-рендеров ${s.made}, живо ${s.live.length} [${s.live.join(',')}], активных rAF-циклов ${r.loops} (${r.fired} вызовов за 2 с), heap ${s.heapMB} МБ`);
+    const s = await page.evaluate(() => {
+      const sn = window.__snap();
+      let bmp = 0, n = 0, worst = 0;
+      for (const im of document.images) {
+        if (!im.complete || !im.naturalWidth) continue;
+        const b = im.naturalWidth * im.naturalHeight * 4; bmp += b; n++;
+        if (b > worst) worst = b;
+      }
+      sn.bmpMB = +(bmp / 1048576).toFixed(1); sn.imgs = n; sn.worstMB = +(worst / 1048576).toFixed(1);
+      return sn;
+    });
+    console.log(`  экран «${g}»: WebGL-рендеров создано ${s.made}, живо ${s.live.length} [${s.live.join(',')}], rAF-циклов ${r.loops} (${r.fired} за 2 с), heap ${s.heapMB} МБ, битмапов ${s.bmpMB} МБ на ${s.imgs} картинках (худшая ${s.worstMB} МБ)`);
   }
 
   // ушли в магазин — всё лишнее должно погаснуть

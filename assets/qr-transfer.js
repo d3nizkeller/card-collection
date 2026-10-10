@@ -652,6 +652,19 @@ function nxBytesToB64(u8) { // b359: base64 через массив кусков
 function nxB64(str) { // base64 для огромных строк — кусками, без переполнения стека
     return nxBytesToB64(new TextEncoder().encode(str));
 }
+function nxGitShaOf(str) { // b361: git-sha содержимого (blob), считается на устройстве
+    try {
+        const bytes = new TextEncoder().encode(str);
+        const head = new TextEncoder().encode('blob ' + bytes.length + '\0');
+        const all = new Uint8Array(head.length + bytes.length);
+        all.set(head, 0); all.set(bytes, head.length);
+        return crypto.subtle.digest('SHA-1', all).then(b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''));
+    } catch (e) { return Promise.resolve(''); }
+}
+function nxGhFileSha(repo, path) { // b361: sha файла в ветке по умолчанию
+    return nxGhApi('/repos/' + repo + '/contents/' + path, { headers: { 'Accept': 'application/vnd.github+json' } })
+        .then(d => (d && d.sha) || '').catch(() => '');
+}
 function nxGhPush(repo, content, ok, fail) {
     // b332: если ветка уехала вперёд (422 not a fast forward) — перечитываем head
     // и пересоздаём коммит поверх нового; до 3 попыток
@@ -726,9 +739,26 @@ function nxEmbedRun(repo, src, pairs, auto, btn, say, err) {
         let out = src, pending = pairs.length, replaced = 0; const extras = []; // b340
         const finalize = () => { nxProgress(0.65, 'Собираю файл с артами…'); out = nxInjectExtras(out, extras); // b340
             if (!replaced && !extras.length) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
-            say((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов). Пушу коммит в GitHub…');
-            nxStatus((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов), загружаю ~' + (out.length / 1048576).toFixed(1) + ' МБ в GitHub…');
-            nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say((auto ? 'Автовшивание: ' : '') + 'вшито в сайт! Pages обновится за 1–2 минуты'); try { nxCrashLog('push-embed ok: ' + (replaced + extras.length) + ' артов'); } catch (e) {} nxStatus('Готово: вшито ' + (replaced + extras.length) + ' артов. Pages обновится за 1–2 минуты', 'ok'); }, err);
+            // b361: сначала сверяем собранный файл с тем, что уже лежит в ветке, и
+            // только потом обещаем коммит. На разделённой сборке (index.html +
+            // assets/*) маркер NX_EMBED_MEDIA живёт в assets/app.js, поэтому
+            // «вшивание» в index.html ничего не меняет — а пустые коммиты сайт
+            // плодил каждые 10 минут (замер: коммит 7a2e45d не изменил ничего).
+            const pushReal = () => {
+                say((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов). Пушу коммит в GitHub…');
+                nxStatus((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов), загружаю ~' + (out.length / 1048576).toFixed(1) + ' МБ в GitHub…');
+                nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say((auto ? 'Автовшивание: ' : '') + 'вшито в сайт! Pages обновится за 1–2 минуты'); try { nxCrashLog('push-embed ok: ' + (replaced + extras.length) + ' артов'); } catch (e) {} nxStatus('Готово: вшито ' + (replaced + extras.length) + ' артов. Pages обновится за 1–2 минуты', 'ok'); }, err);
+            };
+            Promise.all([nxGitShaOf(out), nxGhFileSha(repo, 'index.html')]).then(sh => {
+                if (sh[0] && sh[0] === sh[1]) {
+                    if (btn) btn.disabled = false;
+                    say('Коммит не нужен: index.html в репозитории уже такой же');
+                    nxStatus('Без изменений: собранный файл совпадает с тем, что уже в ветке — коммита не будет', 'ok');
+                    try { nxCrashLog('push-embed: пропуск, собранный файл не отличается от ветки'); } catch (e) {}
+                    return;
+                }
+                pushReal();
+            }).catch(() => pushReal());
         };
         const apply = (raw, dataUrl) => { if (dataUrl) { if (out.indexOf(raw) >= 0) { out = out.split(raw).join(dataUrl); replaced++; } try { const bb = nxMediaKey(raw); if (bb) extras.push([bb, dataUrl]); } catch (e) {} } if (pending > 0) nxProgress(0.15 + 0.45 * (1 - pending / Math.max(1, pairs.length)), 'Достаю арты из кэша устройства: ' + (pairs.length - pending) + '/' + pairs.length); if (--pending === 0) finalize(); };
         if (!pending) { finalize(); return; }
@@ -1495,8 +1525,6 @@ setInterval(() => {
         if (mb < lim) return; // b318: WebView Telegram живёт в меньшем лимите
         try { IMG_OBJ.forEach(ou => { try { URL.revokeObjectURL(ou); } catch (e) {} }); IMG_OBJ.clear(); } catch (e) {}
         try { imgQueue.length = 0; } catch (e) {}
-        try { nx3dPauseAll(); } catch (e) {} // b357: сначала остановить кадры, потом отдавать контексты
-        try { nx3dPauseAll(); } catch (e) {} // b357: сначала остановить кадры, потом отдавать контексты
         try { nx3dPauseAll(); } catch (e) {} // b357: сначала остановить кадры, потом отдавать контексты
         try { nx3dReleaseHidden('__all__'); } catch (e) {}
         try { if (battleMode !== 'arena' && typeof battle3d !== 'undefined' && battle3d) battle3dDispose(); } catch (e) {}

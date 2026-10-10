@@ -87,13 +87,13 @@ BLOCKS = {
     'app_js':    (3612, 18051, 'script', 'код игры'),   # b355-b358: границы пересчитаны после правок монолита
     'stories':   (18052, 18793, 'script', 'нарезчик сторис 9:16'),
     'qrcode':    (18794, 18798, 'script', 'qrcode.js'),
-    'qr_xfer':   (18799, 20448, 'script', 'перенос прогресса по QR'),  # b359-b360
+    'qr_xfer':   (18799, 20476, 'script', 'перенос прогресса по QR'),  # b359-b360
 }
 
 HEAD_END = 1088       # </head>
 GOOGLE_FONTS = 145    # <link href="https://fonts.googleapis.com/...">
 BODY_OPEN = 1089
-BODY_CLOSE = 20449
+BODY_CLOSE = 20477
 
 
 def inner(lines, key):
