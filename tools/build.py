@@ -84,16 +84,16 @@ BLOCKS = {
     'three':     (123, 132,   'script', 'three.js r128'),
     'fa':        (133, 144,   'style',  'Font Awesome 6.4.0'),
     'app_css':   (146, 1087,  'style',  'основной CSS игры'),
-    'app_js':    (3630, 18684, 'script', 'код игры'),   # b355-b358: границы пересчитаны после правок монолита
-    'stories':   (18685, 19426, 'script', 'нарезчик сторис 9:16'),
-    'qrcode':    (19427, 19431, 'script', 'qrcode.js'),
-    'qr_xfer':   (19432, 21160, 'script', 'перенос прогресса по QR'),  # b359-b360
+    'app_js':    (3630, 18681, 'script', 'код игры'),   # b355-b358: границы пересчитаны после правок монолита
+    'stories':   (18682, 19423, 'script', 'нарезчик сторис 9:16'),
+    'qrcode':    (19424, 19428, 'script', 'qrcode.js'),
+    'qr_xfer':   (19429, 21157, 'script', 'перенос прогресса по QR'),  # b359-b360
 }
 
 HEAD_END = 1088       # </head>
 GOOGLE_FONTS = 145    # <link href="https://fonts.googleapis.com/...">
 BODY_OPEN = 1089
-BODY_CLOSE = 21161
+BODY_CLOSE = 21158
 
 
 def inner(lines, key):

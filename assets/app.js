@@ -5186,7 +5186,7 @@ function nxToggle3d() {
                         : Math.max(0, profNum(remote.coins) - sumMov); // миграция доков v1 без леджера
                 }
                 const myC = profNum(LS.getItem('nx_prof_movc')) + myDelta;
-                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null;
+                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока
                 mov[did] = myC;
                 const mergedCoins = Math.max(0, base + Object.keys(mov).reduce((s, k) => s + mov[k], 0));
                 const unionGrew = !rState

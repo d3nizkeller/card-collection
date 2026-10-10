@@ -8743,6 +8743,7 @@ function nxToggle3d() {
                         : Math.max(0, profNum(remote.coins) - sumMov); // миграция доков v1 без леджера
                 }
                 const myC = profNum(LS.getItem('nx_prof_movc')) + myDelta;
+                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока
                 mov[did] = myC;
                 const mergedCoins = Math.max(0, base + Object.keys(mov).reduce((s, k) => s + mov[k], 0));
                 const unionGrew = !rState
@@ -8750,10 +8751,10 @@ function nxToggle3d() {
                     || (mergedFields.packs || []).length > (rState.packs || []).length;
                 const book = (remote && remote.book) || {};
                 const bookStale = !book[did] || (Date.now() - profNum(book[did].at) > 120000);
-                // b367: если моего взноса в доке нет или он не совпадает с моим
-                // расчётом (кто-то запушил по несвежей читке и стёр его) — пушим
-                // восстановление, иначе чужая следующая синхронизация сядет на ноль
-                const movLost = !!remote && remoteMyMov !== myC;
+                // b367: если моего взноса в доке нет или он не совпадает с моим
+                // расчётом (кто-то запушил по несвежей читке и стёр его) — пушим
+                // восстановление, иначе чужая следующая синхронизация сядет на ноль
+                const movLost = !!remote && remoteMyMov !== myC;
                 const needPush = !!force || !remote || myDelta !== 0 || unionGrew || bookStale || movLost;
                 // прикладываем общее состояние к себе (чужие карты/паки/баланс приезжают сюда).
                 // ВАЖНО: базой «моих изменений» становится именно слитое значение, иначе
