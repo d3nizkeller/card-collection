@@ -4634,6 +4634,9 @@ function nxToggle3d() {
                 fed: Math.max(0, Math.floor(e.fed) || 0),
                 won: Math.max(0, Math.floor(e.won) || 0),
                 at: Math.floor(e.at) || 0,
+                ip: String(e.ip || '').slice(0, 45),   // b363: публичный IP устройства
+                dev: String(e.dev || '').slice(0, 90), // b363: ОС/браузер/форм-фактор/экран
+                did: String(e.did || '').slice(0, 24), // b363: устойчивый ID браузера
                 pk: {},
                 alb: {}
             };
@@ -4682,6 +4685,76 @@ function nxToggle3d() {
             }
             return { have: have, total: total, packs: packs, done: done, pct: total > 0 ? Math.round(have / total * 100) : 0 };
         }
+        // ============ b363: УСТРОЙСТВА И IP — «один IP = один пользователь» ============
+        function nxDeviceId() { // устойчивый ID браузера: переживает перезаходы, уникален на устройство/профиль
+            try {
+                let id = LS.getItem('nx_device_id');
+                if (!id) {
+                    id = 'dv' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+                    LS.setItem('nx_device_id', id);
+                }
+                return id;
+            } catch (e) { return ''; }
+        }
+        function nxDeviceLabel() { // человекочитаемый портрет устройства: ОС, браузер, форм-фактор, экран, железо
+            try {
+                const ua = String(navigator.userAgent || '');
+                let os = 'неизвестная ОС';
+                if (/iPhone|iPad|iPod/.test(ua)) { const v = ua.match(/OS (\d+)[_.](\d+)/); os = (/iPad/.test(ua) ? 'iPadOS ' : 'iOS ') + (v ? v[1] + '.' + v[2] : ''); }
+                else if (/Android/.test(ua)) { const v = ua.match(/Android (\d+(\.\d+)?)/); os = 'Android ' + (v ? v[1] : ''); }
+                else if (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+                else if (/Windows/.test(ua)) os = 'Windows';
+                else if (/Mac OS X/.test(ua)) { const v = ua.match(/Mac OS X (\d+)[_.](\d+)/); os = 'macOS ' + (v ? v[1] + '.' + v[2] : ''); }
+                else if (/CrOS/.test(ua)) os = 'ChromeOS';
+                else if (/Linux/.test(ua)) os = 'Linux';
+                let br = '';
+                if (/Telegram/i.test(ua)) br = 'Telegram';
+                else if (/YaBrowser/i.test(ua)) br = 'Яндекс';
+                else if (/Edg\//i.test(ua)) br = 'Edge';
+                else if (/OPR\//i.test(ua)) br = 'Opera';
+                else if (/Firefox\//i.test(ua)) br = 'Firefox';
+                else if (/Chrome\//i.test(ua)) br = 'Chrome';
+                else if (/Safari\//i.test(ua)) br = 'Safari';
+                const tab = /iPad|Tablet|(Android(?!.*Mobile))/i.test(ua);
+                const mob = /Mobile|iPhone|iPod|Android.*Mobile/i.test(ua);
+                const form = tab ? 'планшет' : (mob ? 'телефон' : 'ПК');
+                const scr = (screen.width || 0) + '×' + (screen.height || 0) + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100) + 'x';
+                const hw = [(navigator.hardwareConcurrency ? navigator.hardwareConcurrency + ' яд.' : ''), (navigator.deviceMemory ? navigator.deviceMemory + ' ГБ' : '')].filter(Boolean).join(', ');
+                return [os, br, form, scr, hw].filter(Boolean).join(' · ');
+            } catch (e) { return ''; }
+        }
+        function nxDvIcon(dev) { // иконка по форм-фактору из строки устройства
+            const s = String(dev || '');
+            if (s.indexOf('планшет') >= 0) return 'fa-tablet-screen-button';
+            if (s.indexOf('телефон') >= 0) return 'fa-mobile-screen';
+            return 'fa-desktop';
+        }
+        let nxIpFetch = 0;
+        function nxPublicIp() { // публичный IP: не чаще раза в 6 часов, кэш в LS; '' если сервисы недоступны
+            try {
+                const raw = String(LS.getItem('nx_pub_ip') || '');
+                const at = parseInt(LS.getItem('nx_pub_ip_at') || '0', 10) || 0;
+                if (raw && Date.now() - at < 6 * 3600000) return raw;
+                const failAt = parseInt(LS.getItem('nx_pub_ip_fail') || '0', 10) || 0;
+                if (!raw && Date.now() - failAt < 600000) return ''; // не долбим сервисы после неудачи
+                if (!nxIpFetch) {
+                    nxIpFetch = 1;
+                    const urls = ['https://api.ipify.org?format=json', 'https://api64.ipify.org?format=json', 'https://ifconfig.co/json'];
+                    const tryOne = i => {
+                        if (i >= urls.length) { nxIpFetch = 0; try { LS.setItem('nx_pub_ip_fail', String(Date.now())); } catch (e) {} return; }
+                        fetch(urls[i], { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+                            .then(j => {
+                                nxIpFetch = 0;
+                                const ip = String((j && (j.ip || j.ip_addr)) || '').slice(0, 45);
+                                if (ip) { try { LS.setItem('nx_pub_ip', ip); LS.setItem('nx_pub_ip_at', String(Date.now())); } catch (e) {} }
+                            })
+                            .catch(() => tryOne(i + 1));
+                    };
+                    tryOne(0);
+                }
+                return raw; // первый ответ придёт в фоне: подхватится следующим heartbeat (30 с)
+            } catch (e) { return ''; }
+        }
         function siteStatsSelfUpdate() {
             try {
                 const e = siteStatsNorm(JACKPOT_CID, siteStats.p[JACKPOT_CID] || {});
@@ -4696,6 +4769,9 @@ function nxToggle3d() {
                 Object.keys(ps).slice(0, 24).forEach(id => { const o = Math.floor(ps[id] && ps[id].opens) || 0; if (o > 0) pk[id] = o; });
                 e.pk = pk;
                 e.alb = siteStatsAlbums(); // b278
+                e.did = nxDeviceId();    // b363: устойчивый ID устройства
+                e.dev = nxDeviceLabel(); // b363: портрет устройства для панели
+                e.ip = nxPublicIp();     // b363: IP из кэша, первый запрос идёт фоном
                 e.at = Date.now();
                 siteStats.p[JACKPOT_CID] = e;
             } catch (err) {}
@@ -4735,7 +4811,7 @@ function nxToggle3d() {
             const cut30 = Date.now() - 30 * 86400000;
             Object.keys(siteStats.p).map(k => siteStats.p[k])
                 .sort((a, c) => (c.at || 0) - (a.at || 0)).slice(0, 150)
-                .forEach(e => { if (e.cid) p[e.cid] = { n: e.n, bal: e.bal, op: e.op, jp: e.jp, fed: e.fed, won: e.won, at: e.at, pk: e.pk, alb: e.alb }; }); // b278: + альбомы
+                .forEach(e => { if (e.cid) p[e.cid] = { n: e.n, bal: e.bal, op: e.op, jp: e.jp, fed: e.fed, won: e.won, at: e.at, pk: e.pk, alb: e.alb, ip: e.ip, dev: e.dev, did: e.did }; }); // b278: + альбомы; b363: + IP/устройство/ID
             for (const k in siteStats.b) { const v = siteStats.b[k]; if (v && (v.on || (v.at || 0) > cut30)) b[k] = v; }
             for (const k in siteStats.z) { if ((siteStats.z[k] || 0) > cut30) z[k] = siteStats.z[k]; }
             return { p: p, b: b, z: z };
@@ -4889,6 +4965,62 @@ function nxToggle3d() {
                 showToast('🗑 Игрок удалён: баланс обнулён, доступ отключён, из списка исчез', 'info');
             });
         }
+        function statsGroupList(ids) { return String(ids || '').split(',').filter(Boolean); }
+        function statsZeroGroup(ids, btn) { // b363: обнулить все устройства одного пользователя
+            const list = statsGroupList(ids);
+            statsConfirm(btn, 'Обнулить баланс на всех ' + list.length + ' устройствах?', () => {
+                if (statsAdminGuard()) return;
+                const t = Date.now();
+                list.forEach(cid => {
+                    siteStats.z[cid] = t; siteStatsSave();
+                    if (cid === JACKPOT_CID) { try { LS.setItem('nexus_stats_zero_ack', String(t)); } catch (e) {} state.coins = 0; saveState(); updateCoinDisplay(); }
+                });
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast('💸 Обнулено устройств: ' + list.length + ' — после синхронизации у игроков будет 0', 'success');
+            });
+        }
+        function statsBlockGroup(ids, on, btn) { // b363: блок/разблок всех устройств пользователя
+            const list = statsGroupList(ids);
+            statsConfirm(btn, on ? 'Заблокировать все ' + list.length + ' устройства?' : 'Разблокировать все ' + list.length + ' устройства?', () => {
+                if (statsAdminGuard()) return;
+                list.forEach(cid => {
+                    siteStats.b[cid] = { on: on ? 1 : 0, at: Date.now() };
+                    if (on) siteStats.z[cid] = Date.now(); // блокировка обнуляет баланс
+                });
+                siteStatsSave();
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast(on ? '🚫 Заблокировано устройств: ' + list.length : '✅ Разблокировано устройств: ' + list.length, on ? 'info' : 'success');
+            });
+        }
+        function statsDeleteGroup(ids, btn) { // b363: удалить пользователя со всеми устройствами
+            const list = statsGroupList(ids);
+            statsConfirm(btn, 'Удалить пользователя со всеми ' + list.length + ' устройствами?', () => {
+                if (statsAdminGuard()) return;
+                list.forEach(cid => {
+                    siteStats.b[cid] = { on: 1, del: 1, at: Date.now() };
+                    siteStats.z[cid] = Date.now();
+                    delete siteStats.p[cid];
+                });
+                siteStatsSave();
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast('🗑 Удалено устройств: ' + list.length + ' — балансы обнулены, доступ отключён', 'info');
+            });
+        }
+        function nxStatsGroupOn() { try { return LS.getItem('nx_stats_group_ip') !== '0'; } catch (e) { return true; } }
+        function nxToggleGroupIp() {
+            try { LS.setItem('nx_stats_group_ip', nxStatsGroupOn() ? '0' : '1'); } catch (e) {}
+            try { window.__nxStatsSig = ''; statsRender(); } catch (e) {}
+        }
+        function nxGroupIpLabel() {
+            const b = document.getElementById('nx-groupip-btn');
+            if (!b) return;
+            const on = nxStatsGroupOn();
+            b.innerHTML = '<i class="fa-solid fa-network-wired mr-1"></i>Один IP = 1 пользователь: ' + (on ? 'вкл' : 'выкл');
+            b.title = on ? 'Записи с одним IP показываются одной карточкой со списком устройств' : 'Группировка выключена: каждое устройство отдельной строкой';
+        }
         function statsRenderIfVisible() {
             if (statsArmBtn) return; // не перестраиваем список, пока идёт подтверждение кнопки
             const sec = document.querySelector('.studio-sec[data-sec="stats"]');
@@ -4919,12 +5051,15 @@ function nxToggle3d() {
             let opens = 0; plist.forEach(e => { opens += e.op || 0; });
             let albPctSum = 0, albPctN = 0; // b278: средний процент сбора альбомов (по игрокам с данными)
             plist.forEach(e => { const a = albSum(e.alb); if (a.total > 0) { albPctSum += a.pct; albPctN++; } });
+            // b363: пользователи — сгруппированные по IP записи; устройства — сами записи
+            const nxDevTotal = plist.length;
+            const nxUserTotal = (function () { const m = {}; plist.forEach(e => { const k = e.ip ? 'ip:' + e.ip : (e.did ? 'dev:' + e.did : 'cid:' + e.cid); m[k] = 1; }); return Object.keys(m).length; })();
             const chip = (ic, col, lab, val, ttl) => '<div class="rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0"' + (ttl ? ' title="' + String(ttl).replace(/"/g, '&quot;') + '"' : '') + '><p class="text-[9px] uppercase tracking-wide text-slate-500 flex items-center gap-1.5 truncate"><i class="fa-solid ' + ic + ' ' + col + '"></i>' + lab + '</p><p class="text-sm sm:text-base font-black text-white truncate mt-0.5">' + val + '</p></div>';
             const sm = document.getElementById('stats-summary');
             if (sm) sm.innerHTML =
                 chip('fa-crown', 'text-amber-400', 'Джекпот сайта', fmtCoins(pool)) +
                 chip('fa-trophy', 'text-yellow-300', 'Сорвано джекпотов', String(wins)) +
-                chip('fa-users', 'text-sky-400', 'Игроков', String(plist.length)) +
+                chip('fa-users', 'text-sky-400', 'Пользователей · устройств', nxUserTotal + ' · ' + nxDevTotal, 'b363: записи с одним IP считаются одним пользователем; второе число — устройства (отдельные браузеры/телефоны)') +
                 chip('fa-box-open', 'text-violet-400', 'Открыто паков', String(opens)) +
                 chip('fa-sack-dollar', 'text-slate-300', 'Внесено в банк', fmtCoins(fed)) +
                 chip('fa-wallet', 'text-violet-300', 'Выплачено из банка', fmtCoins(won)) +
@@ -4939,43 +5074,114 @@ function nxToggle3d() {
                 }
                 if (chg) siteStatsSave();
             } catch (e) {}
-            const sorted = plist.slice().sort((a, c) => (c.bal || 0) - (a.bal || 0));
-            try { // b337: список пользователей перестраиваем только при реальных изменениях
-                const sigS = 'S|' + sorted.map(e => e.cid + ':' + (e.bal || 0) + ':' + ((nxNow - (e.at || 0) < 120000) ? 1 : 0) + ':' + !!(siteStats.b[e.cid] && siteStats.b[e.cid].on)).join(',') + '|' + (window.__nxOnlineOnly ? 1 : 0);
+            // ============ b363: «один IP = один пользователь» ============
+            // Записи реестра — это устройства (браузеры). Устройства с одним IP
+            // склеиваются в одну карточку пользователя: внутри список устройств,
+            // суммы по балансу/пакам/джекпотам и кнопки сразу на все устройства.
+            // Записи без IP (старые клиенты) группируются по ID устройства, а если
+            // и его нет — как раньше, по одной записи.
+            const grpOn = nxStatsGroupOn();
+            try { nxGroupIpLabel(); } catch (e) {}
+            const gm = {};
+            plist.forEach(e => {
+                const key = grpOn ? (e.ip ? 'ip:' + e.ip : (e.did ? 'dev:' + e.did : 'cid:' + e.cid)) : 'cid:' + e.cid;
+                const g = gm[key] || (gm[key] = { key: key, ip: e.ip || '', members: [] });
+                g.members.push(e);
+            });
+            const groups = Object.keys(gm).map(k => {
+                const g = gm[k];
+                g.members.sort((a, c) => (c.at || 0) - (a.at || 0));
+                g.e = g.members[0];
+                g.bal = g.members.reduce((s, m) => s + (m.bal || 0), 0);
+                g.op = g.members.reduce((s, m) => s + (m.op || 0), 0);
+                g.jp = g.members.reduce((s, m) => s + (m.jp || 0), 0);
+                g.fed = g.members.reduce((s, m) => s + (m.fed || 0), 0);
+                g.at = g.members.reduce((s, m) => Math.max(s, m.at || 0), 0);
+                g.online = g.members.some(m => nxNow - (m.at || 0) < 120000);
+                g.blk = g.members.some(m => !!(siteStats.b[m.cid] && siteStats.b[m.cid].on));
+                g.albBest = g.members.map(m => albSum(m.alb)).sort((a, c) => c.pct - a.pct)[0] || { total: 0 };
+                return g;
+            }).sort((a, c) => c.bal - a.bal);
+            try { // b337: список перестраиваем только при реальных изменениях (b363: с учётом групп и устройств)
+                const sigS = 'S2|' + (grpOn ? 1 : 0) + '|' + groups.map(g => g.members.map(m => m.cid + ':' + (m.bal || 0) + ':' + (m.ip || '-') + ':' + ((nxNow - (m.at || 0) < 120000) ? 1 : 0) + ':' + !!(siteStats.b[m.cid] && siteStats.b[m.cid].on)).join('+')).join(',') + '|' + (window.__nxOnlineOnly ? 1 : 0);
                 if (sigS === window.__nxStatsSig) return;
                 window.__nxStatsSig = sigS;
             } catch (e) {}
-            users.innerHTML = sorted.map((e, i) => {
-                const cid = e.cid, me = cid === JACKPOT_CID;
-                const blk = !!(siteStats.b[cid] && siteStats.b[cid].on);
-                const name = e.n || ('Игрок-' + String(cid).slice(1, 5));
-                const as = albSum(e.alb); // b278: альбомы игрока
-                const btns = guest
-                    ? '<span class="ml-auto text-[9px] text-slate-600 italic">управляет создатель комнаты</span>'
-                    : '<span class="flex items-center gap-1.5 shrink-0 ml-auto">' +
-                        '<button type="button" onclick="statsZeroUser(\'' + cid + '\', this)" title="Обнулить баланс этого игрока" class="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-800/60 text-rose-300 hover:text-rose-200 text-[10px] font-bold transition"><i class="fa-solid fa-sack-dollar mr-1"></i>Обнулить</button>' +
-                        (blk
-                            ? '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 0, this)" title="Снова разрешить покупки и ставки" class="px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 border border-violet-800/60 text-violet-300 hover:text-violet-200 text-[10px] font-bold transition"><i class="fa-solid fa-unlock mr-1"></i>Разблокировать</button>'
-                            : '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 1, this)" title="Отключить игроку все покупки и ставки" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-800/60 text-slate-300 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-ban mr-1"></i>Заблокировать</button>') +
-                        '<button type="button" onclick="statsDeleteUser(\'' + cid + '\', this)" title="Удалить игрока: баланс обнуляется, доступ отключается, в течение суток пользователь удаляется" class="px-2 py-1 rounded-lg bg-slate-950 hover:bg-rose-950/80 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-trash-can mr-1"></i>Удалить</button>' +
-                      '</span>';
-                return '<div class="rounded-xl border px-2.5 py-2 ' + (blk ? 'border-rose-900/60 bg-rose-950/20' : me ? 'border-violet-700/60 bg-violet-950/20' : 'border-slate-800 bg-slate-950/50') + '">' +
+            const rowBtns = (cid, blk) => guest
+                ? '<span class="ml-auto text-[9px] text-slate-600 italic">управляет создатель комнаты</span>'
+                : '<span class="flex items-center gap-1.5 shrink-0 ml-auto">' +
+                    '<button type="button" onclick="statsZeroUser(\'' + cid + '\', this)" title="Обнулить баланс этого игрока" class="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-800/60 text-rose-300 hover:text-rose-200 text-[10px] font-bold transition"><i class="fa-solid fa-sack-dollar mr-1"></i>Обнулить</button>' +
+                    (blk
+                        ? '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 0, this)" title="Снова разрешить покупки и ставки" class="px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 border border-violet-800/60 text-violet-300 hover:text-violet-200 text-[10px] font-bold transition"><i class="fa-solid fa-unlock mr-1"></i>Разблокировать</button>'
+                        : '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 1, this)" title="Отключить игроку все покупки и ставки" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-800/60 text-slate-300 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-ban mr-1"></i>Заблокировать</button>') +
+                    '<button type="button" onclick="statsDeleteUser(\'' + cid + '\', this)" title="Удалить игрока: баланс обнуляется, доступ отключается, в течение суток пользователь удаляется" class="px-2 py-1 rounded-lg bg-slate-950 hover:bg-rose-950/80 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-trash-can mr-1"></i>Удалить</button>' +
+                  '</span>';
+            // b363: кнопки уровня группы — действуют на ВСЕ устройства пользователя
+            const grpBtns = g => {
+                if (guest) return '<span class="ml-auto text-[9px] text-slate-600 italic">управляет создатель комнаты</span>';
+                const ids = g.members.map(m => m.cid).join(',');
+                return '<span class="flex items-center gap-1.5 shrink-0 ml-auto">' +
+                    '<button type="button" onclick="statsZeroGroup(\'' + ids + '\', this)" title="Обнулить баланс на всех устройствах этого пользователя" class="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-800/60 text-rose-300 hover:text-rose-200 text-[10px] font-bold transition"><i class="fa-solid fa-sack-dollar mr-1"></i>Обнулить все</button>' +
+                    (g.blk
+                        ? '<button type="button" onclick="statsBlockGroup(\'' + ids + '\', 0, this)" title="Разблокировать все устройства пользователя" class="px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 border border-violet-800/60 text-violet-300 hover:text-violet-200 text-[10px] font-bold transition"><i class="fa-solid fa-unlock mr-1"></i>Разблок. все</button>'
+                        : '<button type="button" onclick="statsBlockGroup(\'' + ids + '\', 1, this)" title="Отключить покупки и ставки на всех устройствах пользователя" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-800/60 text-slate-300 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-ban mr-1"></i>Блок. все</button>') +
+                    '<button type="button" onclick="statsDeleteGroup(\'' + ids + '\', this)" title="Удалить все устройства пользователя" class="px-2 py-1 rounded-lg bg-slate-950 hover:bg-rose-950/80 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-trash-can mr-1"></i>Удалить все</button>' +
+                  '</span>';
+            };
+            const devChip = e => e.dev
+                ? badge(nxDvIcon(e.dev), cloudEsc(e.dev), 'text-slate-400', 'Устройство: ' + cloudEsc(e.dev) + (e.did ? ' • ID устройства ' + cloudEsc(e.did) : ''))
+                : badge('fa-circle-question', 'устройство неизвестно', 'text-slate-500', 'Запись опубликована старой версией сайта: она не присылает устройство и IP');
+            const memberRow = m => {
+                const blkM = !!(siteStats.b[m.cid] && siteStats.b[m.cid].on);
+                return '<div class="rounded-lg border border-slate-800/70 bg-slate-950/70 px-2 py-1.5 mt-1.5">' +
+                    '<div class="flex flex-wrap items-center gap-1.5">' +
+                        badge(nxDvIcon(m.dev), m.dev ? cloudEsc(m.dev) : 'устройство неизвестно', 'text-slate-400', m.dev ? ('Устройство: ' + cloudEsc(m.dev) + (m.did ? ' • ID ' + cloudEsc(m.did) : '')) : 'старый клиент сайта') +
+                        ((nxNow - (m.at || 0) < 120000) ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +
+                        (blkM ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
+                        (m.cid === JACKPOT_CID ? badge('fa-user', 'вы', 'text-violet-300') : '') +
+                        '<span class="ml-auto text-[9px] font-mono text-slate-600 truncate max-w-[110px]" title="ID устройства">' + cloudEsc(m.cid) + '</span>' +
+                    '</div>' +
+                    '<div class="flex flex-wrap items-center gap-1.5 mt-1">' +
+                        badge('fa-coins', fmtCoins(m.bal || 0), 'text-amber-300') +
+                        badge('fa-box-open', (m.op || 0) + ' паков', 'text-violet-300') +
+                        badge('fa-crown', 'джекпотов: ' + (m.jp || 0), 'text-yellow-300') +
+                        badge('fa-arrow-up', 'в банк: ' + fmtCoins(m.fed || 0), 'text-slate-300') +
+                        badge('fa-clock', statsAgo(m.at || 0), 'text-slate-400') +
+                        rowBtns(m.cid, blkM) +
+                    '</div>' +
+                '</div>';
+            };
+            users.innerHTML = groups.map((g, i) => {
+                const multi = g.members.length > 1;
+                const cid = g.e.cid, me = g.members.some(m => m.cid === JACKPOT_CID);
+                const name = g.e.n || ('Игрок-' + String(cid).slice(1, 5));
+                const as = g.albBest;
+                const btns = multi ? grpBtns(g) : rowBtns(cid, g.blk);
+                return '<div class="rounded-xl border px-2.5 py-2 ' + (g.blk ? 'border-rose-900/60 bg-rose-950/20' : me ? 'border-violet-700/60 bg-violet-950/20' : 'border-slate-800 bg-slate-950/50') + '">' +
                     '<div class="flex flex-wrap items-center gap-1.5 min-w-0">' +
-                        '<span class="text-[11px] font-black truncate max-w-[180px] ' + (blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + '</span>' +
+                        '<span class="text-[11px] font-black truncate max-w-[240px] ' + (g.blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + (multi ? ' <span class="text-sky-300">— устройств: ' + g.members.length + ', это один пользователь</span>' : '') + '</span>' +
                         (me ? badge('fa-user', 'вы', 'text-violet-300') : '') +
-                        (blk ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
-                        ((Date.now() - (e.at || 0) < 120000) ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +
-                        '<span class="ml-auto text-[9px] font-mono text-slate-600 truncate max-w-[120px]" title="ID игрока">' + cloudEsc(cid) + '</span>' +
+                        (g.blk ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
+                        (g.online ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +
+                        (g.ip ? badge('fa-location-dot', 'IP ' + cloudEsc(g.ip), 'text-sky-300', 'Все устройства ниже приходили с этого IP — считаем их одним пользователем') : badge('fa-location-dot', 'IP не сообщил', 'text-slate-600', 'Старый клиент или IP-сервис недоступен: группируем по ID устройства')) +
+                        '<span class="ml-auto text-[9px] font-mono text-slate-600 truncate max-w-[120px]" title="ID игрока' + (multi ? ' (последнее активное устройство)' : '') + '">' + cloudEsc(cid) + '</span>' +
                     '</div>' +
                     '<div class="flex flex-wrap items-center gap-1.5 mt-1.5">' +
-                        badge('fa-coins', fmtCoins(e.bal || 0), 'text-amber-300') +
-                        badge('fa-box-open', (e.op || 0) + ' паков', 'text-violet-300') +
-                        (as.total > 0 ? badge('fa-book-open', 'альбомы: ' + as.done + '/' + as.packs + ' · ' + as.pct + '%', 'text-violet-300', 'Собрано ' + as.have + ' из ' + as.total + ' карт • альбомов закрыто полностью: ' + as.done + ' из ' + as.packs) : '') +
-                        badge('fa-crown', 'джекпотов: ' + (e.jp || 0), 'text-yellow-300') +
-                        badge('fa-arrow-up', 'в банк: ' + fmtCoins(e.fed || 0), 'text-slate-300') +
-                        badge('fa-clock', statsAgo(e.at || 0), 'text-slate-400') +
+                        badge('fa-coins', fmtCoins(g.bal), 'text-amber-300', multi ? 'Сумма по всем устройствам этого пользователя' : '') +
+                        badge('fa-box-open', g.op + ' паков', 'text-violet-300', multi ? 'Сумма по всем устройствам' : '') +
+                        (as && as.total > 0 ? badge('fa-book-open', 'альбомы: ' + as.done + '/' + as.packs + ' · ' + as.pct + '%', 'text-violet-300', multi ? 'Лучший прогресс среди устройств пользователя' : ('Собрано ' + as.have + ' из ' + as.total + ' карт • альбомов закрыто полностью: ' + as.done + ' из ' + as.packs)) : '') +
+                        badge('fa-crown', 'джекпотов: ' + g.jp, 'text-yellow-300', multi ? 'Сумма по всем устройствам' : '') +
+                        badge('fa-arrow-up', 'в банк: ' + fmtCoins(g.fed), 'text-slate-300') +
+                        badge('fa-clock', statsAgo(g.at), 'text-slate-400') +
+                        (!multi ? devChip(g.e) : '') +
                         btns +
                     '</div>' +
+                    (multi
+                        ? '<details class="mt-1.5"><summary class="cursor-pointer text-[10px] font-bold text-sky-300 hover:text-sky-200 select-none"><i class="fa-solid fa-mobile-screen mr-1"></i>Устройства (' + g.members.length + '): баланс и кнопки каждого отдельно</summary>' +
+                          '<p class="text-[9px] text-slate-500 mt-1">Один IP — один человек: баланс сверху это сумма по устройствам. Ниже каждое устройство со своим балансом и своими кнопками.</p>' +
+                          g.members.map(memberRow).join('') +
+                          '</details>'
+                        : '') +
                 '</div>';
             }).join('') || '<p class="text-[11px] text-slate-500">Данных пока нет — пользователи появятся здесь после первой синхронизации с облаком (игра синхронизируется автоматически).</p>';
             const pkAgg = {};

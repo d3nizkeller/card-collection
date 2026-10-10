@@ -1,108 +1,210 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Пересобирает tools/apply_fix.py — список правок, которых в репозитории ещё нет.
-
-База — HEAD (то, что реально отдаётся сайтом). Правки b355–b360 уже в HEAD,
-здесь остаётся: dedup b357 и b361. Каждый old обязан встречаться в базе РОВНО
-один раз — иначе скрипт падает, а не портит файл.
-Одноразовый служебный скрипт: после коммита этих правок список станет пустым.
+"""Пересобирает tools/apply_fix.py под правку b363 («один IP = один пользователь»,
+определение устройств). Блоки: APP_EDITS (assets/app.js + монолит), MONO_EDITS
+(только монолит: кнопка в шапке панели), QR_EDITS пусто.
+Большие куски (рендер панели, html-строка) читаются из файлов tools/_b363_*.txt.
 """
 import io, ast, subprocess
 
 AP = 'tools/apply_fix.py'
+app_head = subprocess.run(['git', 'show', 'HEAD:assets/app.js'], capture_output=True, text=True).stdout
+mono_head_html = subprocess.run(['git', 'show', 'HEAD:index.html'], capture_output=True, text=True).stdout
 
-qr_head = subprocess.run(['git', 'show', 'HEAD:assets/qr-transfer.js'],
-                         capture_output=True, text=True).stdout
-assert qr_head and 'nxGhPush(repo, content, ok, fail)' in qr_head, 'HEAD:assets/qr-transfer.js не читается'
+OLD_RENDER = io.open('tools/_b363_old_render.txt', encoding='utf-8').read().rstrip('\n')
+NEW_RENDER = io.open('tools/_b363_new_render.txt', encoding='utf-8').read().rstrip('\n')
+OLD_HTML = io.open('tools/_b363_old_html.txt', encoding='utf-8').read().rstrip('\n')
+NEW_HTML = ('<button type="button" id="nx-groupip-btn" onclick="nxToggleGroupIp()" '
+            'title="Группировать записи реестра по IP: устройства с одним IP показываем как одного пользователя со списком устройств" '
+            'class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold transition mr-1.5"></button>'
+            + OLD_HTML)
 
-# --- b357-dedup: nx3dPauseAll() вклеился трижды ----------------------------
-PAUSE = "        try { nx3dPauseAll(); } catch (e) {} // b357: сначала остановить кадры, потом отдавать контексты\n"
-REL = "        try { nx3dReleaseHidden('__all__'); } catch (e) {}"
-TRIPLE_OLD = PAUSE * 3 + REL
-TRIPLE_NEW = PAUSE + REL
-
-# --- b361: helpers для сверки с веткой ------------------------------------
-SHA_OLD = "function nxGhPush(repo, content, ok, fail) {"
-SHA_NEW = (
-    "function nxGitShaOf(str) { // b361: git-sha содержимого (blob), считается на устройстве\n"
-    "    try {\n"
-    "        const bytes = new TextEncoder().encode(str);\n"
-    "        const head = new TextEncoder().encode('blob ' + bytes.length + '\\0');\n"
-    "        const all = new Uint8Array(head.length + bytes.length);\n"
-    "        all.set(head, 0); all.set(bytes, head.length);\n"
-    "        return crypto.subtle.digest('SHA-1', all).then(b => Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''));\n"
-    "    } catch (e) { return Promise.resolve(''); }\n"
-    "}\n"
-    "function nxGhFileSha(repo, path) { // b361: sha файла в ветке по умолчанию\n"
-    "    return nxGhApi('/repos/' + repo + '/contents/' + path, { headers: { 'Accept': 'application/vnd.github+json' } })\n"
-    "        .then(d => (d && d.sha) || '').catch(() => '');\n"
-    "}\n"
-    "function nxGhPush(repo, content, ok, fail) {")
-
-# --- b361: холостой коммит не создаём -------------------------------------
-PUSH_OLD = """        const finalize = () => { nxProgress(0.65, 'Собираю файл с артами…'); out = nxInjectExtras(out, extras); // b340
-            if (!replaced && !extras.length) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
-            say((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов). Пушу коммит в GitHub…');
-            nxStatus((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов), загружаю ~' + (out.length / 1048576).toFixed(1) + ' МБ в GitHub…');
-            nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say((auto ? 'Автовшивание: ' : '') + 'вшито в сайт! Pages обновится за 1–2 минуты'); try { nxCrashLog('push-embed ok: ' + (replaced + extras.length) + ' артов'); } catch (e) {} nxStatus('Готово: вшито ' + (replaced + extras.length) + ' артов. Pages обновится за 1–2 минуты', 'ok'); }, err);
-        };"""
-PUSH_NEW = """        const finalize = () => { nxProgress(0.65, 'Собираю файл с артами…'); out = nxInjectExtras(out, extras); // b340
-            if (!replaced && !extras.length) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
-            // b361: сначала сверяем собранный файл с тем, что уже лежит в ветке, и
-            // только потом обещаем коммит. На разделённой сборке (index.html +
-            // assets/*) маркер NX_EMBED_MEDIA живёт в assets/app.js, поэтому
-            // «вшивание» в index.html ничего не меняет — а пустые коммиты сайт
-            // плодил каждые 10 минут (замер: коммит 7a2e45d не изменил ничего).
-            const pushReal = () => {
-                say((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов). Пушу коммит в GitHub…');
-                nxStatus((auto ? 'Автовшивание: ' : '') + 'файл собран (' + (replaced + extras.length) + ' артов), загружаю ~' + (out.length / 1048576).toFixed(1) + ' МБ в GitHub…');
-                nxGhPush(repo, out, () => { if (btn) btn.disabled = false; say((auto ? 'Автовшивание: ' : '') + 'вшито в сайт! Pages обновится за 1–2 минуты'); try { nxCrashLog('push-embed ok: ' + (replaced + extras.length) + ' артов'); } catch (e) {} nxStatus('Готово: вшито ' + (replaced + extras.length) + ' артов. Pages обновится за 1–2 минуты', 'ok'); }, err);
-            };
-            Promise.all([nxGitShaOf(out), nxGhFileSha(repo, 'index.html')]).then(sh => {
-                if (sh[0] && sh[0] === sh[1]) {
-                    if (btn) btn.disabled = false;
-                    say('Коммит не нужен: index.html в репозитории уже такой же');
-                    nxStatus('Без изменений: собранный файл совпадает с тем, что уже в ветке — коммита не будет', 'ok');
-                    try { nxCrashLog('push-embed: пропуск, собранный файл не отличается от ветки'); } catch (e) {}
-                    return;
+HELPERS = """        // ============ b363: УСТРОЙСТВА И IP — «один IP = один пользователь» ============
+        function nxDeviceId() { // устойчивый ID браузера: переживает перезаходы, уникален на устройство/профиль
+            try {
+                let id = LS.getItem('nx_device_id');
+                if (!id) {
+                    id = 'dv' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+                    LS.setItem('nx_device_id', id);
                 }
-                pushReal();
-            }).catch(() => pushReal());
-        };"""
+                return id;
+            } catch (e) { return ''; }
+        }
+        function nxDeviceLabel() { // человекочитаемый портрет устройства: ОС, браузер, форм-фактор, экран, железо
+            try {
+                const ua = String(navigator.userAgent || '');
+                let os = 'неизвестная ОС';
+                if (/iPhone|iPad|iPod/.test(ua)) { const v = ua.match(/OS (\\d+)[_.](\\d+)/); os = (/iPad/.test(ua) ? 'iPadOS ' : 'iOS ') + (v ? v[1] + '.' + v[2] : ''); }
+                else if (/Android/.test(ua)) { const v = ua.match(/Android (\\d+(\\.\\d+)?)/); os = 'Android ' + (v ? v[1] : ''); }
+                else if (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+                else if (/Windows/.test(ua)) os = 'Windows';
+                else if (/Mac OS X/.test(ua)) { const v = ua.match(/Mac OS X (\\d+)[_.](\\d+)/); os = 'macOS ' + (v ? v[1] + '.' + v[2] : ''); }
+                else if (/CrOS/.test(ua)) os = 'ChromeOS';
+                else if (/Linux/.test(ua)) os = 'Linux';
+                let br = '';
+                if (/Telegram/i.test(ua)) br = 'Telegram';
+                else if (/YaBrowser/i.test(ua)) br = 'Яндекс';
+                else if (/Edg\\//i.test(ua)) br = 'Edge';
+                else if (/OPR\\//i.test(ua)) br = 'Opera';
+                else if (/Firefox\\//i.test(ua)) br = 'Firefox';
+                else if (/Chrome\\//i.test(ua)) br = 'Chrome';
+                else if (/Safari\\//i.test(ua)) br = 'Safari';
+                const tab = /iPad|Tablet|(Android(?!.*Mobile))/i.test(ua);
+                const mob = /Mobile|iPhone|iPod|Android.*Mobile/i.test(ua);
+                const form = tab ? 'планшет' : (mob ? 'телефон' : 'ПК');
+                const scr = (screen.width || 0) + '×' + (screen.height || 0) + '@' + (Math.round((window.devicePixelRatio || 1) * 100) / 100) + 'x';
+                const hw = [(navigator.hardwareConcurrency ? navigator.hardwareConcurrency + ' яд.' : ''), (navigator.deviceMemory ? navigator.deviceMemory + ' ГБ' : '')].filter(Boolean).join(', ');
+                return [os, br, form, scr, hw].filter(Boolean).join(' · ');
+            } catch (e) { return ''; }
+        }
+        function nxDvIcon(dev) { // иконка по форм-фактору из строки устройства
+            const s = String(dev || '');
+            if (s.indexOf('планшет') >= 0) return 'fa-tablet-screen-button';
+            if (s.indexOf('телефон') >= 0) return 'fa-mobile-screen';
+            return 'fa-desktop';
+        }
+        let nxIpFetch = 0;
+        function nxPublicIp() { // публичный IP: не чаще раза в 6 часов, кэш в LS; '' если сервисы недоступны
+            try {
+                const raw = String(LS.getItem('nx_pub_ip') || '');
+                const at = parseInt(LS.getItem('nx_pub_ip_at') || '0', 10) || 0;
+                if (raw && Date.now() - at < 6 * 3600000) return raw;
+                const failAt = parseInt(LS.getItem('nx_pub_ip_fail') || '0', 10) || 0;
+                if (!raw && Date.now() - failAt < 600000) return ''; // не долбим сервисы после неудачи
+                if (!nxIpFetch) {
+                    nxIpFetch = 1;
+                    const urls = ['https://api.ipify.org?format=json', 'https://api64.ipify.org?format=json', 'https://ifconfig.co/json'];
+                    const tryOne = i => {
+                        if (i >= urls.length) { nxIpFetch = 0; try { LS.setItem('nx_pub_ip_fail', String(Date.now())); } catch (e) {} return; }
+                        fetch(urls[i], { cache: 'no-store' }).then(r => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+                            .then(j => {
+                                nxIpFetch = 0;
+                                const ip = String((j && (j.ip || j.ip_addr)) || '').slice(0, 45);
+                                if (ip) { try { LS.setItem('nx_pub_ip', ip); LS.setItem('nx_pub_ip_at', String(Date.now())); } catch (e) {} }
+                            })
+                            .catch(() => tryOne(i + 1));
+                    };
+                    tryOne(0);
+                }
+                return raw; // первый ответ придёт в фоне: подхватится следующим heartbeat (30 с)
+            } catch (e) { return ''; }
+        }
+"""
 
-# b362 (qrxB64 через массив+join) ОТМЕНЁН: замер в браузере показал, что
-# склейка bin += String.fromCharCode(...) в V8 не квадратична (rope-конкатенация),
-# а вариант с join вышел МЕДЛЕННЕЕ (2 МБ: 206 мс против 124 мс). Правка не нужна.
+GROUPFNS = """        function statsGroupList(ids) { return String(ids || '').split(',').filter(Boolean); }
+        function statsZeroGroup(ids, btn) { // b363: обнулить все устройства одного пользователя
+            const list = statsGroupList(ids);
+            statsConfirm(btn, 'Обнулить баланс на всех ' + list.length + ' устройствах?', () => {
+                if (statsAdminGuard()) return;
+                const t = Date.now();
+                list.forEach(cid => {
+                    siteStats.z[cid] = t; siteStatsSave();
+                    if (cid === JACKPOT_CID) { try { LS.setItem('nexus_stats_zero_ack', String(t)); } catch (e) {} state.coins = 0; saveState(); updateCoinDisplay(); }
+                });
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast('💸 Обнулено устройств: ' + list.length + ' — после синхронизации у игроков будет 0', 'success');
+            });
+        }
+        function statsBlockGroup(ids, on, btn) { // b363: блок/разблок всех устройств пользователя
+            const list = statsGroupList(ids);
+            statsConfirm(btn, on ? 'Заблокировать все ' + list.length + ' устройства?' : 'Разблокировать все ' + list.length + ' устройства?', () => {
+                if (statsAdminGuard()) return;
+                list.forEach(cid => {
+                    siteStats.b[cid] = { on: on ? 1 : 0, at: Date.now() };
+                    if (on) siteStats.z[cid] = Date.now(); // блокировка обнуляет баланс
+                });
+                siteStatsSave();
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast(on ? '🚫 Заблокировано устройств: ' + list.length : '✅ Разблокировано устройств: ' + list.length, on ? 'info' : 'success');
+            });
+        }
+        function statsDeleteGroup(ids, btn) { // b363: удалить пользователя со всеми устройствами
+            const list = statsGroupList(ids);
+            statsConfirm(btn, 'Удалить пользователя со всеми ' + list.length + ' устройствами?', () => {
+                if (statsAdminGuard()) return;
+                list.forEach(cid => {
+                    siteStats.b[cid] = { on: 1, del: 1, at: Date.now() };
+                    siteStats.z[cid] = Date.now();
+                    delete siteStats.p[cid];
+                });
+                siteStatsSave();
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast('🗑 Удалено устройств: ' + list.length + ' — балансы обнулены, доступ отключён', 'info');
+            });
+        }
+        function nxStatsGroupOn() { try { return LS.getItem('nx_stats_group_ip') !== '0'; } catch (e) { return true; } }
+        function nxToggleGroupIp() {
+            try { LS.setItem('nx_stats_group_ip', nxStatsGroupOn() ? '0' : '1'); } catch (e) {}
+            try { window.__nxStatsSig = ''; statsRender(); } catch (e) {}
+        }
+        function nxGroupIpLabel() {
+            const b = document.getElementById('nx-groupip-btn');
+            if (!b) return;
+            const on = nxStatsGroupOn();
+            b.innerHTML = '<i class="fa-solid fa-network-wired mr-1"></i>Один IP = 1 пользователь: ' + (on ? 'вкл' : 'выкл');
+            b.title = on ? 'Записи с одним IP показываются одной карточкой со списком устройств' : 'Группировка выключена: каждое устройство отдельной строкой';
+        }
+"""
 
-APP_EDITS = []   # b355–b358 уже в HEAD
-# b357-dedup и b361 уже в HEAD — в списке остаётся только то, чего там ещё нет
-QR_EDITS = [
-    # b357-dedup, b361-sha-helpers и b361-noop-skip уже в HEAD — список пуст
+APP_EDITS = [
+    ('b363-counters',
+     "            const chip = (ic, col, lab, val, ttl) => '<div class=\"rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0\"'",
+     "            // b363: пользователи — сгруппированные по IP записи; устройства — сами записи\n"
+     "            const nxDevTotal = plist.length;\n"
+     "            const nxUserTotal = (function () { const m = {}; plist.forEach(e => { const k = e.ip ? 'ip:' + e.ip : (e.did ? 'dev:' + e.did : 'cid:' + e.cid); m[k] = 1; }); return Object.keys(m).length; })();\n"
+     "            const chip = (ic, col, lab, val, ttl) => '<div class=\"rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0\"'"),
+    ('b363-users-chip',
+     "chip('fa-users', 'text-sky-400', 'Игроков', String(plist.length)) +",
+     "chip('fa-users', 'text-sky-400', 'Пользователей · устройств', nxUserTotal + ' · ' + nxDevTotal, 'b363: записи с одним IP считаются одним пользователем; второе число — устройства (отдельные браузеры/телефоны)') +"),
+    ('b363-norm',
+     "                won: Math.max(0, Math.floor(e.won) || 0),\n                at: Math.floor(e.at) || 0,",
+     "                won: Math.max(0, Math.floor(e.won) || 0),\n                at: Math.floor(e.at) || 0,\n"
+     "                ip: String(e.ip || '').slice(0, 45),   // b363: публичный IP устройства\n"
+     "                dev: String(e.dev || '').slice(0, 90), // b363: ОС/браузер/форм-фактор/экран\n"
+     "                did: String(e.did || '').slice(0, 24), // b363: устойчивый ID браузера"),
+    ('b363-self',
+     "                e.at = Date.now();\n                siteStats.p[JACKPOT_CID] = e;",
+     "                e.did = nxDeviceId();    // b363: устойчивый ID устройства\n"
+     "                e.dev = nxDeviceLabel(); // b363: портрет устройства для панели\n"
+     "                e.ip = nxPublicIp();     // b363: IP из кэша, первый запрос идёт фоном\n"
+     "                e.at = Date.now();\n                siteStats.p[JACKPOT_CID] = e;"),
+    ('b363-doc',
+     "p[e.cid] = { n: e.n, bal: e.bal, op: e.op, jp: e.jp, fed: e.fed, won: e.won, at: e.at, pk: e.pk, alb: e.alb }; }); // b278: + альбомы",
+     "p[e.cid] = { n: e.n, bal: e.bal, op: e.op, jp: e.jp, fed: e.fed, won: e.won, at: e.at, pk: e.pk, alb: e.alb, ip: e.ip, dev: e.dev, did: e.did }; }); // b278: + альбомы; b363: + IP/устройство/ID"),
+    ('b363-helpers',
+     "        function siteStatsSelfUpdate() {",
+     HELPERS + "        function siteStatsSelfUpdate() {"),
+    ('b363-groupfns',
+     "        function statsRenderIfVisible() {",
+     GROUPFNS + "        function statsRenderIfVisible() {"),
+    ('b363-render', OLD_RENDER, NEW_RENDER),
+]
+
+QR_EDITS = []  # qr-transfer не трогаем
+MONO_EDITS = [
+    ('b363-html-btn', OLD_HTML, NEW_HTML),
 ]
 
 for lbl, o, n in APP_EDITS + QR_EDITS:
-    c = qr_head.count(o)
-    assert c == 1, '%s: в базе %d вхождений (нужно ровно 1)' % (lbl, c)
-print('проверено: все блоки встречаются в базе ровно один раз')
+    assert app_head.count(o) == 1, '%s: в базе app.js %d вхождений (нужно 1)' % (lbl, app_head.count(o))
+for lbl, o, n in MONO_EDITS:
+    assert mono_head_html.count(o) == 1, '%s: в базе index.html %d вхождений (нужно 1)' % (lbl, mono_head_html.count(o))
+print('проверено: все old-блоки уникальны в базе HEAD')
 
 HEADER = '''#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Незакоммиченные правки игры в виде списка old -> new.
-
-Зачем этот файл: сайт собирается из монолита tools/source-index.html, поэтому
-любую правку надо вносить ДВАЖДЫ — в assets/*.js (то, что отдаётся сайтом) и в
-монолит (иначе следующая сборка её затрёт). Скрипт делает обе операции одним
-набором блоков и не пишет файл, если хоть одна правка не легла.
+"""Незакоммиченные правки в виде old -> new (сейчас: b363 — группировка
+пользователей по IP и определение устройств в панели «Пользователи»).
 
   python3 tools/apply_fix.py check      # показать, что ляжет (ничего не пишет)
-  python3 tools/apply_fix.py assets     # применить к assets/app.js, assets/qr-transfer.js
-  python3 tools/apply_fix.py monolith   # применить к tools/source-index.html
+  python3 tools/apply_fix.py assets     # применить к assets/app.js (+ qr-transfer, если есть правки)
+  python3 tools/apply_fix.py monolith   # применить к tools/source-index.html (включая MONO_EDITS)
 
-После правки монолита:
-  python3 tools/sync_build_blocks.py && python3 tools/build.py --no-media
-
-Список пересобирается скриптом tools/_regen_apply_fix.py (нужен git).
-История правок b355-b361 — в FIXES.md, раздел 6.
+После монолита: python3 tools/sync_build_blocks.py && python3 tools/build.py --no-media
+Пересобирается скриптом tools/_regen_apply_fix.py.
 """
 import sys, os, io
 
@@ -113,7 +215,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FOOTER = '''
 
 def apply(text, edits, log):
-    """Возвращает (новый текст, число неприменённых правок)."""
     bad = 0
     for label, old, new in edits:
         c = text.count(old)
@@ -147,17 +248,16 @@ def main():
                 print("  записано")
     if target == "monolith":
         p = os.path.join(ROOT, "tools", "source-index.html")
-        # читаем с универсальными переводами строк (CRLF -> LF), пишем обратно CRLF
-        t = io.open(p, encoding="utf-8").read()
-        t2, bad = apply(t, APP_EDITS + QR_EDITS, log)
+        t = io.open(p, encoding="utf-8").read()   # CRLF -> LF при чтении
+        t2, bad = apply(t, APP_EDITS + QR_EDITS + MONO_EDITS, log)
         total_bad += bad
-        print("tools/source-index.html (блоки app_js + qr_xfer):"); print("\\n".join(log))
+        print("tools/source-index.html:"); print("\\n".join(log))
         if bad:
             print("ЕСТЬ НЕПРИМЕНЁННЫЕ ПРАВКИ — монолит не записан"); return 1
         if t2 != t:
             io.open(p, "w", encoding="utf-8", newline="\\r\\n").write(t2)
             print("  записано (%+d строк)" % (t2.count("\\n") - t.count("\\n")))
-    if not APP_EDITS and not QR_EDITS:
+    if not (APP_EDITS or QR_EDITS or MONO_EDITS):
         print("список правок пуст: всё уже в репозитории")
     return 1 if total_bad else 0
 
@@ -174,7 +274,7 @@ def dump(name, edits):
     return out + ']\n'
 
 
-src = HEADER + dump('APP_EDITS', APP_EDITS) + '\n' + dump('QR_EDITS', QR_EDITS) + FOOTER
+src = HEADER + dump('APP_EDITS', APP_EDITS) + '\n' + dump('QR_EDITS', QR_EDITS) + '\n' + dump('MONO_EDITS', MONO_EDITS) + FOOTER
 ast.parse(src)
 io.open(AP, 'w', encoding='utf-8', newline='').write(src)
-print('apply_fix.py пересобран:', len(src), 'байт; app-блоков', len(APP_EDITS), ', qr-блоков', len(QR_EDITS))
+print('apply_fix.py пересобран под b363:', len(src), 'байт; app-блоков', len(APP_EDITS), ', mono-блоков', len(MONO_EDITS))

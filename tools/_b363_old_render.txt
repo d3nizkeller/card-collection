@@ -1,0 +1,39 @@
+            const sorted = plist.slice().sort((a, c) => (c.bal || 0) - (a.bal || 0));
+            try { // b337: список пользователей перестраиваем только при реальных изменениях
+                const sigS = 'S|' + sorted.map(e => e.cid + ':' + (e.bal || 0) + ':' + ((nxNow - (e.at || 0) < 120000) ? 1 : 0) + ':' + !!(siteStats.b[e.cid] && siteStats.b[e.cid].on)).join(',') + '|' + (window.__nxOnlineOnly ? 1 : 0);
+                if (sigS === window.__nxStatsSig) return;
+                window.__nxStatsSig = sigS;
+            } catch (e) {}
+            users.innerHTML = sorted.map((e, i) => {
+                const cid = e.cid, me = cid === JACKPOT_CID;
+                const blk = !!(siteStats.b[cid] && siteStats.b[cid].on);
+                const name = e.n || ('Игрок-' + String(cid).slice(1, 5));
+                const as = albSum(e.alb); // b278: альбомы игрока
+                const btns = guest
+                    ? '<span class="ml-auto text-[9px] text-slate-600 italic">управляет создатель комнаты</span>'
+                    : '<span class="flex items-center gap-1.5 shrink-0 ml-auto">' +
+                        '<button type="button" onclick="statsZeroUser(\'' + cid + '\', this)" title="Обнулить баланс этого игрока" class="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-800/60 text-rose-300 hover:text-rose-200 text-[10px] font-bold transition"><i class="fa-solid fa-sack-dollar mr-1"></i>Обнулить</button>' +
+                        (blk
+                            ? '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 0, this)" title="Снова разрешить покупки и ставки" class="px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 border border-violet-800/60 text-violet-300 hover:text-violet-200 text-[10px] font-bold transition"><i class="fa-solid fa-unlock mr-1"></i>Разблокировать</button>'
+                            : '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 1, this)" title="Отключить игроку все покупки и ставки" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-800/60 text-slate-300 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-ban mr-1"></i>Заблокировать</button>') +
+                        '<button type="button" onclick="statsDeleteUser(\'' + cid + '\', this)" title="Удалить игрока: баланс обнуляется, доступ отключается, в течение суток пользователь удаляется" class="px-2 py-1 rounded-lg bg-slate-950 hover:bg-rose-950/80 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-trash-can mr-1"></i>Удалить</button>' +
+                      '</span>';
+                return '<div class="rounded-xl border px-2.5 py-2 ' + (blk ? 'border-rose-900/60 bg-rose-950/20' : me ? 'border-violet-700/60 bg-violet-950/20' : 'border-slate-800 bg-slate-950/50') + '">' +
+                    '<div class="flex flex-wrap items-center gap-1.5 min-w-0">' +
+                        '<span class="text-[11px] font-black truncate max-w-[180px] ' + (blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + '</span>' +
+                        (me ? badge('fa-user', 'вы', 'text-violet-300') : '') +
+                        (blk ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
+                        ((Date.now() - (e.at || 0) < 120000) ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +
+                        '<span class="ml-auto text-[9px] font-mono text-slate-600 truncate max-w-[120px]" title="ID игрока">' + cloudEsc(cid) + '</span>' +
+                    '</div>' +
+                    '<div class="flex flex-wrap items-center gap-1.5 mt-1.5">' +
+                        badge('fa-coins', fmtCoins(e.bal || 0), 'text-amber-300') +
+                        badge('fa-box-open', (e.op || 0) + ' паков', 'text-violet-300') +
+                        (as.total > 0 ? badge('fa-book-open', 'альбомы: ' + as.done + '/' + as.packs + ' · ' + as.pct + '%', 'text-violet-300', 'Собрано ' + as.have + ' из ' + as.total + ' карт • альбомов закрыто полностью: ' + as.done + ' из ' + as.packs) : '') +
+                        badge('fa-crown', 'джекпотов: ' + (e.jp || 0), 'text-yellow-300') +
+                        badge('fa-arrow-up', 'в банк: ' + fmtCoins(e.fed || 0), 'text-slate-300') +
+                        badge('fa-clock', statsAgo(e.at || 0), 'text-slate-400') +
+                        btns +
+                    '</div>' +
+                '</div>';
+            }).join('') || '<p class="text-[11px] text-slate-500">Данных пока нет — пользователи появятся здесь после первой синхронизации с облаком (игра синхронизируется автоматически).</p>';
