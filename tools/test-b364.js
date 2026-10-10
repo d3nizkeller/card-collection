@@ -175,6 +175,7 @@ const syncWait = page => page.evaluate(async () => {
   console.log('   B добавил карту Z: перерисовок =', flick2.struct.refr, '(ожидаем >=1) | карта приехала =', flick2.struct.hasZ);
 
   console.log('\n=== b374: первое подключение не стирает свои карты, смена профиля не портит леджер ===');
+  await B.ctx.close(); // песочница: 1 ГБ RAM — третий тяжёлый контекст не поднимется, пока жив B (после b368 он не нужен)
   const C = await newDevice(browser, 'C');
   // проверки b371 на устройстве БЕЗ кода (раньше жил на отдельной странице E, но
   // 4-й контекст браузер песочницы уже не тянет — используем C до привязки)
@@ -229,7 +230,7 @@ const syncWait = page => page.evaluate(async () => {
   const ipDocs = Array.from(STORE.keys()).filter(k => k.indexOf('nexus-tcg-prof-i-') === 0);
   console.log('   устройство без кода (C до привязки): profDocKey =', JSON.stringify(e1.key), '| ф-ция profIpAuto удалена:', e1.ipautoFn === 'undefined', '| тумблер в DOM:', e1.toggle, '| IP-документов создано:', ipDocs.length, '(ожидаем 0)');
   const errs = [...errsAB];
-  await A.ctx.close(); await B.ctx.close();
+  await A.ctx.close();
   await browser.close();
 
   console.log('\nошибки страниц:', errs.length ? errs.slice(0, 6) : 'нет');

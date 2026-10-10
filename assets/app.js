@@ -2986,7 +2986,7 @@ function nxToggle3d() {
         // разделе): загрузочная миграция работает раньше и иначе ловила бы TDZ-ошибку
         // b173: таймеры продажи, премьера, график и снятие с продажи стандартного пака — тоже часть комнаты
         const STD_PACK_FIELDS = ['title', 'description', 'image', 'price', 'color', 'shimmer', 'musicUrl', 'musicOff', 'saleUntil', 'premiereAt', 'schedule', 'retired'];
-        const STD_CARD_FIELDS = ['name', 'description', 'rarity', 'image', 'layout', 'aura', 'atk', 'hp', 'musicUrl'];
+        const STD_CARD_FIELDS = ['name', 'description', 'rarity', 'image', 'layout', 'aura', 'atk', 'hp', 'musicUrl', 'ord', 'ordAt']; // b375: нумерация владельца доезжает до комнаты
 
         let state = {
             coins: parseInt(LS.getItem('nexus_coins')) || 1000,
@@ -3034,6 +3034,61 @@ function nxToggle3d() {
         }
         function lightPack(p) {
             return (p.image && SCOOBY_PACK_REF[p.id] && SCOOBY_PACK_REF[p.id] === p.image) ? Object.assign({}, p, { image: 'ref:' + p.id }) : p; // b323
+        }
+
+        // b375: порядок карт принадлежит владельцу: карты всегда стоят в порядке
+        // создания/загрузки. Каждой карте проставляется явный номер `ord` (ключ
+        // сортировки в шкале времени создания). Раньше слияние синхронизации
+        // пересобирало state.cards из объединения ключей «облако-first» — порядок
+        // загрузки перемешивался («я загружал по-своему, а их перемешали»).
+        function cardSortKey(c) {
+            if (!c) return Infinity;
+            if (c.ord > 0) return c.ord;
+            const m = /^card-(\d+)(?:-(\d+))?/.exec(String(c.id || ''));
+            if (m) return Number(m[1]) + Number(m[2] || 0) / 1000; // время создания + индекс в партии загрузки
+            return Infinity; // непарсящиеся — в конец (сортировка устойчивая)
+        }
+        function cardSortCmp(a, b) {
+            const ka = cardSortKey(a), kb = cardSortKey(b);
+            if (ka !== kb) return ka < kb ? -1 : 1;
+            const ia = String((a && a.id) || ''), ib = String((b && b.id) || '');
+            return ia < ib ? -1 : (ia > ib ? 1 : 0); // детерминированный тай-брейк: порядок одинаков везде
+        }
+        function nextCardOrd() { // следующий номер — всегда в конец текущего порядка
+            let mx = 0;
+            (state.cards || []).forEach(c => { const k = cardSortKey(c); if (isFinite(k) && k > mx) mx = k; });
+            return (mx || Date.now()) + 10;
+        }
+        function cardsSortNorm() { // сортировка + явный номер каждой карте (порядок больше не зависит от парсинга id); возвращает true, если проставляла номера
+            if (!Array.isArray(state.cards)) return false;
+            let touched = false;
+            state.cards.sort(cardSortCmp);
+            let last = 0;
+            state.cards.forEach(c => {
+                if (!c || typeof c !== 'object') return;
+                if (!(c.ord > 0)) {
+                    let v = cardSortKey(c);
+                    if (!isFinite(v)) v = (last || Date.now()) + 10;
+                    c.ord = v;
+                    touched = true;
+                }
+                last = c.ord;
+            });
+            return touched;
+        }
+        function packSortKey(p) {
+            if (!p) return Infinity;
+            const m = /^pack-(\d+)/.exec(String(p.id || ''));
+            return m ? Number(m[1]) : Infinity;
+        }
+        function packSortCmp(a, b) {
+            const ka = packSortKey(a), kb = packSortKey(b);
+            if (ka !== kb) return ka < kb ? -1 : 1;
+            const ia = String((a && a.id) || ''), ib = String((b && b.id) || '');
+            return ia < ib ? -1 : (ia > ib ? 1 : 0);
+        }
+        function packsSortNorm() { // b375: порядок паков — тоже порядок создания, а не union синхронизации
+            if (Array.isArray(state.packs)) state.packs.sort(packSortCmp);
         }
 
         // Миграция: пак «Scooby-Doo! Великие тайны мира» для старых сохранений
@@ -3164,6 +3219,15 @@ function nxToggle3d() {
             try { if (rsChanged) saveState(); } catch (e) {}
         })();
         resolveMediaRefs();
+        // b375: разовая миграция — восстанавливаем порядок создания/загрузки из id
+        // карт (card-<время>[-<индекс в партии>]) и проставляем явные номера ord.
+        // Дальше порядок хранится в номерах и синхронизацией не перемешивается.
+        (function migrateCardOrderB375() {
+            try {
+                const touched = cardsSortNorm(); packsSortNorm();
+                if (touched || LS.getItem('nx_ordmig') !== '1') { LS.setItem('nx_ordmig', '1'); saveState(); }
+            } catch (e) {}
+        })();
 
         function saveState() {
             try {
@@ -3269,6 +3333,7 @@ function nxToggle3d() {
             state.coins = imported.coins || 1000;
             state.packs = imported.packs;
             state.cards = imported.cards;
+            try { cardsSortNorm(); packsSortNorm(); } catch (e) {} // b375
             state.collection = imported.collection || {};
             state.stats = Object.assign({}, defaultStats, imported.stats || {});
             state.daily = Object.assign({ lastClaimDate: null, streak: 0, lastDurakWinDate: null }, imported.daily || {});
@@ -3372,6 +3437,7 @@ function nxToggle3d() {
             state.coins = 1000;
             state.packs = defaultPacks.map(p => Object.assign({}, p));
             state.cards = defaultCards.map(c => Object.assign({}, c));
+            try { cardsSortNorm(); packsSortNorm(); } catch (e) {} // b375
             state.collection = {};
             state.stats = Object.assign({}, defaultStats, { oppWins: {} });
             state.daily = { lastClaimDate: null, streak: 0, lastDurakWinDate: null };
@@ -5127,9 +5193,18 @@ function nxToggle3d() {
             (L.packs || []).forEach(p => { if (p && p.id && !tombSet[p.id]) pm[p.id] = p; });
             const cm = {};
             ((R && R.cards) || []).forEach(c => { if (c && c.id) cm[c.id] = c; });
-            (L.cards || []).forEach(c => { if (c && c.id) cm[c.id] = c; });
-            out.packs = Object.keys(pm).map(k => pm[k]);
-            out.cards = Object.keys(cm).filter(id => mergedCol[id] > 0).map(id => cm[id]);
+            (L.cards || []).forEach(c => {
+                if (!c || !c.id) return;
+                const rc = cm[c.id];
+                if (rc && rc.ord > 0) { // b375: номер берётся у стороны, которая ПОСЛЕДНИЙ раз меняла порядок
+                    if ((rc.ordAt || 0) > (c.ordAt || 0) || !(c.ord > 0)) { c.ord = rc.ord; c.ordAt = rc.ordAt || c.ordAt || 0; }
+                }
+                cm[c.id] = c;
+            });
+            // b375: порядок карт и паков больше не зависит от порядка объединения
+            // ключей (раньше облачный порядок перекрывал порядок загрузки владельца)
+            out.packs = Object.keys(pm).map(k => pm[k]).sort(packSortCmp);
+            out.cards = Object.keys(cm).filter(id => mergedCol[id] > 0).map(id => cm[id]).sort(cardSortCmp);
             out.collection = mergedCol;
             out.__pub = { myColMov: myColMov, ptomb: ptomb, base_col: base_col, colmov: colmov, myDeltaEmpty: (Object.keys(myColDelta).length === 0 && myRemoved.length === 0) };
             // числовые счётчики в игре только растут — максимум безопасен
@@ -5149,7 +5224,7 @@ function nxToggle3d() {
             const dk = {};
             ((R && R.deck) || []).forEach(id => { dk[id] = 1; });
             (L.deck || []).forEach(id => { dk[id] = 1; });
-            out.deck = Object.keys(dk).filter(id => cm[id] && mergedCol[id] > 0);
+            out.deck = Object.keys(dk).filter(id => cm[id] && mergedCol[id] > 0).sort((x, y) => cardSortCmp(cm[x], cm[y])); // b375
             return out;
         }
         function profSnap() { // слепок прогресса для облака (без тяжёлых артов: image-ссылки и так внутри паков/карт)
@@ -5177,7 +5252,7 @@ function nxToggle3d() {
                 return [
                     Math.floor(state.coins) || 0,
                     (state.packs || []).map(p => p && p.id).slice().sort().join('.'), // b370: порядок после union не важен
-                    (state.cards || []).map(c => c && c.id).slice().sort().join('.'),
+                    (state.cards || []).map(c => c && c.id).join('.'), // b375: порядок карт важен — перестановка владельца должна уезжать в облако
                     profJsonK(state.collection),
                     profJsonK(state.albumBonus),
                     profJsonK(state.packStats),
@@ -5199,6 +5274,7 @@ function nxToggle3d() {
             state.coins = Math.max(0, profNum(s.coins));
             if (Array.isArray(s.packs)) state.packs = s.packs;
             if (Array.isArray(s.cards)) state.cards = s.cards;
+            try { cardsSortNorm(); packsSortNorm(); } catch (e) {} // b375: порядок после слияния — порядок владельца
             state.collection = s.collection || {};
             state.stats = Object.assign({}, defaultStats, s.stats || {});
             state.daily = Object.assign({ lastClaimDate: null, streak: 0, lastDurakWinDate: null }, s.daily || {});
@@ -5274,6 +5350,7 @@ function nxToggle3d() {
             const first = !isFinite(lastBal);
             if (first) lastBal = 0; // первое подключение: весь мой баланс — это моя дельта
             const myDelta0 = myCoins0 - lastBal;
+            const sigMine = profSig(); // b375: состояние ДО слияния: если отличается от последнего опубликованного (например, владелец переставил карты) — надо пушить
             return profFetch(key).then(remote => {
                 if (Date.now() < profHoldUntil) return 'held'; // b366: сейчас применяют перенос — не трогаем
                 profLastRemote = remote;
@@ -5310,7 +5387,7 @@ function nxToggle3d() {
                 // расчётом (кто-то запушил по несвежей читке и стёр его) — пушим
                 // восстановление, иначе чужая следующая синхронизация сядет на ноль
                 const movLost = !!remote && remoteMyMov !== myC;
-                const needPush = !!force || !remote || myDelta !== 0 || unionGrew || bookStale || movLost || !pub.myDeltaEmpty; // b370: + дельты коллекции/паков
+                const needPush = !!force || !remote || myDelta !== 0 || unionGrew || bookStale || movLost || !pub.myDeltaEmpty || sigMine !== (LS.getItem('nx_prof_pushsig') || ''); // b370: + дельты коллекции/паков; b375: + смена порядка карт
                 // прикладываем общее состояние к себе (чужие карты/паки/баланс приезжают сюда).
                 // ВАЖНО: базой «моих изменений» становится именно слитое значение, иначе
                 // подтянутый прирост на следующем круге уехал бы в облако второй раз,
@@ -5330,6 +5407,7 @@ function nxToggle3d() {
                 if (!needPush) { profUI(); return true; }
                 const doc = profBuildDoc(key, remote, mergedFields, mergedCoins, base, mov, pub);
                 return profPushDoc(key, doc).then(() => {
+                    try { LS.setItem('nx_prof_pushsig', profSig()); } catch (e) {} // b375: опубликованное состояние (включая порядок карт)
                     // b367: база = ПРИМЕНЁННЫЙ баланс: всё, что устройство держит
                     // на руках после синка, учтено в mov; следующая дельта считается
                     // от него (иначе подтянутое чужое поедет в облако как «своё»)
@@ -5361,6 +5439,7 @@ function nxToggle3d() {
                             const doc2 = profBuildDoc(key, chk, f2, c2, base2, mov2, pub2);
                             return profPushDoc(key, doc2).then(() => {
                                 try {
+                                    LS.setItem('nx_prof_pushsig', profSig()); // b375
                                     LS.setItem('nx_prof_lastbal', String(Math.max(0, Math.floor(state.coins) || 0))); LS.setItem('nx_prof_movc', String(myC2));
                                     LS.setItem('nx_prof_colmov', JSON.stringify(pub2.myColMov)); LS.setItem('nx_prof_ptomb', JSON.stringify(pub2.ptomb)); // b374
                                     LS.setItem('nx_prof_colsnap', JSON.stringify(state.collection)); LS.setItem('nx_prof_packsnap', JSON.stringify((state.packs || []).map(p => p && p.id))); // b374: снимки «на конец спортивного круга»
@@ -5915,7 +5994,7 @@ function nxToggle3d() {
                 bname: getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4))
             }]).slice(-60);
             const isNewDef = !state.cards.some(c => c.id === lot.card.id);
-            if (isNewDef && lot.card) state.cards.push(Object.assign({}, lot.card));
+            if (isNewDef && lot.card) { state.cards.push(Object.assign({}, lot.card)); try { cardsSortNorm(); } catch (e) {} } // b375: купленная карта встаёт по нумерации создателя
             marketSetCollection(lot.card.id, cardCopies(lot.card.id) + 1);
             saveState(); updateCoinDisplay(); checkAchievements();
             if (isNewDef) updateMissions('collect_new', 1);
@@ -13425,6 +13504,7 @@ function nxToggle3d() {
                 if (off[c.id] || off[c.packId]) return;
                 if (!state.cards.some(x => x.id === c.id)) { state.cards.push(cloudStdCardClone(c)); added = true; }
             });
+            if (added) { try { cardsSortNorm(); packsSortNorm(); } catch (e) {} } // b375
             return added;
         }
         // Вернуть скрытую позицию стандарта: снятие off + досев + публикация
@@ -13580,6 +13660,7 @@ function nxToggle3d() {
                 const ci = state.cards.findIndex(c => c.id === t.id && !STANDARD_IDS[c.id] && (c.updatedAt || 0) < t.at);
                 if (ci >= 0) { dropCardRefs(t.id); state.cards.splice(ci, 1); sum.del++; changed = true; }
             });
+            if (changed) { try { cardsSortNorm(); packsSortNorm(); } catch (e) {} } // b375: досев/удаления не ломают порядок
             return changed ? sum : null;
         }
         function refreshVisibleTabs() {
@@ -14079,7 +14160,7 @@ function nxToggle3d() {
                         </div>
                         <div id="pack-cards-${p.id}" class="${pOpen ? '' : 'hidden'} px-3 py-2.5 border-t border-slate-800 bg-slate-900/40">
                             <p class="text-[10px] text-slate-500 mb-2"><i class="fa-solid fa-layer-group text-violet-400 mr-1"></i>Карточки пака «${p.title}»: ${pCards.length}</p>
-                            ${pCards.length ? `<div class="space-y-2">${pCards.map(studioCardRowHTML).join('')}</div>` : `<p class="text-[11px] text-slate-500">Пока нет карточек — добавьте первую в этот пак.</p>`}
+                            ${pCards.length ? `<div class="space-y-2">${pCards.map((c, ci) => studioCardRowHTML(c, ci + 1, pCards.length)).join('')}</div>` : `<p class="text-[11px] text-slate-500">Пока нет карточек — добавьте первую в этот пак.</p>`}
                             ${locked ? '' : `<button onclick="selectPackForNewCard('${p.id}')" class="mt-2 w-full py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-300 text-[11px] font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Добавить карточку в этот пак</button>`}
                         </div>
                         <div id="pack-music-editor-${p.id}" class="hidden px-3 py-2.5 border-t border-slate-800 bg-slate-900/60">
@@ -14157,19 +14238,23 @@ function nxToggle3d() {
                             <button onclick="toggleStudioPackCards('__orphan__')" class="h-7 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center gap-1.5 transition shrink-0" title="Показать/скрыть карточки"><i class="fa-solid fa-layer-group text-xs"></i>${orphanCards.length}<i id="pack-cards-chev-__orphan__" class="fa-solid fa-chevron-down text-[8px]" style="transition:transform .2s;${oOpen ? 'transform:rotate(180deg);' : ''}"></i></button>
                         </div>
                         <div id="pack-cards-__orphan__" class="${oOpen ? '' : 'hidden'} px-3 py-2.5 border-t border-slate-800 bg-slate-900/40">
-                            <div class="space-y-2">${orphanCards.map(studioCardRowHTML).join('')}</div>
+                            <div class="space-y-2">${orphanCards.map((c, ci) => studioCardRowHTML(c, ci + 1, orphanCards.length)).join('')}</div>
                         </div>
                     </div>`;
             }
         }
 
         // Строка одной карточки в списках Студии (внутри пака и в «Карточках по пакам»)
-        function studioCardRowHTML(c) {
+        function studioCardRowHTML(c, pos, total) { // b375: pos — номер карточки в списке (порядок загрузки владельца)
             const st = getCardStats(c);
             const rarLabel = (typeof RARITY_LABELS_RU !== 'undefined' && RARITY_LABELS_RU[c.rarity]) || c.rarity;
+            const numBadge = pos ? `<span class="shrink-0 w-7 h-7 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-300 text-[10px] font-black flex items-center justify-center" title="Номер карточки: порядок задаётся при создании/загрузке и не перемешивается синхронизацией">№${pos}</span>` : '';
+            const moveBtns = (pos && !cloudGuest()) ? `<button onclick="moveCardInPack('${c.id}', -1)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center transition${pos <= 1 ? ' opacity-30 pointer-events-none' : ''}" title="Переместить выше"><i class="fa-solid fa-arrow-up text-xs"></i></button>
+                        <button onclick="moveCardInPack('${c.id}', 1)" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 flex items-center justify-center transition${pos >= total ? ' opacity-30 pointer-events-none' : ''}" title="Переместить ниже"><i class="fa-solid fa-arrow-down text-xs"></i></button>` : '';
             return `
                 <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                     <div class="flex items-center gap-2.5 min-w-0 truncate">
+                        ${numBadge}
                         <img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" class="w-7 h-10 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}" loading="lazy" decoding="async">
                         <div class="truncate">
                             <h5 class="font-bold text-white text-[13px] truncate">${c.name}</h5>
@@ -14177,11 +14262,37 @@ function nxToggle3d() {
                         </div>
                     </div>
                     <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                        ${moveBtns}
                         ${cloudGuest() ? `<span class="h-7 px-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-bold flex items-center gap-1" title="Карточка создателя комнаты — только просмотр"><i class="fa-solid fa-lock text-[9px]"></i>просмотр</span>` : `<button onclick="editCard('${c.id}')" class="w-7 h-7 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 flex items-center justify-center transition" title="Редактировать"><i class="fa-solid fa-pen text-xs"></i></button>
                         <button onclick="deleteCard('${c.id}')" class="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="Удалить"><i class="fa-solid fa-trash text-xs"></i></button>`}
                     </div>
                 </div>
             `;
+        }
+
+        // b375: ручное перемещение карточки внутри пака — обмен номерами с соседом.
+        // Порядок владельца — закон: он переживает синхронизацию, импорт и комнаты.
+        function moveCardInPack(cardId, dir) {
+            if (cloudGuard()) return;
+            try {
+                cardsSortNorm();
+                const c = state.cards.find(x => x.id === cardId);
+                if (!c) return;
+                const list = state.cards.filter(x => x.packId === c.packId);
+                const i = list.findIndex(x => x.id === cardId);
+                const j = i + (dir > 0 ? 1 : -1);
+                if (i < 0 || j < 0 || j >= list.length) return;
+                const a = list[i], b = list[j];
+                if ((a.ord || 0) === (b.ord || 0)) b.ord = (a.ord || Date.now()) + (dir > 0 ? -1 : 1);
+                else { const t = a.ord; a.ord = b.ord; b.ord = t; }
+                a.ordAt = b.ordAt = Date.now(); // b375: метка «кто последний менял порядок» — для слияния устройств
+                cardsSortNorm();
+                saveState();
+                cloudStdTouch(a); cloudStdTouch(b); // стандартные карты: порядок доезжает до комнаты
+                cloudPublishSoon();
+                profSyncSoon(); // b375: перестановка сразу уезжает на другие устройства профиля
+                renderStudio();
+            } catch (e) {}
         }
 
         function toggleStudioPackCards(packId) {
@@ -14787,9 +14898,11 @@ function nxToggle3d() {
             }
             if (!items.length) { showToast('Не нашёл картинки: нужны ссылки на файлы (.png/.jpg…) или имена файлов при указанной папке', 'error'); return; }
             const now = Date.now();
+            const ordBase = nextCardOrd(); // b375: порядок загрузки сразу фиксируется номерами
             items.forEach((it, i) => {
                 state.cards.push({
                     id: 'card-' + now + '-' + i + '-' + Math.floor(Math.random() * 1e4),
+                    ord: ordBase + i * 10,
                     packId,
                     name: it.name,
                     description: '',
@@ -14807,7 +14920,7 @@ function nxToggle3d() {
             try { preloadImages(items.map(x => x.url)); } catch (e) {} // b130: картинки готовы сразу
             if (ta) ta.value = '';
             bulkCountUpdate();
-            showToast('✅ Создано карточек: ' + items.length, 'success');
+            showToast('✅ Создано карточек: ' + items.length + ' — порядок загрузки сохранён и закреплён номерами', 'success'); // b375
             renderStudio();
         }
 
@@ -14848,6 +14961,7 @@ function nxToggle3d() {
             } else {
                 const newCard = {
                     id: 'card-' + Date.now(),
+                    ord: nextCardOrd(), // b375: карта получает следующий номер — порядок не боится синхронизации
                     packId,
                     name,
                     description,
