@@ -124,6 +124,19 @@ function qrxView(name) {
     if (pd) pd.classList.toggle('hidden', name === 'conf');
 }
 function qrxRebuild() { qrxBuilding = false; qrxBuild(); }
+function qrxSelfCheck(text) { // b366: самопроверка — читает ли НАШ сканер нарисованный QR
+    // У плотных версий QR бывают «неудачные» сочетания маски/версии, которые jsQR
+    // не берёт с чистого канваса (замер: 1040 символов — нет, 1400 — да). Такой QR
+    // и камера вероятнее всего не возьмёт, поэтому вместо него показываем короткий
+    // облачный ключ: короткий QR читается всегда.
+    try {
+        const cv = document.getElementById('qr-canvas');
+        if (!cv || !cv.width) return false;
+        const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height);
+        const r = jsQR(d.data, cv.width, cv.height);
+        return !!(r && r.data === text);
+    } catch (e) { return false; }
+}
 async function qrxBuild() {
     if (qrxBuilding) return; qrxBuilding = true;
     const status = document.getElementById('qr-show-status');
@@ -131,6 +144,10 @@ async function qrxBuild() {
     if (status) status.textContent = 'Готовим код…';
     try {
         const snap = qrxSnapshot();
+        // b366: в тот же QR зашиваем код профиля синхронизации: устройство,
+        // отсканировавшее этот код, не только получит прогресс, но и привяжется
+        // к профилю — баланс и прогресс станут общими (правила b364).
+        try { let pc = profCode(); if (!pc) { pc = profGenCode(); profSetCode(pc, true); } snap.prof = pc; } catch (e) {}
         const json = JSON.stringify(snap);
         qrxFillChips('qr-self-chips', qrxSelfSummary(snap));
         let code = '';
@@ -139,6 +156,7 @@ async function qrxBuild() {
             const cand = QRX_DIRECT + qrxB64(def);
             if (cand.length <= QRX_MAX_DIRECT) {
                 try { qrxRender(cand); code = cand; } catch (e) { code = ''; }
+                if (code && !qrxSelfCheck(cand)) code = ''; // b366: не читается самим собой — в облако
             }
         }
         if (!code) {
@@ -149,9 +167,10 @@ async function qrxBuild() {
         }
         qrxCode = code;
         if (wrap) wrap.classList.remove('hidden');
-        if (status) status.innerHTML = code.indexOf(QRX_DIRECT) === 0
+        if (status) status.innerHTML = (code.indexOf(QRX_DIRECT) === 0
             ? '<i class="fa-solid fa-bolt text-amber-300 mr-1"></i>Прямой код: весь прогресс зашит прямо в QR (' + code.length + ' символов)'
-            : '<i class="fa-solid fa-cloud text-violet-300 mr-1"></i>Облачный ключ: снимок прогресса в транзитном облаке, в QR только ключ';
+            : '<i class="fa-solid fa-cloud text-violet-300 mr-1"></i>Облачный ключ: снимок прогресса в транзитном облаке, в QR только ключ')
+            + (snap.prof ? ' <span class="text-emerald-300">• в QR также код профиля ' + cloudEsc(snap.prof) + ' — второе устройство сразу привяжется</span>' : '');
     } catch (e) {
         if (wrap) wrap.classList.add('hidden');
         if (status) status.innerHTML = '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Не удалось собрать код: ' + String((e && e.message) || e) + '. Ниже можно скопировать прогресс текстом.</span>';
@@ -288,6 +307,15 @@ function qrxStopScan() {
     const video = document.getElementById('qr-video'); if (video) video.srcObject = null;
 }
 // ---- разбор полученного кода ----
+function qrxApplyProf(o) { // b366: в коде переноса может лежать код профиля — привязываем устройство сразу
+    try {
+        const pc = (o && typeof o.prof === 'string') ? o.prof.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) : '';
+        if (pc && pc !== profCode()) {
+            profSetCode(pc);
+            try { showToast('Устройство привязано к профилю ' + pc + ' вместе с переносом — баланс и прогресс станут общими', 'success'); } catch (e) {}
+        }
+    } catch (e) {}
+}
 async function qrxHandleCode(raw) {
     const s = String(raw || '').trim();
     const st = document.getElementById('qr-scan-status');
@@ -309,17 +337,21 @@ async function qrxHandleCode(raw) {
             if (st) st.innerHTML = '<i class="fa-solid fa-cloud-arrow-down text-violet-300 mr-1"></i>Получаем прогресс из транзитного облака…';
             const obj = await qrxRelayFetch(s.slice(QRX_RELAY.length));
             if (!obj || !obj.d) throw new Error('облако не вернуло данные');
+            qrxApplyProf(obj.d || obj); // b366: в relay-ветке профиль лежит внутри obj.d
             qrxShowConfirm(obj.d, null);
             return;
         }
         if (s.indexOf(QRX_DIRECT) === 0) {
             const json = await qrxInflate(qrxB64d(s.slice(QRX_DIRECT.length)));
             if (!json) throw new Error('не удалось распаковать код');
-            qrxShowConfirm(JSON.parse(json), null);
+            const objD = JSON.parse(json);
+            qrxApplyProf(objD); // b366
+            qrxShowConfirm(objD, null);
             return;
         }
         if (s.charAt(0) === '{') {
             const o = JSON.parse(s);
+            qrxApplyProf(o); // b366
             if (o && o.v === 1 && o.col) { qrxShowConfirm(o, null); return; }
             if (o && o.packs && o.cards) { qrxShowConfirm(null, o); return; }
         }
@@ -350,7 +382,12 @@ function qrxAccept() {
     const p = qrxPending; qrxPending = null;
     if (!p) return;
     if (p.legacy) { applyImportObject(p.legacy); closeQrModal(); return; }
+    try { profHold(2500); } catch (e) {} // b366: фоновый синк не перетирает привезённый сейв
     qrxApplyProgress(p);
+    // b366: база дельт = ПРИВЕЗЁННЫЙ баланс: локальные бонусы после accept
+    // (достижения и т.п.) уходят в общий профиль обычной дельтой, а сам перенос
+    // не прибавляется к общему балансу вторым разом
+    try { LS.setItem('nx_prof_lastbal', String(Math.max(0, Math.round(Number(p && p.c) || 0)))); } catch (e) {}
     closeQrModal();
 }
 // ---- применение принятого прогресса (каталог паков/карт не трогаем — он общий в облаке) ----

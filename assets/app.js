@@ -5119,6 +5119,8 @@ function nxToggle3d() {
         }
         function profMinerLvl() { try { return profNum((typeof miner !== 'undefined' && miner) ? miner.lvl : 0); } catch (e) { return 0; } }
         let profBusy = false, profLastRemote = null, profLastTs = 0, profT = 0;
+        let profHoldUntil = 0; // b366: на время применения переноса фоновый синк не трогает баланс
+        function profHold(ms) { profHoldUntil = Date.now() + (ms || 2000); }
         function profFetch(key) {
             return fetch(profPath(key) + '?nc=' + Date.now(), { cache: 'no-store' }).then(r => {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -5151,13 +5153,19 @@ function nxToggle3d() {
             if (profBusy) return Promise.resolve(false);
             profBusy = true;
             const did = nxDeviceId();
+            // b366: монеты и базу дельты снимаем СИНХРОННО, до любых await: иначе
+            // перенос/accept, вклинившийся между fetch и применением, учтётся как
+            // «моя дельта» и баланс задвоится (тест ловил 8842 вместо 4321)
+            const myCoins0 = Math.max(0, Math.floor(state.coins) || 0);
             let lastBal = parseInt(LS.getItem('nx_prof_lastbal') || '', 10);
             const first = !isFinite(lastBal);
             if (first) lastBal = 0; // первое подключение: весь мой баланс — это моя дельта
+            const myDelta0 = myCoins0 - lastBal;
             return profFetch(key).then(remote => {
+                if (Date.now() < profHoldUntil) return 'held'; // b366: сейчас применяют перенос — не трогаем
                 profLastRemote = remote;
                 const rState = remote && remote.state ? remote.state : null;
-                const myDelta = Math.max(0, Math.floor(state.coins) || 0) - lastBal;
+                const myDelta = myDelta0; // b366: дельта зафиксирована до await
                 const mergedFields = profMergeState(profSnap(), rState);
                 const mergedCoins = Math.max(0, (rState ? profNum(rState.coins) : 0) + myDelta);
                 const unionGrew = !rState
@@ -5196,7 +5204,7 @@ function nxToggle3d() {
                     });
                 }).then(() => { profUI(); return true; });
             }).catch(() => { profUI(); return false; })
-              .then(v => { profBusy = false; return v; });
+              .then(v => { profBusy = false; return v === 'held' ? false : v; });
         }
         function profSyncSoon() { clearTimeout(profT); profT = setTimeout(() => { profSyncOnce(false); }, 1500); }
         function profFlush() { // аварийная отправка при скрытии вкладки: моя дельта не должна потеряться
