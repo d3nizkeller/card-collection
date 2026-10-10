@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob5'          # меняется при изменении структуры — сбрасывает кэш SW
+BUILD_TAG = 'nxmob6'          # меняется при изменении структуры — сбрасывает кэш SW
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -642,6 +642,36 @@ TG_HARDENING = '''
             if (tg() || ++tries > 40) { clearInterval(t); harden(); }
         }, 100);
     }
+    // --- защита от случайного масштабирования страницы -------------------
+    // iOS 10+ и WKWebView (Telegram Mini App) игнорируют user-scalable=no,
+    // поэтому масштаб закрывается здесь: отменяем системные жесты Safari,
+    // двойной клик/тап и ctrl+колесо. Прокрутку и одиночные тапы не трогаем.
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (t) {
+        document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+    });
+    document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener('wheel', function (e) { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '-' || e.key === '=' || e.key === '0')) e.preventDefault();
+    });
+    // Страховка для старых WebView: если страницу всё-таки растянули,
+    // снимаем зум программно, возвращая масштаб к 1.
+    (function () {
+        var vv = window.visualViewport;
+        if (!vv) return;
+        var fix = function () {
+            try {
+                var s = vv.scale || 1;
+                if (Math.abs(s - 1) > 0.02) {
+                    // мета-тег уже просит scale=1; форсируем возврат жестом прокрутки
+                    window.scrollTo(window.scrollX, window.scrollY);
+                    try { nxCrashLog('zoomguard: visualViewport.scale=' + s.toFixed(2)); } catch (e) {}
+                }
+            } catch (e) {}
+        };
+        vv.addEventListener('resize', fix);
+    })();
+
     // WebView Telegram замораживают, а не закрывают: pagehide может не прийти.
     // Сохраняемся на всех сигналах, иначе прогресс теряется при убийстве процесса.
     ['pagehide', 'freeze', 'visibilitychange'].forEach(function (ev) {
@@ -725,6 +755,37 @@ APP_CSS_EXTRA = '''
 /* Меньше «резиновых» перерисовок при прокрутке на слабых GPU */
 @media (max-width: 1023px) {
     .nx-cv { will-change: auto; }
+}
+
+/* ============================================================
+   Защита от случайного «растягивания» игры (пинч-зум, двойной тап)
+   ============================================================
+   Жалоба игроков: случайный щипок или двойной тап растягивает страницу,
+   раскладка уезжает, игра выглядит сломанной. Прокрутка и обычные тапы
+   должны работать ровно как раньше — отключается ТОЛЬКО масштабирование.
+
+   touch-action: pan-x pan-y  = разрешены прокрутка по обеим осям и тапы,
+   запрещены pinch-zoom и double-tap zoom. Значение учитывается как
+   пересечение по всей цепочке предков, поэтому html+body достаточно,
+   чтобы закрыть всю страницу. Свои touch-обработчики игры (scratch-карта
+   с touch-none, свайпы карусели с pan-x) не затрагиваются. */
+html, body {
+    touch-action: pan-x pan-y;
+}
+/* полям ввода оставляем привычное поведение: манипуляции без дабл-тап-зума,
+   но без ограничений прокрутки внутри многострочных textarea */
+input, textarea, select, [contenteditable="true"] {
+    touch-action: manipulation;
+}
+/* ИСКЛЮЧЕНИЕ: у нарезчика сторис (#s9-view) собственный пинч и drag —
+   масштаб кадра и перенос рамки. Там жесты отдаём приложению, а не браузеру,
+   иначе pointercancel сломал бы редактору два пальца. */
+#s9-view, #s9-root canvas {
+    touch-action: none;
+}
+/* iOS: отключаем «резиновое» растягивание за пределы страницы */
+html, body {
+    overscroll-behavior: none;
 }
 '''
 
@@ -1017,7 +1078,10 @@ def main():
     out.append('    <!-- Убраны <meta http-equiv="Cache-Control/Pragma/Expires" no-cache>:')
     out.append('         часть WebView честно их выполняла и каждый раз качала 3.2 МБ заново.')
     out.append('         Кешированием теперь занимается sw.js + версионирование ?v= -->')
-    out.append('    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">')
+    # maximum-scale/user-scalable=no работает на Android Chrome/WebView и старых iOS.
+    # На iOS 10+ Safari их игнорирует (доступность) — там масштабу мешают
+    # touch-action в app.css и отмена жестов в скрипте ниже.
+    out.append('    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">')
     out.append('    <meta name="theme-color" content="#020617">')
     out.append('    <meta name="mobile-web-app-capable" content="yes">')
     out.append('    <meta name="apple-mobile-web-app-capable" content="yes">')
