@@ -14,6 +14,59 @@ import sys, os, io
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 APP_EDITS = [
+    ('b368-sig-helpers',
+     "        function profApply(s, mlvl) { // приложить слитое состояние к игре\n"
+     "            if (!s) return;\n"
+     "            state.coins = Math.max(0, profNum(s.coins));",
+     "        function profSig() { // b368: отпечаток состояния: изменилось ли что-то реально\n"
+     "            try {\n"
+     "                return [\n"
+     "                    Math.floor(state.coins) || 0,\n"
+     "                    (state.packs || []).map(p => p && p.id).join('.'),\n"
+     "                    (state.cards || []).map(c => c && c.id).join('.'),\n"
+     "                    JSON.stringify(state.collection || {}),\n"
+     "                    JSON.stringify(state.albumBonus || {}),\n"
+     "                    JSON.stringify(state.packStats || {}),\n"
+     "                    JSON.stringify(state.achievements || {}),\n"
+     "                    (state.deck || []).join('.'),\n"
+     "                    (state.missions && state.missions.date) || '',\n"
+     "                    (state.daily && state.daily.lastClaimDate) || '',\n"
+     "                    (state.stats && state.stats.packsOpened) || 0\n"
+     "                ].join('|');\n"
+     "            } catch (e) { return 'err' + Math.random(); }\n"
+     "        }\n"
+     "        function profStructSig(sig) { // b368: отпечаток без баланса: смена баланса — не повод перерисовывать вкладки\n"
+     "            const i = String(sig).indexOf('|');\n"
+     "            return i < 0 ? '' : String(sig).slice(i + 1);\n"
+     "        }\n"
+     "        function profApply(s, mlvl) { // приложить слитое состояние к игре\n"
+     "            if (!s) return;\n"
+     "            const pre = profSig(); // b368: снимаем отпечаток ДО применения\n"
+     "            state.coins = Math.max(0, profNum(s.coins));"),
+    ('b368-no-flicker',
+     "            try { // кирка шахты: уровень не теряется между устройствами\n"
+     "                if (mlvl && typeof miner !== 'undefined' && miner && mlvl > (miner.lvl || 0)) { miner.lvl = mlvl; try { minerSave(); } catch (e) {} }\n"
+     "            } catch (e) {}\n"
+     "            saveState();\n"
+     "            updateCoinDisplay();\n"
+     "            try { refreshVisibleTabs(); } catch (e) {}\n"
+     "        }",
+     "            let minerCh = false;\n"
+     "            try { // кирка шахты: уровень не теряется между устройствами\n"
+     "                if (mlvl && typeof miner !== 'undefined' && miner && mlvl > (miner.lvl || 0)) { miner.lvl = mlvl; minerCh = true; try { minerSave(); } catch (e) {} }\n"
+     "            } catch (e) {}\n"
+     "            // b368: НЕ мигаем интерфейсом на каждую синхронизацию. Полная\n"
+     "            // перерисовка вкладок — только если реально изменились карты/паки/\n"
+     "            // альбомы/колода; если поменялся лишь баланс — обновляем только\n"
+     "            // счётчик монет; если не изменилось ничего — не трогаем DOM вовсе.\n"
+     "            const post = profSig();\n"
+     "            if (post === pre && !minerCh) return;\n"
+     "            saveState();\n"
+     "            updateCoinDisplay();\n"
+     "            if (minerCh || profStructSig(post) !== profStructSig(pre)) {\n"
+     "                try { refreshVisibleTabs(); } catch (e) {}\n"
+     "            }\n"
+     "        }"),
     ('b367-diff-5189-5189',
      '                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null;',
      '                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока'),

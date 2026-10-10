@@ -115,6 +115,49 @@ const syncWait = page => page.evaluate(async () => {
   const docHeal = JSON.parse(STORE.get(keyC));
   console.log('   A после синка =', aHeal, '(ожидаем', a4 + ') | mov в доке:', JSON.stringify(docHeal.mov));
 
+  console.log('\n=== b368: интерфейс НЕ мигает при пустой синхронизации ===');
+  const flick = await A.page.evaluate(async () => {
+    let refr = 0, coinUpd = 0;
+    const oR = window.refreshVisibleTabs, oC = window.updateCoinDisplay;
+    window.refreshVisibleTabs = function () { refr++; return oR.apply(this, arguments); };
+    window.updateCoinDisplay = function () { coinUpd++; return oC.apply(this, arguments); };
+    const out = {};
+    for (let i = 0; i < 2; i++) { await profSyncOnce(false); }          // ничего не менялось
+    out.idle = { refr, coinUpd };
+    refr = 0; coinUpd = 0;
+    return out;
+  });
+  console.log('   2 пустых синка: перерисовок вкладок =', flick.idle.refr, '| обновлений счётчика =', flick.idle.coinUpd, '(ожидаем 0 и 0)');
+  const flick2 = await A.page.evaluate(async (key) => {
+    let refr = 0, coinUpd = 0;
+    const oR = window.refreshVisibleTabs, oC = window.updateCoinDisplay;
+    window.refreshVisibleTabs = function () { refr++; return oR.apply(this, arguments); };
+    window.updateCoinDisplay = function () { coinUpd++; return oC.apply(this, arguments); };
+    // меняем ТОЛЬКО баланс в доке
+    return new Promise(res => {
+      fetch('https://textdb.dev/api/data/' + key).then(r => r.json()).then(doc => {
+        // правим взнос ДРУГОГО устройства (леджер — источник истины, поле coins витринное)
+        const me = nxDeviceId();
+        const other = Object.keys(doc.mov || {}).find(k => k !== me);
+        if (other) doc.mov[other] += 100;
+        doc.state.coins += 100;
+        return fetch('https://textdb.dev/api/data/' + key, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(doc) });
+      }).then(async () => {
+        for (let i = 0; i < 3; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); }
+        const coinsOnly = { refr, coinUpd, coins: state.coins };
+        refr = 0; coinUpd = 0;
+        // теперь добавляем карту в док
+        const doc2 = await (await fetch('https://textdb.dev/api/data/' + key)).json();
+        doc2.state.cards = (doc2.state.cards || []).concat([{ id: 'cardZ', title: 'Z', packId: 'p1', rarity: 'epic' }]);
+        doc2.ts = Date.now() + 3;
+        await fetch('https://textdb.dev/api/data/' + key, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(doc2) });
+        for (let i = 0; i < 3; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); }
+        res({ coinsOnly, struct: { refr, coinUpd, hasCardZ: state.cards.some(c => c.id === 'cardZ') } });
+      });
+    });
+  }, 'nexus-tcg-prof-c-test01');
+  console.log('   баланс +100 в доке: перерисовок =', flick2.coinsOnly.refr, '(ожидаем 0) | счётчик обновлён =', flick2.coinsOnly.coinUpd, '(>=1) | баланс =', flick2.coinsOnly.coins);
+  console.log('   новая карта в доке: перерисовок =', flick2.struct.refr, '(ожидаем >=1) | карта приехала =', flick2.struct.hasCardZ);
   const errsAB = [...A.errs, ...B.errs];
   await A.ctx.close(); await B.ctx.close();
   await browser.close(); // 4 тяжёлые страницы в одном браузере роняют песочницу — дальше отдельный
@@ -142,7 +185,7 @@ const syncWait = page => page.evaluate(async () => {
   try { await browser2.close(); } catch (e) {}
 
   console.log('\nошибки страниц:', errs.length ? errs.slice(0, 6) : 'нет');
-  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && c1 === 15 && d1 === 15 && /синхронизированы: код TEST01/.test(panel) && aHeal === a4 && Object.keys(docHeal.mov || {}).length === 2 && e1.ipauto === false && e1.key === '';
+  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && c1 === 15 && d1 === 15 && /синхронизированы: код TEST01/.test(panel) && aHeal === a4 && Object.keys(docHeal.mov || {}).length === 2 && e1.ipauto === false && e1.key === '' && flick.idle.refr === 0 && flick.idle.coinUpd === 0 && flick2.coinsOnly.refr === 0 && flick2.coinsOnly.coinUpd >= 1 && flick2.struct.refr >= 1 && flick2.struct.hasCardZ;
   console.log(ok ? '\n✓ b364+b367: код, дельты, union, IP-авто по желанию, метка в панели, леджер переживает клоббер, авто-IP выкл по умолчанию' : '\n✗ где-то расхождение с ожиданиями');
   process.exit(ok ? 0 : 1);
 })();

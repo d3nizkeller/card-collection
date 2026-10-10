@@ -8652,8 +8652,30 @@ function nxToggle3d() {
                 windowBuys: state.windowBuys || {}
             };
         }
+        function profSig() { // b368: отпечаток состояния: изменилось ли что-то реально
+            try {
+                return [
+                    Math.floor(state.coins) || 0,
+                    (state.packs || []).map(p => p && p.id).join('.'),
+                    (state.cards || []).map(c => c && c.id).join('.'),
+                    JSON.stringify(state.collection || {}),
+                    JSON.stringify(state.albumBonus || {}),
+                    JSON.stringify(state.packStats || {}),
+                    JSON.stringify(state.achievements || {}),
+                    (state.deck || []).join('.'),
+                    (state.missions && state.missions.date) || '',
+                    (state.daily && state.daily.lastClaimDate) || '',
+                    (state.stats && state.stats.packsOpened) || 0
+                ].join('|');
+            } catch (e) { return 'err' + Math.random(); }
+        }
+        function profStructSig(sig) { // b368: отпечаток без баланса: смена баланса — не повод перерисовывать вкладки
+            const i = String(sig).indexOf('|');
+            return i < 0 ? '' : String(sig).slice(i + 1);
+        }
         function profApply(s, mlvl) { // приложить слитое состояние к игре
             if (!s) return;
+            const pre = profSig(); // b368: снимаем отпечаток ДО применения
             state.coins = Math.max(0, profNum(s.coins));
             if (Array.isArray(s.packs)) state.packs = s.packs;
             if (Array.isArray(s.cards)) state.cards = s.cards;
@@ -8667,12 +8689,21 @@ function nxToggle3d() {
             state.albumBonus = s.albumBonus || {};
             state.packStats = s.packStats || {};
             state.windowBuys = s.windowBuys || {};
+            let minerCh = false;
             try { // кирка шахты: уровень не теряется между устройствами
-                if (mlvl && typeof miner !== 'undefined' && miner && mlvl > (miner.lvl || 0)) { miner.lvl = mlvl; try { minerSave(); } catch (e) {} }
+                if (mlvl && typeof miner !== 'undefined' && miner && mlvl > (miner.lvl || 0)) { miner.lvl = mlvl; minerCh = true; try { minerSave(); } catch (e) {} }
             } catch (e) {}
+            // b368: НЕ мигаем интерфейсом на каждую синхронизацию. Полная
+            // перерисовка вкладок — только если реально изменились карты/паки/
+            // альбомы/колода; если поменялся лишь баланс — обновляем только
+            // счётчик монет; если не изменилось ничего — не трогаем DOM вовсе.
+            const post = profSig();
+            if (post === pre && !minerCh) return;
             saveState();
             updateCoinDisplay();
-            try { refreshVisibleTabs(); } catch (e) {}
+            if (minerCh || profStructSig(post) !== profStructSig(pre)) {
+                try { refreshVisibleTabs(); } catch (e) {}
+            }
         }
         function profMinerLvl() { try { return profNum((typeof miner !== 'undefined' && miner) ? miner.lvl : 0); } catch (e) { return 0; } }
         let profBusy = false, profLastRemote = null, profLastTs = 0, profT = 0;
@@ -8743,7 +8774,7 @@ function nxToggle3d() {
                         : Math.max(0, profNum(remote.coins) - sumMov); // миграция доков v1 без леджера
                 }
                 const myC = profNum(LS.getItem('nx_prof_movc')) + myDelta;
-                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока
+                const remoteMyMov = Object.prototype.hasOwnProperty.call(rMov, did) ? rMov[did] : null; // b367: мой взнос по версии дока // b367: мой взнос по версии дока
                 mov[did] = myC;
                 const mergedCoins = Math.max(0, base + Object.keys(mov).reduce((s, k) => s + mov[k], 0));
                 const unionGrew = !rState
