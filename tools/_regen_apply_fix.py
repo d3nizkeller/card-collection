@@ -5,7 +5,7 @@
 (только монолит: кнопка в шапке панели), QR_EDITS пусто.
 Большие куски (рендер панели, html-строка) читаются из файлов tools/_b363_*.txt.
 """
-import io, ast, subprocess
+import io, os, ast, subprocess
 
 AP = 'tools/apply_fix.py'
 app_head = subprocess.run(['git', 'show', 'HEAD:assets/app.js'], capture_output=True, text=True).stdout
@@ -187,6 +187,55 @@ QR_EDITS = []  # qr-transfer не трогаем
 MONO_EDITS = [
     ('b363-html-btn', OLD_HTML, NEW_HTML),
 ]
+
+
+MODULE_B364 = io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '_b364_module.txt'), encoding='utf-8').read().rstrip('\n')
+UI_B364 = io.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '_b364_ui.txt'), encoding='utf-8').read().rstrip('\n')
+
+OLD_AGG = """                g.bal = g.members.reduce((s, m) => s + (m.bal || 0), 0);
+                g.op = g.members.reduce((s, m) => s + (m.op || 0), 0);
+                g.jp = g.members.reduce((s, m) => s + (m.jp || 0), 0);
+                g.fed = g.members.reduce((s, m) => s + (m.fed || 0), 0);"""
+NEW_AGG = """                // b364: устройства, связанные профилем, держат ОДИН баланс и общие
+                // счётчики (зеркало), поэтому берём максимум; без синхронизации
+                // балансы устройств независимы — тогда сумма.
+                g.prof = g.members.map(m => m.prof || '').filter(Boolean)[0] || '';
+                const agg = f => g.members.reduce((s, m) => (g.prof ? Math.max(s, m[f] || 0) : s + (m[f] || 0)), 0);
+                g.bal = agg('bal');
+                g.op = agg('op');
+                g.jp = agg('jp');
+                g.fed = agg('fed');"""
+OLD_IPBADGE = "                        (g.ip ? badge('fa-location-dot', 'IP ' + cloudEsc(g.ip), 'text-sky-300', 'Все устройства ниже приходили с этого IP — считаем их одним пользователем') : badge('fa-location-dot', 'IP не сообщил', 'text-slate-600', 'Старый клиент или IP-сервис недоступен: группируем по ID устройства')) +"
+PROF_BADGE = "                        (g.prof ? badge('fa-rotate', 'синхронизированы: ' + cloudEsc(g.prof), 'text-emerald-300', 'b364: эти устройства делят общий баланс и прогресс через облачный профиль') : '') +"
+OLD_COINTITLE = "badge('fa-coins', fmtCoins(g.bal), 'text-amber-300', multi ? 'Сумма по всем устройствам этого пользователя' : '') +"
+NEW_COINTITLE = "badge('fa-coins', fmtCoins(g.bal), 'text-amber-300', multi ? (g.prof ? 'Общий баланс: устройства синхронизированы профилем (b364)' : 'Сумма по устройствам пользователя (без синхронизации)') : '') +"
+OLD_UICARD = """            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-users text-sky-400"></i>"""
+
+APP_EDITS += [
+    ('b364-module', "        function nxStatsGroupOn() {", MODULE_B364 + "\n        function nxStatsGroupOn() {"),
+    ('b364-norm',
+     "                did: String(e.did || '').slice(0, 24), // b363: устойчивый ID браузера",
+     "                did: String(e.did || '').slice(0, 24), // b363: устойчивый ID браузера\n                prof: String(e.prof || '').slice(0, 24), // b364: под каким профилем синхронизируется устройство"),
+    ('b364-self',
+     "                e.ip = nxPublicIp();     // b363: IP из кэша, первый запрос идёт фоном",
+     "                e.ip = nxPublicIp();     // b363: IP из кэша, первый запрос идёт фоном\n                e.prof = (function () { try { const c = profCode(); if (c) return 'код ' + c; if (profIpAuto() && nxPublicIp()) return 'IP-авто'; } catch (e) {} return ''; })(); // b364"),
+    ('b364-doc',
+     "alb: e.alb, ip: e.ip, dev: e.dev, did: e.did }; }); // b278: + альбомы; b363: + IP/устройство/ID",
+     "alb: e.alb, ip: e.ip, dev: e.dev, did: e.did, prof: e.prof }; }); // b278: + альбомы; b363: + IP/устройство; b364: + профиль синхронизации"),
+    ('b364-agg', OLD_AGG, NEW_AGG),
+    ('b364-profbadge', OLD_IPBADGE, OLD_IPBADGE + "\n" + PROF_BADGE),
+    ('b364-cointitle', OLD_COINTITLE, NEW_COINTITLE),
+    ('b364-init', "            cloudInit();", "            cloudInit();\n            try { profInit(); } catch (e) {} // b364: облачный профиль между устройствами"),
+]
+MONO_EDITS += [
+    ('b364-ui', OLD_UICARD, UI_B364 + "\n" + OLD_UICARD),
+]
+
+# b363 уже в HEAD — оставляем только новые правки (b364)
+APP_EDITS = [e for e in APP_EDITS if e[0].startswith('b364')]
+MONO_EDITS = [e for e in MONO_EDITS if e[0].startswith('b364')]
 
 for lbl, o, n in APP_EDITS + QR_EDITS:
     assert app_head.count(o) == 1, '%s: в базе app.js %d вхождений (нужно 1)' % (lbl, app_head.count(o))

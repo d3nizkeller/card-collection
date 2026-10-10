@@ -2824,6 +2824,22 @@ min-height:56vh}
             </div>
             <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-rotate text-emerald-400"></i>
+                    <span>Синхронизация между устройствами — один пользователь, один баланс</span>
+                </h3>
+                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i>Устройства одного пользователя делят общий баланс и прогресс. На основном устройстве создайте код и введите его на остальных (или пришлите ссылку ?prof=…). Пока кода нет — устройства с одним IP связываются сами. Баланс сливается по правилу «последнее состояние + изменения остальных устройств», коллекция, паки и альбомы объединяются, счётчики берутся максимумом.</p>
+                <div id="nx-prof-status" class="flex flex-wrap items-center gap-2"></div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" id="nx-prof-code-btn" onclick="profCreateCode()" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-key mr-1"></i>Создать код</button>
+                    <button type="button" onclick="profEnterCode()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-keyboard mr-1"></i>Ввести код</button>
+                    <button type="button" onclick="profCopyLink()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-link mr-1"></i>Ссылка на устройство</button>
+                    <button type="button" onclick="profSyncOnce(true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Синхронизировать сейчас</button>
+                    <button type="button" id="nx-prof-ipauto-btn" onclick="profToggleIpAuto()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"></button>
+                    <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>
+                </div>
+            </div>
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-users text-sky-400"></i>
                     <span>Пользователи — у кого какой баланс</span>
                     <button type="button" id="nx-groupip-btn" onclick="nxToggleGroupIp()" title="Группировать записи реестра по IP: устройства с одним IP показываем как одного пользователя со списком устройств" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold transition mr-1.5"></button><span class="ml-auto"><button type="button" id="nx-online-btn" onclick="nxToggleOnlineOnly()" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition" title="Показать только тех, кто сейчас на сайте (зелёная метка = онлайн)"><i class="fa-solid fa-circle mr-1" style="font-size:7px;vertical-align:2px;"></i>Кто онлайн: 0</button></span>
@@ -8176,6 +8192,7 @@ function nxToggle3d() {
                 ip: String(e.ip || '').slice(0, 45),   // b363: публичный IP устройства
                 dev: String(e.dev || '').slice(0, 90), // b363: ОС/браузер/форм-фактор/экран
                 did: String(e.did || '').slice(0, 24), // b363: устойчивый ID браузера
+                prof: String(e.prof || '').slice(0, 24), // b364: под каким профилем синхронизируется устройство
                 pk: {},
                 alb: {}
             };
@@ -8311,6 +8328,7 @@ function nxToggle3d() {
                 e.did = nxDeviceId();    // b363: устойчивый ID устройства
                 e.dev = nxDeviceLabel(); // b363: портрет устройства для панели
                 e.ip = nxPublicIp();     // b363: IP из кэша, первый запрос идёт фоном
+                e.prof = (function () { try { const c = profCode(); if (c) return 'код ' + c; if (profIpAuto() && nxPublicIp()) return 'IP-авто'; } catch (e) {} return ''; })(); // b364
                 e.at = Date.now();
                 siteStats.p[JACKPOT_CID] = e;
             } catch (err) {}
@@ -8350,7 +8368,7 @@ function nxToggle3d() {
             const cut30 = Date.now() - 30 * 86400000;
             Object.keys(siteStats.p).map(k => siteStats.p[k])
                 .sort((a, c) => (c.at || 0) - (a.at || 0)).slice(0, 150)
-                .forEach(e => { if (e.cid) p[e.cid] = { n: e.n, bal: e.bal, op: e.op, jp: e.jp, fed: e.fed, won: e.won, at: e.at, pk: e.pk, alb: e.alb, ip: e.ip, dev: e.dev, did: e.did }; }); // b278: + альбомы; b363: + IP/устройство/ID
+                .forEach(e => { if (e.cid) p[e.cid] = { n: e.n, bal: e.bal, op: e.op, jp: e.jp, fed: e.fed, won: e.won, at: e.at, pk: e.pk, alb: e.alb, ip: e.ip, dev: e.dev, did: e.did, prof: e.prof }; }); // b278: + альбомы; b363: + IP/устройство; b364: + профиль синхронизации
             for (const k in siteStats.b) { const v = siteStats.b[k]; if (v && (v.on || (v.at || 0) > cut30)) b[k] = v; }
             for (const k in siteStats.z) { if ((siteStats.z[k] || 0) > cut30) z[k] = siteStats.z[k]; }
             return { p: p, b: b, z: z };
@@ -8548,6 +8566,281 @@ function nxToggle3d() {
                 showToast('🗑 Удалено устройств: ' + list.length + ' — балансы обнулены, доступ отключён', 'info');
             });
         }
+        // ============ b364: ОБЩИЙ ПРОГРЕСС МЕЖДУ УСТРОЙСТВАМИ ОДНОГО ПОЛЬЗОВАТЕЛЯ ============
+        // Устройствa одного человека (телефон/планшет/ПК) держали баланс и коллекцию
+        // КАЖДЫЙ У СЕБЯ (localStorage). Теперь у пользователя есть облачный профиль:
+        //   • код профиля (создать на основном устройстве, ввести/открыть ссылку на остальных) —
+        //     главная привязка, не зависит от сети;
+        //   • авто-привязка по одному IP (b363) — если кода нет, устройства с одним IP
+        //     сами попадают в общий профиль (отключается тумблером).
+        // Баланс сливается по правилу «последнее состояние + дельты остальных»:
+        // устройство пушит не свой баланс, а ИЗМЕНЕНИЕ с момента своей прошлой
+        // синхронизации, которое прибавляется к общему значению. Прогресс
+        // (паки/карты/коллекция/альбомы/статистика) объединяется, счётчики — максимум.
+        const PROF_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        function profHashIp(ip) { // короткий стабильный ключ из IP (сам IP в имя документа не пишем)
+            let h = 5381;
+            const s = String(ip || '');
+            for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+            return h.toString(36);
+        }
+        function profCode() { try { return String(LS.getItem('nx_prof_code') || '').toUpperCase(); } catch (e) { return ''; } }
+        function profIpAuto() { try { return LS.getItem('nx_prof_ipauto') !== '0'; } catch (e) { return true; } }
+        function profDocKey() { // ключ облачного документа профиля: код важнее IP
+            const c = profCode();
+            if (c) return 'c-' + c.toLowerCase();
+            if (!profIpAuto()) return '';
+            const ip = nxPublicIp();
+            return ip ? 'i-' + profHashIp(ip) : '';
+        }
+        function profPath(key) { return 'https://textdb.dev/api/data/nexus-tcg-prof-' + key; }
+        function profNum(v) { const n = Math.floor(Number(v)); return isFinite(n) ? n : 0; }
+        function profMaxMap(a, b) {
+            const out = {};
+            const put = o => { if (!o || typeof o !== 'object') return; for (const k in o) { const v = o[k]; if (typeof v === 'object' && v) { const sub = profMaxMap(out[k], v); out[k] = sub; } else out[k] = Math.max(profNum(out[k]), profNum(v)); } };
+            put(a); put(b);
+            return out;
+        }
+        function profMaxStr(a, b) { return String(a || '') >= String(b || '') ? (a || b || '') : (b || ''); }
+        function profMergeState(L, R) { // L — локальный слепок, R — общий из облака (или null)
+            if (!R) return L;
+            const out = {};
+            const pm = {};
+            (R.packs || []).forEach(p => { if (p && p.id) pm[p.id] = p; });
+            (L.packs || []).forEach(p => { if (p && p.id) pm[p.id] = p; });
+            out.packs = Object.keys(pm).map(k => pm[k]);
+            const cm = {};
+            (R.cards || []).forEach(c => { if (c && c.id) cm[c.id] = c; });
+            (L.cards || []).forEach(c => { if (c && c.id) cm[c.id] = c; });
+            out.cards = Object.keys(cm).map(k => cm[k]);
+            out.collection = profMaxMap(R.collection, L.collection);
+            out.stats = profMaxMap(R.stats, L.stats);
+            out.achievements = profMaxMap(R.achievements, L.achievements);
+            out.pity = profMaxMap(R.pity, L.pity);
+            out.albumBonus = profMaxMap(R.albumBonus, L.albumBonus);
+            out.packStats = profMaxMap(R.packStats, L.packStats);
+            out.windowBuys = profMaxMap(R.windowBuys, L.windowBuys);
+            out.daily = {
+                lastClaimDate: profMaxStr(R.daily && R.daily.lastClaimDate, L.daily && L.daily.lastClaimDate) || null,
+                streak: Math.max(profNum(R.daily && R.daily.streak), profNum(L.daily && L.daily.streak)),
+                lastDurakWinDate: profMaxStr(R.daily && R.daily.lastDurakWinDate, L.daily && L.daily.lastDurakWinDate) || null
+            };
+            const md = String(R.missions && R.missions.date || ''), ld = String(L.missions && L.missions.date || '');
+            out.missions = (md > ld) ? R.missions : (ld > md ? L.missions : (L.missions && (L.missions.list || []).length >= ((R.missions && R.missions.list) || []).length ? L.missions : R.missions));
+            const dk = {};
+            (R.deck || []).forEach(id => { dk[id] = 1; });
+            (L.deck || []).forEach(id => { dk[id] = 1; });
+            out.deck = Object.keys(dk).filter(id => cm[id]);
+            return out;
+        }
+        function profSnap() { // слепок прогресса для облака (без тяжёлых артов: image-ссылки и так внутри паков/карт)
+            return {
+                coins: Math.max(0, Math.floor(state.coins) || 0),
+                packs: (state.packs || []).map(lightPack),
+                cards: (state.cards || []).map(lightCard),
+                collection: state.collection || {},
+                stats: state.stats || {},
+                daily: state.daily || {},
+                missions: state.missions || {},
+                achievements: state.achievements || {},
+                pity: state.pity || {},
+                deck: state.deck || [],
+                albumBonus: state.albumBonus || {},
+                packStats: state.packStats || {},
+                windowBuys: state.windowBuys || {}
+            };
+        }
+        function profApply(s, mlvl) { // приложить слитое состояние к игре
+            if (!s) return;
+            state.coins = Math.max(0, profNum(s.coins));
+            if (Array.isArray(s.packs)) state.packs = s.packs;
+            if (Array.isArray(s.cards)) state.cards = s.cards;
+            state.collection = s.collection || {};
+            state.stats = Object.assign({}, defaultStats, s.stats || {});
+            state.daily = Object.assign({ lastClaimDate: null, streak: 0, lastDurakWinDate: null }, s.daily || {});
+            state.missions = s.missions || { date: null, list: [] };
+            state.achievements = s.achievements || {};
+            state.pity = Object.assign({ packsSinceEpic: 0 }, s.pity || {});
+            state.deck = Array.isArray(s.deck) ? s.deck : [];
+            state.albumBonus = s.albumBonus || {};
+            state.packStats = s.packStats || {};
+            state.windowBuys = s.windowBuys || {};
+            try { // кирка шахты: уровень не теряется между устройствами
+                if (mlvl && typeof miner !== 'undefined' && miner && mlvl > (miner.lvl || 0)) { miner.lvl = mlvl; try { minerSave(); } catch (e) {} }
+            } catch (e) {}
+            saveState();
+            updateCoinDisplay();
+            try { refreshVisibleTabs(); } catch (e) {}
+        }
+        function profMinerLvl() { try { return profNum((typeof miner !== 'undefined' && miner) ? miner.lvl : 0); } catch (e) { return 0; } }
+        let profBusy = false, profLastRemote = null, profLastTs = 0, profT = 0;
+        function profFetch(key) {
+            return fetch(profPath(key) + '?nc=' + Date.now(), { cache: 'no-store' }).then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            }).then(txt => { try { return JSON.parse(String(txt || '').trim() || 'null'); } catch (e) { return null; } });
+        }
+        function profPushDoc(key, doc, keepalive) {
+            return fetch(profPath(key), {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(doc),
+                keepalive: !!keepalive
+            }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
+        }
+        function profBuildDoc(key, remote, mergedFields, mergedCoins) {
+            const did = nxDeviceId();
+            const book = Object.assign({}, (remote && remote.book) || {});
+            book[did] = { at: Date.now(), bal: mergedCoins, dev: nxDeviceLabel(), ip: nxPublicIp(), n: getPlayerName() };
+            return {
+                v: 1, ts: Date.now(), by: did, code: profCode(),
+                state: Object.assign({}, mergedFields, { coins: mergedCoins }),
+                minerLvl: Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)),
+                book: book
+            };
+        }
+        function profSyncOnce(force) {
+            const key = profDocKey();
+            profUI();
+            if (!key) return Promise.resolve(false);
+            if (profBusy) return Promise.resolve(false);
+            profBusy = true;
+            const did = nxDeviceId();
+            let lastBal = parseInt(LS.getItem('nx_prof_lastbal') || '', 10);
+            const first = !isFinite(lastBal);
+            if (first) lastBal = 0; // первое подключение: весь мой баланс — это моя дельта
+            return profFetch(key).then(remote => {
+                profLastRemote = remote;
+                const rState = remote && remote.state ? remote.state : null;
+                const myDelta = Math.max(0, Math.floor(state.coins) || 0) - lastBal;
+                const mergedFields = profMergeState(profSnap(), rState);
+                const mergedCoins = Math.max(0, (rState ? profNum(rState.coins) : 0) + myDelta);
+                const unionGrew = !rState
+                    || (mergedFields.cards || []).length > (rState.cards || []).length
+                    || (mergedFields.packs || []).length > (rState.packs || []).length;
+                const book = (remote && remote.book) || {};
+                const bookStale = !book[did] || (Date.now() - profNum(book[did].at) > 120000);
+                const needPush = !!force || !remote || myDelta !== 0 || unionGrew || bookStale;
+                // прикладываем общее состояние к себе (чужие карты/паки/баланс приезжают сюда).
+                // ВАЖНО: базой «моих изменений» становится именно слитое значение, иначе
+                // подтянутый прирост на следующем круге уехал бы в облако второй раз,
+                // а трата откатилась бы обратно (тест это ловил: +50 дублировались).
+                if (rState) {
+                    profApply(Object.assign({}, mergedFields, { coins: mergedCoins }), Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)));
+                    try { LS.setItem('nx_prof_lastbal', String(mergedCoins)); } catch (e) {}
+                }
+                profLastTs = Date.now();
+                if (!needPush) { profUI(); return true; }
+                const doc = profBuildDoc(key, remote, mergedFields, mergedCoins);
+                return profPushDoc(key, doc).then(() => {
+                    try { LS.setItem('nx_prof_lastbal', String(mergedCoins)); } catch (e) {}
+                    profLastRemote = doc;
+                    // защита от перезаписи: читаем ещё раз, если между пушем и чтением
+                    // кто-то вписался — повторяем цикл слияния (максимум один раз)
+                    return profFetch(key).then(chk => {
+                        if (chk && chk.ts && doc.ts && String(chk.ts) !== String(doc.ts) && String(chk.by) !== did) {
+                            const r2 = chk.state || null;
+                            const d2 = Math.max(0, Math.floor(state.coins) || 0) - mergedCoins;
+                            const f2 = profMergeState(profSnap(), r2);
+                            const c2 = Math.max(0, (r2 ? profNum(r2.coins) : 0) + d2);
+                            profApply(Object.assign({}, f2, { coins: c2 }), Math.max(profMinerLvl(), profNum(chk && chk.minerLvl)));
+                            const doc2 = profBuildDoc(key, chk, f2, c2);
+                            return profPushDoc(key, doc2).then(() => { try { LS.setItem('nx_prof_lastbal', String(c2)); } catch (e) {} });
+                        }
+                        return true;
+                    });
+                }).then(() => { profUI(); return true; });
+            }).catch(() => { profUI(); return false; })
+              .then(v => { profBusy = false; return v; });
+        }
+        function profSyncSoon() { clearTimeout(profT); profT = setTimeout(() => { profSyncOnce(false); }, 1500); }
+        function profFlush() { // аварийная отправка при скрытии вкладки: моя дельта не должна потеряться
+            try {
+                const key = profDocKey();
+                if (!key) return;
+                const lastBal = parseInt(LS.getItem('nx_prof_lastbal') || '', 10);
+                const myDelta = Math.max(0, Math.floor(state.coins) || 0) - (isFinite(lastBal) ? lastBal : 0);
+                if (myDelta === 0 && profLastRemote) return;
+                const rState = profLastRemote && profLastRemote.state ? profLastRemote.state : null;
+                const fields = profMergeState(profSnap(), rState);
+                const coins = Math.max(0, (rState ? profNum(rState.coins) : 0) + myDelta);
+                profPushDoc(key, profBuildDoc(key, profLastRemote, fields, coins), true);
+            } catch (e) {}
+        }
+        function profGenCode() {
+            let c = '';
+            for (let i = 0; i < 6; i++) c += PROF_ALPHABET[Math.floor(Math.random() * PROF_ALPHABET.length)];
+            return c;
+        }
+        function profSetCode(code, silent) {
+            code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+            try {
+                if (code) LS.setItem('nx_prof_code', code); else LS.setItem('nx_prof_code', '');
+                try { LS.removeItem('nx_prof_lastbal'); } catch (e) {} // баланс пересчитаем с нуля против нового профиля
+            } catch (e) {}
+            profUI();
+            if (!silent) profSyncOnce(true);
+            return code;
+        }
+        function profCreateCode() {
+            const c = profSetCode(profGenCode());
+            try { showToast('Профиль создан: код ' + c + '. Введите этот код (или откройте ссылку ?prof=' + c + ') на остальных устройствах', 'success'); } catch (e) {}
+        }
+        function profEnterCode() {
+            const c = window.prompt('Код профиля с основного устройства (6 знаков) или ссылка с ?prof=…');
+            if (!c) return;
+            const m = String(c).match(/prof=([a-z0-9-]+)/i);
+            const code = profSetCode(m ? m[1] : c);
+            if (code) { try { showToast('Код принят: ' + code + ' — синхронизирую…', 'success'); } catch (e) {} }
+        }
+        function profCopyLink() {
+            const c = profCode();
+            if (!c) { profCreateCode(); }
+            const link = location.origin + location.pathname + '?prof=' + (profCode() || c);
+            try { navigator.clipboard && navigator.clipboard.writeText(link); showToast('Ссылка скопирована: ' + link, 'success'); } catch (e) { window.prompt('Скопируйте ссылку для других устройств:', link); }
+        }
+        function profUnlink() {
+            try { LS.setItem('nx_prof_code', ''); LS.removeItem('nx_prof_lastbal'); } catch (e) {}
+            profLastRemote = null;
+            profUI();
+            try { showToast('Привязка снята: устройство снова само по себе', 'info'); } catch (e) {}
+        }
+        function profToggleIpAuto() {
+            try { LS.setItem('nx_prof_ipauto', profIpAuto() ? '0' : '1'); LS.removeItem('nx_prof_lastbal'); } catch (e) {}
+            profUI(); profSyncSoon();
+        }
+        function profLabel() {
+            const c = profCode();
+            if (c) return 'код ' + c;
+            if (!profIpAuto()) return 'выключен';
+            const ip = nxPublicIp();
+            return ip ? 'авто по IP ' + ip : 'авто по IP (IP ещё не известен)';
+        }
+        function profUI() {
+            const st = document.getElementById('nx-prof-status');
+            if (st) {
+                const book = (profLastRemote && profLastRemote.book) ? Object.keys(profLastRemote.book).length : 0;
+                st.innerHTML =
+                    '<span class="text-[10px] text-slate-400">Профиль: <b class="text-slate-200">' + cloudEsc(profLabel()) + '</b></span>' +
+                    '<span class="text-[10px] text-slate-500">устройств в профиле: <b class="text-slate-300">' + book + '</b></span>' +
+                    '<span class="text-[10px] text-slate-500">синхронизация: <b class="text-slate-300">' + (profLastTs ? statsAgo(profLastTs) : 'ещё не была') + '</b></span>';
+            }
+            const b = document.getElementById('nx-prof-ipauto-btn');
+            if (b) b.innerHTML = '<i class="fa-solid fa-location-dot mr-1"></i>Авто по IP: ' + (profIpAuto() ? 'вкл' : 'выкл');
+            const cc = document.getElementById('nx-prof-code-btn');
+            if (cc) cc.innerHTML = profCode() ? '<i class="fa-solid fa-key mr-1"></i>Сменить код' : '<i class="fa-solid fa-key mr-1"></i>Создать код';
+        }
+        function profInit() {
+            try {
+                const m = String(location.search || '').match(/[?&]prof=([a-zA-Z0-9-]{4,12})/);
+                if (m) { profSetCode(m[1].toUpperCase(), true); try { showToast('Открыта ссылка профиля ' + m[1].toUpperCase() + ' — привязываю устройство…', 'success'); } catch (e) {} }
+            } catch (e) {}
+            profUI();
+            setTimeout(() => { profSyncOnce(false); }, 4000);
+            setInterval(() => { try { if (!document.hidden) profSyncOnce(false); } catch (e) {} }, 45000);
+            document.addEventListener('visibilitychange', () => { try { if (document.hidden) profFlush(); else profSyncSoon(); } catch (e) {} });
+            window.addEventListener('pagehide', () => { try { profFlush(); } catch (e) {} });
+        }
         function nxStatsGroupOn() { try { return LS.getItem('nx_stats_group_ip') !== '0'; } catch (e) { return true; } }
         function nxToggleGroupIp() {
             try { LS.setItem('nx_stats_group_ip', nxStatsGroupOn() ? '0' : '1'); } catch (e) {}
@@ -8631,10 +8924,15 @@ function nxToggle3d() {
                 const g = gm[k];
                 g.members.sort((a, c) => (c.at || 0) - (a.at || 0));
                 g.e = g.members[0];
-                g.bal = g.members.reduce((s, m) => s + (m.bal || 0), 0);
-                g.op = g.members.reduce((s, m) => s + (m.op || 0), 0);
-                g.jp = g.members.reduce((s, m) => s + (m.jp || 0), 0);
-                g.fed = g.members.reduce((s, m) => s + (m.fed || 0), 0);
+                // b364: устройства, связанные профилем, держат ОДИН баланс и общие
+                // счётчики (зеркало), поэтому берём максимум; без синхронизации
+                // балансы устройств независимы — тогда сумма.
+                g.prof = g.members.map(m => m.prof || '').filter(Boolean)[0] || '';
+                const agg = f => g.members.reduce((s, m) => (g.prof ? Math.max(s, m[f] || 0) : s + (m[f] || 0)), 0);
+                g.bal = agg('bal');
+                g.op = agg('op');
+                g.jp = agg('jp');
+                g.fed = agg('fed');
                 g.at = g.members.reduce((s, m) => Math.max(s, m.at || 0), 0);
                 g.online = g.members.some(m => nxNow - (m.at || 0) < 120000);
                 g.blk = g.members.some(m => !!(siteStats.b[m.cid] && siteStats.b[m.cid].on));
@@ -8703,10 +9001,11 @@ function nxToggle3d() {
                         (g.blk ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
                         (g.online ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +
                         (g.ip ? badge('fa-location-dot', 'IP ' + cloudEsc(g.ip), 'text-sky-300', 'Все устройства ниже приходили с этого IP — считаем их одним пользователем') : badge('fa-location-dot', 'IP не сообщил', 'text-slate-600', 'Старый клиент или IP-сервис недоступен: группируем по ID устройства')) +
+                        (g.prof ? badge('fa-rotate', 'синхронизированы: ' + cloudEsc(g.prof), 'text-emerald-300', 'b364: эти устройства делят общий баланс и прогресс через облачный профиль') : '') +
                         '<span class="ml-auto text-[9px] font-mono text-slate-600 truncate max-w-[120px]" title="ID игрока' + (multi ? ' (последнее активное устройство)' : '') + '">' + cloudEsc(cid) + '</span>' +
                     '</div>' +
                     '<div class="flex flex-wrap items-center gap-1.5 mt-1.5">' +
-                        badge('fa-coins', fmtCoins(g.bal), 'text-amber-300', multi ? 'Сумма по всем устройствам этого пользователя' : '') +
+                        badge('fa-coins', fmtCoins(g.bal), 'text-amber-300', multi ? (g.prof ? 'Общий баланс: устройства синхронизированы профилем (b364)' : 'Сумма по устройствам пользователя (без синхронизации)') : '') +
                         badge('fa-box-open', g.op + ' паков', 'text-violet-300', multi ? 'Сумма по всем устройствам' : '') +
                         (as && as.total > 0 ? badge('fa-book-open', 'альбомы: ' + as.done + '/' + as.packs + ' · ' + as.pct + '%', 'text-violet-300', multi ? 'Лучший прогресс среди устройств пользователя' : ('Собрано ' + as.have + ' из ' + as.total + ' карт • альбомов закрыто полностью: ' + as.done + ' из ' + as.packs)) : '') +
                         badge('fa-crown', 'джекпотов: ' + g.jp, 'text-yellow-300', multi ? 'Сумма по всем устройствам' : '') +
@@ -18233,6 +18532,7 @@ function nxToggle3d() {
             }
             // Облачная синхронизация общего каталога паков
             cloudInit();
+            try { profInit(); } catch (e) {} // b364: облачный профиль между устройствами
             // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
             // b183: уходим со страницы — срочно отправляем банк (jpFlush), вернулись — полная синхронизация
             try {

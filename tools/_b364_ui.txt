@@ -1,0 +1,16 @@
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-rotate text-emerald-400"></i>
+                    <span>Синхронизация между устройствами — один пользователь, один баланс</span>
+                </h3>
+                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i>Устройства одного пользователя делят общий баланс и прогресс. На основном устройстве создайте код и введите его на остальных (или пришлите ссылку ?prof=…). Пока кода нет — устройства с одним IP связываются сами. Баланс сливается по правилу «последнее состояние + изменения остальных устройств», коллекция, паки и альбомы объединяются, счётчики берутся максимумом.</p>
+                <div id="nx-prof-status" class="flex flex-wrap items-center gap-2"></div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <button type="button" id="nx-prof-code-btn" onclick="profCreateCode()" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-key mr-1"></i>Создать код</button>
+                    <button type="button" onclick="profEnterCode()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-keyboard mr-1"></i>Ввести код</button>
+                    <button type="button" onclick="profCopyLink()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-link mr-1"></i>Ссылка на устройство</button>
+                    <button type="button" onclick="profSyncOnce(true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Синхронизировать сейчас</button>
+                    <button type="button" id="nx-prof-ipauto-btn" onclick="profToggleIpAuto()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"></button>
+                    <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>
+                </div>
+            </div>
