@@ -77,72 +77,143 @@ QR_EDITS = [
 ]
 
 APP_EDITS = [
-    ('b366-race-hold',
-     "        let profBusy = false, profLastRemote = null, profLastTs = 0, profT = 0;",
-     "        let profBusy = false, profLastRemote = null, profLastTs = 0, profT = 0;\n"
-     "        let profHoldUntil = 0; // b366: на время применения переноса фоновый синк не трогает баланс\n"
-     "        function profHold(ms) { profHoldUntil = Date.now() + (ms || 2000); }"),
-    ('b366-race-delta',
-     "            profBusy = true;\n"
+    ('b367-ipauto-off',
+     "        function profIpAuto() { try { return LS.getItem('nx_prof_ipauto') !== '0'; } catch (e) { return true; } }",
+     "        function profIpAuto() { try { return LS.getItem('nx_prof_ipauto') === '1'; } catch (e) { return false; } } // b367: ПО УМОЛЧАНИЮ ВЫКЛ: за одним IP провайдера (CGNAT) сидят сотни чужих людей — их балансы смешивались"),
+    ('b367-setcode-movc',
+     "                try { LS.removeItem('nx_prof_lastbal'); } catch (e) {} // баланс пересчитаем с нуля против нового профиля",
+     "                try { LS.removeItem('nx_prof_lastbal'); LS.removeItem('nx_prof_movc'); } catch (e) {} // b367: новый профиль — леджер взносов с нуля"),
+    ('b367-unlink-movc',
+     "            try { LS.setItem('nx_prof_code', ''); LS.removeItem('nx_prof_lastbal'); } catch (e) {}",
+     "            try { LS.setItem('nx_prof_code', ''); LS.removeItem('nx_prof_lastbal'); LS.removeItem('nx_prof_movc'); } catch (e) {}"),
+    ('b367-toggle-movc',
+     "            try { LS.setItem('nx_prof_ipauto', profIpAuto() ? '0' : '1'); LS.removeItem('nx_prof_lastbal'); } catch (e) {}",
+     "            try { LS.setItem('nx_prof_ipauto', profIpAuto() ? '0' : '1'); LS.removeItem('nx_prof_lastbal'); LS.removeItem('nx_prof_movc'); } catch (e) {} // b367: смена сообщества = новый леджер"),
+    ('b367-builddoc',
+     "        function profBuildDoc(key, remote, mergedFields, mergedCoins) {\n"
      "            const did = nxDeviceId();\n"
-     "            let lastBal = parseInt(LS.getItem('nx_prof_lastbal') || '', 10);\n"
-     "            const first = !isFinite(lastBal);\n"
-     "            if (first) lastBal = 0; // первое подключение: весь мой баланс — это моя дельта\n"
-     "            return profFetch(key).then(remote => {",
-     "            profBusy = true;\n"
+     "            const book = Object.assign({}, (remote && remote.book) || {});\n"
+     "            book[did] = { at: Date.now(), bal: mergedCoins, dev: nxDeviceLabel(), ip: nxPublicIp(), n: getPlayerName() };\n"
+     "            return {\n"
+     "                v: 1, ts: Date.now(), by: did, code: profCode(),\n"
+     "                state: Object.assign({}, mergedFields, { coins: mergedCoins }),\n"
+     "                minerLvl: Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)),\n"
+     "                book: book\n"
+     "            };\n"
+     "        }",
+     "        function profBuildDoc(key, remote, mergedFields, mergedCoins, base, mov) {\n"
      "            const did = nxDeviceId();\n"
-     "            // b366: монеты и базу дельты снимаем СИНХРОННО, до любых await: иначе\n"
-     "            // перенос/accept, вклинившийся между fetch и применением, учтётся как\n"
-     "            // «моя дельта» и баланс задвоится (тест ловил 8842 вместо 4321)\n"
-     "            const myCoins0 = Math.max(0, Math.floor(state.coins) || 0);\n"
-     "            let lastBal = parseInt(LS.getItem('nx_prof_lastbal') || '', 10);\n"
-     "            const first = !isFinite(lastBal);\n"
-     "            if (first) lastBal = 0; // первое подключение: весь мой баланс — это моя дельта\n"
-     "            const myDelta0 = myCoins0 - lastBal;\n"
-     "            return profFetch(key).then(remote => {\n"
-     "                if (Date.now() < profHoldUntil) return 'held'; // b366: сейчас применяют перенос — не трогаем"),
-    ('b366-race-use',
-     "                const myDelta = Math.max(0, Math.floor(state.coins) || 0) - lastBal;",
-     "                const myDelta = myDelta0; // b366: дельта зафиксирована до await"),
-    ('b366-race-held',
-     "              .then(v => { profBusy = false; return v; });",
-     "              .then(v => { profBusy = false; return v === 'held' ? false : v; });"),
+     "            const book = Object.assign({}, (remote && remote.book) || {});\n"
+     "            book[did] = { at: Date.now(), bal: mergedCoins, dev: nxDeviceLabel(), ip: nxPublicIp(), n: getPlayerName() };\n"
+     "            return {\n"
+     "                v: 2, ts: Date.now(), by: did, code: profCode(),\n"
+     "                base: Math.max(0, Math.floor(base) || 0), // b367: общая база (миграция доков v1)\n"
+     "                mov: mov || {},                          // b367: леджер накопительных взносов устройств\n"
+     "                state: Object.assign({}, mergedFields, { coins: mergedCoins }),\n"
+     "                minerLvl: Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)),\n"
+     "                book: book\n"
+     "            };\n"
+     "        }"),
+    ('b367-ledger',
+     "                const myDelta = myDelta0; // b366: дельта зафиксирована до await\n"
+     "                const mergedFields = profMergeState(profSnap(), rState);\n"
+     "                const mergedCoins = Math.max(0, (rState ? profNum(rState.coins) : 0) + myDelta);",
+     "                const myDelta = myDelta0; // b366: дельта зафиксирована до await\n"
+     "                const mergedFields = profMergeState(profSnap(), rState);\n"
+     "                // b367: ЛЕДЖЕР взносов: coins = base + Σ mov[did]. Устройство\n"
+     "                // перезаписывает только СВОЙ mov (накопительно из LS), поэтому чужой\n"
+     "                // пуш по несвежей читке не съедает вашу дельту — потеря\n"
+     "                // восстанавливается следующей синхронизацией автора. Старое правило\n"
+     "                // «doc + моя дельта» при клоббере или сбросе дока обнуляло\n"
+     "                // заработанный баланс — именно это и приходили пользователи.\n"
+     "                const mov = {};\n"
+     "                const rMov = (remote && remote.mov && typeof remote.mov === 'object') ? remote.mov : {};\n"
+     "                for (const mk in rMov) mov[String(mk).slice(0, 24)] = profNum(rMov[mk]);\n"
+     "                let base = 0;\n"
+     "                if (remote) {\n"
+     "                    const sumMov = Object.keys(mov).reduce((s, k) => s + mov[k], 0);\n"
+     "                    base = (typeof remote.base === 'number' && isFinite(remote.base))\n"
+     "                        ? Math.max(0, Math.floor(remote.base))\n"
+     "                        : Math.max(0, profNum(remote.coins) - sumMov); // миграция доков v1 без леджера\n"
+     "                }\n"
+     "                const myC = profNum(LS.getItem('nx_prof_movc')) + myDelta;\n"
+     "                mov[did] = myC;\n"
+     "                const mergedCoins = Math.max(0, base + Object.keys(mov).reduce((s, k) => s + mov[k], 0));"),
+    ('b367-pull-noset',
+     "                if (rState) {\n"
+     "                    profApply(Object.assign({}, mergedFields, { coins: mergedCoins }), Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)));\n"
+     "                    try { LS.setItem('nx_prof_lastbal', String(mergedCoins)); } catch (e) {}\n"
+     "                }",
+     "                if (rState) {\n"
+     "                    // b367: на чистом pull базу дельт НЕ трогаем: свой неопубликованный\n"
+     "                    // взнос остаётся в (myCoins - lastBal) до успешного пуша\n"
+     "                    profApply(Object.assign({}, mergedFields, { coins: mergedCoins }), Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)));\n"
+     "                }"),
+    ('b367-push-set',
+     "                return profPushDoc(key, doc).then(() => {\n"
+     "                    try { LS.setItem('nx_prof_lastbal', String(mergedCoins)); } catch (e) {}\n"
+     "                    profLastRemote = doc;",
+     "                return profPushDoc(key, doc).then(() => {\n"
+     "                    // b367: база = монеты на СТАРТЕ синка (изменения после старта\n"
+     "                    // попадут в следующую дельту); взнос помечен опубликованным\n"
+     "                    try { LS.setItem('nx_prof_lastbal', String(myCoins0)); LS.setItem('nx_prof_movc', String(myC)); } catch (e) {}\n"
+     "                    profLastRemote = doc;"),
+    ('b367-doc-call',
+     "                const doc = profBuildDoc(key, remote, mergedFields, mergedCoins);",
+     "                const doc = profBuildDoc(key, remote, mergedFields, mergedCoins, base, mov);"),
+    ('b367-cycle2',
+     "                            const r2 = chk.state || null;\n"
+     "                            const d2 = Math.max(0, Math.floor(state.coins) || 0) - mergedCoins;\n"
+     "                            const f2 = profMergeState(profSnap(), r2);\n"
+     "                            const c2 = Math.max(0, (r2 ? profNum(r2.coins) : 0) + d2);\n"
+     "                            profApply(Object.assign({}, f2, { coins: c2 }), Math.max(profMinerLvl(), profNum(chk && chk.minerLvl)));\n"
+     "                            const doc2 = profBuildDoc(key, chk, f2, c2);\n"
+     "                            return profPushDoc(key, doc2).then(() => { try { LS.setItem('nx_prof_lastbal', String(c2)); } catch (e) {} });",
+     "                            const r2 = chk.state || null;\n"
+     "                            const mov2 = {};\n"
+     "                            const rMov2 = (chk && chk.mov && typeof chk.mov === 'object') ? chk.mov : {};\n"
+     "                            for (const mk in rMov2) mov2[String(mk).slice(0, 24)] = profNum(rMov2[mk]);\n"
+     "                            const sum2 = Object.keys(mov2).reduce((s, k) => s + mov2[k], 0);\n"
+     "                            const base2 = (typeof chk.base === 'number' && isFinite(chk.base)) ? Math.max(0, Math.floor(chk.base)) : Math.max(0, profNum(chk.coins) - sum2);\n"
+     "                            const myC2 = myC + (Math.max(0, Math.floor(state.coins) || 0) - myCoins0);\n"
+     "                            mov2[did] = myC2;\n"
+     "                            const f2 = profMergeState(profSnap(), r2);\n"
+     "                            const c2 = Math.max(0, base2 + Object.keys(mov2).reduce((s, k) => s + mov2[k], 0));\n"
+     "                            profApply(Object.assign({}, f2, { coins: c2 }), Math.max(profMinerLvl(), profNum(chk && chk.minerLvl)));\n"
+     "                            const doc2 = profBuildDoc(key, chk, f2, c2, base2, mov2);\n"
+     "                            return profPushDoc(key, doc2).then(() => { try { LS.setItem('nx_prof_lastbal', String(Math.max(0, Math.floor(state.coins) || 0))); LS.setItem('nx_prof_movc', String(myC2)); } catch (e) {} });"),
+    ('b367-flush',
+     "                const lastBal = parseInt(LS.getItem('nx_prof_lastbal') || '', 10);\n"
+     "                const myDelta = Math.max(0, Math.floor(state.coins) || 0) - (isFinite(lastBal) ? lastBal : 0);\n"
+     "                if (myDelta === 0 && profLastRemote) return;\n"
+     "                const rState = profLastRemote && profLastRemote.state ? profLastRemote.state : null;\n"
+     "                const fields = profMergeState(profSnap(), rState);\n"
+     "                const coins = Math.max(0, (rState ? profNum(rState.coins) : 0) + myDelta);\n"
+     "                profPushDoc(key, profBuildDoc(key, profLastRemote, fields, coins), true);",
+     "                const lastBal = parseInt(LS.getItem('nx_prof_lastbal') || '', 10);\n"
+     "                const myCoins0 = Math.max(0, Math.floor(state.coins) || 0);\n"
+     "                const myDelta = myCoins0 - (isFinite(lastBal) ? lastBal : 0);\n"
+     "                if (myDelta === 0 && profLastRemote) return;\n"
+     "                const r = profLastRemote;\n"
+     "                // b367: тот же леджер, что в обычном синке; LS не трогаем: если\n"
+     "                // keepalive-пуш не дойдёт, дельту подберёт следующий круг\n"
+     "                const mov = {};\n"
+     "                const rMov = (r && r.mov && typeof r.mov === 'object') ? r.mov : {};\n"
+     "                for (const mk in rMov) mov[String(mk).slice(0, 24)] = profNum(rMov[mk]);\n"
+     "                const sumMov = Object.keys(mov).reduce((s, k) => s + mov[k], 0);\n"
+     "                const base = r ? ((typeof r.base === 'number' && isFinite(r.base)) ? Math.max(0, Math.floor(r.base)) : Math.max(0, profNum(r.coins) - sumMov)) : 0;\n"
+     "                const myC = profNum(LS.getItem('nx_prof_movc')) + myDelta;\n"
+     "                mov[nxDeviceId()] = myC;\n"
+     "                const fields = profMergeState(profSnap(), r && r.state ? r.state : null);\n"
+     "                const coins = Math.max(0, base + Object.keys(mov).reduce((s, k) => s + mov[k], 0));\n"
+     "                profPushDoc(key, profBuildDoc(key, r, fields, coins, base, mov), true);"),
 ]
-MONO_EDITS = []
 
-
-QRX_SELFCHECK_HELPER_OLD = "async function qrxBuild() {"
-QRX_SELFCHECK_HELPER_NEW = """function qrxSelfCheck(text) { // b366: самопроверка — читает ли НАШ сканер нарисованный QR
-    // У плотных версий QR бывают «неудачные» сочетания маски/версии, которые jsQR
-    // не берёт с чистого канваса (замер: 1040 символов — нет, 1400 — да). Такой QR
-    // и камера вероятнее всего не возьмёт, поэтому вместо него показываем короткий
-    // облачный ключ: короткий QR читается всегда.
-    try {
-        const cv = document.getElementById('qr-canvas');
-        if (!cv || !cv.width) return false;
-        const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height);
-        const r = jsQR(d.data, cv.width, cv.height);
-        return !!(r && r.data === text);
-    } catch (e) { return false; }
-}
-async function qrxBuild() {"""
-QRX_SELFCHECK_USE_OLD = """        if (def) {
-            const cand = QRX_DIRECT + qrxB64(def);
-            if (cand.length <= QRX_MAX_DIRECT) {
-                try { qrxRender(cand); code = cand; } catch (e) { code = ''; }
-            }
-        }"""
-QRX_SELFCHECK_USE_NEW = """        if (def) {
-            const cand = QRX_DIRECT + qrxB64(def);
-            if (cand.length <= QRX_MAX_DIRECT) {
-                try { qrxRender(cand); code = cand; } catch (e) { code = ''; }
-                if (code && !qrxSelfCheck(cand)) code = ''; // b366: не читается самим собой — в облако
-            }
-        }"""
-
-QR_EDITS += [
-    ('b366-selfcheck-helper', QRX_SELFCHECK_HELPER_OLD, QRX_SELFCHECK_HELPER_NEW),
-    ('b366-selfcheck-use', QRX_SELFCHECK_USE_OLD, QRX_SELFCHECK_USE_NEW),
+QR_EDITS = []
+MONO_EDITS = [
+    ('b367-ui-text',
+     "Пока кода нет — устройства с одним IP связываются сами.",
+     "Пока кода нет — устройства можно связать тумблером «Авто по IP» (по умолчанию ВЫКЛ: общий IP ещё не значит общий владелец, а за CGNAT провайдера сидят сотни чужих людей)."),
 ]
 
 for lbl, o, n in QR_EDITS:

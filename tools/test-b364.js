@@ -104,6 +104,17 @@ const syncWait = page => page.evaluate(async () => {
     return card ? card.textContent.replace(/\s+/g, ' ').slice(0, 260) : 'НЕТ КАРТОЧКИ';
   });
   console.log('карточка панели:', panel);
+  console.log('\n=== b367: клоббер — чужой пуш по несвежей читке не съедает взнос ===');
+  const keyC = 'nexus-tcg-prof-c-test01';
+  const docBefore = JSON.parse(STORE.get(keyC));
+  const bDid = docBefore.by;
+  const bMov = (docBefore.mov || {})[bDid];
+  STORE.set(keyC, JSON.stringify({ v: 2, ts: Date.now() + 5, by: bDid, code: docBefore.code, base: 0, mov: { [bDid]: bMov }, state: docBefore.state, minerLvl: docBefore.minerLvl, book: docBefore.book }));
+  console.log('   doc испорчен: остался только взнос B (' + bMov + '), взнос A стёрт');
+  const aHeal = await snap(A.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); } return state.coins; });
+  const docHeal = JSON.parse(STORE.get(keyC));
+  console.log('   A после синка =', aHeal, '(ожидаем', a4 + ') | mov в доке:', JSON.stringify(docHeal.mov));
+
   const errsAB = [...A.errs, ...B.errs];
   await A.ctx.close(); await B.ctx.close();
   await browser.close(); // 4 тяжёлые страницы в одном браузере роняют песочницу — дальше отдельный
@@ -112,20 +123,26 @@ const syncWait = page => page.evaluate(async () => {
   const browser2 = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
   const C = await newDevice(browser2, 'C');
   const D = await newDevice(browser2, 'D');
-  await snap(C.page, async () => { state.coins = 10; saveState(); });
+  await snap(C.page, async () => { try { LS.setItem('nx_prof_ipauto', '1'); } catch (e) {} state.coins = 10; saveState(); });
   await syncWait(C.page);
-  await snap(D.page, async () => { state.coins = 5; saveState(); });
+  await snap(D.page, async () => { try { LS.setItem('nx_prof_ipauto', '1'); } catch (e) {} state.coins = 5; saveState(); });
   await syncWait(D.page);
   const d1 = await snap(D.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r2 => setTimeout(r2, 400)); } return state.coins; });
   const c1 = await snap(C.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r2 => setTimeout(r2, 400)); } return state.coins; });
   const ipKeys = Array.from(STORE.keys()).filter(k => k.indexOf('nexus-tcg-prof-i-') === 0);
   console.log('IP-документ:', ipKeys.join(',') || 'НЕТ', '| C =', c1, '| D =', d1, '(ожидаем 15 у обоих)');
+  console.log('\n=== b367: авто-IP по умолчанию ВЫКЛ ===');
+  const E = await newDevice(browser2, 'E');
+  const e1 = await snap(E.page, () => ({ ipauto: profIpAuto(), key: profDocKey() }));
+  console.log('   новое устройство без кода: profIpAuto =', e1.ipauto, '| docKey =', JSON.stringify(e1.key), '(ожидаем false и пусто)');
+  await E.ctx.close();
+
   const errs = [...errsAB, ...C.errs, ...D.errs];
   await C.ctx.close(); await D.ctx.close();
   try { await browser2.close(); } catch (e) {}
 
   console.log('\nошибки страниц:', errs.length ? errs.slice(0, 6) : 'нет');
-  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && c1 === 15 && d1 === 15 && /синхронизированы: код TEST01/.test(panel);
-  console.log(ok ? '\n✓ b364 РАБОТАЕТ: код, дельты, union, IP-авто, метка в панели' : '\n✗ где-то расхождение с ожиданиями');
+  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && c1 === 15 && d1 === 15 && /синхронизированы: код TEST01/.test(panel) && aHeal === a4 && Object.keys(docHeal.mov || {}).length === 2 && e1.ipauto === false && e1.key === '';
+  console.log(ok ? '\n✓ b364+b367: код, дельты, union, IP-авто по желанию, метка в панели, леджер переживает клоббер, авто-IP выкл по умолчанию' : '\n✗ где-то расхождение с ожиданиями');
   process.exit(ok ? 0 : 1);
 })();
