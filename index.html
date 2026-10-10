@@ -21,23 +21,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='h' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2334d399'/><stop offset='.35' stop-color='%2322d3ee'/><stop offset='.68' stop-color='%23818cf8'/><stop offset='1' stop-color='%23fbbf24'/></linearGradient><radialGradient id='s' cx='.5' cy='.38' r='.85'><stop offset='0' stop-color='%23fffbeb'/><stop offset='.55' stop-color='%23fcd34d'/><stop offset='1' stop-color='%23f59e0b'/></radialGradient></defs><g transform='rotate(-10 32 32)'><rect x='15' y='6' width='34' height='52' rx='6' fill='%230b1220' stroke='url(%23h)' stroke-width='4'/><path d='M18 41 L46 14 L46 25 L18 52 Z' fill='url(%23h)' opacity='.35'/><path d='M32 20l2.82 7.12 7.64.48-5.89 4.88 1.9 7.42-6.47-4.1-6.47 4.1 1.9-7.42-5.89-4.88 7.64-.48z' fill='url(%23s)'/></g></svg>">
-    <!-- Мобильная сборка nxmob15: тяжёлые библиотеки вынесены в assets/ и кешируются -->
+    <!-- Мобильная сборка nxmob16: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob15" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob15">
+    <script src="assets/three.min.js?v=nxmob16" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob16">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob15">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob16">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob15">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob16">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1780,7 +1780,7 @@ min-height:56vh}
                     <i class="fa-solid fa-rotate text-emerald-400"></i>
                     <span>Синхронизация между устройствами — один пользователь, один баланс</span>
                 </h3>
-                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i>Устройства одного пользователя делят общий баланс и прогресс. На основном устройстве создайте код и введите его на остальных (или пришлите ссылку ?prof=…). Пока кода нет — устройства можно связать тумблером «Авто по IP» (по умолчанию ВЫКЛ: общий IP ещё не значит общий владелец, а за CGNAT провайдера сидят сотни чужих людей). Баланс сливается по правилу «последнее состояние + изменения остальных устройств», коллекция, паки и альбомы объединяются, счётчики берутся максимумом.</p>
+                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i>Устройства одного пользователя делят общий баланс и прогресс. На основном устройстве создайте код и введите его на остальных (или пришлите ссылку ?prof=…). Синхронизация по IP удалена (b371): у каждого игрока свой баланс, как раньше. Общий баланс и прогресс — только у устройств, привязанных кодом профиля или QR-кодом. Баланс сливается по правилу «последнее состояние + изменения остальных устройств», коллекция, паки и альбомы объединяются, счётчики берутся максимумом.</p>
                 <div id="nx-prof-status" class="flex flex-wrap items-center gap-2"></div>
                 <div class="flex flex-wrap items-center gap-1.5">
                     <button type="button" id="nx-prof-code-btn" onclick="profCreateCode()" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-key mr-1"></i>Создать код</button>
@@ -1789,7 +1789,6 @@ min-height:56vh}
                     <button type="button" onclick="profQrShow()" title="Показать QR-код профиля: второе устройство привяжется сканированием" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-qrcode mr-1"></i>QR-код</button>
                     <button type="button" onclick="profQrScan()" title="Сканировать QR профиля с экрана другого устройства" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-camera mr-1"></i>Сканировать QR</button>
                     <button type="button" onclick="profSyncOnce(true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Синхронизировать сейчас</button>
-                    <button type="button" id="nx-prof-ipauto-btn" onclick="profToggleIpAuto()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"></button>
                     <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>
                 </div>
             </div>
@@ -2581,10 +2580,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob15"></script>
-    <script src="assets/stories.js?v=nxmob15"></script>
-    <script src="assets/qrcode.min.js?v=nxmob15"></script>
-    <script src="assets/qr-transfer.js?v=nxmob15"></script>
+    <script src="assets/app.js?v=nxmob16"></script>
+    <script src="assets/stories.js?v=nxmob16"></script>
+    <script src="assets/qrcode.min.js?v=nxmob16"></script>
+    <script src="assets/qr-transfer.js?v=nxmob16"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

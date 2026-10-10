@@ -4773,7 +4773,7 @@ function nxToggle3d() {
                 e.did = nxDeviceId();    // b363: устойчивый ID устройства
                 e.dev = nxDeviceLabel(); // b363: портрет устройства для панели
                 e.ip = nxPublicIp();     // b363: IP из кэша, первый запрос идёт фоном
-                e.prof = (function () { try { const c = profCode(); if (c) return 'код ' + c; if (profIpAuto() && nxPublicIp()) return 'IP-авто'; } catch (e) {} return ''; })(); // b364
+                e.prof = (function () { try { const c = profCode(); if (c) return 'код ' + c; } catch (e) {} return ''; })(); // b364; b371: синхронизация только по коду/QR
                 e.at = Date.now();
                 siteStats.p[JACKPOT_CID] = e;
             } catch (err) {}
@@ -5030,13 +5030,12 @@ function nxToggle3d() {
             return h.toString(36);
         }
         function profCode() { try { return String(LS.getItem('nx_prof_code') || '').toUpperCase(); } catch (e) { return ''; } }
-        function profIpAuto() { try { return LS.getItem('nx_prof_ipauto') === '1'; } catch (e) { return false; } } // b367: ПО УМОЛЧАНИЮ ВЫКЛ: за одним IP провайдера (CGNAT) сидят сотни чужих людей — их балансы смешивались
-        function profDocKey() { // ключ облачного документа профиля: код важнее IP
+        // b371: синхронизация по IP удалена по решению владельца: у каждого игрока
+        // свой баланс, как раньше. Общий баланс и прогресс — только у устройств,
+        // привязанных кодом профиля (вручную или QR-кодом).
+        function profDocKey() { // ключ облачного документа профиля: только код/QR
             const c = profCode();
-            if (c) return 'c-' + c.toLowerCase();
-            if (!profIpAuto()) return '';
-            const ip = nxPublicIp();
-            return ip ? 'i-' + profHashIp(ip) : '';
+            return c ? 'c-' + c.toLowerCase() : '';
         }
         function profPath(key) { return 'https://textdb.dev/api/data/nexus-tcg-prof-' + key; }
         function profNum(v) { const n = Math.floor(Number(v)); return isFinite(n) ? n : 0; }
@@ -5395,16 +5394,9 @@ function nxToggle3d() {
             profUI();
             try { showToast('Привязка снята: устройство снова само по себе', 'info'); } catch (e) {}
         }
-        function profToggleIpAuto() {
-            try { LS.setItem('nx_prof_ipauto', profIpAuto() ? '0' : '1'); LS.removeItem('nx_prof_lastbal'); LS.removeItem('nx_prof_movc'); } catch (e) {} // b367: смена сообщества = новый леджер
-            profUI(); profSyncSoon();
-        }
-        function profLabel() {
+        function profLabel() { // b371: профиль — только код; без кода у устройства свой баланс
             const c = profCode();
-            if (c) return 'код ' + c;
-            if (!profIpAuto()) return 'выключен';
-            const ip = nxPublicIp();
-            return ip ? 'авто по IP ' + ip : 'авто по IP (IP ещё не известен)';
+            return c ? 'код ' + c : 'не создан — баланс только этого устройства';
         }
         function profUI() {
             const st = document.getElementById('nx-prof-status');
@@ -5415,8 +5407,6 @@ function nxToggle3d() {
                     '<span class="text-[10px] text-slate-500">устройств в профиле: <b class="text-slate-300">' + book + '</b></span>' +
                     '<span class="text-[10px] text-slate-500">синхронизация: <b class="text-slate-300">' + (profLastTs ? statsAgo(profLastTs) : 'ещё не была') + '</b></span>';
             }
-            const b = document.getElementById('nx-prof-ipauto-btn');
-            if (b) b.innerHTML = '<i class="fa-solid fa-location-dot mr-1"></i>Авто по IP: ' + (profIpAuto() ? 'вкл' : 'выкл');
             const cc = document.getElementById('nx-prof-code-btn');
             if (cc) cc.innerHTML = profCode() ? '<i class="fa-solid fa-key mr-1"></i>Сменить код' : '<i class="fa-solid fa-key mr-1"></i>Создать код';
         }
@@ -5652,7 +5642,7 @@ function nxToggle3d() {
                 const btns = multi ? grpBtns(g) : rowBtns(cid, g.blk);
                 return '<div class="rounded-xl border px-2.5 py-2 ' + (g.blk ? 'border-rose-900/60 bg-rose-950/20' : me ? 'border-violet-700/60 bg-violet-950/20' : 'border-slate-800 bg-slate-950/50') + '">' +
                     '<div class="flex flex-wrap items-center gap-1.5 min-w-0">' +
-                        '<span class="text-[11px] font-black truncate max-w-[240px] ' + (g.blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + (multi ? ' <span class="text-sky-300">— устройств: ' + g.members.length + ', это один пользователь</span>' : '') + '</span>' +
+                        '<span class="text-[11px] font-black truncate max-w-[240px] ' + (g.blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + (multi ? (g.prof ? ' <span class="text-emerald-300">— устройств: ' + g.members.length + ', синхронизированы профилем (код/QR)</span>' : ' <span class="text-sky-300">— устройств: ' + g.members.length + ' с одного IP, балансы отдельные</span>') : '') + '</span>' +
                         (me ? badge('fa-user', 'вы', 'text-violet-300') : '') +
                         (g.blk ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
                         (g.online ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +

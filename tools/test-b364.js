@@ -167,33 +167,20 @@ const syncWait = page => page.evaluate(async () => {
   console.log('   B заработал +100: перерисовок =', flick2.coinsOnly.refr, '(ожидаем 0) | счётчик обновлён =', flick2.coinsOnly.cupd, '(>=1) | баланс A =', flick2.coinsOnly.coins);
   console.log('   B добавил карту Z: перерисовок =', flick2.struct.refr, '(ожидаем >=1) | карта приехала =', flick2.struct.hasZ);
   const errsAB = [...A.errs, ...B.errs];
-  await A.ctx.close(); await B.ctx.close();
-  await browser.close(); // 4 тяжёлые страницы в одном браузере роняют песочницу — дальше отдельный
 
-  console.log('\n=== авто-связка по IP без кода (устройства C и D) ===');
-  const browser2 = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
-  const C = await newDevice(browser2, 'C');
-  const D = await newDevice(browser2, 'D');
-  await snap(C.page, async () => { try { LS.setItem('nx_prof_ipauto', '1'); } catch (e) {} state.coins = 10; saveState(); });
-  await syncWait(C.page);
-  await snap(D.page, async () => { try { LS.setItem('nx_prof_ipauto', '1'); } catch (e) {} state.coins = 5; saveState(); });
-  await syncWait(D.page);
-  const d1 = await snap(D.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r2 => setTimeout(r2, 400)); } return state.coins; });
-  const c1 = await snap(C.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r2 => setTimeout(r2, 400)); } return state.coins; });
-  const ipKeys = Array.from(STORE.keys()).filter(k => k.indexOf('nexus-tcg-prof-i-') === 0);
-  console.log('IP-документ:', ipKeys.join(',') || 'НЕТ', '| C =', c1, '| D =', d1, '(ожидаем 15 у обоих)');
-  console.log('\n=== b367: авто-IP по умолчанию ВЫКЛ ===');
-  const E = await newDevice(browser2, 'E');
-  const e1 = await snap(E.page, () => ({ ipauto: profIpAuto(), key: profDocKey() }));
-  console.log('   новое устройство без кода: profIpAuto =', e1.ipauto, '| docKey =', JSON.stringify(e1.key), '(ожидаем false и пусто)');
+  console.log('\n=== b371: синхронизация по IP удалена — у каждого свой баланс ===');
+  const E = await newDevice(browser, 'E');
+  const e1 = await snap(E.page, () => ({ key: profDocKey(), ipautoFn: typeof profIpAuto, toggle: !!document.getElementById('nx-prof-ipauto-btn') }));
+  await snap(E.page, async () => { state.coins = 99; saveState(); for (let i = 0; i < 6; i++) { if (await profSyncOnce(true)) break; await new Promise(r => setTimeout(r, 300)); } });
+  const ipDocs = Array.from(STORE.keys()).filter(k => k.indexOf('nexus-tcg-prof-i-') === 0);
+  console.log('   устройство без кода: profDocKey =', JSON.stringify(e1.key), '| ф-ция profIpAuto удалена:', e1.ipautoFn === 'undefined', '| тумблер в DOM:', e1.toggle, '| IP-документов создано:', ipDocs.length, '(ожидаем 0)');
   await E.ctx.close();
-
-  const errs = [...errsAB, ...C.errs, ...D.errs];
-  await C.ctx.close(); await D.ctx.close();
-  try { await browser2.close(); } catch (e) {}
+  const errs = [...errsAB, ...E.errs];
+  await A.ctx.close(); await B.ctx.close();
+  await browser.close();
 
   console.log('\nошибки страниц:', errs.length ? errs.slice(0, 6) : 'нет');
-  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && c1 === 15 && d1 === 15 && /синхронизированы: код TEST01/.test(panel) && aHeal === a4 && movRestored && e1.ipauto === false && e1.key === '' && bBefore.col === 3 && aAfterSale === 2 && bAfterOpen.length === 0 && flick.idle.refr === 0 && flick.idle.coinUpd === 0 && flick2.coinsOnly.refr === 0 && flick2.coinsOnly.cupd >= 1 && flick2.struct.refr >= 1 && flick2.struct.hasZ;
-  console.log(ok ? '\n✓ b364+b367: код, дельты, union, IP-авто по желанию, метка в панели, леджер переживает клоббер, авто-IP выкл по умолчанию' : '\n✗ где-то расхождение с ожиданиями');
+  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && /синхронизированы: код TEST01/.test(panel) && aHeal === a4 && movRestored && e1.key === '' && e1.ipautoFn === 'undefined' && ipDocs.length === 0 && flick.idle.refr === 0 && flick.idle.coinUpd === 0 && flick2.coinsOnly.refr === 0 && flick2.coinsOnly.cupd >= 1 && flick2.struct.refr >= 1 && flick2.struct.hasZ && bBefore.col === 3 && aAfterSale === 2 && bAfterOpen.length === 0;
+  console.log(ok ? '\n✓ b364+b367+b370+b371: код/QR, леджер, продажи не воскресают, клоббер лечится, IP-синхронизации нет — у каждого свой баланс' : '\n✗ где-то расхождение с ожиданиями');
   process.exit(ok ? 0 : 1);
 })();

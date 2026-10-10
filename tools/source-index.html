@@ -2827,7 +2827,7 @@ min-height:56vh}
                     <i class="fa-solid fa-rotate text-emerald-400"></i>
                     <span>Синхронизация между устройствами — один пользователь, один баланс</span>
                 </h3>
-                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i>Устройства одного пользователя делят общий баланс и прогресс. На основном устройстве создайте код и введите его на остальных (или пришлите ссылку ?prof=…). Пока кода нет — устройства можно связать тумблером «Авто по IP» (по умолчанию ВЫКЛ: общий IP ещё не значит общий владелец, а за CGNAT провайдера сидят сотни чужих людей). Баланс сливается по правилу «последнее состояние + изменения остальных устройств», коллекция, паки и альбомы объединяются, счётчики берутся максимумом.</p>
+                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i>Устройства одного пользователя делят общий баланс и прогресс. На основном устройстве создайте код и введите его на остальных (или пришлите ссылку ?prof=…). Синхронизация по IP удалена (b371): у каждого игрока свой баланс, как раньше. Общий баланс и прогресс — только у устройств, привязанных кодом профиля или QR-кодом. Баланс сливается по правилу «последнее состояние + изменения остальных устройств», коллекция, паки и альбомы объединяются, счётчики берутся максимумом.</p>
                 <div id="nx-prof-status" class="flex flex-wrap items-center gap-2"></div>
                 <div class="flex flex-wrap items-center gap-1.5">
                     <button type="button" id="nx-prof-code-btn" onclick="profCreateCode()" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-key mr-1"></i>Создать код</button>
@@ -2836,7 +2836,6 @@ min-height:56vh}
                     <button type="button" onclick="profQrShow()" title="Показать QR-код профиля: второе устройство привяжется сканированием" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-qrcode mr-1"></i>QR-код</button>
                     <button type="button" onclick="profQrScan()" title="Сканировать QR профиля с экрана другого устройства" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-camera mr-1"></i>Сканировать QR</button>
                     <button type="button" onclick="profSyncOnce(true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Синхронизировать сейчас</button>
-                    <button type="button" id="nx-prof-ipauto-btn" onclick="profToggleIpAuto()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"></button>
                     <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>
                 </div>
             </div>
@@ -8330,7 +8329,7 @@ function nxToggle3d() {
                 e.did = nxDeviceId();    // b363: устойчивый ID устройства
                 e.dev = nxDeviceLabel(); // b363: портрет устройства для панели
                 e.ip = nxPublicIp();     // b363: IP из кэша, первый запрос идёт фоном
-                e.prof = (function () { try { const c = profCode(); if (c) return 'код ' + c; if (profIpAuto() && nxPublicIp()) return 'IP-авто'; } catch (e) {} return ''; })(); // b364
+                e.prof = (function () { try { const c = profCode(); if (c) return 'код ' + c; } catch (e) {} return ''; })(); // b364; b371: синхронизация только по коду/QR
                 e.at = Date.now();
                 siteStats.p[JACKPOT_CID] = e;
             } catch (err) {}
@@ -8587,13 +8586,12 @@ function nxToggle3d() {
             return h.toString(36);
         }
         function profCode() { try { return String(LS.getItem('nx_prof_code') || '').toUpperCase(); } catch (e) { return ''; } }
-        function profIpAuto() { try { return LS.getItem('nx_prof_ipauto') === '1'; } catch (e) { return false; } } // b367: ПО УМОЛЧАНИЮ ВЫКЛ: за одним IP провайдера (CGNAT) сидят сотни чужих людей — их балансы смешивались
-        function profDocKey() { // ключ облачного документа профиля: код важнее IP
+        // b371: синхронизация по IP удалена по решению владельца: у каждого игрока
+        // свой баланс, как раньше. Общий баланс и прогресс — только у устройств,
+        // привязанных кодом профиля (вручную или QR-кодом).
+        function profDocKey() { // ключ облачного документа профиля: только код/QR
             const c = profCode();
-            if (c) return 'c-' + c.toLowerCase();
-            if (!profIpAuto()) return '';
-            const ip = nxPublicIp();
-            return ip ? 'i-' + profHashIp(ip) : '';
+            return c ? 'c-' + c.toLowerCase() : '';
         }
         function profPath(key) { return 'https://textdb.dev/api/data/nexus-tcg-prof-' + key; }
         function profNum(v) { const n = Math.floor(Number(v)); return isFinite(n) ? n : 0; }
@@ -8952,16 +8950,9 @@ function nxToggle3d() {
             profUI();
             try { showToast('Привязка снята: устройство снова само по себе', 'info'); } catch (e) {}
         }
-        function profToggleIpAuto() {
-            try { LS.setItem('nx_prof_ipauto', profIpAuto() ? '0' : '1'); LS.removeItem('nx_prof_lastbal'); LS.removeItem('nx_prof_movc'); } catch (e) {} // b367: смена сообщества = новый леджер
-            profUI(); profSyncSoon();
-        }
-        function profLabel() {
+        function profLabel() { // b371: профиль — только код; без кода у устройства свой баланс
             const c = profCode();
-            if (c) return 'код ' + c;
-            if (!profIpAuto()) return 'выключен';
-            const ip = nxPublicIp();
-            return ip ? 'авто по IP ' + ip : 'авто по IP (IP ещё не известен)';
+            return c ? 'код ' + c : 'не создан — баланс только этого устройства';
         }
         function profUI() {
             const st = document.getElementById('nx-prof-status');
@@ -8972,8 +8963,6 @@ function nxToggle3d() {
                     '<span class="text-[10px] text-slate-500">устройств в профиле: <b class="text-slate-300">' + book + '</b></span>' +
                     '<span class="text-[10px] text-slate-500">синхронизация: <b class="text-slate-300">' + (profLastTs ? statsAgo(profLastTs) : 'ещё не была') + '</b></span>';
             }
-            const b = document.getElementById('nx-prof-ipauto-btn');
-            if (b) b.innerHTML = '<i class="fa-solid fa-location-dot mr-1"></i>Авто по IP: ' + (profIpAuto() ? 'вкл' : 'выкл');
             const cc = document.getElementById('nx-prof-code-btn');
             if (cc) cc.innerHTML = profCode() ? '<i class="fa-solid fa-key mr-1"></i>Сменить код' : '<i class="fa-solid fa-key mr-1"></i>Создать код';
         }
@@ -9209,7 +9198,7 @@ function nxToggle3d() {
                 const btns = multi ? grpBtns(g) : rowBtns(cid, g.blk);
                 return '<div class="rounded-xl border px-2.5 py-2 ' + (g.blk ? 'border-rose-900/60 bg-rose-950/20' : me ? 'border-violet-700/60 bg-violet-950/20' : 'border-slate-800 bg-slate-950/50') + '">' +
                     '<div class="flex flex-wrap items-center gap-1.5 min-w-0">' +
-                        '<span class="text-[11px] font-black truncate max-w-[240px] ' + (g.blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + (multi ? ' <span class="text-sky-300">— устройств: ' + g.members.length + ', это один пользователь</span>' : '') + '</span>' +
+                        '<span class="text-[11px] font-black truncate max-w-[240px] ' + (g.blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + (multi ? (g.prof ? ' <span class="text-emerald-300">— устройств: ' + g.members.length + ', синхронизированы профилем (код/QR)</span>' : ' <span class="text-sky-300">— устройств: ' + g.members.length + ' с одного IP, балансы отдельные</span>') : '') + '</span>' +
                         (me ? badge('fa-user', 'вы', 'text-violet-300') : '') +
                         (g.blk ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
                         (g.online ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +
