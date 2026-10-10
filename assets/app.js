@@ -1,0 +1,14416 @@
+        // ============ БЕЗОПАСНОЕ ХРАНИЛИЩЕ (LS) ============
+        // В sandbox-iframe (превью), private-режиме или при блокировке storage
+        // браузер бросает SecurityError на любом обращении к localStorage —
+        // игра не должна падать: прозрачно переключаемся на память.
+        var LS = (function () {
+            var real = null;
+            try {
+                real = (typeof window !== 'undefined' && window.localStorage) ? window.localStorage
+                     : (typeof globalThis !== 'undefined' ? globalThis.localStorage : null);
+                real.setItem('__nx_probe__', '1');
+                real.removeItem('__nx_probe__');
+            } catch (e) { real = null; }
+            if (real) return real;
+            var mem = {};
+            return {
+                getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+                setItem: function (k, v) { mem[k] = String(v); },
+                removeItem: function (k) { delete mem[k]; },
+                clear: function () { mem = {}; },
+                key: function (i) { var ks = Object.keys(mem); return (i >= 0 && i < ks.length) ? ks[i] : null; },
+                get length() { return Object.keys(mem).length; }
+            };
+        })();
+
+        const defaultPacks = [];
+
+        const defaultCards = [];
+
+        // ============ ЗВУК (Web Audio API, синтез) ============
+        const SoundFX = {
+            ctx: null,
+            enabled: LS.getItem('nexus_sound') !== '0',
+            lastScratch: 0,
+            ensure() {
+                if (!this.ctx) {
+                    const AC = window.AudioContext || window.webkitAudioContext;
+                    if (!AC) return null;
+                    try { this.ctx = new AC(); } catch (e) { return null; }
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+                return this.ctx;
+            },
+            tone(freq, dur, type = 'sine', vol = 0.2, when = 0, slideTo = null) {
+                const ctx = this.ensure(); if (!ctx) return;
+                try {
+                    const t0 = ctx.currentTime + when;
+                    const o = ctx.createOscillator(), g = ctx.createGain();
+                    o.type = type;
+                    o.frequency.setValueAtTime(freq, t0);
+                    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+                    g.gain.setValueAtTime(vol, t0);
+                    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+                    o.connect(g); g.connect(ctx.destination);
+                    o.start(t0); o.stop(t0 + dur + 0.05);
+                } catch (e) { /* тишина лучше падения */ }
+            },
+            noise(dur, vol = 0.15, when = 0, filterFreq = 1000) {
+                const ctx = this.ensure(); if (!ctx) return;
+                try {
+                    const t0 = ctx.currentTime + when;
+                    const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+                    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+                    const src = ctx.createBufferSource(); src.buffer = buf;
+                    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = filterFreq;
+                    const g = ctx.createGain();
+                    g.gain.setValueAtTime(vol, t0);
+                    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+                    src.connect(f); f.connect(g); g.connect(ctx.destination);
+                    src.start(t0);
+                } catch (e) {}
+            },
+            play(name) {
+                if (!this.enabled) return;
+                switch (name) {
+                    case 'click': this.tone(600, 0.06, 'triangle', 0.1); break;
+                    case 'coin': this.tone(988, 0.07, 'square', 0.06); this.tone(1319, 0.12, 'square', 0.06, 0.06); break;
+                    case 'scratch': {
+                        const now = Date.now();
+                        if (now - this.lastScratch < 70) return;
+                        this.lastScratch = now;
+                        this.noise(0.05, 0.07, 0, 3000);
+                        break;
+                    }
+                    case 'reveal': [523, 659, 784].forEach((f, i) => this.tone(f, 0.14, 'triangle', 0.12, i * 0.07)); break;
+                    case 'legendary': [523, 659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.3, 'triangle', 0.14, i * 0.09)); this.noise(0.6, 0.04, 0.1, 6000); break;
+                    case 'hit': this.noise(0.09, 0.2, 0, 900); this.tone(150, 0.1, 'sawtooth', 0.12, 0, 80); break;
+                    case 'heavyHit': this.noise(0.15, 0.28, 0, 700); this.tone(110, 0.18, 'sawtooth', 0.16, 0, 50); break;
+                    case 'miss': this.noise(0.2, 0.1, 0, 3500); break;
+                    case 'defend': this.tone(330, 0.18, 'sine', 0.1); this.tone(440, 0.22, 'sine', 0.08, 0.05); break;
+                    case 'swap': this.tone(500, 0.07, 'triangle', 0.1, 0, 850); break;
+                    case 'ko': this.tone(300, 0.3, 'sawtooth', 0.13, 0, 55); this.noise(0.25, 0.12, 0.04, 500); break;
+                    case 'win': [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.28, 'triangle', 0.16, i * 0.12)); break;
+                    case 'lose': [392, 330, 262, 196].forEach((f, i) => this.tone(f, 0.3, 'sawtooth', 0.08, i * 0.15)); break;
+                    case 'achievement': [784, 988, 1175].forEach((f, i) => this.tone(f, 0.2, 'sine', 0.12, i * 0.08)); break;
+                    case 'packBurst': this.noise(0.4, 0.25, 0, 1200); this.tone(80, 0.4, 'sawtooth', 0.16, 0, 220); break;
+                    case 'whoosh': this.noise(0.25, 0.09, 0, 4500); break;
+                    case 'tear': this.noise(0.3, 0.22, 0, 3200); this.tone(900, 0.28, 'sawtooth', 0.05, 0, 160); this.noise(0.18, 0.12, 0.12, 5200); break;
+                    case 'meow': this.meow(0, 1); break;          // b178: «мяу» котика-шахтёра
+                    case 'meow2': this.meow(0, 1); this.meow(0.42, 0.8); break;
+                }
+            },
+            // b178: синтез кошачьего «мяу»: пила с глиссандо вверх-вниз + вибрато, полосовой фильтр и «мяу»-огибающая
+            meow(when = 0, vol = 1) {
+                if (!this.enabled) return;
+                const ctx = this.ensure(); if (!ctx) return;
+                try {
+                    const t0 = ctx.currentTime + (when || 0), d = 0.56;
+                    const o = ctx.createOscillator(); o.type = 'sawtooth';
+                    o.frequency.setValueAtTime(400, t0);
+                    o.frequency.exponentialRampToValueAtTime(790, t0 + 0.17);
+                    o.frequency.exponentialRampToValueAtTime(630, t0 + 0.33);
+                    o.frequency.exponentialRampToValueAtTime(330, t0 + d);
+                    const vib = ctx.createOscillator(); vib.frequency.value = 20;
+                    const vg = ctx.createGain(); vg.gain.value = 20;
+                    vib.connect(vg); vg.connect(o.frequency);
+                    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 3.4;
+                    f.frequency.setValueAtTime(700, t0);
+                    f.frequency.exponentialRampToValueAtTime(1500, t0 + 0.18);
+                    f.frequency.exponentialRampToValueAtTime(620, t0 + d);
+                    const g = ctx.createGain();
+                    g.gain.setValueAtTime(0.0001, t0);
+                    g.gain.exponentialRampToValueAtTime(0.19 * vol, t0 + 0.08);
+                    g.gain.setValueAtTime(0.19 * vol, t0 + 0.26);
+                    g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+                    o.connect(f); f.connect(g); g.connect(ctx.destination);
+                    o.start(t0); vib.start(t0); o.stop(t0 + d + 0.06); vib.stop(t0 + d + 0.06);
+                    this.noise(0.1, 0.02, when || 0, 2600); // «м» в начале
+                } catch (e) {}
+            }
+        };
+
+        function toggleSound() {
+            SoundFX.enabled = !SoundFX.enabled;
+            LS.setItem('nexus_sound', SoundFX.enabled ? '1' : '0');
+            updateSoundIcon();
+            if (SoundFX.enabled) SoundFX.play('click');
+            // b218: без тоста «Звук включён/выключен» — состояние видно по иконке
+        }
+
+        function updateSoundIcon() {
+            const icon = document.getElementById('sound-icon');
+            if (icon) icon.className = 'fa-solid ' + (SoundFX.enabled ? 'fa-volume-high' : 'fa-volume-xmark') + ' text-sm';
+        }
+
+        // ============ b19: МУЗЫКА ВСКРЫТИЯ ПАКА (mp3 по ссылке) ============
+        // Трек стартует вместе с вскрытием пака (3D-анимация + стирание фольги)
+        // и автоматически выключается, когда пак распечатан: открыты все карты,
+        // нажато «Стереть всё» или окно вскрытия закрыто. Ссылка — своя (Студия →
+        // пак) или общая; изменить/стереть её можно в любой момент.
+        const PACK_MUSIC_KEY = 'nexus_pack_music';
+        // Музыка карточки: личный трек карты (играет, пока карта открыта в просмотре альбома)
+        const CardMusic = {
+            audio: null,
+            url: '',
+            play(url) {
+                this.stop();
+                url = mediaUrl(url); // b38: трек тоже может лежать на зеркале
+                if (!url) return;
+                try {
+                    this.audio = new Audio(url);
+                    this.audio.loop = true;
+                    this.audio.volume = 0.6;
+                    this.audio.play().catch(() => { this.audio = null; this.url = ''; });
+                    this.url = url;
+                } catch (e) { this.audio = null; this.url = ''; }
+            },
+            stop() {
+                if (this.audio) { try { this.audio.pause(); } catch (e) {} this.audio = null; }
+                this.url = '';
+            }
+        };
+
+        const PackMusic = {
+            audio: null,
+            url: '',
+            playing: false,
+            session: false,   // трек запущен именно как музыка вскрытия
+            muted: false,     // пользователь нажал «Пауза»
+            stopped: false,   // b21: трек остановили кнопкой «Остановить трек»
+            lastErr: '',
+            timer: null,
+            stopping: false,  // глушим сами — на error не ругаемся
+            maxVol: 0.72,
+            trackName(u) { return this.nameOf(u === undefined ? this.url : u); },
+            nameOf(u) {
+                if (!u) return '';
+                try {
+                    const clean = String(u).split('?')[0].split('#')[0];
+                    const name = decodeURIComponent(clean.substring(clean.lastIndexOf('/') + 1));
+                    return name || clean;
+                } catch (e) { return String(u); }
+            },
+            trackNameFor(u) { return this.nameOf(u); },
+            // общая ссылка на трек (поле в окне вскрытия) — хранится в localStorage
+            globalUrl() {
+                try { return (LS.getItem(PACK_MUSIC_KEY) || '').trim(); } catch (e) { return ''; }
+            },
+            setGlobalUrl(v) {
+                const url = String(v || '').trim();
+                try { if (url) LS.setItem(PACK_MUSIC_KEY, url); else LS.removeItem(PACK_MUSIC_KEY); } catch (e) {}
+                return url;
+            },
+            // какой трек играет для пака: «не играть» → свой → общий → ничего
+            // b20: флаг musicOff главнее своей ссылки — галочка в Студии работает всегда
+            resolveUrl(pack) {
+                if (pack && pack.musicOff) return '';
+                const own = pack && typeof pack.musicUrl === 'string' ? pack.musicUrl.trim() : '';
+                if (own) return own;
+                return this.globalUrl();
+            },
+            _clearTimer() {
+                if (this.timer) { try { clearInterval(this.timer); } catch (e) {} this.timer = null; }
+            },
+            _mk() {
+                if (this.audio) return this.audio;
+                try { this.audio = new Audio(); } catch (e) { this.audio = null; return null; }
+                const a = this.audio;
+                a.loop = true;             // трек короче вскрытия — зацикливаем
+                a.preload = 'auto';
+                a.addEventListener('error', () => {
+                    if (this.stopping) return;
+                    this.lastErr = '! файл не загружается — нужен прямой mp3';
+                    this.playing = false;
+                    this._clearTimer();
+                    updateUnboxMusicUI();
+                    if (this.session) showToast('\u{1F3B5} Музыка вскрытия: не удалось загрузить трек. Проверьте ссылку — нужен прямой файл .mp3', 'error');
+                });
+                a.addEventListener('playing', () => { this.lastErr = ''; this.playing = true; updateUnboxMusicUI(); });
+                return a;
+            },
+            fadeIn(steps) {
+                const a = this.audio; if (!a) return;
+                const n = steps || 12; let i = 0;
+                a.volume = 0.02;
+                this._clearTimer();
+                this.timer = setInterval(() => {
+                    i++;
+                    try { a.volume = Math.min(this.maxVol, (this.maxVol * i) / n); } catch (e) {}
+                    if (i >= n) this._clearTimer();
+                }, 55);
+                if (!this.timer) { try { a.volume = this.maxVol; } catch (e) {} } // стенд/без таймеров
+            },
+            fadeOut(cb) {
+                const a = this.audio; if (!a) { if (cb) cb(); return; }
+                let v = 0;
+                try { v = typeof a.volume === 'number' ? a.volume : 0; } catch (e) { v = 0; }
+                this._clearTimer();
+                this.timer = setInterval(() => {
+                    v -= 0.09;
+                    if (v <= 0) {
+                        this._clearTimer();
+                        try { a.volume = 0; a.pause(); } catch (e) {}
+                        if (cb) cb();
+                        return;
+                    }
+                    try { a.volume = v; } catch (e) {}
+                }, 45);
+                if (!this.timer) { try { a.volume = 0; a.pause(); } catch (e) {} if (cb) cb(); }
+            },
+            play(url) {
+                const u = String(mediaUrl(url) || '').trim(); // b38
+                if (!u) return false;
+                if (!SoundFX.enabled) { this.lastErr = '\u{1F507} звук выключен — включите динамик в шапке'; updateUnboxMusicUI(); return false; }
+                const a = this._mk(); if (!a) return false;
+                if (this.playing && this.url === u) return true;
+                this.url = u;
+                this.stopped = false; // b21: новый трек — статус «остановлен» гаснет
+                this.lastErr = '';
+                this.stopping = false; // b19: новый трек — ошибки снова видим
+                try { a.src = u; } catch (e) {}
+                try { a.currentTime = 0; } catch (e) {}
+                this.playing = true;
+                this.fadeIn();
+                try {
+                    const p = a.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => {
+                        // браузер не дал автовоспроизведение — ждём любого клика
+                        this.lastErr = '\u{1F507} браузер ждёт клик — коснитесь экрана или нажмите любую кнопку';
+                        this.playing = false;
+                        updateUnboxMusicUI();
+                        const resume = () => {
+                            try { window.removeEventListener('pointerdown', resume); } catch (e) {}
+                            this.playing = true;
+                            try { a.play(); } catch (e) {}
+                            this.fadeIn();
+                            updateUnboxMusicUI();
+                        };
+                        try { window.addEventListener('pointerdown', resume); } catch (e) {}
+                    });
+                } catch (e) {}
+                updateUnboxMusicUI();
+                return true;
+            },
+            pause() {
+                this.playing = false;
+                this._clearTimer();
+                try { if (this.audio) this.audio.pause(); } catch (e) {}
+                updateUnboxMusicUI();
+            },
+            stop() {
+                const had = this.playing || (this.audio && this.url);
+                this.stopping = true;
+                this.playing = false;
+                this.muted = false;
+                this._clearTimer();
+                const a = this.audio;
+                if (a) {
+                    this.fadeOut(() => { try { a.currentTime = 0; } catch (e) {} });
+                    try { a.removeAttribute('src'); a.load(); } catch (e) { try { a.src = ''; } catch (e2) {} }
+                }
+                this.session = false;
+                this.url = '';
+                this.lastErr = ''; // b19: остановили — старая ошибка не показывается
+                this.stopped = true; // b21: статус «трек остановлен»
+                updateUnboxMusicUI();
+                const self = this;
+                setTimeout(() => { self.stopping = false; }, 400);
+                return !!had;
+            },
+            startFor(pack) {
+                const url = this.resolveUrl(pack);
+                this.session = true;
+                if (!url) { this.playing = false; this.muted = false; updateUnboxMusicUI(); return false; }
+                this.muted = false;
+                return this.play(url);
+            },
+            // все карты открыты → пак распечатан → музыка больше не нужна
+            checkUnboxingDone() {
+                if (!this.session) return false;
+                const list = (typeof currentUnboxingCards !== 'undefined' && currentUnboxingCards) ? currentUnboxingCards : [];
+                if (!list.length) return false;
+                const all = list.every((c, i) => scratchState[i] && scratchState[i].revealed);
+                if (!all) return false;
+                this.stop();
+                // b218: без тоста «музыка выключена» — тишина после вскрытия естественна
+                return true;
+            }
+        };
+
+        // общий трек: чтение/запись поля в окне вскрытия
+        function getGlobalMusicUrl() { return PackMusic.globalUrl(); }
+        function setGlobalMusicUrl(v) { return PackMusic.setGlobalUrl(v); }
+
+        function syncUnboxMusicField() {
+            const inp = document.getElementById('unbox-music-url');
+            if (inp) inp.value = PackMusic.globalUrl();
+        }
+
+        function updateUnboxMusicUI() {
+            const st = document.getElementById('unbox-music-state');
+            const ico = document.getElementById('unbox-music-icon');
+            const on = PackMusic.playing;
+            if (st) {
+                st.innerText = on ? ('\u25B6 ' + (PackMusic.trackName() || 'трек'))
+                    : (PackMusic.lastErr ? PackMusic.lastErr
+                    : (PackMusic.url ? '\u23F8 трек на паузе'
+                    : (PackMusic.stopped ? '\u23F9 трек остановлен'
+                    : 'трек не задан')));
+            }
+            if (ico) ico.className = 'fa-solid ' + (on ? 'fa-compact-disc fa-spin text-fuchsia-300' : 'fa-music text-fuchsia-400') + ' text-xs';
+            // b21: единственная кнопка панели — стоп; гаснет, когда останавливать нечего
+            const sb = document.getElementById('unbox-music-stop');
+            if (sb) {
+                const can = PackMusic.playing || !!(PackMusic.audio && PackMusic.url);
+                sb.disabled = !can;
+                sb.classList.toggle('opacity-40', !can);
+            }
+            const b3 = document.getElementById('pack3d-music-btn');
+            if (b3) {
+                const has = !!PackMusic.resolveUrl(typeof currentUnboxingPack !== 'undefined' ? currentUnboxingPack : null);
+                b3.classList.toggle('hidden', !has);
+                const l3 = document.getElementById('pack3d-music-label');
+                if (l3) l3.innerText = on ? 'Музыка: вкл' : 'Музыка: выкл';
+            }
+            updateStudioMusicUI(); // b20: панель в Студии показывает то же состояние
+        }
+
+        // b21: единственная кнопка панели музыки в окне вскрытия — остановить трек.
+        // Ссылку меняем и удаляем в Студии → «Музыка вскрытия»; остановка ссылку не стирает.
+        function stopUnboxMusic() {
+            SoundFX.play('click');
+            const had = PackMusic.stop();
+            updateUnboxMusicUI();
+            // b218: без тоста «трек остановлен»
+        }
+
+        // пауза/продолжить во время вскрытия
+        function toggleUnboxMusic() {
+            SoundFX.play('click');
+            if (PackMusic.playing) { PackMusic.muted = true; PackMusic.pause(); return; }
+            const url = PackMusic.url || PackMusic.resolveUrl(typeof currentUnboxingPack !== 'undefined' ? currentUnboxingPack : null);
+            if (!url) { showToast('Трек не задан — добавьте ссылку на mp3', 'error'); updateUnboxMusicUI(); return; }
+            PackMusic.muted = false;
+            PackMusic.session = true;
+            PackMusic.play(url);
+        }
+
+        function stopPackMusicNow() { PackMusic.stop(); }
+
+        // превью трека прямо в форме пака (Студия)
+        function previewPackMusic() {
+            const inp = document.getElementById('pack-music');
+            const url = (inp && inp.value ? inp.value : PackMusic.globalUrl()).trim();
+            if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); return; }
+            SoundFX.play('click');
+            PackMusic.play(url);
+            setTimeout(() => { try { if (!PackMusic.session) PackMusic.stop(); } catch (e) {} }, 8000);
+        }
+        function stopPackMusicPreview() { PackMusic.stop(); }
+
+        // ============ b20: ССЫЛКА MP3 МЕНЯЕТСЯ И УДАЛЯЕТСЯ В СТУДИИ ============
+        // Общая ссылка (nexus_pack_music) и свои ссылки паков (pack.musicUrl)
+        // правятся прямо в Студии: панель «Музыка вскрытия» + редактор у пака.
+
+        function syncStudioMusicField() {
+            const inp = document.getElementById('studio-music-url');
+            if (inp) inp.value = PackMusic.globalUrl();
+            renderStudioTracks();
+            updateStudioMusicUI();
+        }
+
+        function updateStudioMusicUI() {
+            const st = document.getElementById('studio-music-state');
+            const tg = document.getElementById('studio-music-toggle');
+            const url = PackMusic.globalUrl();
+            if (st) {
+                st.innerText = PackMusic.playing ? ('\u25B6 играет: ' + (PackMusic.trackName() || 'трек'))
+                    : (PackMusic.lastErr ? PackMusic.lastErr
+                    : (url ? 'общий трек: ' + PackMusic.nameOf(url) : 'ссылка не задана — вставьте mp3'));
+            }
+            if (tg) tg.innerHTML = PackMusic.playing
+                ? '<i class="fa-solid fa-pause mr-1"></i>Пауза'
+                : '<i class="fa-solid fa-play mr-1"></i>Играть';
+        }
+
+        // ввод в панели Студии — сохраняем сразу (тот же ключ, что в окне вскрытия)
+        function onStudioMusicInput() {
+            const inp = document.getElementById('studio-music-url');
+            if (!inp) return;
+            PackMusic.setGlobalUrl(inp.value);
+            PackMusic.lastErr = '';
+            syncUnboxMusicField();
+            updateUnboxMusicUI();
+        }
+
+        // «Проверить» — 8 секунд пробного воспроизведения общей ссылки
+        function checkStudioMusic() {
+            const inp = document.getElementById('studio-music-url');
+            const url = PackMusic.setGlobalUrl(inp ? inp.value : '');
+            if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); updateStudioMusicUI(); return; }
+            SoundFX.play('click');
+            PackMusic.play(url);
+            setTimeout(() => { try { if (!PackMusic.session) PackMusic.stop(); } catch (e) {} }, 8000);
+            showToast('\u{1F3B5} Проверяем трек… 8 секунд', 'success');
+        }
+
+        function toggleStudioMusic() {
+            SoundFX.play('click');
+            if (PackMusic.playing) { PackMusic.muted = true; PackMusic.pause(); return; }
+            const url = PackMusic.globalUrl();
+            if (!url) { showToast('Сначала укажите ссылку на mp3', 'error'); updateStudioMusicUI(); return; }
+            PackMusic.muted = false;
+            PackMusic.play(url);
+        }
+
+        // удалить общую ссылку mp3: из хранилища, из поля Студии и из окна вскрытия
+        function clearStudioMusic() {
+            PackMusic.setGlobalUrl('');
+            PackMusic.stop();
+            PackMusic.url = '';
+            PackMusic.lastErr = '';
+            const inp = document.getElementById('studio-music-url');
+            if (inp) inp.value = '';
+            syncUnboxMusicField();
+            updateUnboxMusicUI();
+            renderStudioTracks();
+            showToast('Общая ссылка на mp3 удалена', 'success');
+        }
+
+        // список паков, у которых есть свой трек, — с кнопкой «Стереть»
+        function renderStudioTracks() {
+            const box = document.getElementById('studio-pack-tracks');
+            if (!box) return;
+            const rows = state.packs.filter(p => p.musicUrl);
+            if (!rows.length) {
+                box.innerHTML = `<p class="text-[10px] text-slate-500">Своих треков у паков нет — при вскрытии играет общий трек.</p>`;
+                return;
+            }
+            box.innerHTML = `<p class="text-[10px] text-slate-500">Свои mp3 у паков:</p>` + rows.map(p => `
+                <div class="flex items-center justify-between gap-2 bg-slate-950/70 border border-slate-800 rounded-lg px-3 py-2">
+                    <div class="min-w-0">
+                        <p class="text-[11px] font-bold text-white truncate">${p.title}</p>
+                        <p class="text-[10px] text-fuchsia-300 truncate"><i class="fa-solid fa-music mr-1"></i>${PackMusic.nameOf(p.musicUrl)}</p>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-none">
+                        <button onclick="playPackMusicRow('${p.id}')" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 flex items-center justify-center transition" title="Прослушать 8 секунд"><i class="fa-solid fa-play text-[10px]"></i></button>
+                        <button onclick="clearPackMusic('${p.id}')" class="px-2 h-7 rounded-lg bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 text-slate-300 text-[10px] font-semibold flex items-center gap-1 transition" title="Удалить ссылку mp3 этого пака"><i class="fa-solid fa-eraser"></i>Стереть</button>
+                    </div>
+                </div>`).join('');
+        }
+
+        // ---- редактор ссылки mp3 у отдельного пака (кнопка с нотой в списке) ----
+        function togglePackMusicEditor(packId) {
+            const row = document.getElementById('pack-music-editor-' + packId);
+            if (!row || !row.classList) return;
+            const show = row.classList.contains('hidden');
+            row.classList.toggle('hidden', !show);
+            try { SoundFX.play('click'); } catch (e) {}
+        }
+
+        function packMusicInputValue(packId) {
+            const inp = document.getElementById('pack-music-url-' + packId);
+            if (inp && typeof inp.value === 'string' && inp.value.trim()) return inp.value.trim();
+            const pack = state.packs.find(p => p.id === packId);
+            return pack && pack.musicUrl ? String(pack.musicUrl).trim() : '';
+        }
+
+        function savePackMusic(packId) {
+            if (cloudGuard()) return; // b23
+            const pack = state.packs.find(p => p.id === packId);
+            if (!pack) return;
+            const url = packMusicInputValue(packId);
+            pack.musicUrl = url;
+            if (url) pack.musicOff = false;   // задали трек — значит играем
+            pack.updatedAt = Date.now();
+            cloudStdTouch(pack); // b46
+            saveState();
+            cloudPublishSoon();
+            renderStudio();
+            updateUnboxMusicUI();
+            showToast(url ? '\u{1F3B5} Ссылка на mp3 сохранена для пака' : 'Ссылка стёрта — берётся общий трек', 'success');
+        }
+
+        function clearPackMusic(packId) {
+            if (cloudGuard()) return; // b23
+            const pack = state.packs.find(p => p.id === packId);
+            if (!pack) return;
+            pack.musicUrl = '';
+            pack.musicOff = false;            // снова слушаем общий трек
+            pack.updatedAt = Date.now();
+            cloudStdTouch(pack); // b46
+            saveState();
+            cloudPublishSoon();
+            renderStudio();
+            updateUnboxMusicUI();
+            showToast('Ссылка на mp3 этого пака удалена', 'success');
+        }
+
+        function togglePackMusicOff(packId, off) {
+            if (cloudGuard()) return; // b23
+            const pack = state.packs.find(p => p.id === packId);
+            if (!pack) return;
+            pack.musicOff = !!off;
+            pack.updatedAt = Date.now(); // b33: без метки времени правка не доходила до комнаты
+            cloudStdTouch(pack); // b46
+            saveState();
+            cloudPublishSoon();          // b33: …и не публиковалась — галочка «выключить музыку» терялась
+            renderStudio();
+            updateUnboxMusicUI();
+            // b218: без тоста «музыка пака включена/выключена» — состояние видно по чекбоксу
+        }
+
+        function playPackMusicRow(packId) {
+            const url = packMusicInputValue(packId);
+            if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); return; }
+            try { SoundFX.play('click'); } catch (e) {}
+            PackMusic.play(url);
+            setTimeout(() => { try { if (!PackMusic.session) PackMusic.stop(); } catch (e) {} }, 8000);
+        }
+
+        // ---- форма пака: стереть поле mp3 + подсказка, какой трек возьмётся ----
+        function clearPackMusicField() {
+            const inp = document.getElementById('pack-music');
+            if (inp) inp.value = '';
+            PackMusic.stop();
+            updatePackMusicHint();
+            const editId = document.getElementById('edit-pack-id');
+            showToast(editId && editId.value ? 'Ссылка стёрта — нажмите «Сохранить изменения»' : 'Ссылка на mp3 стёрта', 'success');
+        }
+
+        function updatePackMusicHint() {
+            const el = document.getElementById('pack-music-state');
+            if (!el) return;
+            const inp = document.getElementById('pack-music');
+            const use = document.getElementById('pack-music-use');
+            const own = inp && typeof inp.value === 'string' ? inp.value.trim() : '';
+            const on = use ? (use.checked !== false) : true;
+            const g = PackMusic.globalUrl();
+            el.innerText = !on ? 'музыка этого пака выключена'
+                : (own ? 'свой трек: ' + PackMusic.nameOf(own)
+                : (g ? 'возьмётся общий трек: ' + PackMusic.nameOf(g)
+                     : 'трек не задан — вставьте mp3 здесь или общий в панели «Музыка вскрытия»'));
+        }
+
+        // ушли со вкладки — музыку на паузу, вернулись — продолжаем
+        try {
+            setTimeout(function () { try { nxCheckMediaMissing(); } catch (e) {} }, 8000);
+    document.addEventListener('visibilitychange', () => {
+                if (!PackMusic.session || !PackMusic.url) return;
+                if (document.hidden) { if (PackMusic.playing) { PackMusic.muted = true; PackMusic.pause(); } }
+                else if (PackMusic.muted) { PackMusic.muted = false; PackMusic.play(PackMusic.url); }
+            });
+        } catch (e) {}
+
+        // ============ КОНФЕТТИ ============
+        function launchConfetti(count = 100) {
+            const container = document.getElementById('confetti-container');
+            if (!container) return;
+            // b86: защита от лавины конфетти: не больше 240 живых кусочков на экране
+            const alive = container.childElementCount;
+            if (alive >= 240) return;
+            count = Math.min(count, 240 - alive);
+            const colors = ['#34d399', '#fbbf24', '#f472b6', '#60a5fa', '#a78bfa', '#f87171', '#22d3ee', '#facc15'];
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('div');
+                const size = 6 + Math.random() * 8;
+                el.className = 'confetti-piece';
+                el.style.cssText = `position:absolute;width:${size}px;height:${size * (0.4 + Math.random() * 0.8)}px;background:${colors[i % colors.length]};left:${Math.random() * 100}%;top:-5vh;border-radius:${Math.random() > 0.5 ? '50%' : '2px'};`;
+                el.style.setProperty('--fall-dur', (2.2 + Math.random() * 2.2) + 's');
+                el.style.setProperty('--fall-delay', (Math.random() * 0.7) + 's');
+                el.style.setProperty('--sway', (Math.random() * 240 - 120) + 'px');
+                el.style.setProperty('--spin', (Math.random() * 900 - 450) + 'deg');
+                container.appendChild(el);
+                setTimeout(() => el.remove(), 5600);
+            }
+        }
+
+        // ============ 3D ВСКРЫТИЕ ПАКА (three.js) ============
+        let pack3d = null;
+
+        // ============ b58: мобильная адаптация 3D-сцен ============
+        const NX3D_RESIZERS = [];
+        function nx3dOnResize(fn) { if (NX3D_RESIZERS.indexOf(fn) < 0) NX3D_RESIZERS.push(fn); }
+        function nx3dRunResizers() { for (let i = 0; i < NX3D_RESIZERS.length; i++) { try { NX3D_RESIZERS[i](); } catch (e) {} } }
+        // b62: авария кадра 3D-цикла (потеря WebGL-контекста при повороте экрана,
+        // предел памяти на планшете) — останавливаем цикл и показываем ОДИН тост,
+        // вместо исключений на каждом кадре rAF
+        function nx3dLoopBail(tag, e, stopFn) {
+            nxTrail('bail:' + tag);
+            try { stopFn && stopFn(); } catch (e2) {}
+            try { console.error('3d loop ' + tag, e); } catch (e2) {}
+            try { nxErrorToast('3D-цикл остановлен (' + tag + '): ' + String((e && e.message) || e)); } catch (e2) {}
+        }
+        // b62: браузер (особенно iPad при повороте) может отобрать WebGL-контекст —
+        // гасим цикл сразу и говорим пользователю один раз, а не кадр за кадром
+        function nxGuardContextLoss(renderer, tag, onLost) {
+            try {
+                renderer.domElement.addEventListener('webglcontextlost', function (ev) {
+                    ev.preventDefault();
+                    if (window.__nxPlannedDrop === renderer) { window.__nxPlannedDrop = null; return; } // b305: освободили сами — тихо
+                    nxTrail('ctxlost:' + tag);
+                    try { onLost && onLost(); } catch (e) {}
+                    try { nxErrorToast('браузер освободил 3D-контекст (' + tag + ') — сцена переведена в плоский режим'); } catch (e) {}
+                }, false);
+            } catch (e) {}
+        }
+        // b305: плановое освобождение контекста: канвас убирается из DOM сразу,
+        // а собственное событие webglcontextlost глушится (это не авария)
+        function nxWeakGpu() { // b309: устройство доказало, что 3D его роняет (помнится между сессиями)
+            try { return LS.getItem('nx_weak_gpu') === '1'; } catch (e) { return false; }
+        }
+        function nxForce3d() { // ручной переключатель «включить 3D несмотря ни на что»
+            try { return LS.getItem('nx_force3d') === '1'; } catch (e) { return false; }
+        }
+        function nxAutoEmbedUI() {
+    const b = document.getElementById('nx-autoembed-btn');
+    if (!b) return;
+    const on = LS.getItem('nx_autoembed') === '1';
+    b.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Автовшивание: ' + (on ? 'вкл' : 'выкл');
+}
+function nxToggleAutoEmbed() {
+    try { LS.setItem('nx_autoembed', LS.getItem('nx_autoembed') === '1' ? '' : '1'); } catch (e) {}
+    nxAutoEmbedUI();
+    try {
+        nxOwnerToast(LS.getItem('nx_autoembed') === '1'
+            ? 'Автовшивание включено: новые арты из кэша сами уходят коммитом на сайт (не чаще раза в 30 минут)'
+            : 'Автовшивание выключено', 'success');
+    } catch (e) {}
+}
+function nxToggle3d() {
+            try {
+                if (nxForce3d()) LS.setItem('nx_force3d', '');
+                else LS.setItem('nx_force3d', '1');
+            } catch (e) {}
+            try {
+                showToast(nxForce3d()
+                    ? '3D включён вручную: проверяем после перезагрузки. Если игра упадёт — оно само снова перейдёт в плоский режим'
+                    : '3D выключен: игры работают в плоском, но надёжном режиме', 'success');
+            } catch (e) {}
+            setTimeout(() => location.reload(), 900);
+        }
+        function nx3dBtnInit() {
+            const b = document.getElementById('nx-3d-btn');
+            if (!b) return;
+            const t = nxForce3d() ? '3D: включено вручную' : (nxWeakGpu() ? '3D: выключено (слабое устройство)' : '3D: авто');
+            b.innerHTML = '<i class="fa-solid fa-cube mr-1"></i>' + t;
+        }
+        function nxLowRam() { // устройство с малой памятью / слабым CPU
+            try {
+                const dm = navigator.deviceMemory;               // Chrome/Android
+                if (typeof dm === 'number' && dm > 0 && dm <= 3) return true;
+                const hc = navigator.hardwareConcurrency;
+                if (typeof hc === 'number' && hc > 0 && hc <= 3) return true;
+            } catch (e) {}
+            return false;
+        }
+        function nxPixelRatio() { // b308: слабый GPU держит контекст живее без ретины 2x
+            try {
+                const d = window.devicePixelRatio || 1;
+                const mob = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+                // 1080x1920 канвас с DPR 3 = 3240x5760 = 74 МБ видеопамяти на ОДИН
+                // рендерер. На устройствах с малой памятью режем до 1.0.
+                return Math.min(d, mob ? (nxLowRam() ? 1 : 1.5) : 2);
+            } catch (e) { return 1; }
+        }
+        function nx3dDrop(r) {
+            if (!r) return;
+            try { window.__nxPlannedDrop = r; } catch (e) {}
+            try { const c = r.domElement; if (c && c.parentNode) c.parentNode.removeChild(c); } catch (e) {}
+            try { r.forceContextLoss && r.forceContextLoss(); } catch (e) {}
+            try { r.dispose && r.dispose(); } catch (e) {}
+        }
+        function nx3dReleaseHidden(m) {
+            // скрытая игра не держит WebGL-контекст: мобильный Chrome держит ~8-16
+            // контекстов, потом начинает убивать их сам — прямо во время игры
+            try {
+                if (m !== 'slots' && slots.renderer) { cancelAnimationFrame(slots.animId); slots.animId = 0; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; slots.fallback = false; }
+                if (m !== 'grid' && grid3d.renderer) { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; }
+                if (m !== 'wheel' && wheel.renderer) { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.fallback = false; }
+            } catch (e) {}
+        }
+        window.addEventListener('resize', () => { nxTrail('resize ' + window.innerWidth + 'x' + window.innerHeight); clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 200); });
+        window.addEventListener('orientationchange', () => { nxTrail('orientchange'); clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 350); });
+        function nx3dFitZ(camera, halfW, halfH, desktopZ) {
+            const a = camera.aspect || 1;
+            if (a >= 1) return desktopZ; // десктоп: оставляем авторскую дистанцию
+            const t = Math.tan((camera.fov * Math.PI / 180) / 2);
+            return Math.max(halfH / t, halfW / (t * a)) * 1.06;
+        }
+        // b59: ResizeObserver — канвас пересчитывается и при реflow самого контейнера
+        // (раньше размер снимался до финальной раскладки, и машина сидела левее центра)
+        function nx3dObserve(container, fn) {
+            try {
+                const ro = new ResizeObserver(() => {
+                    clearTimeout(container._nxROt);
+                    // b62: колбэк наблюдателя под предохранителем (поворот экрана)
+                    container._nxROt = setTimeout(function () { try { fn(); } catch (e) { try { console.error('ResizeObserver fn', e); } catch (e2) {} } }, 120);
+                });
+                ro.observe(container);
+            } catch (e) {}
+        }
+        function nx3dResizeSimple(renderer, camera, container, fit) {
+            const w = container.clientWidth || 640, h = container.clientHeight || 360;
+            if (!w || !h) return;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            if (fit) camera.position.z = nx3dFitZ(camera, fit[0], fit[1], fit[2]);
+            camera.updateProjectionMatrix();
+        }
+        function webglAvailable() {
+            try {
+                const c = document.createElement('canvas');
+                return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+            } catch (e) { return false; }
+        }
+
+        function wrapCanvasText(g, text, x, y, maxW, lineH) {
+            const words = String(text || '').split(' ');
+            let line = ''; const lines = [];
+            for (const w of words) {
+                const test = line ? line + ' ' + w : w;
+                if (g.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+                else line = test;
+            }
+            lines.push(line);
+            const startY = y - ((Math.min(lines.length, 2) - 1) * lineH) / 2;
+            lines.slice(0, 2).forEach((l, i) => g.fillText(l, x, startY + i * lineH));
+        }
+
+        function roundRectCanvas(g, x, y, w, h, r) {
+            g.beginPath();
+            g.moveTo(x + r, y);
+            g.arcTo(x + w, y, x + w, y + h, r);
+            g.arcTo(x + w, y + h, x, y + h, r);
+            g.arcTo(x, y + h, x, y, r);
+            g.arcTo(x, y, x + w, y, r);
+            g.closePath();
+        }
+
+        // Безопасная загрузка картинки (CORS): успех -> onLoad, ошибка -> тихо молчим
+                function loadImgSafe(src, onLoad) {
+            if (!src) return;
+            // b38: зеркало → оригинал; ошибка не оставляет чёрный пак, а зовёт заглушку
+            const first = mediaUrl(src);
+            // Все потребители loadImgSafe рисуют арт на холст не крупнее 512x768,
+            // поэтому сначала пробуем среднюю миниатюру 512px (1.8 МБ в памяти
+            // вместо 9.0 МБ, ~60 КБ трафика вместо 2-4 МБ). Мастер — запасной
+            // вариант: если миниатюры для файла нет, nxThumbFor вернёт пустоту.
+            const mid = mediaThumbMid(src);
+            const cands = [];
+            if (mid && mid !== first) cands.push(mid);
+            cands.push(first);
+            if (first !== src) cands.push(src);
+            let i = 0;
+            const tryNext = () => {
+                if (i >= cands.length) return; // текстура нарисуется без арта
+                const url = cands[i++];
+                const load = (s) => {
+                    try {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => { try { onLoad(img); } catch (e) {} };
+                        img.onerror = () => { tryNext(); };
+                        img.src = s;
+                    } catch (e) { tryNext(); }
+                };
+                // b180: сначала из постоянного кэша (мгновенно), иначе сеть + копия на будущее
+                try {
+                    imgCacheObjUrl(url).then(ou => {
+                        if (ou) { load(ou); return; }
+                        load(url);
+                        imgCacheStoreFromNetwork(url);
+                    }).catch(() => load(url));
+                } catch (e) { load(url); }
+            };
+            tryNext();
+        }
+
+        // Рисует изображение «cover»: заполняет весь холст без искажений
+        function coverDrawImage(g, img, W, H) {
+            const iw = img.naturalWidth || img.width;
+            const ih = img.naturalHeight || img.height;
+            if (!iw || !ih) return false;
+            const scale = Math.max(W / iw, H / ih);
+            const dw = iw * scale, dh = ih * scale;
+            g.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+            return true;
+        }
+
+        // ===== b13: внешний вид упаковки — цвет фольги + режим перелива =====
+        // Цвета выбираются в Студии и хранятся в паке: pack.color / pack.shimmer.
+        const PACK_COLORS = {
+            silver: {
+                name: 'Серебро',
+                foil: ['#c7ccd8', '#eef1f7', '#b9c0cf', '#f2f4fa', '#c2c8d6', '#e9ecf4', '#bfc6d4'],
+                crimp: ['#cfd4de', '#9aa2b1', '#7d8494'],
+                crimpStripe: 'rgba(255,255,255,.45)', crimpDark: '#9aa2b1', crimpLight: '#eef1f7', crimpTop: 'rgba(255,255,255,.5)',
+                ridge: 'rgba(70,80,100,.25)',
+                side: ['#aab2c1', '#eef1f7', '#b6bdcb', '#8b93a3'],
+                sideStripe: 'rgba(255,255,255,.3)', sideShade: 'rgba(30,41,59,.6)',
+                mat: 0x8f96a3, particle: 0xe2e8f0,
+                frame: 'rgba(232,236,244,.85)', wrinkle: '#9aa0aa',
+                accentText: '#6ee7b7',
+                bgA: '#065f46', bgB: '#155e75', rays: 'rgba(52,211,153,.12)',
+                disc: 'rgba(16,185,129,.92)', discText: '#052e22',
+                sheen: 'rgba(255,255,255,.4)',
+                holoStripes: ['rgba(255,0,170,.14)', 'rgba(0,229,255,.14)', 'rgba(255,214,0,.12)', 'rgba(124,255,0,.10)'],
+                swatch: 'linear-gradient(135deg,#f2f4fa 0%,#9aa2b1 55%,#c7ccd8 100%)'
+            },
+            gold: {
+                name: 'Золото',
+                foil: ['#c9a24a', '#f7e7b0', '#c39a3f', '#fdf0c0', '#c9a24a', '#f3e2a6', '#bd9138'],
+                crimp: ['#e3c878', '#c2a04e', '#9a7a2e'],
+                crimpStripe: 'rgba(255,244,200,.5)', crimpDark: '#c2a04e', crimpLight: '#f7e7b0', crimpTop: 'rgba(255,250,225,.55)',
+                ridge: 'rgba(120,90,20,.28)',
+                side: ['#b99543', '#f7e7b0', '#cba64f', '#96742b'],
+                sideStripe: 'rgba(255,240,190,.35)', sideShade: 'rgba(70,48,10,.55)',
+                mat: 0xc2a04e, particle: 0xffd977,
+                frame: 'rgba(250,240,200,.9)', wrinkle: '#b39b6a',
+                accentText: '#ffe9a8',
+                bgA: '#713f12', bgB: '#78350f', rays: 'rgba(251,191,36,.14)',
+                disc: 'rgba(217,119,6,.92)', discText: '#3b1d05',
+                sheen: 'rgba(255,228,150,.45)',
+                holoStripes: ['rgba(255,0,170,.16)', 'rgba(0,229,255,.16)', 'rgba(255,255,255,.16)', 'rgba(124,255,0,.12)'],
+                swatch: 'linear-gradient(135deg,#fdf0c0 0%,#c2a04e 55%,#e3c878 100%)'
+            },
+            bronze: {
+                name: 'Бронза',
+                foil: ['#ab6c38', '#e8b98a', '#a5652f', '#f0c89a', '#ab6c38', '#e0ac7a', '#9d5f2e'],
+                crimp: ['#d99a63', '#b0713f', '#8a5427'],
+                crimpStripe: 'rgba(255,225,190,.42)', crimpDark: '#b0713f', crimpLight: '#e8b98a', crimpTop: 'rgba(255,235,210,.45)',
+                ridge: 'rgba(90,50,20,.3)',
+                side: ['#a5652f', '#e8b98a', '#bb7c47', '#8a5427'],
+                sideStripe: 'rgba(255,220,180,.28)', sideShade: 'rgba(60,30,10,.6)',
+                mat: 0xb0713f, particle: 0xe8a96b,
+                frame: 'rgba(240,214,180,.88)', wrinkle: '#a98467',
+                accentText: '#f7d7b5',
+                bgA: '#7c2d12', bgB: '#713f12', rays: 'rgba(234,88,12,.13)',
+                disc: 'rgba(194,112,61,.92)', discText: '#3b1505',
+                sheen: 'rgba(255,196,140,.42)',
+                holoStripes: ['rgba(255,0,170,.15)', 'rgba(0,229,255,.15)', 'rgba(255,214,0,.13)', 'rgba(255,255,255,.12)'],
+                swatch: 'linear-gradient(135deg,#f0c89a 0%,#b0713f 55%,#d99a63 100%)'
+            },
+            black: {
+                name: 'Чёрный',
+                foil: ['#2a2f3a', '#4b5261', '#23272f', '#59606f', '#2c313c', '#454c5a', '#20242c'],
+                crimp: ['#4a505e', '#333844', '#22262f'],
+                crimpStripe: 'rgba(200,210,230,.22)', crimpDark: '#23262e', crimpLight: '#4b5261', crimpTop: 'rgba(255,255,255,.18)',
+                ridge: 'rgba(0,0,0,.4)',
+                side: ['#333845', '#5c6373', '#3d4351', '#262a34'],
+                sideStripe: 'rgba(190,200,220,.16)', sideShade: 'rgba(0,0,0,.7)',
+                mat: 0x3a3f4c, particle: 0xcbd5e1,
+                frame: 'rgba(185,195,215,.8)', wrinkle: '#5b6270',
+                accentText: '#cbd5e1',
+                bgA: '#1e293b', bgB: '#0f172a', rays: 'rgba(148,163,184,.10)',
+                disc: 'rgba(100,116,139,.9)', discText: '#0b1220',
+                sheen: 'rgba(190,200,220,.3)',
+                holoStripes: ['rgba(255,0,170,.3)', 'rgba(0,229,255,.3)', 'rgba(255,214,0,.26)', 'rgba(124,255,0,.22)'],
+                swatch: 'linear-gradient(135deg,#59606f 0%,#20242c 55%,#3a3f4c 100%)'
+            }
+        };
+        const PACK_SHIMMERS = {
+            holo:    { name: 'Радуга',       icon: 'fa-rainbow' },
+            sparkle: { name: 'Белый блеск',  icon: 'fa-star' },
+            metal:   { name: 'Металлик',     icon: 'fa-gem' },
+            matte:   { name: 'Матовый',      icon: 'fa-feather' },
+            gold:    { name: 'Золотая фольга', icon: 'fa-coins' },
+            aurora:  { name: 'Аврора',       icon: 'fa-water' },
+            prism:   { name: 'Призма',       icon: 'fa-shapes' },
+            oil:     { name: 'Масляная плёнка', icon: 'fa-droplet' },
+            laser:   { name: 'Лазер',        icon: 'fa-bolt' },
+            frost:   { name: 'Иней',         icon: 'fa-snowflake' },
+            pearl:   { name: 'Перламутр',    icon: 'fa-egg' },
+            chrome:  { name: 'Хром',         icon: 'fa-circle-half-stroke' },
+            copper:  { name: 'Медь',         icon: 'fa-ring' },
+            neon:    { name: 'Неон',         icon: 'fa-lightbulb' },
+            flame:   { name: 'Огонь',        icon: 'fa-fire' },
+            ocean:   { name: 'Океан',        icon: 'fa-fish' },
+            galaxy:  { name: 'Галактика',    icon: 'fa-meteor' },
+            rose:    { name: 'Роза',         icon: 'fa-spa' },
+            emerald: { name: 'Изумруд',      icon: 'fa-leaf' },
+            sunset:  { name: 'Закат',        icon: 'fa-mountain-sun' },
+            carbon:  { name: 'Карбон',       icon: 'fa-table-cells' },
+            uv:      { name: 'Ультрафиолет', icon: 'fa-radiation' },
+            crackle: { name: 'Трещины',      icon: 'fa-burst' },
+            hologrid:{ name: 'Голо-сетка',   icon: 'fa-border-all' },
+            plasma:  { name: 'Плазма',       icon: 'fa-hurricane' },
+            chameleon: { name: 'Хамелеон',   icon: 'fa-palette' }, // b268: плёнка-хамелеон — фиолетовый→зелёный→золотой→розовый сдвиг цвета
+            titanium:  { name: 'Титан',      icon: 'fa-atom' },     // b268: анодированный титан — сталь-синий→фиолет→бронза
+            diamond:   { name: 'Бриллиант',  icon: 'fa-diamond' },         // b269: ледяная призма — белые грани с холодными синими вспышками
+            royal:     { name: 'Королевский', icon: 'fa-crown' },          // b269: пурпур с золотым свечением — регальная фольга
+            lava:      { name: 'Лава',       icon: 'fa-volcano' },         // b269: тёмная порода с раскалёнными оранжево-красными прожилками
+            toxic:     { name: 'Токсин',     icon: 'fa-biohazard' },       // b269: кислотно-зелёный с жёлтым ядовитым свечением
+            vampire:   { name: 'Вампир',     icon: 'fa-heart-crack' },     // b269: глубокий кровавый багровый глянец
+            cyber:     { name: 'Кибер',      icon: 'fa-microchip' },       // b269: скан-линии и глитч-полосы маджента/циан
+            marble:    { name: 'Мрамор',     icon: 'fa-chess-board' },     // b269: каменные серо-белые прожилки по полированной поверхности
+            peacock:   { name: 'Павлин',     icon: 'fa-feather-pointed' }, // b269: бирюза→синий→фиолет с «глазом» пера
+            candy:     { name: 'Конфетка',   icon: 'fa-candy-cane' },      // b269: розово-белые диагональные леденцовые полосы
+            // b270: +9 «плавных» режимов — только мягкие широкие переходы и текучие волны,
+            // никаких резких полос/прожилок/граней: блик переливается как шёлк или жидкость
+            silk:      { name: 'Шёлк',       icon: 'fa-ribbon' },           // b270: нежные пастельные волны — розовый/крем/голубой
+            mercury:   { name: 'Ртуть',      icon: 'fa-droplet-slash' },     // b270: текучее жидкое серебро
+            mist:      { name: 'Туман',      icon: 'fa-cloud' },             // b270: мягкая серо-голубая дымка
+            flow:      { name: 'Поток',      icon: 'fa-wind' },              // b270: широкая плавная радуга без границ
+            silkwave:  { name: 'Волна',      icon: 'fa-water' },             // b270: бирюзово-синие волны воды
+            satin:     { name: 'Сатин',      icon: 'fa-feather' },           // b270: атласный тёплый блеск
+            dream:     { name: 'Сон',        icon: 'fa-moon' },              // b270: лаванда/пудра/мята — сновиденческие разводы
+            spring:    { name: 'Весна',      icon: 'fa-seedling' },          // b270: плавные зелёно-жёлтые переходы
+            bubble:    { name: 'Пузырь',     icon: 'fa-soap' },              // b270: мыльные радужные пузыри
+            // b274: все 60 переливов перенастроены на НЕЖНОСТЬ и ПРОЗРАЧНОСТЬ —
+            // плёнка фольги тонкая, блики полупрозрачные, подложка просвечивает.
+            // b273: +15 РЕАЛИСТИЧНЫХ материалов — не «фэнтези-радуги», а настоящие отделки,
+            // которые встречаются на живых бустерах/фольге: зеркальная полировка, шлифованный
+            // металл, бархат, глиттер-хлопья, сусальное золото, горячее тиснение, патина,
+            // обсидиан, опал, кожа, пергамент, розовое золото, латунь, лён и мокрый лак.
+            // Каждый блик собран из физически правдоподобных слоёв: узкое зеркальное ядро,
+            // широкий мягкий ореол, микрорельеф (риски/зерно/переплетение нитей) и цвет материала.
+            mirror:    { name: 'Зеркало',    icon: 'fa-clone' },             // b273: зеркальная полировка — линия горизонта + резкий specular
+            brushed:   { name: 'Шлифовка',   icon: 'fa-bars-staggered' },    // b273: анизотропный шлифованный металл — мелкие риски
+            velvet:    { name: 'Бархат',     icon: 'fa-vest-patches' },      // b273: ворс — очень мягкий широкий ореол, без жёстких границ
+            glitter:   { name: 'Глиттер',    icon: 'fa-wand-magic-sparkles' }, // b273: крупные цветные хлопья голографического глиттера
+            goldleaf:  { name: 'Сусаль',     icon: 'fa-award' },             // b273: сусальное золото — рваные листы с яркими кромками
+            hotstamp:  { name: 'Тиснение',   icon: 'fa-stamp' },             // b273: горячее тиснение фольгой — фаски и микроштриховка
+            patina:    { name: 'Патина',     icon: 'fa-splotch' },           // b273: окисленная медь — бирюзово-зелёные разводы
+            obsidian:  { name: 'Обсидиан',   icon: 'fa-mountain' },          // b273: вулканическое стекло — тонкие острые отблески
+            opal:      { name: 'Опал',       icon: 'fa-circle-dot' },        // b273: молочный камень с мягкими цветными вспышками
+            leather:   { name: 'Кожа',       icon: 'fa-briefcase' },         // b273: зернистая кожа — тёплый блик по гребням зерна
+            parchment: { name: 'Пергамент',  icon: 'fa-scroll' },            // b273: волокнистая бумага — рассеянный тёплый свет
+            rosegold:  { name: 'Роз. золото', icon: 'fa-heart' },            // b273: розовое золото — тёплый металл с двойной кромкой
+            brass:     { name: 'Латунь',     icon: 'fa-record-vinyl' },      // b273: жёлтая латунь с направленной полировкой
+            linen:     { name: 'Лён',        icon: 'fa-table-cells-large' }, // b273: тканое полотно — переплетение нитей основы и утка
+            wetgloss:  { name: 'Мокрый лак', icon: 'fa-paint-roller' }       // b273: глубокий мокрый глянец — узкий specular + широкий ореол
+        };
+
+        // b274: все «искрящиеся» подложки (блеск/звёзды/хлопья) сделаны прозрачнее —
+        // тоньше гало, слабее ядра: блеск нежный, фольга под ним просвечивает.
+        // b15: «Белый блеск» как настоящая глиттер-фольга: у каждой звёздочки мягкое
+        // гало-свечение, тончайшие лучики с затуханием и яркая сердцевина;
+        // вокруг — мелкая мерцающая пыль разной температуры. Никаких жёстких крестов.
+        const PACK_GLINT_BG = (function () {
+            const L = [];
+            [[20, 26, 20], [66, 52, 16], [42, 80, 13]].forEach(p => {
+                L.push('radial-gradient(circle at ' + p[0] + '% ' + p[1] + '%, rgba(255,255,255,0.35) 0 1px, rgba(255,255,255,0.13) 3px, rgba(255,255,255,0) 7px)');
+                L.push('linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.56) 50%, rgba(255,255,255,0) 100%) ' + p[0] + '% ' + p[1] + '% / ' + p[2] + 'px 1px no-repeat');
+                L.push('linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.56) 50%, rgba(255,255,255,0) 100%) ' + p[0] + '% ' + p[1] + '% / 1px ' + p[2] + 'px no-repeat');
+                L.push('radial-gradient(circle at ' + p[0] + '% ' + p[1] + '%, rgba(255,255,255,0.66) 0 .9px, rgba(255,255,255,0) 1.8px)');
+            });
+            [[8, 40, .8, .8, '255,255,255'], [26, 64, .6, .55, '210,230,255'], [52, 12, .7, .7, '255,244,224'], [72, 26, .9, .85, '255,255,255'],
+             [88, 58, .5, .45, '210,230,255'], [14, 86, .7, .65, '255,255,255'], [58, 88, .6, .5, '255,244,224'], [84, 84, .8, .75, '255,255,255'],
+             [36, 34, .5, .4, '255,255,255'], [46, 60, .6, .5, '210,230,255'], [68, 74, .5, .4, '255,244,224'], [22, 14, .6, .5, '255,255,255'],
+             [78, 8, .5, .45, '210,230,255'], [92, 30, .6, .5, '255,255,255']]
+                .forEach(p => L.push('radial-gradient(circle at ' + p[0] + '% ' + p[1] + '%, rgba(' + p[4] + ',' + p[3] + ') 0 ' + p[2] + 'px, rgba(' + p[4] + ',0) ' + (p[2] + 1).toFixed(1) + 'px)'));
+            return L.join(',');
+        })();
+        // «Галактика»: звёздная пыль + яркие звёзды с гало и тонкими лучиками
+        const PACK_STARS_BG = (function () {
+            const L = [];
+            [[24, 30, 18], [76, 64, 15]].forEach(p => {
+                L.push('radial-gradient(circle at ' + p[0] + '% ' + p[1] + '%, rgba(255,255,255,0.34) 0 1px, rgba(190,215,255,0.12) 3px, rgba(190,215,255,0) 7px)');
+                L.push('linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.56) 50%, rgba(255,255,255,0) 100%) ' + p[0] + '% ' + p[1] + '% / ' + p[2] + 'px 1px no-repeat');
+                L.push('linear-gradient(0deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.56) 50%, rgba(255,255,255,0) 100%) ' + p[0] + '% ' + p[1] + '% / 1px ' + p[2] + 'px no-repeat');
+            });
+            [[6, 12, .6, .7, '255,255,255'], [16, 44, .5, .5, '200,215,255'], [24, 72, .7, .8, '255,255,255'], [32, 18, .5, .55, '255,235,210'],
+             [38, 56, .6, .7, '255,255,255'], [46, 84, .5, .5, '200,215,255'], [52, 36, .7, .85, '255,255,255'], [60, 8, .5, .6, '255,255,255'],
+             [66, 48, .6, .65, '255,235,210'], [72, 80, .5, .5, '200,215,255'], [80, 22, .7, .8, '255,255,255'], [88, 52, .5, .55, '255,255,255'],
+             [92, 88, .6, .7, '200,215,255'], [12, 92, .5, .6, '255,255,255']]
+                .forEach(p => L.push('radial-gradient(circle at ' + p[0] + '% ' + p[1] + '%, rgba(' + p[4] + ',' + p[3] + ') 0 ' + p[2] + 'px, rgba(' + p[4] + ',0) ' + (p[2] + 1).toFixed(1) + 'px)'));
+            return L.join(',');
+        })();
+
+        // Диагональные ленты перелива для дополнительных режимов (2D-мокап и канвас-текстура)
+        const SHIM_BANDS = {
+            pearl:   ['rgba(255,240,245,.5)', 'rgba(240,248,255,.55)', 'rgba(255,245,238,.45)'],
+            chrome:  ['rgba(255,255,255,.75)', 'rgba(160,170,185,.55)', 'rgba(255,255,255,.8)'],
+            copper:  ['rgba(255,150,100,.5)', 'rgba(255,210,170,.65)', 'rgba(200,100,60,.5)'],
+            neon:    ['rgba(0,255,240,.4)', 'rgba(255,0,220,.35)', 'rgba(0,255,240,.4)'],
+            flame:   ['rgba(255,120,40,.45)', 'rgba(255,220,120,.6)', 'rgba(255,80,20,.45)'],
+            ocean:   ['rgba(60,180,255,.4)', 'rgba(140,240,255,.5)', 'rgba(40,140,255,.4)'],
+            rose:    ['rgba(255,120,170,.45)', 'rgba(255,220,235,.6)', 'rgba(255,100,150,.45)'],
+            emerald: ['rgba(40,220,140,.45)', 'rgba(200,255,230,.6)', 'rgba(20,180,120,.45)'],
+            sunset:  ['rgba(255,140,90,.45)', 'rgba(255,200,120,.55)', 'rgba(255,100,150,.45)']
+        };
+
+        // CSS-переменные внешнего вида для 2D/3D-мокапа пака (карусель, превью в студии)
+        // b273: «Глиттер» — крупные разноцветные хлопья голографической фольги:
+        // у каждого хлопья мягкое цветное гало, тело своего оттенка и белое ядро.
+        // Слой рисуется через --pk-spark (mix-blend-mode: screen) и «дышит» вместе с sparkTwinkle.
+        const PACK_FLAKES_BG = (function () {
+            // b274: «Глиттер» стал НЕЖНЫМ: хлопьев меньше, они мельче, гало почти
+            // прозрачное, а ядро — не белая точка, а лёгкая искра. Фольга просвечивает.
+            const L = [];
+            [[14, 20, 1.7, '255,150,215'], [26, 64, 1.3, '150,225,255'], [36, 34, 1.9, '255,235,170'],
+             [48, 80, 1.2, '195,255,205'], [58, 26, 1.6, '255,255,255'], [68, 56, 1.4, '210,180,255'],
+             [78, 86, 1.8, '255,195,165'], [88, 38, 1.3, '170,240,255'], [20, 46, 1.1, '255,255,255'],
+             [32, 88, 1.5, '255,175,225'], [44, 14, 1.2, '185,255,225'], [62, 70, 1.7, '255,242,210'],
+             [74, 16, 1.3, '200,200,255'], [84, 64, 1.1, '255,255,255'], [94, 84, 1.5, '255,200,160']]
+                .forEach(f => {
+                    L.push('radial-gradient(circle at ' + f[0] + '% ' + f[1] + '%, rgba(' + f[3] + ',.16) 0 ' + (f[2] * 1.8).toFixed(1) + 'px, rgba(' + f[3] + ',0) ' + (f[2] * 3).toFixed(1) + 'px)');
+                    L.push('radial-gradient(circle at ' + f[0] + '% ' + f[1] + '%, rgba(255,255,255,0.42) 0 ' + (f[2] * .45).toFixed(1) + 'px, rgba(' + f[3] + ',.34) ' + f[2].toFixed(1) + 'px, rgba(' + f[3] + ',0) ' + (f[2] * 1.6).toFixed(1) + 'px)');
+                });
+            return L.join(',');
+        })();
+
+        function packCssVars(pack) {
+            const pal = PACK_COLORS[pack && pack.color] || PACK_COLORS.silver;
+            const sh = PACK_SHIMMERS[pack && pack.shimmer] ? pack.shimmer : 'holo';
+            const f = pal.foil;
+            let holo, holoOp = 1, glossOp = 0, spark = 'none', sparkOp = 0; // b267: по умолчанию НЕТ «горизонтального» блика-gloss: на паке должен играть только выбранный перелив; мягкий блеск остаётся лишь у матового (else-ветка)
+            if (sh === 'sparkle') { spark = PACK_GLINT_BG; sparkOp = 1; }
+            if (sh === 'galaxy') { spark = PACK_STARS_BG; sparkOp = 1; }
+            if (sh === 'glitter') { spark = PACK_FLAKES_BG; sparkOp = 1; } // b273
+            if (sh === 'holo') {
+                holo = 'linear-gradient(115deg, transparent 20%, rgba(255,0,170,0.13) 35%, rgba(0,229,255,0.13) 50%, rgba(255,214,0,0.11) 65%, transparent 80%)';
+            } else if (sh === 'sparkle') {
+                holo = 'linear-gradient(115deg, transparent 26%, rgba(255,255,255,0.11) 42%, rgba(236,242,255,0.16) 50%, rgba(255,255,255,0.11) 58%, transparent 74%), linear-gradient(245deg, transparent 32%, rgba(255,255,255,0.06) 50%, transparent 66%)';
+            } else if (sh === 'metal') {
+                holo = 'linear-gradient(115deg, transparent 24%, ' + pal.sheen + ' 46%, rgba(255,255,255,.5) 52%, ' + pal.sheen + ' 58%, transparent 76%)';
+            } else if (sh === 'gold') {
+                holo = 'linear-gradient(115deg, transparent 22%, rgba(255,214,110,0.32) 42%, rgba(255,246,205,0.49) 50%, rgba(255,196,70,0.32) 58%, transparent 78%)';
+            } else if (sh === 'aurora') {
+                holo = 'linear-gradient(115deg, transparent 15%, rgba(80,255,190,0.18) 32%, rgba(120,170,255,0.17) 48%, rgba(200,120,255,0.17) 64%, transparent 85%)';
+            } else if (sh === 'prism') {
+                holo = 'linear-gradient(115deg, transparent 28%, rgba(255,80,120,0.22) 33% 38%, transparent 38% 45%, rgba(80,220,255,0.22) 45% 50%, transparent 50% 57%, rgba(255,220,120,0.22) 57% 62%, transparent 62%)';
+            } else if (sh === 'oil') {
+                holo = 'linear-gradient(115deg, transparent 18%, rgba(140,60,255,0.15) 34%, rgba(60,255,190,0.16) 50%, rgba(255,140,60,0.15) 66%, transparent 82%)';
+            } else if (sh === 'laser') {
+                holo = 'linear-gradient(115deg, transparent 44%, rgba(255,255,255,0.52) 49% 51%, transparent 56%), linear-gradient(115deg, transparent 20%, rgba(140,255,240,0.24) 26% 28%, transparent 34%)';
+            } else if (sh === 'frost') {
+                holo = 'linear-gradient(115deg, transparent 20%, rgba(200,240,255,0.28) 42%, rgba(255,255,255,0.39) 50%, rgba(180,230,255,0.28) 58%, transparent 80%)';
+            } else if (sh === 'pearl') {
+                holo = 'linear-gradient(115deg, transparent 18%, rgba(255,240,245,0.35) 38%, rgba(240,248,255,0.39) 50%, rgba(255,245,238,0.35) 62%, transparent 82%)';
+            } else if (sh === 'chrome') {
+                holo = 'linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.49) 42% 46%, rgba(160,170,185,0.35) 50% 54%, rgba(255,255,255,0.52) 58% 61%, transparent 72%)';
+            } else if (sh === 'copper') {
+                holo = 'linear-gradient(115deg, transparent 22%, rgba(255,150,100,0.35) 42%, rgba(255,210,170,0.49) 50%, rgba(200,100,60,0.35) 58%, transparent 78%)';
+            } else if (sh === 'neon') {
+                holo = 'linear-gradient(115deg, transparent 20%, rgba(0,255,240,0.24) 36%, rgba(255,0,220,0.21) 52%, rgba(0,255,240,0.21) 68%, transparent 84%)';
+            } else if (sh === 'flame') {
+                holo = 'linear-gradient(115deg, transparent 20%, rgba(255,120,40,0.28) 40%, rgba(255,220,120,0.39) 50%, rgba(255,80,20,0.28) 60%, transparent 80%)';
+            } else if (sh === 'ocean') {
+                holo = 'linear-gradient(115deg, transparent 18%, rgba(60,180,255,0.24) 38%, rgba(140,240,255,0.32) 50%, rgba(40,140,255,0.24) 62%, transparent 82%)';
+            } else if (sh === 'galaxy') {
+                holo = 'radial-gradient(ellipse 60% 34% at 32% 30%, rgba(120,80,220,0.2), transparent 70%), radial-gradient(ellipse 50% 30% at 70% 62%, rgba(40,120,220,0.15), transparent 70%), radial-gradient(ellipse 70% 26% at 50% 46%, rgba(255,255,255,0.11), transparent 70%), linear-gradient(115deg, transparent 30%, rgba(190,160,255,0.13) 45%, rgba(140,200,255,0.11) 55%, transparent 70%)';
+            } else if (sh === 'rose') {
+                holo = 'linear-gradient(115deg, transparent 20%, rgba(255,120,170,0.28) 40%, rgba(255,220,235,0.42) 50%, rgba(255,100,150,0.28) 60%, transparent 80%)';
+            } else if (sh === 'emerald') {
+                holo = 'linear-gradient(115deg, transparent 20%, rgba(40,220,140,0.28) 40%, rgba(200,255,230,0.42) 50%, rgba(20,180,120,0.28) 60%, transparent 80%)';
+            } else if (sh === 'sunset') {
+                holo = 'linear-gradient(115deg, transparent 18%, rgba(255,140,90,0.28) 38%, rgba(255,200,120,0.35) 50%, rgba(255,100,150,0.28) 62%, transparent 82%)';
+            } else if (sh === 'carbon') { // b276: КАРБОН — красивая линейная лента: холодные стальные полосы света катятся по графиту, без сетки
+                holo = 'linear-gradient(115deg, rgba(255,255,255,0) 0%, rgba(148,180,226,.11) 12%, rgba(226,238,255,.17) 26%, rgba(96,128,178,.08) 40%, rgba(206,226,255,.15) 54%, rgba(70,98,146,.07) 68%, rgba(184,208,244,.12) 82%, rgba(255,255,255,0) 100%), linear-gradient(295deg, rgba(255,255,255,0) 22%, rgba(160,190,235,.09) 50%, rgba(255,255,255,0) 78%), linear-gradient(180deg, rgba(226,240,255,.10), rgba(226,240,255,0) 30%)';
+            } else if (sh === 'uv') {
+                holo = 'radial-gradient(circle at 50% 60%, rgba(60,0,140,0.24), transparent 70%), linear-gradient(115deg, transparent 15%, rgba(90,0,200,0.24) 30%, rgba(0,255,255,0.28) 48%, rgba(255,0,220,0.27) 64%, transparent 85%)';
+            } else if (sh === 'crackle') {
+                holo = 'linear-gradient(23deg, transparent 46%, rgba(255,255,255,0.45) 47% 47.6%, transparent 48.2%), linear-gradient(-31deg, transparent 30%, rgba(255,255,255,0.35) 30.8% 31.4%, transparent 32%), linear-gradient(64deg, transparent 58%, rgba(255,255,255,0.39) 58.6% 59.2%, transparent 60%), linear-gradient(-8deg, transparent 74%, rgba(255,255,255,0.32) 74.5% 75%, transparent 75.8%)';
+            } else if (sh === 'hologrid') { // b276: ГОЛО-СЕТКА — красивая линейная радуга: циан→лазурь→маджента→фиолет широкой лентой, без сетки
+                holo = 'linear-gradient(115deg, rgba(0,255,240,0) 0%, rgba(0,255,240,.14) 14%, rgba(120,180,255,.12) 30%, rgba(255,0,200,.14) 48%, rgba(160,90,255,.12) 64%, rgba(0,255,240,.13) 82%, rgba(0,255,240,0) 100%), linear-gradient(25deg, rgba(255,0,200,0) 22%, rgba(255,0,200,.07) 50%, rgba(255,0,200,0) 78%), linear-gradient(180deg, rgba(0,255,240,.08), rgba(0,255,240,0) 34%)';
+            } else if (sh === 'plasma') {
+                holo = 'radial-gradient(circle at 30% 30%, rgba(255,120,220,0.28), transparent 45%), radial-gradient(circle at 70% 60%, rgba(80,220,255,0.28), transparent 45%), radial-gradient(circle at 55% 20%, rgba(180,255,140,0.21), transparent 40%)';
+            } else if (sh === 'chameleon') {
+                holo = 'linear-gradient(115deg, transparent 8%, rgba(150,50,255,0.29) 22%, rgba(0,235,175,0.28) 40%, rgba(255,215,60,0.27) 58%, rgba(255,60,170,0.25) 76%, transparent 92%)';
+            } else if (sh === 'titanium') {
+                holo = 'linear-gradient(115deg, transparent 12%, rgba(100,140,255,0.35) 30%, rgba(180,110,255,0.34) 48%, rgba(255,170,90,0.32) 66%, rgba(120,225,255,0.28) 82%, transparent 94%)';
+            } else if (sh === 'diamond') {
+                holo = 'linear-gradient(115deg, transparent 18%, rgba(200,235,255,0.35) 36%, rgba(255,255,255,0.59) 48%, rgba(255,255,255,0.59) 52%, rgba(170,215,255,0.35) 64%, transparent 82%), linear-gradient(65deg, transparent 38%, rgba(255,235,250,0.24) 50%, transparent 62%), linear-gradient(-40deg, transparent 55%, rgba(190,240,255,0.21) 66%, transparent 76%)';
+            } else if (sh === 'royal') {
+                holo = 'linear-gradient(115deg, transparent 14%, rgba(120,40,220,0.29) 30%, rgba(255,215,90,0.39) 48%, rgba(150,60,255,0.31) 66%, transparent 86%), radial-gradient(ellipse 50% 30% at 50% 50%, rgba(255,225,130,0.16), transparent 70%)';
+            } else if (sh === 'lava') {
+                holo = 'radial-gradient(ellipse 60% 40% at 30% 70%, rgba(255,80,20,0.29), transparent 70%), radial-gradient(ellipse 50% 35% at 75% 30%, rgba(255,160,40,0.24), transparent 70%), linear-gradient(23deg, transparent 44%, rgba(255,120,30,0.52) 45%, rgba(255,120,30,0.52) 45.8%, transparent 46.6%), linear-gradient(-38deg, transparent 62%, rgba(255,60,10,0.42) 62.8%, rgba(255,60,10,0.42) 63.5%, transparent 64.4%), linear-gradient(70deg, transparent 26%, rgba(255,180,60,0.39) 26.8%, rgba(255,180,60,0.39) 27.5%, transparent 28.4%)';
+            } else if (sh === 'toxic') {
+                holo = 'linear-gradient(115deg, transparent 16%, rgba(160,255,0,0.28) 34%, rgba(220,255,80,0.36) 50%, rgba(0,220,90,0.27) 66%, transparent 84%), radial-gradient(circle at 65% 35%, rgba(190,255,60,0.18), transparent 55%)';
+            } else if (sh === 'vampire') {
+                holo = 'linear-gradient(115deg, transparent 14%, rgba(140,0,25,0.41) 34%, rgba(255,40,60,0.29) 50%, rgba(90,0,15,0.43) 66%, transparent 86%), radial-gradient(ellipse 55% 35% at 50% 60%, rgba(255,20,50,0.15), transparent 70%)';
+            } else if (sh === 'cyber') { // b276: КИБЕР — красивые линейные неоновые ленты: циан/маджента/фиолет мягкими широкими волнами, без сканлайнов
+                holo = 'linear-gradient(105deg, rgba(0,240,255,0) 0%, rgba(0,240,255,.16) 14%, rgba(0,240,255,.05) 26%, rgba(255,0,210,.15) 40%, rgba(255,0,210,.05) 52%, rgba(0,240,255,.14) 66%, rgba(120,80,255,.11) 80%, rgba(0,240,255,0) 100%), linear-gradient(0deg, rgba(0,240,255,0) 24%, rgba(0,240,255,.08) 50%, rgba(0,240,255,0) 76%), linear-gradient(180deg, rgba(255,0,210,.06), rgba(255,0,210,0) 30%)';
+            } else if (sh === 'marble') {
+                holo = 'radial-gradient(ellipse 70% 45% at 30% 25%, rgba(255,255,255,0.21), transparent 65%), radial-gradient(ellipse 60% 40% at 75% 70%, rgba(210,215,225,0.18), transparent 65%), linear-gradient(28deg, transparent 40%, rgba(255,255,255,0.39) 41%, rgba(255,255,255,0.39) 41.6%, transparent 42.6%), linear-gradient(-22deg, transparent 58%, rgba(190,198,212,0.35) 58.8%, rgba(190,198,212,0.35) 59.5%, transparent 60.4%), linear-gradient(74deg, transparent 20%, rgba(255,255,255,0.28) 20.7%, rgba(255,255,255,0.28) 21.2%, transparent 22%)';
+            } else if (sh === 'peacock') {
+                holo = 'radial-gradient(circle at 68% 32%, rgba(0,255,220,0.24) 0 8%, rgba(30,110,255,0.21) 14%, rgba(120,50,240,0.15) 22%, transparent 34%), linear-gradient(115deg, transparent 12%, rgba(0,190,170,0.28) 30%, rgba(40,120,255,0.29) 50%, rgba(130,60,240,0.27) 68%, transparent 88%)';
+            } else if (sh === 'candy') {
+                holo = 'repeating-linear-gradient(45deg, rgba(255,90,150,0.32) 0 12px, rgba(255,240,246,0.35) 12px 24px), linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.35) 50%, transparent 75%)';
+            } else if (sh === 'silk') {
+                holo = 'linear-gradient(105deg, rgba(255,255,255,0) 0%, rgba(255,214,232,0.28) 14%, rgba(255,247,236,0.21) 28%, rgba(206,232,255,0.28) 42%, rgba(255,255,255,0) 56%, rgba(255,222,240,0.24) 70%, rgba(214,240,255,0.22) 84%, rgba(255,255,255,0) 100%), radial-gradient(ellipse 120% 70% at 25% 20%, rgba(255,255,255,0.2), rgba(255,255,255,0) 70%)';
+            } else if (sh === 'mercury') {
+                holo = 'linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(226,236,248,0.32) 18%, rgba(255,255,255,0.42) 34%, rgba(150,168,196,0.29) 50%, rgba(240,246,255,0.35) 66%, rgba(120,140,172,0.25) 82%, rgba(255,255,255,0) 100%), radial-gradient(ellipse 110% 60% at 70% 75%, rgba(255,255,255,0.17), rgba(255,255,255,0) 70%)';
+            } else if (sh === 'mist') {
+                holo = 'radial-gradient(ellipse 120% 80% at 20% 30%, rgba(226,238,250,0.25), rgba(226,238,250,0) 68%), radial-gradient(ellipse 110% 75% at 78% 58%, rgba(198,220,242,0.24), rgba(198,220,242,0) 70%), radial-gradient(ellipse 130% 70% at 50% 92%, rgba(244,249,255,0.21), rgba(244,249,255,0) 72%), linear-gradient(110deg, rgba(255,255,255,0) 10%, rgba(238,246,255,0.15) 50%, rgba(255,255,255,0) 90%)';
+            } else if (sh === 'flow') {
+                holo = 'linear-gradient(98deg, rgba(255,120,170,0.24) 0%, rgba(255,190,120,0.22) 18%, rgba(250,250,150,0.21) 34%, rgba(130,240,180,0.22) 50%, rgba(120,200,255,0.24) 66%, rgba(170,140,255,0.24) 82%, rgba(255,140,200,0.22) 100%), radial-gradient(ellipse 100% 55% at 50% 40%, rgba(255,255,255,0.16), rgba(255,255,255,0) 70%)';
+            } else if (sh === 'silkwave') {
+                holo = 'linear-gradient(102deg, rgba(255,255,255,0) 0%, rgba(80,220,220,0.21) 16%, rgba(170,245,255,0.28) 30%, rgba(255,255,255,0) 44%, rgba(60,170,255,0.22) 60%, rgba(150,235,255,0.27) 74%, rgba(255,255,255,0) 90%), radial-gradient(ellipse 120% 60% at 50% 100%, rgba(120,230,255,0.17), rgba(120,230,255,0) 70%)';
+            } else if (sh === 'satin') {
+                holo = 'linear-gradient(112deg, rgba(255,255,255,0) 6%, rgba(255,232,205,0.28) 26%, rgba(255,248,238,0.36) 44%, rgba(240,205,170,0.27) 60%, rgba(255,255,255,0) 78%), linear-gradient(20deg, rgba(255,255,255,0) 30%, rgba(255,240,220,0.18) 50%, rgba(255,255,255,0) 70%)';
+            } else if (sh === 'dream') {
+                holo = 'radial-gradient(ellipse 110% 70% at 25% 25%, rgba(190,160,255,0.27), rgba(190,160,255,0) 70%), radial-gradient(ellipse 100% 65% at 75% 45%, rgba(255,190,225,0.24), rgba(255,190,225,0) 72%), radial-gradient(ellipse 110% 60% at 45% 85%, rgba(160,235,225,0.22), rgba(160,235,225,0) 72%), linear-gradient(115deg, rgba(255,255,255,0) 20%, rgba(255,255,255,0.16) 50%, rgba(255,255,255,0) 80%)';
+            } else if (sh === 'spring') {
+                holo = 'linear-gradient(108deg, rgba(255,255,255,0) 0%, rgba(180,245,170,0.25) 18%, rgba(240,255,190,0.28) 34%, rgba(120,225,160,0.25) 52%, rgba(255,255,255,0) 66%, rgba(170,240,200,0.24) 82%, rgba(255,255,255,0) 100%), radial-gradient(ellipse 110% 60% at 70% 20%, rgba(255,255,220,0.15), rgba(255,255,220,0) 70%)';
+            } else if (sh === 'bubble') {
+                holo = 'radial-gradient(circle at 30% 32%, rgba(255,200,235,0.28) 0%, rgba(190,235,255,0.24) 26%, rgba(215,255,225,0.2) 48%, rgba(255,255,255,0) 72%), radial-gradient(circle at 72% 68%, rgba(200,225,255,0.27) 0%, rgba(255,220,245,0.22) 30%, rgba(255,255,255,0) 70%), linear-gradient(120deg, rgba(255,255,255,0) 25%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 75%)';
+            } else if (sh === 'mirror') { // b274: ЗЕРКАЛО — не лист стали, а тончайшая холодная плёнка: мягкое «небо» сверху, прозрачная линия горизонта и нежный диагональный блик
+                holo = 'linear-gradient(180deg, rgba(138,198,255,0.3) 0%, rgba(189,225,255,0.13) 20%, rgba(255,255,255,0.25) 33%, rgba(226,240,255,0.19) 37%, rgba(86,133,198,0.13) 48%, rgba(64,103,165,0.07) 66%, rgba(150,200,252,0.17) 88%, rgba(226,240,255,0.18) 100%), linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.14) 48%, rgba(178,215,255,0.13) 58%, transparent 74%)';
+            } else if (sh === 'brushed') { // b276: ШЛИФОВКА — красивая линейная анизотропия: череда мягких световых полос поперёк стали, без штриховки
+                holo = 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(214,228,246,.09) 10%, rgba(255,255,255,.17) 24%, rgba(190,208,232,.08) 38%, rgba(244,250,255,.16) 52%, rgba(184,202,228,.08) 66%, rgba(255,255,255,.15) 80%, rgba(214,228,246,.09) 90%, rgba(255,255,255,0) 100%), linear-gradient(115deg, transparent 26%, rgba(238,246,255,.13) 48%, rgba(170,198,236,.09) 58%, transparent 78%), linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0) 26%)';
+            } else if (sh === 'velvet') { // b274: БАРХАТ — только дыхание ворса: широкие лиловые ореолы без единой границы
+                holo = 'radial-gradient(ellipse 100% 66% at 50% 24%, rgba(206,168,255,0.2), rgba(206,168,255,0) 76%), linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 34%), radial-gradient(ellipse 82% 46% at 50% 98%, rgba(126,84,196,0.25), rgba(126,84,196,0) 74%), radial-gradient(ellipse 44% 92% at 2% 50%, rgba(168,132,236,0.15), rgba(168,132,236,0) 72%)';
+            } else if (sh === 'glitter') { // b274: ГЛИТТЕР — молочная подложка почти прозрачная, играют только хлопья слоя --pk-spark
+                holo = 'linear-gradient(115deg, transparent 26%, rgba(255,232,248,0.12) 46%, rgba(226,244,255,0.14) 54%, transparent 74%), radial-gradient(ellipse 92% 58% at 50% 45%, rgba(255,255,255,0.06), rgba(255,255,255,0) 74%)';
+            } else if (sh === 'goldleaf') { // b274: СУСАЛЬ — не литое золото, а тончайшие прозрачные листочки с волосными кромками
+                holo = 'radial-gradient(ellipse 46% 32% at 28% 32%, rgba(255,184,18,0.37) 0%, rgba(255,205,80,0.13) 48%, rgba(255,206,110,0) 70%), radial-gradient(ellipse 38% 28% at 72% 62%, rgba(255,213,94,0.3) 0%, rgba(255,214,122,0) 66%), radial-gradient(ellipse 32% 24% at 55% 16%, rgba(255,166,0,0.26) 0%, rgba(240,168,38,0) 68%), radial-gradient(ellipse 28% 22% at 85% 27%, rgba(255,205,80,0.22) 0%, rgba(255,206,110,0) 70%), linear-gradient(38deg, transparent 44%, rgba(255,226,127,0.37) 45.6%, transparent 47%), linear-gradient(-52deg, transparent 60%, rgba(255,194,59,0.3) 61.4%, transparent 62.8%), linear-gradient(115deg, transparent 22%, rgba(255,213,117,0.19) 50%, transparent 78%)';
+            } else if (sh === 'hotstamp') { // b276: ТИСНЕНИЕ — красивая линейная фольга: тёплая лента с двойной фаской и светящейся кромкой, без штриховки
+                holo = 'linear-gradient(115deg, rgba(255,255,255,0) 14%, rgba(255,244,214,.15) 30%, rgba(255,255,255,.26) 42%, rgba(196,178,140,.10) 50%, rgba(255,252,240,.24) 58%, rgba(214,196,156,.10) 68%, rgba(255,244,214,.14) 80%, rgba(255,255,255,0) 88%), linear-gradient(25deg, rgba(255,255,255,0) 56%, rgba(255,246,220,.10) 70%, rgba(255,255,255,0) 84%), radial-gradient(ellipse 70% 40% at 50% 8%, rgba(255,250,230,.10), rgba(255,250,230,0) 72%)';
+            } else if (sh === 'patina') { // b274: ПАТИНА — прозрачная бирюзовая окисная дымка, сквозь неё просвечивает медь
+                holo = 'radial-gradient(ellipse 50% 38% at 25% 30%, rgba(7,226,176,0.37) 0%, rgba(46,214,176,0) 72%), radial-gradient(ellipse 44% 32% at 70% 56%, rgba(0,192,158,0.3) 0%, rgba(30,182,156,0) 72%), radial-gradient(ellipse 38% 30% at 45% 84%, rgba(98,233,197,0.22) 0%, rgba(122,226,198,0) 74%), radial-gradient(ellipse 32% 24% at 85% 18%, rgba(10,158,226,0.22) 0%, rgba(38,152,204,0) 76%), linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.06) 50%, transparent 70%)';
+            } else if (sh === 'obsidian') { // b274: ОБСИДИАН — два тонких стеклянных отблеска и прозрачная радужная плёнка (без «лезвий»)
+                holo = 'linear-gradient(115deg, transparent 30%, rgba(226,240,255,0.27) 43% 45%, transparent 48%, rgba(226,240,255,0.15) 62% 64%, transparent 68%), radial-gradient(ellipse 66% 44% at 30% 24%, rgba(2,249,171,0.2), rgba(46,236,176,0) 74%), radial-gradient(ellipse 60% 42% at 74% 72%, rgba(163,85,255,0.22), rgba(152,92,255,0) 74%), radial-gradient(ellipse 70% 40% at 52% 50%, rgba(21,34,58,0.19), rgba(24,34,52,0) 76%)';
+            } else if (sh === 'opal') { // b274: ОПАЛ — молочная полупрозрачность и мягкие цветные вспышки «огня»
+                holo = 'radial-gradient(ellipse 88% 58% at 40% 34%, rgba(255,255,255,0.13) 0%, rgba(255,255,255,0) 74%), radial-gradient(circle at 26% 62%, rgba(255,116,207,0.24) 0%, rgba(255,126,196,0) 62%), radial-gradient(circle at 68% 28%, rgba(69,212,255,0.26) 0%, rgba(96,206,255,0) 62%), radial-gradient(circle at 78% 74%, rgba(102,245,128,0.2) 0%, rgba(126,236,146,0) 64%), radial-gradient(circle at 50% 50%, rgba(255,205,57,0.19) 0%, rgba(255,206,92,0) 68%)';
+            } else if (sh === 'leather') { // b276: КОЖА — красивая линейная волна: коньячные полосы света по полированной коже, без зерна-сетки
+                holo = 'linear-gradient(115deg, rgba(178,88,40,0) 8%, rgba(206,110,58,.15) 26%, rgba(238,168,112,.20) 44%, rgba(148,74,36,.11) 58%, rgba(222,138,88,.17) 74%, rgba(178,88,40,0) 92%), radial-gradient(ellipse 60% 42% at 40% 34%, rgba(190,96,48,.14) 0%, rgba(190,96,48,0) 74%), linear-gradient(20deg, rgba(255,208,170,0) 30%, rgba(255,208,170,.08) 52%, rgba(255,208,170,0) 74%)';
+            } else if (sh === 'parchment') { // b276: ПЕРГАМЕНТ — красивая линейная дымка: тёплый свет льётся поперёк листа мягкими полосами, без волокон-сетки
+                holo = 'linear-gradient(92deg, rgba(248,240,214,0) 6%, rgba(244,232,200,.13) 22%, rgba(252,246,224,.18) 40%, rgba(206,188,148,.10) 56%, rgba(248,240,214,.15) 74%, rgba(248,240,214,0) 94%), radial-gradient(ellipse 66% 48% at 34% 28%, rgba(236,214,164,.15) 0%, rgba(236,214,164,0) 74%), linear-gradient(180deg, rgba(250,248,236,.10), rgba(250,248,236,0) 32%)';
+            } else if (sh === 'rosegold') { // b274: РОЗОВОЕ ЗОЛОТО — тонкая розовая плёнка с двумя нежными кромками вместо «слитка»
+                holo = 'linear-gradient(115deg, transparent 20%, rgba(255,133,112,0.35) 38%, rgba(255,212,199,0.44) 50%, rgba(255,109,90,0.31) 62%, transparent 80%), linear-gradient(25deg, transparent 54%, rgba(255,173,155,0.2) 66%, transparent 78%), radial-gradient(ellipse 74% 42% at 50% 100%, rgba(255,146,133,0.19), rgba(255,152,142,0) 72%)';
+            } else if (sh === 'brass') { // b276: ЛАТУНЬ — красивая линейная волна: золотые полосы света с глубокой тенью между ними, без линий полировки
+                holo = 'linear-gradient(115deg, rgba(226,168,42,0) 6%, rgba(232,178,52,.16) 22%, rgba(255,226,140,.24) 38%, rgba(182,132,32,.12) 52%, rgba(250,214,110,.20) 68%, rgba(226,168,42,.10) 82%, rgba(226,168,42,0) 94%), radial-gradient(ellipse 64% 36% at 50% 12%, rgba(255,214,122,.10), rgba(255,214,122,0) 72%), linear-gradient(295deg, rgba(255,240,190,0) 30%, rgba(255,240,190,.09) 52%, rgba(255,240,190,0) 74%)';
+            } else if (sh === 'linen') { // b276: ЛЁН — красивые линейные сгибы ткани: встречные мягкие складки света по вертикали и горизонтали, без переплетения-сетки
+                holo = 'linear-gradient(0deg, rgba(246,244,230,0) 4%, rgba(246,244,230,.10) 20%, rgba(252,250,240,.15) 38%, rgba(216,212,192,.08) 54%, rgba(248,246,234,.13) 72%, rgba(246,244,230,0) 96%), linear-gradient(90deg, rgba(206,204,186,0) 6%, rgba(226,222,202,.10) 28%, rgba(206,204,186,.07) 50%, rgba(232,228,210,.11) 72%, rgba(206,204,186,0) 94%), radial-gradient(ellipse 84% 52% at 50% 22%, rgba(216,208,182,.12), rgba(216,208,182,0) 74%)';
+            } else if (sh === 'wetgloss') { // b274: МОКРЫЙ ЛАК — прозрачная лаковая плёнка: узкое зеркальное ядро, широкий ореол и тонкое отражение неба
+                holo = 'linear-gradient(180deg, rgba(214,234,255,0.19) 0%, rgba(240,248,255,0.06) 14%, rgba(255,255,255,0) 30%), linear-gradient(108deg, transparent 32%, rgba(255,255,255,0.12) 44%, rgba(255,255,255,0.32) 47% 49%, rgba(160,207,255,0.22) 53%, transparent 64%), radial-gradient(ellipse 120% 50% at 50% 110%, rgba(131,183,251,0.19) 0%, rgba(142,182,234,0) 74%)';
+            } else {
+                holo = 'none'; holoOp = 0; glossOp = 0.3; // b267: у матового нет своего перелива — оставляем лёгкий горизонтальный блик
+            }
+            return '--pk-foil:linear-gradient(115deg, ' + f[0] + ' 0%, ' + f[1] + ' 18%, ' + f[2] + ' 32%, ' + f[3] + ' 47%, ' + f[4] + ' 61%, ' + f[5] + ' 78%, ' + f[6] + ' 100%);' +
+                '--pk-crimp:linear-gradient(180deg, ' + pal.crimpTop + ', rgba(120,128,145,.55) 45%, rgba(70,78,95,.65)), repeating-linear-gradient(90deg, ' + pal.crimpDark + ' 0 2px, ' + pal.crimpLight + ' 2px 5px);' +
+                '--pk-rim:linear-gradient(90deg, ' + pal.side[3] + ', ' + pal.side[1] + ', ' + pal.side[3] + ');' +
+                '--pk-wrinkle:' + pal.wrinkle + ';--pk-frame:' + pal.frame + ';' +
+                '--pk-holo:' + holo + ';--pk-holo-op:' + holoOp + ';--pk-gloss-op:' + glossOp + ';' +
+                '--pk-spark:' + spark + ';--pk-spark-op:' + sparkOp + ';';
+        }
+
+        // b15: имя пака целиком: ужимаем кегль по ширине, затем две строки.
+        // Никаких «Скуб...» на мокапе.
+        function fitPackLabels(root) {
+            const scope = root || document;
+            if (!scope.querySelectorAll) return;
+            const labels = Array.prototype.slice.call(scope.querySelectorAll('.booster-label'));
+            labels.forEach(el => {
+                el.classList.remove('one'); el.classList.remove('two');
+                el.style.fontSize = '10px';
+                el.classList.add('one');
+                const cw = el.clientWidth, sw = el.scrollWidth;
+                if (!cw || !sw) return; // нет метрик (серверные стабы) — оставляем как есть
+                if (sw <= cw) return;
+                for (let fs = 9.5; fs >= 7; fs -= 0.5) {
+                    el.style.fontSize = fs + 'px';
+                    if (el.scrollWidth <= el.clientWidth) return;
+                }
+                el.classList.remove('one'); el.classList.add('two');
+                el.style.fontSize = '9px';
+            });
+        }
+
+                function makePackTexture(pack, onImage) {
+            const W = 512, H = 768;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const tex = new THREE.CanvasTexture(cv);
+            // b13: цвет упаковки и перелив — выбраны в Студии, хранятся в паке
+            const pal = PACK_COLORS[pack && pack.color] || PACK_COLORS.silver;
+            const shim = PACK_SHIMMERS[pack && pack.shimmer] ? pack.shimmer : 'holo';
+            const TOP_H = 92, BOT_H = 176, BOT_Y = H - BOT_H;
+
+            // b43: подложка — глубокий градиент плюс тонкая гильоширная графика и монограмма
+            const drawBase = () => {
+                const bg = g.createLinearGradient(0, 0, W, H);
+                bg.addColorStop(0, pal.bgA); bg.addColorStop(0.5, '#0b1220'); bg.addColorStop(1, pal.bgB);
+                g.fillStyle = bg; g.fillRect(0, 0, W, H);
+                g.save(); g.translate(W / 2, H * 0.44); g.globalAlpha = 0.10; g.strokeStyle = pal.accentText || '#e2e8f0';
+                for (let r = 40; r < 620; r += 26) { g.lineWidth = (r % 52 === 14) ? 2 : 1; g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke(); }
+                g.restore();
+                g.fillStyle = pal.disc; g.beginPath(); g.arc(W / 2, H * 0.42, 70, 0, Math.PI * 2); g.fill();
+                g.fillStyle = pal.discText; g.font = 'bold 64px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText('N', W / 2, H * 0.42 + 4);
+            };
+            // b43: арт во всю витринную зону (между плашками) с виньеткой по краям
+            const drawArt = img => {
+                g.save();
+                g.beginPath(); g.rect(0, TOP_H, W, BOT_Y - TOP_H); g.clip();
+                coverDrawImage(g, img, W, H);
+                const vg = g.createLinearGradient(0, TOP_H, 0, BOT_Y);
+                vg.addColorStop(0, 'rgba(2,6,23,.55)'); vg.addColorStop(0.22, 'rgba(2,6,23,0)');
+                vg.addColorStop(0.78, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.6)');
+                g.fillStyle = vg; g.fillRect(0, TOP_H, W, BOT_Y - TOP_H);
+                const hg = g.createLinearGradient(0, 0, W, 0);
+                hg.addColorStop(0, 'rgba(2,6,23,.5)'); hg.addColorStop(0.14, 'rgba(2,6,23,0)');
+                hg.addColorStop(0.86, 'rgba(2,6,23,0)'); hg.addColorStop(1, 'rgba(2,6,23,.5)');
+                g.fillStyle = hg; g.fillRect(0, TOP_H, W, BOT_Y - TOP_H);
+                g.restore();
+            };
+            // b43: премиальная типографика — лого-плашка сверху, титул с чипами снизу, рамка
+            const drawLayout = () => {
+                const tg = g.createLinearGradient(0, 0, 0, TOP_H);
+                tg.addColorStop(0, 'rgba(2,6,23,.94)'); tg.addColorStop(1, 'rgba(2,6,23,.58)');
+                g.fillStyle = tg; g.fillRect(0, 0, W, TOP_H);
+                g.fillStyle = pal.crimp[1]; g.fillRect(0, TOP_H, W, 3);
+                g.textBaseline = 'middle';
+                g.textAlign = 'left'; g.fillStyle = '#f8fafc'; g.font = '700 20px Inter, sans-serif';
+                g.fillText('КОЛЛЕКЦИОНЕР КАРТ', 26, TOP_H / 2 + 1);
+                g.textAlign = 'right'; g.fillStyle = pal.crimpLight || '#e2e8f0'; g.font = '600 19px Inter, sans-serif';
+                g.fillText('SET • 26', W - 26, TOP_H / 2 + 1);
+                const bgd = g.createLinearGradient(0, BOT_Y, 0, H);
+                bgd.addColorStop(0, 'rgba(2,6,23,0)'); bgd.addColorStop(0.38, 'rgba(2,6,23,.9)'); bgd.addColorStop(1, 'rgba(2,6,23,.97)');
+                g.fillStyle = bgd; g.fillRect(0, BOT_Y, W, BOT_H);
+                g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+                g.save();
+                g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 16; g.shadowOffsetY = 3;
+                g.fillStyle = '#ffffff'; g.font = '800 46px Inter, sans-serif';
+                wrapCanvasText(g, pack.title, W / 2, BOT_Y + 78, W - 72, 50);
+                g.restore();
+                const chip = (txt, x, w, col) => {
+                    roundRectCanvas(g, x, H - 66, w, 36, 18);
+                    g.fillStyle = 'rgba(15,23,42,.82)'; g.fill();
+                    g.strokeStyle = col; g.lineWidth = 1.5; roundRectCanvas(g, x, H - 66, w, 36, 18); g.stroke();
+                    g.fillStyle = col; g.font = '700 17px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+                    g.fillText(txt, x + w / 2, H - 47);
+                };
+                chip('БУСТЕР • 4 КАРТЫ', W / 2 - 152, 196, pal.crimpLight || '#e2e8f0');
+                const shimName = (PACK_SHIMMERS[shim] && PACK_SHIMMERS[shim].name) || shim;
+                chip(String(shimName).toUpperCase(), W / 2 + 60, 92, pal.crimp[1]);
+                g.strokeStyle = 'rgba(248,250,252,.20)'; g.lineWidth = 2;
+                g.strokeRect(10, 10, W - 20, H - 20);
+            };
+            // b43: мелкая печатная искра только для режима sparkle — остальные переливы даёт env-блик
+            const drawGlitter = () => {
+                if (shim !== 'sparkle' && shim !== 'glitter') return; // b273: «Глиттер» — крупные цветные хлопья
+                const big = shim === 'glitter';
+                let sd = big ? 23 : 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+                const tint = [[255, 120, 200], [120, 220, 255], [255, 230, 140], [180, 255, 190], [200, 160, 255], [255, 180, 150], [150, 240, 255], [255, 255, 255]];
+                g.save(); g.globalAlpha = big ? 0.34 : 0.4; // b274: хлопья/искры полупрозрачные
+                for (let i = 0; i < (big ? 130 : 90); i++) {
+                    const x = rnd() * W, y = TOP_H + rnd() * (BOT_Y - TOP_H);
+                    const r = big ? (.7 + rnd() * 1.6) : (.4 + rnd() * 1.1); // b274: хлопья мельче
+                    const al = big ? (.14 + rnd() * .3) : (.16 + rnd() * .4); // b274: прозрачнее
+                    const c = big ? tint[i % tint.length] : tint[7];
+                    g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${al.toFixed(2)})`;
+                    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+                    if (big) { // b273: белое ядро хлопья — так глиттер читается как фольга, а не как пыль
+                        g.fillStyle = `rgba(255,255,255,${Math.min(1, al + .16).toFixed(2)})`; // b274: ядро хлопья — лёгкая искра
+                        g.beginPath(); g.arc(x, y, r * .35, 0, Math.PI * 2); g.fill();
+                    }
+                }
+                g.restore();
+            };
+            drawBase();
+            drawLayout();
+            if (pack && pack.image) {
+                loadImgSafe(pack.image, img => {
+                    drawBase();
+                    drawArt(img);
+                    drawGlitter();
+                    drawLayout();
+                    tex.needsUpdate = true;
+                    if (onImage) onImage();
+                });
+            }
+            return tex;
+        }
+
+        // Рубашка карты = обложка пака: ОДИНАКОВАЯ для всех карт пака,
+        // никаких спойлеров (ни имён, ни артов, ни цветов редкости)
+        function makeCardBackTexture(pack) {
+            const W = 512, H = 768;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+
+            const grad = g.createLinearGradient(0, 0, W, H);
+            grad.addColorStop(0, '#1e293b'); grad.addColorStop(0.5, '#0f172a'); grad.addColorStop(1, '#1e293b');
+            g.fillStyle = grad; g.fillRect(0, 0, W, H);
+
+            g.strokeStyle = 'rgba(167,139,250,.10)'; g.lineWidth = 16;
+            for (let i = -H; i < W + H; i += 64) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + H, H); g.stroke(); }
+
+            g.strokeStyle = '#a78bfa'; g.lineWidth = 10;
+            g.strokeRect(18, 18, W - 36, H - 36);
+            g.strokeStyle = 'rgba(167,139,250,.35)'; g.lineWidth = 4;
+            g.strokeRect(34, 34, W - 68, H - 68);
+
+            g.fillStyle = 'rgba(139,92,246,.92)';
+            g.beginPath(); g.arc(W / 2, H / 2 - 46, 96, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#052e22'; g.font = 'bold 88px Inter, sans-serif';
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText('N', W / 2, H / 2 - 40);
+
+            g.fillStyle = '#c4b5fd'; g.font = '600 30px Inter, sans-serif';
+            g.fillText('КАРТА ВНУТРИ', W / 2, H / 2 + 108);
+            g.fillStyle = '#94a3b8'; g.font = '26px sans-serif';
+            g.fillText('★ ★ ★', W / 2, H / 2 + 168);
+
+            const tex = new THREE.CanvasTexture(cv);
+            tex.needsUpdate = true;
+            tex.__nxBack = 1; // b301: метка «это рубашка карты» для единого студийного света
+
+            // Подгружаем обложку пака на рубашку (одинаково для всех карт)
+            if (pack) {
+                loadImgSafe(pack.image, img => {
+                    if (!coverDrawImage(g, img, W, H)) return;
+                    const grd = g.createLinearGradient(0, H, 0, 0);
+                    grd.addColorStop(0, 'rgba(2,6,23,.78)');
+                    grd.addColorStop(0.4, 'rgba(2,6,23,.22)');
+                    grd.addColorStop(1, 'rgba(2,6,23,.5)');
+                    g.fillStyle = grd; g.fillRect(0, 0, W, H);
+                    g.strokeStyle = '#a78bfa'; g.lineWidth = 10;
+                    g.strokeRect(18, 18, W - 36, H - 36);
+                    g.strokeStyle = 'rgba(167,139,250,.35)'; g.lineWidth = 4;
+                    g.strokeRect(34, 34, W - 68, H - 68);
+                    // Без эмблемы поверх обложки: только рамка и название пака
+                    g.fillStyle = '#f5f3ff'; g.font = '600 26px Inter, sans-serif';
+                    g.textAlign = 'center'; g.textBaseline = 'middle';
+                    wrapCanvasText(g, pack.title, W / 2, H - 78, W - 120, 32);
+                    tex.needsUpdate = true;
+                });
+            }
+            return tex;
+        }
+
+        // b43: студийный env-куб: два софтбокса на тёмном градиенте. Фольга отражает их —
+        // блик живой, движется с углом обзора, вместо «напечатанных» полос голограммы.
+        let studioEnvTex = null;
+        function makeStudioEnv() {
+            if (studioEnvTex) return studioEnvTex;
+            const S = 128;
+            const face = () => {
+                const cv = document.createElement('canvas'); cv.width = cv.height = S;
+                const g = cv.getContext('2d');
+                const grd = g.createLinearGradient(0, 0, 0, S);
+                grd.addColorStop(0, '#3a4450'); grd.addColorStop(0.5, '#161b25'); grd.addColorStop(1, '#05070c');
+                g.fillStyle = grd; g.fillRect(0, 0, S, S);
+                g.fillStyle = 'rgba(255,255,255,.9)';
+                g.beginPath(); g.ellipse(S * 0.30, S * 0.22, S * 0.22, S * 0.09, -0.4, 0, Math.PI * 2); g.fill();
+                g.fillStyle = 'rgba(190,215,255,.55)';
+                g.beginPath(); g.ellipse(S * 0.76, S * 0.52, S * 0.14, S * 0.30, 0.3, 0, Math.PI * 2); g.fill();
+                return cv;
+            };
+            const faces = [face(), face(), face(), face(), face(), face()];
+            const tg = faces[2].getContext('2d'); tg.fillStyle = 'rgba(255,255,255,.8)'; tg.fillRect(0, 0, S, S);
+            const bg2 = faces[3].getContext('2d'); bg2.fillStyle = '#04060a'; bg2.fillRect(0, 0, S, S);
+            const cube = new THREE.CubeTexture(faces);
+            cube.needsUpdate = true;
+            try { cube.encoding = THREE.sRGBEncoding; } catch (e) {}
+            studioEnvTex = cube;
+            return cube;
+        }
+        let PACK3D_ANISO = 4; // b39: выставляется из renderer.capabilities при открытии пака
+        let foilBumpTex = null;
+        function makeFoilBump() {
+            if (foilBumpTex) return foilBumpTex;
+            const S = 256;
+            const cv = document.createElement('canvas');
+            cv.width = S; cv.height = S;
+            const g = cv.getContext('2d');
+            g.fillStyle = '#808080';
+            g.fillRect(0, 0, S, S);
+            for (let i = 0; i < 150; i++) {
+                const x = Math.random() * S, y = Math.random() * S, r = 6 + Math.random() * 26;
+                const light = Math.random() > 0.5;
+                const rg = g.createRadialGradient(x, y, 0, x, y, r);
+                rg.addColorStop(0, light ? 'rgba(255,255,255,.5)' : 'rgba(0,0,0,.45)');
+                rg.addColorStop(1, 'rgba(128,128,128,0)');
+                g.fillStyle = rg;
+                // b39: блоб рисуется во всех 9 смещениях кратных S — тайл становится бесшовным,
+                // исчезают светящиеся линии на стыках повторов (repeat 2×3)
+                for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) g.fillRect(x - r + ox, y - r + oy, r * 2, r * 2);
+            }
+            foilBumpTex = new THREE.CanvasTexture(cv);
+            foilBumpTex.wrapS = foilBumpTex.wrapT = THREE.RepeatWrapping;
+            foilBumpTex.repeat.set(2, 3);
+            foilBumpTex.anisotropy = PACK3D_ANISO; // b39
+            return foilBumpTex;
+        }
+
+        // b14: круглый спрайт искры — THREE.Points без текстуры рисуются КВАДРАТАМИ
+        let sparkTexShared = null;
+        function makeSparkTexture() {
+            if (sparkTexShared) return sparkTexShared;
+            const S = 64;
+            const cv = document.createElement('canvas');
+            cv.width = S; cv.height = S;
+            const g = cv.getContext('2d');
+            const rg = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+            rg.addColorStop(0, 'rgba(255,255,255,1)');
+            rg.addColorStop(0.25, 'rgba(255,255,255,.92)');
+            rg.addColorStop(0.5, 'rgba(255,255,255,.4)');
+            rg.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = rg;
+            g.fillRect(0, 0, S, S);
+            // тонкие лучи-блики, как на фольге
+            g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1.5;
+            g.beginPath();
+            g.moveTo(S / 2, 5); g.lineTo(S / 2, S - 5);
+            g.moveTo(5, S / 2); g.lineTo(S - 5, S / 2);
+            g.stroke();
+            sparkTexShared = new THREE.CanvasTexture(cv);
+            return sparkTexShared;
+        }
+
+                function makeCrimpTexture(flip, pal) {
+            pal = pal || PACK_COLORS.silver; // b13: цвет шва = цвет упаковки
+            const W = 512, H = 128;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            // фольга шва в цвете упаковки; b40: текстура ПОЛНОСТЬЮ непрозрачна —
+            // силуэт зубцов и засечки задаёт геометрия меша, поэтому здесь нет alpha-вырезов
+            // и, как следствие, нет шиммера alphaTest и «пробитых» полос на mip-уровнях
+            const grad = g.createLinearGradient(0, 0, 0, H);
+            grad.addColorStop(0, pal.crimp[0]); grad.addColorStop(0.5, pal.crimp[1]); grad.addColorStop(1, pal.crimp[2]);
+            g.fillStyle = grad; g.fillRect(0, 0, W, H);
+            g.fillStyle = pal.crimpStripe;
+            for (let x = 0; x < W; x += 7) g.fillRect(x, 0, 3, H);
+            // линия отрыва — только на верхнем шве
+            if (!flip) {
+                g.strokeStyle = 'rgba(30,41,59,.8)'; g.lineWidth = 4; g.setLineDash([14, 10]);
+                g.beginPath(); g.moveTo(0, H - 22); g.lineTo(W, H - 22); g.stroke();
+                g.setLineDash([]);
+            }
+            // лёгкие горизонтальные ridge-линии сварного шва
+            g.strokeStyle = pal.ridge; g.lineWidth = 2;
+            for (let y = 18; y < H; y += 22) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+            const tex = new THREE.CanvasTexture(cv);
+            // b39/b40: без mipmaps + анизотропия — кромки не мерцают при повороте
+            tex.generateMipmaps = false;
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.anisotropy = PACK3D_ANISO;
+            tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+            return tex;
+        }
+
+        // СИЛУЭТНЫЕ зубцы шва: зигзаг запечён прямо в вершины меша (widthSegments=30 =
+        // 2 вершины на зубец: остриё и впадина). Теперь треугольники снизу и сверху
+        // видны ВСЕГДА — даже если alpha-вырез текстуры не сработает на конкретном GPU.
+                function makeSealGeometry(teethDown) {
+            // b40: СИЛУЭТНЫЙ меш. Зигзаг зубцов и боковые засечки («дырокол») запечены в контур
+            // THREE.Shape, поэтому край антиалиасится MSAA, не зависит от альфы текстуры и не даёт
+            // артефактов на стыках вершинных колонок (прежний BoxGeometry с колонками мерцал).
+            const W = 2.05, H = 0.45, teeth = 15, depth = 0.197;
+            const half = H / 2;
+            const edge = teethDown ? -half : half;   // внешний край с зубцами
+            const inner = teethDown ? half : -half;  // внутренний прямой край (к телу)
+            const sgn = teethDown ? -1 : 1;
+            const shape = new THREE.Shape();
+            const step = W / teeth;
+            shape.moveTo(-W / 2, inner);
+            shape.lineTo(-W / 2, edge);
+            for (let i = 0; i < teeth; i++) {
+                shape.lineTo(-W / 2 + step * (i + 0.5), edge - sgn * depth);
+                shape.lineTo(-W / 2 + step * (i + 1), edge);
+            }
+            shape.lineTo(W / 2, inner);
+            shape.closePath();
+            // засечки-вырубки у линии отрыва — настоящие отверстия контура
+            const notch = cx => {
+                // b41: отверстие обязано лежать ВНУТРИ контура: иначе триангулятор ShapeGeometry
+                // рождает из «дырки» мусорные треугольники (та самая золотая соринка между зубцов)
+                const p = new THREE.Path();
+                const hy = inner + sgn * 0.13;
+                p.moveTo(cx - 0.075, hy - sgn * 0.055);
+                p.lineTo(cx + 0.075, hy - sgn * 0.055);
+                p.lineTo(cx, hy + sgn * 0.055);
+                p.closePath();
+                return p;
+            };
+            shape.holes.push(notch(-W / 2 + 0.13), notch(W / 2 - 0.13));
+            const geo = new THREE.ShapeGeometry(shape, 10);
+            // честные UV 0..1 по габаритам шва (ShapeGeometry даёт uv в координатах формы)
+            const pos = geo.attributes.position, uv = geo.attributes.uv;
+            for (let i = 0; i < uv.count; i++) {
+                uv.setXY(i, (pos.getX(i) + W / 2) / W, (pos.getY(i) + H / 2) / H);
+            }
+            uv.needsUpdate = true;
+            geo.computeVertexNormals();
+            return geo;
+        }
+
+        function openPack3D(pack, cards) {
+            nxTrail('3d-open');
+            const modal = document.getElementById('modal-pack3d');
+            const container = document.getElementById('pack3d-container');
+            modal.classList.remove('hidden');
+            container.innerHTML = '';
+
+            let renderer;
+            try {
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            } catch (e) {
+                modal.classList.add('hidden');
+                showUnboxingUI(pack, cards);
+                return;
+            }
+            const w = container.clientWidth || window.innerWidth;
+            const h = container.clientHeight || Math.round(window.innerHeight * 0.62);
+            renderer.setPixelRatio(nxPixelRatio()); // b308
+            renderer.setSize(w, h);
+            // b39: анизотропия из возможностей GPU — текстуры не мерцают под углом (мобильные GPU)
+            try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) { PACK3D_ANISO = 4; }
+            // b40: цветоуправление как в «взрослом» рендере: sRGB на выходе + плёночный тонмаппинг —
+            // цвета фольги становятся насыщенными и предсказуемыми, блики не выжигаются
+            try { renderer.outputEncoding = THREE.sRGBEncoding; } catch (e) {}
+            try { renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
+            container.appendChild(renderer.domElement);
+            // b62: iPad/WebKit отбирает WebGL-контекст при нехватке памяти — ловим это
+            // и штатно доводим вскрытие до 2D-экрана вместо зависшего чёрного окна
+            try {
+                renderer.domElement.addEventListener('webglcontextlost', function (ev) {
+                    ev.preventDefault();
+                    nxTrail('ctxlost:pack3d');
+                    if (pack3d) { try { finishPack3D(); } catch (e) {} }
+                    else {
+                        try { modal.classList.add('hidden'); container.innerHTML = ''; showUnboxingUI(pack, cards); } catch (e) {}
+                    }
+                }, false);
+            } catch (e) {}
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+            // b67: мобильный вид (2×2) сидит дальше — вся четвёрка карт в кадре
+            const mobView = (w / (h || 1)) < 0.95;
+            camera.position.set(0, 0, mobView ? 10.2 : 9.6);
+            if (!window._nx3dPack) { // b58: пак на телефоне не режется краями
+                window._nx3dPack = 1;
+                const rs = () => {
+                    const c = document.getElementById('pack3d-container');
+                    if (c && pack3d && pack3d.renderer) nx3dResizeSimple(pack3d.renderer, pack3d.camera, c, pack3d.fit || [3.7, 2.35, 9.6]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+            }
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+            const pl0 = new THREE.PointLight(0xfff6e0, 0.55, 45); pl0.position.set(0, 2.5, 6.5); scene.add(pl0);
+            const pl1 = new THREE.PointLight(0xdfe6ff, 0.7, 60); pl1.position.set(3, 4, 5); scene.add(pl1);
+            const pl2 = new THREE.PointLight(0xa78bfa, 0.5, 60); pl2.position.set(-4, -2, 5); scene.add(pl2);
+
+
+            const group = new THREE.Group();
+            scene.add(group);
+
+            // b42: мягкое радиальное свечение за паком — сцена выглядит как студийная съёмка,
+            // пакет не висит в чёрной пустоте
+            try {
+                const glowCv = document.createElement('canvas'); glowCv.width = glowCv.height = 256;
+                const gg = glowCv.getContext('2d');
+                const rgd = gg.createRadialGradient(128, 128, 8, 128, 128, 126);
+                rgd.addColorStop(0, 'rgba(167,139,250,0.28)'); rgd.addColorStop(0.45, 'rgba(14,116,144,0.14)'); rgd.addColorStop(1, 'rgba(2,6,23,0)');
+                gg.fillStyle = rgd; gg.fillRect(0, 0, 256, 256);
+                const glowTex = new THREE.CanvasTexture(glowCv);
+                const glow = new THREE.Mesh(new THREE.PlaneGeometry(15, 12),
+                    new THREE.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false }));
+                glow.position.z = -4; glow.renderOrder = -1;
+                scene.add(glow);
+            } catch (e) {}
+
+            const bump = makeFoilBump();
+            if (bump.anisotropy !== PACK3D_ANISO) { bump.anisotropy = PACK3D_ANISO; bump.needsUpdate = true; } // b39
+            // b13: цвет упаковки + режим перелива влияют на текстуры И материалы
+            const pal = PACK_COLORS[pack && pack.color] || PACK_COLORS.silver;
+            const shim = PACK_SHIMMERS[pack && pack.shimmer] ? pack.shimmer : 'holo';
+            const shimM = ({ holo: [0.36, 0.34], sparkle: [0.22, 0.55], metal: [0.24, 0.72], matte: [0.78, 0.1], gold: [0.22, 0.77], aurora: [0.3, 0.42], prism: [0.28, 0.51], oil: [0.32, 0.47], laser: [0.18, 0.64], frost: [0.4, 0.3], pearl: [0.3, 0.38], chrome: [0.15, 0.81], copper: [0.25, 0.75], neon: [0.3, 0.51], flame: [0.35, 0.42], ocean: [0.3, 0.47], galaxy: [0.3, 0.38], rose: [0.32, 0.42], emerald: [0.32, 0.42], sunset: [0.34, 0.38], carbon: [0.5, 0.3], uv: [0.3, 0.47], crackle: [0.25, 0.51], hologrid: [0.3, 0.42], plasma: [0.28, 0.42], chameleon: [0.26, 0.55], titanium: [0.2, 0.72], diamond: [0.12, 0.81], royal: [0.28, 0.64], lava: [0.45, 0.34], toxic: [0.35, 0.47], vampire: [0.3, 0.51], cyber: [0.25, 0.59], marble: [0.55, 0.21], peacock: [0.3, 0.42], candy: [0.4, 0.26], silk: [0.32, 0.38], mercury: [0.12, 0.81], mist: [0.5, 0.21], flow: [0.3, 0.42], silkwave: [0.22, 0.51], satin: [0.28, 0.47], dream: [0.34, 0.38], spring: [0.34, 0.38], bubble: [0.16, 0.59], mirror: [0.1, 0.6], brushed: [0.36, 0.72], velvet: [0.86, 0.04], glitter: [0.32, 0.5], goldleaf: [0.38, 0.7], hotstamp: [0.28, 0.66], patina: [0.66, 0.32], obsidian: [0.16, 0.3], opal: [0.3, 0.22], leather: [0.72, 0.1], parchment: [0.86, 0.04], rosegold: [0.28, 0.68], brass: [0.34, 0.66], linen: [0.82, 0.06], wetgloss: [0.12, 0.4] })[shim] || [0.35, 0.5]; // b274: переливы НЕЖНЫЕ и ПРОЗРАЧНЫЕ — металличность/зеркальность снижены, материал пака больше не «зеркальный слиток»
+            const bodyTex = makePackTexture(pack);
+            bodyTex.anisotropy = PACK3D_ANISO; // b39
+            bodyTex.encoding = THREE.sRGBEncoding; // b40
+            const bodyMat = new THREE.MeshStandardMaterial({ map: bodyTex, roughness: shimM[0], metalness: shimM[1], bumpMap: bump, bumpScale: shim === 'matte' ? 0.05 : 0.02 });
+            const sideMat = new THREE.MeshStandardMaterial({ color: pal.mat, roughness: shim === 'matte' ? 0.7 : 0.3, metalness: shim === 'matte' ? 0.2 : 0.8, bumpMap: bump, bumpScale: 0.03 });
+            // пакет-подушка: сплющен в плоские приварные швы сверху и снизу, надут посередине
+            const bodyGeo = new THREE.BoxGeometry(2.05, 3.0, 0.34, 12, 30, 2);
+            const pa = bodyGeo.attributes.position;
+            for (let i = 0; i < pa.count; i++) {
+                const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i);
+                const t = Math.min(1, Math.abs(y) / 1.5);
+                // b39: к торцам толщина падает в НОЛЬ — тело не protrude сквозь приварной шов,
+                // иначе пересечение поверхностей давало z-fighting (мигающие полосы на шве)
+                const pinch = t < 0.86 ? 1 : Math.max(0, 1 - (t - 0.86) / 0.14);
+                const bulge = Math.max(0, (1 - (x / 1.025) * (x / 1.025)) * (1 - (y / 1.58) * (y / 1.58))) * pinch;
+                pa.setZ(i, z * pinch + (z >= 0 ? 1 : -1) * bulge * 0.2);
+            }
+            bodyGeo.computeVertexNormals();
+            const body = new THREE.Mesh(bodyGeo, [sideMat, sideMat, sideMat, sideMat, bodyMat, bodyMat]);
+            group.add(body);
+            // b43: фольга отражает студийные софтбоклы — интенсивность зависит от режима перелива
+            const env = makeStudioEnv();
+            const bodyEnv = shim === 'matte' ? 0.24 : (0.4 + shimM[1] * 0.5); // b274: нежнее отражения — фольга как тонкая плёнка, а не как полированный металл
+            scene.traverse(o => {
+                if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial) return;
+                o.material.envMap = env;
+                o.material.envMapIntensity = o.material === bodyMat ? bodyEnv : (o.material === sideMat ? 0.55 : 0.85);
+                o.material.needsUpdate = true;
+            });
+
+            // приварные швы сверху и снизу: той же ширины, что тело, с крупными зубцами — как на референсе
+            const crimpTex = makeCrimpTexture(false, pal);
+            const crimpTexB = makeCrimpTexture(true, pal);
+            crimpTex.encoding = THREE.sRGBEncoding; crimpTexB.encoding = THREE.sRGBEncoding; // b40
+            // b40: шов = группа из двух непрозрачных силуэтных плосностей (спереди и сзади тела).
+            // Тело пака целиком помещается между ними, поэтому протыкиваний и z-fighting нет,
+            // а задняя плоскость повёрнута, чтобы фольга с изнанки не выглядела зеркальной.
+            const sealFrontMat = (tex) => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.42, metalness: 0.55, bumpMap: bump, bumpScale: 0.02, side: THREE.FrontSide });
+            const sealBackMat = (tex) => new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.45, bumpMap: bump, bumpScale: 0.02, side: THREE.FrontSide });
+            const buildSeal = (teethDown, tex) => {
+                const grp = new THREE.Group();
+                const geo = makeSealGeometry(teethDown);
+                // b42: лёгкая волна фольги по шву — кримп выглядит как настоящий привар,
+                // а не как плоская открытка (амплитуда подобрана так, чтобы платы не встречались)
+                const sp = geo.attributes.position;
+                for (let i = 0; i < sp.count; i++) {
+                    const x = sp.getX(i);
+                    sp.setZ(i, sp.getZ(i) + Math.sin(x * 7.7) * 0.012 + Math.sin(x * 23.0) * 0.004);
+                }
+                sp.needsUpdate = true;
+                geo.computeVertexNormals();
+                const f = new THREE.Mesh(geo, sealFrontMat(tex)); f.position.z = 0.06;
+                const b = new THREE.Mesh(geo, sealBackMat(tex)); b.position.z = -0.06; b.rotation.y = Math.PI;
+                grp.add(f); grp.add(b);
+                return grp;
+            };
+            const top = buildSeal(false, crimpTex);
+            top.position.y = 1.675;
+            group.add(top);
+            const bottom = buildSeal(true, crimpTexB);
+            bottom.position.y = -1.675;
+            group.add(bottom);
+
+            // Карты вылетают из горловины
+            // b67: 4 карты — на телефоне сеткой 2×2 (весь экран), на широком экране линейкой
+            const mobLayout = (w / (h || 1)) < 0.95;
+            const cardMeshes = cards.map((c, i) => {
+                const backTex = cardBackTexShared(pack); backTex.anisotropy = PACK3D_ANISO; // b39
+                backTex.encoding = THREE.sRGBEncoding; // b40
+                const mat = new THREE.MeshStandardMaterial({ map: backTex, roughness: 0.35, metalness: 0.25, side: THREE.DoubleSide });
+                const m = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.25), mat);
+                m.position.set(0, 1.35, 0.2);
+                m.scale.setScalar(0.01);
+                m.visible = false;
+                m.userData = {
+                    targetX: mobLayout ? (i % 2 === 0 ? -1.15 : 1.15) : (i - 1.5) * 1.95,
+                    targetY: mobLayout ? (i < 2 ? 1.42 : -1.42) : 0.05,
+                    targetRotZ: mobLayout ? (i % 2 === 0 ? 0.07 : -0.07) : (i - 1.5) * -0.1,
+                    mobScale: mobLayout ? 0.8 : 1,
+                    delay: i * 0.2, whooshed: false
+                };
+                scene.add(m);
+                return m;
+            });
+
+            // b43: env и на швы, и на рубашки карт — единый студийный свет на всей сцене
+            scene.traverse(o => {
+                if (!o.isMesh || !o.material || !o.material.isMeshStandardMaterial || o.material.envMap) return;
+                o.material.envMap = env;
+                o.material.envMapIntensity = (o.material.map && o.material.map.__nxBack) ? 0.55 : 0.85;
+                o.material.needsUpdate = true;
+            });
+
+            // Искры фольги на линии разрыва
+            const P = 160;
+            const pGeo = new THREE.BufferGeometry();
+            const pos = new Float32Array(P * 3);
+            const vel = [];
+            for (let i = 0; i < P; i++) {
+                pos[i * 3] = (Math.random() - 0.5) * 2;
+                pos[i * 3 + 1] = 1.35;
+                pos[i * 3 + 2] = 0.2;
+                const a = Math.random() * Math.PI * 2;
+                const sp = 1.5 + Math.random() * 4;
+                vel.push(new THREE.Vector3(Math.cos(a) * sp, Math.abs(Math.sin(a)) * sp * 0.9 + 1.2, Math.sin(a) * sp * 0.4));
+            }
+            pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const pMat = new THREE.PointsMaterial({ color: pal.particle, size: 0.11, map: makeSparkTexture(), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            const points = new THREE.Points(pGeo, pMat);
+            points.visible = false;
+            scene.add(points);
+
+            pack3d = {
+                renderer, scene, camera, group, body, top, cardMeshes, points, pGeo, vel,
+                fit: mobLayout ? [2.0, 2.6, 10.2] : [3.7, 2.35, 9.6], // b67: рамка под 4 карты
+                phase: 'idle', startTime: performance.now(), burstStart: 0, tearStart: 0,
+                autoFinishAt: 0,
+                pack, cards, animId: null, clickHandler: null
+            };
+            pack3d.clickHandler = () => pack3dClick();
+            renderer.domElement.addEventListener('click', pack3d.clickHandler);
+            setPack3dHint('idle');
+            animatePack3D();
+        }
+
+        // b301: рубашка карты — своя текстура на каждый пак. Раньше одна текстура
+        // кэшировалась на всю сессию: вскрытие «Доктор Кто» после «Скуби-Ду» показывало
+        // чужие рубашки (в кэш ушла обложка первого открытого пака)
+        const sharedBackTexMap = {};
+        function cardBackTexShared(pack) {
+            const key = (pack && pack.id) ? String(pack.id) : '_generic';
+            if (!sharedBackTexMap[key]) sharedBackTexMap[key] = makeCardBackTexture(pack);
+            return sharedBackTexMap[key];
+        }
+
+        function pack3dClick() {
+            if (!pack3d) return;
+            if (pack3d.phase === 'idle') {
+                pack3d.phase = 'shaking';
+                pack3d.burstStart = performance.now();
+                SoundFX.play('whoosh');
+            } else if (pack3d.phase === 'done') {
+                finishPack3D();
+            }
+        }
+
+        function startPackTear() {
+            if (!pack3d) return;
+            pack3d.phase = 'tear';
+            pack3d.tearStart = performance.now();
+            SoundFX.play('tear');
+            setPack3dHint('tear');
+        }
+
+        function updateFoilBurst(B, dt, lifeT) {
+            const arr = B.pGeo.attributes.position.array;
+            for (let i = 0; i < B.vel.length; i++) {
+                B.vel[i].y -= 9.8 * dt;
+                arr[i * 3] += B.vel[i].x * dt;
+                arr[i * 3 + 1] += B.vel[i].y * dt;
+                arr[i * 3 + 2] += B.vel[i].z * dt;
+            }
+            B.pGeo.attributes.position.needsUpdate = true;
+            B.points.material.opacity = Math.max(0, 1 - lifeT * 0.9);
+        }
+
+        function setPack3dHint(phase) {
+            const hint = document.getElementById('pack3d-hint');
+            const skip = document.getElementById('pack3d-skip');
+            if (phase === 'idle') {
+                hint.innerHTML = '✨ Вскрываем пак… ✨';
+                hint.classList.add('animate-pulse');
+            } else if (phase === 'tear') {
+                hint.innerHTML = '<i class="fa-solid fa-scissors mr-1"></i> Рвём по линии отрыва…';
+                hint.classList.remove('animate-pulse');
+            } else if (phase === 'done') {
+                hint.innerHTML = 'Карты выпали! Переходим к стиранию фольги… <i class="fa-solid fa-arrow-right ml-1"></i>';
+            } else {
+                hint.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Вскрытие...';
+                hint.classList.remove('animate-pulse');
+            }
+            // метка сборки прямо в строке подсказки — видна на любом скриншоте окна вскрытия
+            if (skip) skip.style.visibility = (phase === 'burst' || phase === 'tear') ? 'hidden' : 'visible';
+        }
+
+        function animatePack3D() {
+            if (!pack3d) return;
+            pack3d.animId = requestAnimationFrame(animatePack3D);
+            // b62: кадр 3D-анимации в try/catch: потеря WebGL-контекста или сбой GPU
+            // не должны ронять исключение в цикл rAF (раньше — стопка тостов «Script error.»)
+            try {
+            const now = performance.now();
+            const B = pack3d;
+            const { renderer, scene, camera, group, body, top, cardMeshes, points } = B;
+            const T = (now - B.startTime) / 1000;
+
+            // Оторванный шов улетает и исчезает
+            if (B.tearStart) {
+                const tt = (now - B.tearStart) / 1000;
+                const k = Math.min(1, tt / 0.85);
+                top.position.y = 1.675 + (1 - Math.pow(1 - k, 2)) * 2.7;
+                top.position.x = k * 1.5;
+                top.rotation.z = -k * 2.3;
+                top.rotation.x = k * 1.2;
+                const op = Math.max(0, 1 - tt / 0.8);
+                // b40: шов теперь группа меша — гасим прозрачность обходом
+                top.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.material.opacity = op; o.material.depthWrite = op > 0.35; } });
+                top.visible = op > 0;
+            }
+
+            if (B.phase === 'idle') {
+                group.rotation.y = Math.sin(T * 0.8) * 0.55;
+                group.rotation.x = Math.sin(T * 0.5) * 0.08;
+                group.position.y = Math.sin(T * 1.2) * 0.15;
+                setPack3dHintIfNeeded('idle');
+                // пак вскрывается сам через ~1.2 сек (клик по-прежнему ускоряет)
+                if (T > 1.2) { B.phase = 'shaking'; B.burstStart = now; SoundFX.play('whoosh'); }
+            } else if (B.phase === 'shaking') {
+                const st = (now - B.burstStart) / 1000;
+                group.rotation.y = Math.sin(st * 45) * 0.16 * Math.min(1, st * 3);
+                group.position.x = Math.sin(st * 60) * 0.06;
+                group.scale.setScalar(1 + st * 0.18);
+                setPack3dHintIfNeeded('burst');
+                if (st > 0.55) startPackTear();
+            } else if (B.phase === 'tear') {
+                const tt = (now - B.tearStart) / 1000;
+                body.scale.setScalar(1 + Math.sin(Math.min(1, tt / 0.4) * Math.PI) * 0.045);
+                points.visible = tt < 1.0;
+                if (points.visible) updateFoilBurst(B, 1 / 60, tt);
+                if (tt > 0.42) { B.phase = 'burst'; B.burstStart = now; }
+            } else if (B.phase === 'burst') {
+                const bt = (now - B.burstStart) / 1000;
+                points.visible = bt < 0.7;
+                if (points.visible) updateFoilBurst(B, 1 / 60, (now - B.tearStart) / 1000);
+                cardMeshes.forEach(m => {
+                    const ct = bt - m.userData.delay;
+                    if (ct <= 0) return;
+                    if (!m.userData.whooshed) { m.userData.whooshed = true; SoundFX.play('whoosh'); }
+                    m.visible = true;
+                    const k = Math.min(1, ct / 0.75);
+                    const ease = 1 - Math.pow(1 - k, 3);
+                    m.position.x = m.userData.targetX * ease;
+                    // карты ВЫПАДАЮТ из горловины пакета сверху вниз
+                    m.position.y = (1 - ease) * 1.45 + (m.userData.targetY != null ? m.userData.targetY : 0.05) + Math.sin(ct * 2.2) * 0.09 * k;
+                    m.position.z = 0.4 + ease * 1.3;
+                    m.scale.setScalar((0.35 + ease * 0.7) * (m.userData.mobScale || 1));
+                    m.rotation.y = (1 - ease) * Math.PI * 2;
+                    m.rotation.z = m.userData.targetRotZ * ease;
+                });
+                if (bt > 2.1) { B.phase = 'done'; B.autoFinishAt = now + 800; setPack3dHint('done'); SoundFX.play('reveal'); }
+            } else if (B.phase === 'done') {
+                group.position.y = -1.5;
+                group.scale.setScalar(0.82);
+                cardMeshes.forEach((m, i) => {
+                    m.position.y = (m.userData.targetY != null ? m.userData.targetY : 0.05) + Math.sin(now / 600 + i * 1.7) * 0.09;
+                    m.rotation.z = m.userData.targetRotZ + Math.sin(now / 900 + i * 2.3) * 0.025;
+                });
+                // сразу после вскрытия — автоматом к стиранию фольги (клик не обязателен)
+                if (B.autoFinishAt && now >= B.autoFinishAt) {
+                    B.autoFinishAt = 0;
+                    finishPack3D();
+                    return;
+                }
+            }
+            renderer.render(scene, camera);
+            } catch (e) {
+                // b62: глючный кадр не должен убивать вскрытие — останавливаем 3D
+                // и передаём карты в обычный 2D-экран стирания фольги
+                try { console.error('animatePack3D', e); } catch (e2) {}
+                try { cancelAnimationFrame(pack3d.animId); } catch (e2) {}
+                try { finishPack3D(); } catch (e2) {}
+            }
+        }
+
+        let pack3dHintPhase = '';
+        function setPack3dHintIfNeeded(phase) {
+            if (pack3dHintPhase !== phase) { pack3dHintPhase = phase; setPack3dHint(phase); }
+        }
+
+        function finishPack3D() {
+            if (!pack3d) return;
+            nxTrail('3d-finish');
+            const { pack, cards, renderer, animId, clickHandler, scene } = pack3d;
+            cancelAnimationFrame(animId);
+            try { renderer.domElement.removeEventListener('click', clickHandler); } catch (e) {}
+            // b62: освобождаем память GPU/холстов СРАЗУ, а не «когда-нибудь» через GC:
+            // геометрии, материалы и их текстуры. На планшетах серия вскрытий раньше
+            // накапливала холсты и WebGL-контексты до предела памяти WebKit, после чего
+            // getContext('2d') возвращал null и сыпались ошибки.
+            try {
+                if (scene && scene.traverse) scene.traverse(o => {
+                    if (!o || !(o.isMesh || o.isPoints || o.isSprite)) return;
+                    try { if (o.geometry) o.geometry.dispose(); } catch (e) {}
+                    try {
+                        const mats = Array.isArray(o.material) ? o.material : [o.material];
+                        mats.forEach(m => {
+                            if (!m) return;
+                            if (m.map && m.map.dispose) m.map.dispose();
+                            if (m.bumpMap && m.bumpMap.dispose) m.bumpMap.dispose();
+                            m.dispose && m.dispose();
+                        });
+                    } catch (e) {}
+                });
+            } catch (e) {}
+            try { renderer.dispose(); } catch (e) {}
+            // b62: контекст WebGL отдаётся браузеру немедленно — лимит контекстов iOS не копится
+            try { renderer.forceContextLoss && renderer.forceContextLoss(); } catch (e) {}
+            const container = document.getElementById('pack3d-container');
+            if (container) container.innerHTML = '';
+            document.getElementById('modal-pack3d').classList.add('hidden');
+            pack3d = null;
+            pack3dHintPhase = '';
+            showUnboxingUI(pack, cards);
+        }
+
+        // Локальные фолбэки: если внешний скан недоступен (403/офлайн),
+        // карта получает красиво сгенерированную заглушку — никогда не пустует
+        const FB_CACHE = {};
+        function sdwPlaceholder(card) {
+            if (FB_CACHE[card.id]) return FB_CACHE[card.id];
+            let out = '';
+            try {
+                const W = 300, H = 400;
+                const cv = document.createElement('canvas');
+                cv.width = W; cv.height = H;
+                const g = cv.getContext('2d');
+                if (!g) return '';
+                const pal = {
+                    common: ['#475569', '#0f172a'], rare: ['#2563eb', '#1e1b4b'],
+                    epic: ['#9333ea', '#2e1065'], legendary: ['#f59e0b', '#451a03']
+                }[card.rarity] || ['#475569', '#0f172a'];
+                const grad = g.createLinearGradient(0, 0, 0, H);
+                grad.addColorStop(0, pal[0]); grad.addColorStop(1, pal[1]);
+                g.fillStyle = grad; g.fillRect(0, 0, W, H);
+                g.save(); g.translate(W / 2, 150);
+                g.fillStyle = 'rgba(255,255,255,.08)';
+                for (let i = 0; i < 12; i++) { g.rotate(Math.PI / 6); g.beginPath(); g.moveTo(0, 0); g.lineTo(-24, -260); g.lineTo(24, -260); g.closePath(); g.fill(); }
+                g.restore();
+                const icon = card.name.indexOf('Монстромания') === 0 ? '💀' : card.name.indexOf('Бойся') === 0 ? '👻' : '🗺️';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.font = '64px sans-serif';
+                g.fillText(icon, W / 2, 140);
+                g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 5; g.strokeRect(10, 10, W - 20, H - 20);
+                g.fillStyle = 'rgba(2,6,23,.8)';
+                roundRectCanvas(g, 24, 268, W - 48, 76, 14); g.fill();
+                g.fillStyle = '#ffffff'; g.font = 'bold 26px Inter, sans-serif';
+                wrapCanvasText(g, card.name, W / 2, 292, W - 80, 28);
+                g.fillStyle = '#fbbf24'; g.font = 'bold 15px Inter, sans-serif';
+                g.fillText('SCOOPY-DOO! WORLD OF MYSTERY', W / 2, 366);
+                out = cv.toDataURL('image/jpeg', 0.82);
+            } catch (e) { out = ''; }
+            FB_CACHE[card.id] = out;
+            return out;
+        }
+
+        // ------------------- b38: МЕДИА-ЗЕРКАЛО -------------------
+        // Стандартные арты и музыка лежали одним каталогом на archive.org. Хост лёг (или коллекцию
+        // удалили), копий в Wayback Machine нет — витрины стали «чёрными». Игра больше не зависит
+        // от одного хоста: создатель может один раз указать зеркало (любой хост, куда залит тот же
+        // набор файлов), оно сохраняется локально и разъезжается на всех игроков через комнату.
+        const MEDIA_DEAD_BASE = 'https://archive.org/download/poster-set/';
+        /*NX_EMBED_MEDIA_START*/
+        function nxMediaKey(u) { // имя файла из ссылки: без запроса, якоря, percent-кодов
+            try {
+                let t = String(u || '');
+                const q = t.lastIndexOf('?'); if (q >= 0) t = t.slice(0, q);
+                const h = t.lastIndexOf('#'); if (h >= 0) t = t.slice(0, h);
+                t = t.slice(t.lastIndexOf('/') + 1);
+                try { t = decodeURIComponent(t); } catch (e) {}
+                return t;
+            } catch (e) { return ''; }
+        }
+        const NX_EMBED_MEDIA = {"0001_doktor.jpg":"media/0001_doktor.jpg","0002_doktor.jpg":"media/0002_doktor.jpg","0003_doktor.jpg":"media/0003_doktor.jpg","0004_doktor.jpg":"media/0004_doktor.jpg","0005_doktor.jpg":"media/0005_doktor.jpg","0006_doktor.jpg":"media/0006_doktor.jpg","0007_doktor.jpg":"media/0007_doktor.jpg","0008_doktor.jpg":"media/0008_doktor.jpg","0009_doktor.jpg":"media/0009_doktor.jpg","0010_doktor.jpg":"media/0010_doktor.jpg","0011_doktor.jpg":"media/0011_doktor.jpg","0012_doktor.jpg":"media/0012_doktor.jpg","0013_doktor.jpg":"media/0013_doktor.jpg","0014_doktor.jpg":"media/0014_doktor.jpg","0015_doktor.jpg":"media/0015_doktor.jpg","0016_doktor.jpg":"media/0016_doktor.jpg","0017_doktor.jpg":"media/0017_doktor.jpg","0018_doktor.jpg":"media/0018_doktor.jpg","0019_doktor.jpg":"media/0019_doktor.jpg","0020_doktor.jpg":"media/0020_doktor.jpg","0021_doktor.jpg":"media/0021_doktor.jpg","0022_doktor.jpg":"media/0022_doktor.jpg","0023_doktor.jpg":"media/0023_doktor.jpg","0024_doktor.jpg":"media/0024_doktor.jpg","0025_doktor.jpg":"media/0025_doktor.jpg","0026_doktor.jpg":"media/0026_doktor.jpg","0027_doktor.jpg":"media/0027_doktor.jpg","0028_doktor.jpg":"media/0028_doktor.jpg","0029_doktor.jpg":"media/0029_doktor.jpg","0030_doktor.jpg":"media/0030_doktor.jpg","0031_doktor.jpg":"media/0031_doktor.jpg","0032_doktor.jpg":"media/0032_doktor.jpg","0033_doktor.jpg":"media/0033_doktor.jpg","0034_doktor.jpg":"media/0034_doktor.jpg","0035_doktor.jpg":"media/0035_doktor.jpg","0036_doktor.jpg":"media/0036_doktor.jpg","0037_doktor.jpg":"media/0037_doktor.jpg","0038_doktor.jpg":"media/0038_doktor.jpg","0039_doktor.jpg":"media/0039_doktor.jpg","0040_doktor.jpg":"media/0040_doktor.jpg","0041_doktor.jpg":"media/0041_doktor.jpg","0042_doktor.jpg":"media/0042_doktor.jpg","0043_doktor.jpg":"media/0043_doktor.jpg","0044_doktor.jpg":"media/0044_doktor.jpg","0045_doktor.jpg":"media/0045_doktor.jpg","0046_doktor.jpg":"media/0046_doktor.jpg","0047_doktor.jpg":"media/0047_doktor.jpg","0048_doktor.jpg":"media/0048_doktor.jpg","0049_doktor.jpg":"media/0049_doktor.jpg","0050_doktor.jpg":"media/0050_doktor.jpg","SD_World_of_Mystery.jpg":"media/SD_World_of_Mystery.jpg","ba249bef08b2357bf2130e321d8bb37f(1).jpg":"media/ba249bef08b2357bf2130e321d8bb37f(1).jpg","g0.jpg":"media/g0.jpg","s0.jpg":"media/s0.jpg","skubi1.jpg":"media/skubi1.jpg","skubi10.jpg":"media/skubi10.jpg","skubi11.jpg":"media/skubi11.jpg","skubi12.jpg":"media/skubi12.jpg","skubi13.jpg":"media/skubi13.jpg","skubi14.jpg":"media/skubi14.jpg","skubi15.jpg":"media/skubi15.jpg","skubi16.jpg":"media/skubi16.jpg","skubi17.jpg":"media/skubi17.jpg","skubi18.jpg":"media/skubi18.jpg","skubi19.jpg":"media/skubi19.jpg","skubi2.jpg":"media/skubi2.jpg","skubi3.jpg":"media/skubi3.jpg","skubi4.jpg":"media/skubi4.jpg","skubi5.jpg":"media/skubi5.jpg","skubi6.jpg":"media/skubi6.jpg","skubi7.jpg":"media/skubi7.jpg","skubi8.jpg":"media/skubi8.jpg","skubi9.jpg":"media/skubi9.jpg"}/*NX_EMBED_MEDIA_END*/
+        // ===== УРОВНИ АРТОВ (tools/build.py) =====
+        // Почему это главное исправление вылетов на телефоне:
+        // каталог карт приходит из облака комнаты и ссылается на media/card_*.png
+        // размером 1080x1920 и 1152x2048. Распакованная битмапа такого арта —
+        // 7.9 и 9.0 МБ СООТВЕТСТВЕННО, а показывается он в списке размером
+        // 76-176 css-пикселей. Стартовый экран держал ~63 МБ битмапов на 12
+        // картинках; полный альбом — сотни мегабайт. iOS/Android убивают WebView.
+        //
+        // Теперь три уровня:
+        //   media/t/  256px — списки, строки, компактные сетки  (~0.47 МБ в памяти)
+        //   media/t2/ 512px — обычные сетки, вскрытие пака       (~1.9 МБ в памяти)
+        //   мастер        — просмотр карты и вид «галерея» (1:1, как было)
+        // Полноразмерные арты не пережаты и не изменены: там, где карта
+        // показывается крупной, картинка осталась ровно той же.
+        /*NX_EMBED_THUMB_START*/
+        const NX_EMBED_THUMB = {"0000.png": "media/t/0000.webp", "0001_doktor.jpg": "media/t/0001_doktor.webp", "0002_doktor.jpg": "media/t/0002_doktor.webp", "0003_doktor.jpg": "media/t/0003_doktor.webp", "0004_doktor.jpg": "media/t/0004_doktor.webp", "0005_doktor.jpg": "media/t/0005_doktor.webp", "0006_doktor.jpg": "media/t/0006_doktor.webp", "0007_doktor.jpg": "media/t/0007_doktor.webp", "0008_doktor.jpg": "media/t/0008_doktor.webp", "0009_doktor.jpg": "media/t/0009_doktor.webp", "0010_doktor.jpg": "media/t/0010_doktor.webp", "0011_doktor.jpg": "media/t/0011_doktor.webp", "0012_doktor.jpg": "media/t/0012_doktor.webp", "0013_doktor.jpg": "media/t/0013_doktor.webp", "0014_doktor.jpg": "media/t/0014_doktor.webp", "0015_doktor.jpg": "media/t/0015_doktor.webp", "0016_doktor.jpg": "media/t/0016_doktor.webp", "0017_doktor.jpg": "media/t/0017_doktor.webp", "0018_doktor.jpg": "media/t/0018_doktor.webp", "0019_doktor.jpg": "media/t/0019_doktor.webp", "0020_doktor.jpg": "media/t/0020_doktor.webp", "0021_doktor.jpg": "media/t/0021_doktor.webp", "0022_doktor.jpg": "media/t/0022_doktor.webp", "0023_doktor.jpg": "media/t/0023_doktor.webp", "0024_doktor.jpg": "media/t/0024_doktor.webp", "0025_doktor.jpg": "media/t/0025_doktor.webp", "0026_doktor.jpg": "media/t/0026_doktor.webp", "0027_doktor.jpg": "media/t/0027_doktor.webp", "0028_doktor.jpg": "media/t/0028_doktor.webp", "0029_doktor.jpg": "media/t/0029_doktor.webp", "0030_doktor.jpg": "media/t/0030_doktor.webp", "0031_doktor.jpg": "media/t/0031_doktor.webp", "0032_doktor.jpg": "media/t/0032_doktor.webp", "0033_doktor.jpg": "media/t/0033_doktor.webp", "0034_doktor.jpg": "media/t/0034_doktor.webp", "0035_doktor.jpg": "media/t/0035_doktor.webp", "0036_doktor.jpg": "media/t/0036_doktor.webp", "0037_doktor.jpg": "media/t/0037_doktor.webp", "0038_doktor.jpg": "media/t/0038_doktor.webp", "0039_doktor.jpg": "media/t/0039_doktor.webp", "0040_doktor.jpg": "media/t/0040_doktor.webp", "0041_doktor.jpg": "media/t/0041_doktor.webp", "0042_doktor.jpg": "media/t/0042_doktor.webp", "0043_doktor.jpg": "media/t/0043_doktor.webp", "0044_doktor.jpg": "media/t/0044_doktor.webp", "0045_doktor.jpg": "media/t/0045_doktor.webp", "0046_doktor.jpg": "media/t/0046_doktor.webp", "0047_doktor.jpg": "media/t/0047_doktor.webp", "0048_doktor.jpg": "media/t/0048_doktor.webp", "0049_doktor.jpg": "media/t/0049_doktor.webp", "0050_doktor.jpg": "media/t/0050_doktor.webp", "SD_World_of_Mystery.jpg": "media/t/SD_World_of_Mystery.webp", "ba249bef08b2357bf2130e321d8bb37f(1).jpg": "media/t/ba249bef08b2357bf2130e321d8bb37f(1).webp", "card_muzvcuya_0050_doktor.png": "media/t/card_muzvcuya_0050_doktor.webp", "card_muzvnk63_skubi1.jpg": "media/t/card_muzvnk63_skubi1.webp", "card_muzvr7gc_skubi2.jpg": "media/t/card_muzvr7gc_skubi2.webp", "card_muzvvdio_skubi3.jpg": "media/t/card_muzvvdio_skubi3.webp", "card_muzvzxe4_skubi4.jpg": "media/t/card_muzvzxe4_skubi4.webp", "card_muzw8v0i_skubi5.jpg": "media/t/card_muzw8v0i_skubi5.webp", "card_muzwc8fd_skubi6.jpg": "media/t/card_muzwc8fd_skubi6.webp", "card_muzwhb9h_0.jpg": "media/t/card_muzwhb9h_0.webp", "card_muzwk4ue_0000.png": "media/t/card_muzwk4ue_0000.webp", "card_muzwniik_skubi7.jpg": "media/t/card_muzwniik_skubi7.webp", "card_muzwpji2_skubi8.jpg": "media/t/card_muzwpji2_skubi8.webp", "card_muzwrtvn_skubi9.jpg": "media/t/card_muzwrtvn_skubi9.webp", "card_muzwtmzo_skubi10.jpg": "media/t/card_muzwtmzo_skubi10.webp", "card_muzwvpgw_skubi11.jpg": "media/t/card_muzwvpgw_skubi11.webp", "card_muzwzjp5_skubi12.jpg": "media/t/card_muzwzjp5_skubi12.webp", "card_muzx1boh_skubi13.jpg": "media/t/card_muzx1boh_skubi13.webp", "card_muzx3u8z_skubi14.jpg": "media/t/card_muzx3u8z_skubi14.webp", "card_muzxcph0_skubi15.jpg": "media/t/card_muzxcph0_skubi15.webp", "card_muzxkgao_skubi16.jpg": "media/t/card_muzxkgao_skubi16.webp", "card_muzxmc50_skubi17.jpg": "media/t/card_muzxmc50_skubi17.webp", "card_muzxsfhr_skubi18.jpg": "media/t/card_muzxsfhr_skubi18.webp", "card_muzxwg9u_skubi19.jpg": "media/t/card_muzxwg9u_skubi19.webp", "card_muzxzp0o_skubi20.jpg": "media/t/card_muzxzp0o_skubi20.webp", "card_muzy24qz_skubi21.jpg": "media/t/card_muzy24qz_skubi21.webp", "card_muzy4pvs_skubi22.jpg": "media/t/card_muzy4pvs_skubi22.webp", "card_mv01j2js_skubi23.jpg": "media/t/card_mv01j2js_skubi23.webp", "card_mv024cto_skubi24.jpg": "media/t/card_mv024cto_skubi24.webp", "card_mv028971_skubi25.jpg": "media/t/card_mv028971_skubi25.webp", "card_mv02aqvs_skubi26.jpg": "media/t/card_mv02aqvs_skubi26.webp", "card_mv02c5vk_skubi27.jpg": "media/t/card_mv02c5vk_skubi27.webp", "card_mv02epd8_0001_doktor.png": "media/t/card_mv02epd8_0001_doktor.webp", "card_mv02gn3o_0002_doktor.png": "media/t/card_mv02gn3o_0002_doktor.webp", "card_mv02hw33_0003_doktor.png": "media/t/card_mv02hw33_0003_doktor.webp", "card_mv02k2r1_0004_doktor.png": "media/t/card_mv02k2r1_0004_doktor.webp", "card_mv02lfpw_0005_doktor.png": "media/t/card_mv02lfpw_0005_doktor.webp", "card_mv02n6ug_0006_doktor.png": "media/t/card_mv02n6ug_0006_doktor.webp", "card_mv02p02d_0007_doktor.png": "media/t/card_mv02p02d_0007_doktor.webp", "card_mv02qsdi_0008_doktor.png": "media/t/card_mv02qsdi_0008_doktor.webp", "card_mv02rwa0_0009_doktor.png": "media/t/card_mv02rwa0_0009_doktor.webp", "card_mv02tj4k_0010_doktor.png": "media/t/card_mv02tj4k_0010_doktor.webp", "card_mv02vlko_0011_doktor.png": "media/t/card_mv02vlko_0011_doktor.webp", "card_mv02x4ea_0012_doktor.png": "media/t/card_mv02x4ea_0012_doktor.webp", "card_mv02yolf_0013_doktor.png": "media/t/card_mv02yolf_0013_doktor.webp", "card_mv03056k_0014_doktor.png": "media/t/card_mv03056k_0014_doktor.webp", "card_mv031qyl_0015_doktor.png": "media/t/card_mv031qyl_0015_doktor.webp", "card_mv03397p_0016_doktor.png": "media/t/card_mv03397p_0016_doktor.webp", "card_mv034p2t_0017_doktor.png": "media/t/card_mv034p2t_0017_doktor.webp", "card_mv035tia_0018_doktor.png": "media/t/card_mv035tia_0018_doktor.webp", "card_mv037awj_0019_doktor.png": "media/t/card_mv037awj_0019_doktor.webp", "card_mv039aan_0020_doktor.png": "media/t/card_mv039aan_0020_doktor.webp", "card_mv03atgv_0021_doktor.png": "media/t/card_mv03atgv_0021_doktor.webp", "card_mv03c6fb_0022_doktor.png": "media/t/card_mv03c6fb_0022_doktor.webp", "card_mv03dv9y_0023_doktor.png": "media/t/card_mv03dv9y_0023_doktor.webp", "card_mv03f9ku_0024_doktor.png": "media/t/card_mv03f9ku_0024_doktor.webp", "card_mv03gtyo_0025_doktor.png": "media/t/card_mv03gtyo_0025_doktor.webp", "card_mv03ia51_0026_doktor.png": "media/t/card_mv03ia51_0026_doktor.webp", "card_mv03kch7_0027_doktor.png": "media/t/card_mv03kch7_0027_doktor.webp", "card_mv03ltbx_0028_doktor.jpg": "media/t/card_mv03ltbx_0028_doktor.webp", "card_mv03mx65_0029_doktor.jpg": "media/t/card_mv03mx65_0029_doktor.webp", "card_mv03odvz_0030_doktor.jpg": "media/t/card_mv03odvz_0030_doktor.webp", "card_mv03pupi_0031_doktor.png": "media/t/card_mv03pupi_0031_doktor.webp", "card_mv03rbi8_0032_doktor.png": "media/t/card_mv03rbi8_0032_doktor.webp", "card_mv03t53o_0033_doktor.jpg": "media/t/card_mv03t53o_0033_doktor.webp", "card_mv03uh9d_0034_doktor.png": "media/t/card_mv03uh9d_0034_doktor.webp", "card_mv03vsaa_0035_doktor.jpg": "media/t/card_mv03vsaa_0035_doktor.webp", "card_mv03xkx9_0036_doktor.png": "media/t/card_mv03xkx9_0036_doktor.webp", "card_mv03zohb_0037_doktor.png": "media/t/card_mv03zohb_0037_doktor.webp", "card_mv041pwq_0038_doktor.jpg": "media/t/card_mv041pwq_0038_doktor.webp", "card_mv0437ay_0039_doktor.png": "media/t/card_mv0437ay_0039_doktor.webp", "card_mv0458cw_0040_doktor.png": "media/t/card_mv0458cw_0040_doktor.webp", "card_mv046yk5_0041_doktor.png": "media/t/card_mv046yk5_0041_doktor.webp", "card_mv0489pg_0042_doktor.png": "media/t/card_mv0489pg_0042_doktor.webp", "card_mv049rop_0043_doktor.png": "media/t/card_mv049rop_0043_doktor.webp", "card_mv04bwkv_0044_doktor.png": "media/t/card_mv04bwkv_0044_doktor.webp", "card_mv04dqdw_0045_doktor.png": "media/t/card_mv04dqdw_0045_doktor.webp", "card_mv04fox3_0046_doktor.png": "media/t/card_mv04fox3_0046_doktor.webp", "card_mv04h5cq_0047_doktor.png": "media/t/card_mv04h5cq_0047_doktor.webp", "card_mv04j416_0048_doktor.png": "media/t/card_mv04j416_0048_doktor.webp", "card_mv04m4zo_0049_doktor.png": "media/t/card_mv04m4zo_0049_doktor.webp", "card_mv0syawz_0000_Airbrush-image-extender.png": "media/t/card_mv0syawz_0000_Airbrush-image-extender.webp", "card_mv0ugkwt_s0.jpg": "media/t/card_mv0ugkwt_s0.webp", "card_mv0umzxb_Airbrush-image-extender.jpg": "media/t/card_mv0umzxb_Airbrush-image-extender.webp", "g0.jpg": "media/t/g0.webp", "s0.jpg": "media/t/s0.webp", "skubi1.jpg": "media/t/skubi1.webp", "skubi10.jpg": "media/t/skubi10.webp", "skubi11.jpg": "media/t/skubi11.webp", "skubi12.jpg": "media/t/skubi12.webp", "skubi13.jpg": "media/t/skubi13.webp", "skubi14.jpg": "media/t/skubi14.webp", "skubi15.jpg": "media/t/skubi15.webp", "skubi16.jpg": "media/t/skubi16.webp", "skubi17.jpg": "media/t/skubi17.webp", "skubi18.jpg": "media/t/skubi18.webp", "skubi19.jpg": "media/t/skubi19.webp", "skubi2.jpg": "media/t/skubi2.webp", "skubi3.jpg": "media/t/skubi3.webp", "skubi4.jpg": "media/t/skubi4.webp", "skubi5.jpg": "media/t/skubi5.webp", "skubi6.jpg": "media/t/skubi6.webp", "skubi7.jpg": "media/t/skubi7.webp", "skubi8.jpg": "media/t/skubi8.webp", "skubi9.jpg": "media/t/skubi9.webp"};
+        const NX_EMBED_THUMB_MID = {"0000.png": "media/t2/0000.webp", "card_muzvcuya_0050_doktor.png": "media/t2/card_muzvcuya_0050_doktor.webp", "card_muzvnk63_skubi1.jpg": "media/t2/card_muzvnk63_skubi1.webp", "card_muzvr7gc_skubi2.jpg": "media/t2/card_muzvr7gc_skubi2.webp", "card_muzvvdio_skubi3.jpg": "media/t2/card_muzvvdio_skubi3.webp", "card_muzvzxe4_skubi4.jpg": "media/t2/card_muzvzxe4_skubi4.webp", "card_muzw8v0i_skubi5.jpg": "media/t2/card_muzw8v0i_skubi5.webp", "card_muzwc8fd_skubi6.jpg": "media/t2/card_muzwc8fd_skubi6.webp", "card_muzwhb9h_0.jpg": "media/t2/card_muzwhb9h_0.webp", "card_muzwk4ue_0000.png": "media/t2/card_muzwk4ue_0000.webp", "card_muzwniik_skubi7.jpg": "media/t2/card_muzwniik_skubi7.webp", "card_muzwpji2_skubi8.jpg": "media/t2/card_muzwpji2_skubi8.webp", "card_muzwrtvn_skubi9.jpg": "media/t2/card_muzwrtvn_skubi9.webp", "card_muzwtmzo_skubi10.jpg": "media/t2/card_muzwtmzo_skubi10.webp", "card_muzwvpgw_skubi11.jpg": "media/t2/card_muzwvpgw_skubi11.webp", "card_muzwzjp5_skubi12.jpg": "media/t2/card_muzwzjp5_skubi12.webp", "card_muzx1boh_skubi13.jpg": "media/t2/card_muzx1boh_skubi13.webp", "card_muzx3u8z_skubi14.jpg": "media/t2/card_muzx3u8z_skubi14.webp", "card_muzxcph0_skubi15.jpg": "media/t2/card_muzxcph0_skubi15.webp", "card_muzxkgao_skubi16.jpg": "media/t2/card_muzxkgao_skubi16.webp", "card_muzxmc50_skubi17.jpg": "media/t2/card_muzxmc50_skubi17.webp", "card_muzxsfhr_skubi18.jpg": "media/t2/card_muzxsfhr_skubi18.webp", "card_muzxwg9u_skubi19.jpg": "media/t2/card_muzxwg9u_skubi19.webp", "card_muzxzp0o_skubi20.jpg": "media/t2/card_muzxzp0o_skubi20.webp", "card_muzy24qz_skubi21.jpg": "media/t2/card_muzy24qz_skubi21.webp", "card_muzy4pvs_skubi22.jpg": "media/t2/card_muzy4pvs_skubi22.webp", "card_mv01j2js_skubi23.jpg": "media/t2/card_mv01j2js_skubi23.webp", "card_mv024cto_skubi24.jpg": "media/t2/card_mv024cto_skubi24.webp", "card_mv028971_skubi25.jpg": "media/t2/card_mv028971_skubi25.webp", "card_mv02aqvs_skubi26.jpg": "media/t2/card_mv02aqvs_skubi26.webp", "card_mv02c5vk_skubi27.jpg": "media/t2/card_mv02c5vk_skubi27.webp", "card_mv02epd8_0001_doktor.png": "media/t2/card_mv02epd8_0001_doktor.webp", "card_mv02gn3o_0002_doktor.png": "media/t2/card_mv02gn3o_0002_doktor.webp", "card_mv02hw33_0003_doktor.png": "media/t2/card_mv02hw33_0003_doktor.webp", "card_mv02k2r1_0004_doktor.png": "media/t2/card_mv02k2r1_0004_doktor.webp", "card_mv02lfpw_0005_doktor.png": "media/t2/card_mv02lfpw_0005_doktor.webp", "card_mv02n6ug_0006_doktor.png": "media/t2/card_mv02n6ug_0006_doktor.webp", "card_mv02p02d_0007_doktor.png": "media/t2/card_mv02p02d_0007_doktor.webp", "card_mv02qsdi_0008_doktor.png": "media/t2/card_mv02qsdi_0008_doktor.webp", "card_mv02rwa0_0009_doktor.png": "media/t2/card_mv02rwa0_0009_doktor.webp", "card_mv02tj4k_0010_doktor.png": "media/t2/card_mv02tj4k_0010_doktor.webp", "card_mv02vlko_0011_doktor.png": "media/t2/card_mv02vlko_0011_doktor.webp", "card_mv02x4ea_0012_doktor.png": "media/t2/card_mv02x4ea_0012_doktor.webp", "card_mv02yolf_0013_doktor.png": "media/t2/card_mv02yolf_0013_doktor.webp", "card_mv03056k_0014_doktor.png": "media/t2/card_mv03056k_0014_doktor.webp", "card_mv031qyl_0015_doktor.png": "media/t2/card_mv031qyl_0015_doktor.webp", "card_mv03397p_0016_doktor.png": "media/t2/card_mv03397p_0016_doktor.webp", "card_mv034p2t_0017_doktor.png": "media/t2/card_mv034p2t_0017_doktor.webp", "card_mv035tia_0018_doktor.png": "media/t2/card_mv035tia_0018_doktor.webp", "card_mv037awj_0019_doktor.png": "media/t2/card_mv037awj_0019_doktor.webp", "card_mv039aan_0020_doktor.png": "media/t2/card_mv039aan_0020_doktor.webp", "card_mv03atgv_0021_doktor.png": "media/t2/card_mv03atgv_0021_doktor.webp", "card_mv03c6fb_0022_doktor.png": "media/t2/card_mv03c6fb_0022_doktor.webp", "card_mv03dv9y_0023_doktor.png": "media/t2/card_mv03dv9y_0023_doktor.webp", "card_mv03f9ku_0024_doktor.png": "media/t2/card_mv03f9ku_0024_doktor.webp", "card_mv03gtyo_0025_doktor.png": "media/t2/card_mv03gtyo_0025_doktor.webp", "card_mv03ia51_0026_doktor.png": "media/t2/card_mv03ia51_0026_doktor.webp", "card_mv03kch7_0027_doktor.png": "media/t2/card_mv03kch7_0027_doktor.webp", "card_mv03ltbx_0028_doktor.jpg": "media/t2/card_mv03ltbx_0028_doktor.webp", "card_mv03mx65_0029_doktor.jpg": "media/t2/card_mv03mx65_0029_doktor.webp", "card_mv03odvz_0030_doktor.jpg": "media/t2/card_mv03odvz_0030_doktor.webp", "card_mv03pupi_0031_doktor.png": "media/t2/card_mv03pupi_0031_doktor.webp", "card_mv03rbi8_0032_doktor.png": "media/t2/card_mv03rbi8_0032_doktor.webp", "card_mv03t53o_0033_doktor.jpg": "media/t2/card_mv03t53o_0033_doktor.webp", "card_mv03uh9d_0034_doktor.png": "media/t2/card_mv03uh9d_0034_doktor.webp", "card_mv03vsaa_0035_doktor.jpg": "media/t2/card_mv03vsaa_0035_doktor.webp", "card_mv03xkx9_0036_doktor.png": "media/t2/card_mv03xkx9_0036_doktor.webp", "card_mv03zohb_0037_doktor.png": "media/t2/card_mv03zohb_0037_doktor.webp", "card_mv041pwq_0038_doktor.jpg": "media/t2/card_mv041pwq_0038_doktor.webp", "card_mv0437ay_0039_doktor.png": "media/t2/card_mv0437ay_0039_doktor.webp", "card_mv0458cw_0040_doktor.png": "media/t2/card_mv0458cw_0040_doktor.webp", "card_mv046yk5_0041_doktor.png": "media/t2/card_mv046yk5_0041_doktor.webp", "card_mv0489pg_0042_doktor.png": "media/t2/card_mv0489pg_0042_doktor.webp", "card_mv049rop_0043_doktor.png": "media/t2/card_mv049rop_0043_doktor.webp", "card_mv04bwkv_0044_doktor.png": "media/t2/card_mv04bwkv_0044_doktor.webp", "card_mv04dqdw_0045_doktor.png": "media/t2/card_mv04dqdw_0045_doktor.webp", "card_mv04fox3_0046_doktor.png": "media/t2/card_mv04fox3_0046_doktor.webp", "card_mv04h5cq_0047_doktor.png": "media/t2/card_mv04h5cq_0047_doktor.webp", "card_mv04j416_0048_doktor.png": "media/t2/card_mv04j416_0048_doktor.webp", "card_mv04m4zo_0049_doktor.png": "media/t2/card_mv04m4zo_0049_doktor.webp", "card_mv0syawz_0000_Airbrush-image-extender.png": "media/t2/card_mv0syawz_0000_Airbrush-image-extender.webp", "card_mv0umzxb_Airbrush-image-extender.jpg": "media/t2/card_mv0umzxb_Airbrush-image-extender.webp"};
+        /*NX_EMBED_THUMB_END*/
+        function nxThumbFor(u, tier) {
+            try {
+                const s = String(u == null ? '' : u);
+                if (!s) return '';
+                const full = mediaUrl(s);              // уже с учётом зеркала и NX_EMBED_MEDIA
+                if (!full) return '';
+                const map = (tier === 'mid') ? NX_EMBED_THUMB_MID : NX_EMBED_THUMB;
+                const rel = map[nxMediaKey(full)] || map[nxMediaKey(s)];
+                if (!rel) return '';                   // для этого файла миниатюры нет
+                if (full.indexOf('http') !== 0) return rel;   // локальный арт — путь относительный
+                // облачная/зеркальная ссылка: миниатюра лежит рядом с мастером,
+                // подменяем только каталог media/ -> media/t/ (или media/t2/)
+                const i = full.lastIndexOf('/media/');
+                if (i < 0) return rel;
+                return full.slice(0, i + 7) + rel.slice(6);
+            } catch (e) { return ''; }
+        }
+        function mediaThumb(u) {                       // 256px
+            return nxThumbFor(u, 'small') || mediaUrl(u);
+        }
+        function mediaThumbMid(u) {                    // 512px, иначе мелкая, иначе мастер
+            return nxThumbFor(u, 'mid') || nxThumbFor(u, 'small') || mediaUrl(u);
+        }
+
+        function mediaBase() { try { return String(LS.getItem('nexus_media_base') || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; } }
+        function mediaBaseSet(v, fromRoom) {
+            try {
+                if (v) LS.setItem('nexus_media_base', String(v).trim().replace(/\/+$/, '')); else LS.removeItem('nexus_media_base');
+                if (fromRoom) LS.setItem('nexus_media_base_room', '1'); else LS.removeItem('nexus_media_base_room');
+            } catch (e) {}
+        }
+        function mediaBaseFromRoom() { try { return LS.getItem('nexus_media_base_room') === '1'; } catch (e) { return false; } }
+        // Единая точка перезаписи ссылок: всё, что смотрит на мёртвый каталог, уходит на зеркало
+        function mediaUrl(u) {
+            const s = String(u == null ? '' : u);
+            if (!s) return s;
+            const b = mediaBase();
+            if (b && s.indexOf(MEDIA_DEAD_BASE) === 0) return b + '/' + s.slice(MEDIA_DEAD_BASE.length);
+            const nxEm = NX_EMBED_MEDIA[nxMediaKey(s)]; if (nxEm) return nxEm; // author cards: art is embedded by filename
+            return s;
+        }
+        // ============ b130: МГНОВЕННЫЕ КАРТИНКИ — фоновая предзагрузка, пользователь не видит загрузку ============
+        const IMG_PRELOADED = new Set();
+        let imgQueue = [], imgRunning = 0;
+        // b251: 4 потока на мобильной сети забивали канал целиком — витрина и
+        // альбомы стояли без картинок. Скромнее: 2 потока, в save-data/2G — один.
+        const NX_CONN = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+        const NX_SLOW = !!(NX_CONN && (NX_CONN.saveData || /(^|-)2g/.test(NX_CONN.effectiveType || '')));
+        const IMG_CONC = NX_SLOW ? 1 : 2; // параллельно, чтобы не забивать канал
+        function imgPreloadOne(url) {
+            return new Promise(res => {
+                const done = () => { IMG_PRELOADED.add(url); res(); };
+                const warm = (s) => {
+                    const im = new Image();
+                    im.decoding = 'async';
+                    im.onload = () => { try { if (im.decode) im.decode().then(done, done); else done(); } catch (e) { done(); } };
+                    im.onerror = done;
+                    im.src = s;
+                };
+                // b180: арт уже в постоянном кэше — сеть не трогаем вовсе
+                try {
+                    imgCacheObjUrl(url).then(ou => {
+                        if (ou) { warm(ou); return; }
+                        imgCacheStoreFromNetwork(url).then(ou2 => warm(ou2 || url), () => warm(url));
+                    }).catch(() => warm(url));
+                } catch (e) { warm(url); }
+            });
+        }
+        function imgPump() {
+            while (imgRunning < IMG_CONC && imgQueue.length) {
+                const u = imgQueue.shift();
+                imgRunning++;
+                imgPreloadOne(u).then(() => { imgRunning--; imgPump(); });
+            }
+        }
+        function preloadImages(urls, tier) {
+            (urls || []).forEach(raw => {
+                if (!raw || typeof raw !== 'string') return;
+                // tier='full' — греть полный арт (нужно только для просмотра карты).
+                // По умолчанию греем миниатюру 256px: полный арт облачного каталога
+                // весит 2-4 МБ и показывается в списках размером 30-180 px.
+                let u = mediaUrl(raw);
+                if (tier !== 'full') { const t = mediaThumb(raw); if (t) u = t; }
+                if (!u || u.indexOf('http') !== 0 || IMG_PRELOADED.has(u) || imgQueue.indexOf(u) >= 0) return;
+                imgQueue.push(u);
+            });
+            imgPump();
+        }
+        function preloadAllGameImages() {
+            const urls = [], rest = [];
+            (state.packs || []).forEach(p => urls.push(p.image));          // постеры витрины — первыми
+            (state.cards || []).forEach(c => {                              // затем собранные карты, потом остальные
+                if (state.collection && state.collection[c.id]) urls.push(c.image); else rest.push(c.image);
+            });
+            if (NX_SLOW) rest.length = 0; // b251: на эконом-канале — только обложки и собранное
+            preloadImages(urls.concat(rest));
+        }
+        function startImagePreload() {
+            const run = () => { try { preloadAllGameImages(); } catch (e) {} };
+            try {
+                if ('requestIdleCallback' in window) requestIdleCallback(run, { timeout: 4000 });
+                else setTimeout(run, 2000);
+            } catch (e) { setTimeout(run, 2000); }
+        }
+        function injectPosterPreloads() {
+            try {
+                (state.packs || []).slice(0, 6).forEach(p => {
+                    if (!p.image) return;
+                    const u = mediaThumbMid(p.image) || mediaUrl(p.image);
+                    if (IMG_OBJ.has(u)) return; // b180: постер уже в постоянном кэше — preload не нужен
+                    const l = document.createElement('link');
+                    l.rel = 'preload'; l.as = 'image'; l.href = u;
+                    document.head.appendChild(l);
+                });
+            } catch (e) {}
+        }
+
+        // ============ b180: ПОСТОЯННЫЙ КЭШ КАРТИНОК (IndexedDB) ============
+        // Жалоба игроков: арты каждый раз «прогружаются» заново — HTTP-кэш браузера ненадёжен
+        // (мобильные, чистки, revalidate), а предзагрузка b130 живёт только до перезахода.
+        // Теперь скачанные картинки хранятся блобами в IndexedDB: при следующем визите
+        // <img> мгновенно подменяется на локальный blob:URL — без единого сетевого запроса.
+        const IMG_DB_NAME = 'nx-img-cache', IMG_DB_STORE = 'img';
+        const IMG_CACHE_MAX_BYTES = 120 * 1024 * 1024; // LRU-лимит постоянного кэша ~120 МБ
+        const IMG_CACHE_MAX_BLOB = 8 * 1024 * 1024;    // одиночные файлы крупнее 8 МБ не храним
+        const IMG_OBJ = new Map();   // url -> blob:URL (память сессии, для мгновенной подмены)
+        const IMG_OBJ_MAX = 40;      // b306: было 100 — на слабых WebView это лишний расход памяти; сколько blob:URL держим в памяти одновременноо
+        const IMG_FAIL = new Set();  // URL, не отдавшие копию (CORS/сеть) — не мучаем повторно
+        let imgSaving = new Set();   // прямо сейчас сохраняем
+        let imgDbPromise = null;
+        function imgDb() {
+            if (!('indexedDB' in window)) return Promise.resolve(null);
+            if (!imgDbPromise) {
+                imgDbPromise = new Promise(res => {
+                    let done = false;
+                    const fin = db => { if (!done) { done = true; res(db); } };
+                    try {
+                        const rq = indexedDB.open(IMG_DB_NAME, 1);
+                        rq.onupgradeneeded = () => { try { const db = rq.result; if (!db.objectStoreNames.contains(IMG_DB_STORE)) db.createObjectStore(IMG_DB_STORE); } catch (e) {} };
+                        rq.onsuccess = () => fin(rq.result);
+                        rq.onerror = () => fin(null);
+                        rq.onblocked = () => fin(null);
+                        setTimeout(() => fin(null), 4000); // кэш не должен блокировать игру
+                    } catch (e) { fin(null); }
+                });
+            }
+            return imgDbPromise;
+        }
+        function imgCacheGetBlob(url) {
+            return imgDb().then(db => new Promise(res => {
+                if (!db) return res(null);
+                try {
+                    const rq = db.transaction(IMG_DB_STORE, 'readonly').objectStore(IMG_DB_STORE).get(url);
+                    rq.onsuccess = () => res(rq.result && rq.result.blob ? rq.result.blob : null);
+                    rq.onerror = () => res(null);
+                } catch (e) { res(null); }
+            })).catch(() => null);
+        }
+        function imgCachePut(url, blob) {
+            return imgDb().then(db => new Promise(res => {
+                if (!db || !blob || !blob.size) return res(false);
+                try {
+                    const tx = db.transaction(IMG_DB_STORE, 'readwrite');
+                    tx.objectStore(IMG_DB_STORE).put({ blob: blob, ts: Date.now(), size: blob.size }, url);
+                    tx.oncomplete = () => { imgCacheTrim(db); res(true); };
+                    tx.onerror = () => res(false);
+                    tx.onabort = () => res(false);
+                } catch (e) { res(false); }
+            })).catch(() => false);
+        }
+        function imgCacheTrim(db) { // LRU-чистка: если кэш разросся — удаляем самое старое
+            try {
+                const st = db.transaction(IMG_DB_STORE, 'readwrite').objectStore(IMG_DB_STORE);
+                const items = [];
+                const cur = st.openCursor();
+                cur.onsuccess = () => {
+                    try {
+                        const c = cur.result;
+                        if (c) { const v = c.value || {}; items.push({ key: c.key, size: v.size || 0, ts: v.ts || 0 }); c.continue(); return; }
+                        let total = items.reduce((s, x) => s + x.size, 0);
+                        if (total <= IMG_CACHE_MAX_BYTES) return;
+                        items.sort((a, b) => a.ts - b.ts); // старейшие первыми
+                        for (const it of items) {
+                            if (total <= IMG_CACHE_MAX_BYTES) break;
+                            try { st.delete(it.key); } catch (e) {}
+                            total -= it.size;
+                        }
+                    } catch (e) {}
+                };
+                cur.onerror = () => {};
+            } catch (e) {}
+        }
+        function imgCacheTouch(url, ou) { // LRU «памяти»: свежая запись в конец, хвост отзываем
+            try {
+                IMG_OBJ.delete(url); IMG_OBJ.set(url, ou);
+                while (IMG_OBJ.size > IMG_OBJ_MAX) {
+                    const oldest = IMG_OBJ.keys().next().value;
+                    const old = IMG_OBJ.get(oldest);
+                    IMG_OBJ.delete(oldest);
+                    try { URL.revokeObjectURL(old); } catch (e) {}
+                }
+            } catch (e) {}
+        }
+        function imgCacheObjUrl(url) { // Promise<string|null> — blob:URL закэшированной картинки
+            const hit = IMG_OBJ.get(url);
+            if (hit) { imgCacheTouch(url, hit); return Promise.resolve(hit); }
+            return imgCacheGetBlob(url).then(blob => {
+                if (!blob) return null;
+                try { const ou = URL.createObjectURL(blob); imgCacheTouch(url, ou); return ou; } catch (e) { return null; }
+            }).catch(() => null);
+        }
+        function imgCacheStoreFromNetwork(url) { // скачать копию в постоянный кэш (fetch из HTTP-кэша)
+            const mem = IMG_OBJ.get(url);
+            if (mem) return Promise.resolve(mem);
+            if (!url || String(url).indexOf('http') !== 0) return Promise.resolve(null);
+            if (!('fetch' in window) || IMG_FAIL.has(url) || imgSaving.has(url)) return Promise.resolve(null);
+            imgSaving.add(url);
+            return fetch(url, { cache: 'force-cache', credentials: 'omit' })
+                .then(r => { if (!r || !r.ok) throw new Error('bad'); return r.blob(); })
+                .then(blob => {
+                    imgSaving.delete(url);
+                    if (!blob || !blob.size || blob.size > IMG_CACHE_MAX_BLOB) return null;
+                    return imgCachePut(url, blob).then(ok => {
+                        if (!ok) return null;
+                        try { nxNoteCachedMedia(url); } catch (e) {}
+                        try { const ou = URL.createObjectURL(blob); imgCacheTouch(url, ou); return ou; } catch (e) { return null; }
+                    });
+                })
+                .catch(() => { imgSaving.delete(url); IMG_FAIL.add(url); return null; });
+        }
+        // ============ b251: МГНОВЕННЫЕ МИНИАТЮРЫ ============
+        // archive.org для каждого файла сам делает миниатюру *_thumb.jpg (~10 КБ).
+        // Полный арт 0.5–2 МБ на слабом канале грузится десятки секунд: карта стоит
+        // заглушкой и ещё забивает канал. Теперь: мгновенно показываем миниатюру,
+        // полный арт тихо доказывается фоном и подменяется, когда готов.
+        function nxThumbUrl(url) {
+            try {
+                const s = String(url || '');
+                if (s.indexOf('archive.org/download/') < 0) return '';
+                if (s.indexOf('_thumb.') >= 0) return '';
+                const q = s.lastIndexOf('?');
+                const base = q >= 0 ? s.slice(0, q) : s;
+                const slash = base.lastIndexOf('/');
+                const dot = base.lastIndexOf('.');
+                if (dot <= slash + 1) return '';
+                return base.slice(0, dot) + '_thumb.jpg' + (q >= 0 ? s.slice(q) : '');
+            } catch (e) { return ''; }
+        }
+        const NX_FULL_LOADING = new Set(); // url — полный арт уже в очереди/качается
+        const NX_FULL_QUEUE = [];
+        let NX_FULL_ACTIVE = 0;
+        function nxFullPump() { // b251: не больше 2 фоновых артов за раз (1 на эконом-канале)
+            const cap = (typeof NX_SLOW !== 'undefined' && NX_SLOW) ? 1 : 2;
+            while (NX_FULL_ACTIVE < cap && NX_FULL_QUEUE.length) {
+                const job = NX_FULL_QUEUE.shift();
+                NX_FULL_ACTIVE++;
+                try { job(); } catch (e) { NX_FULL_ACTIVE--; }
+            }
+        }
+        function nxProgressiveAttach(img) {
+            try {
+                if (!img || img.__nxPh) return;
+                const raw = img.getAttribute && img.getAttribute('src');
+                if (!raw || raw.indexOf('data:') === 0 || raw.indexOf('blob:') === 0) return;
+                const url = img.src;
+                if (!url || url.indexOf('http') !== 0) return;
+                const thumb = nxThumbUrl(url);
+                if (!thumb) return;
+                if (img.__nxFull === url) return;
+                const showing = img.complete && img.naturalWidth > 0;
+                if (!showing && img.__nxThumbFor !== thumb) { // миниатюра на карту — мгновенно
+                    img.__nxThumb = 1;
+                    img.__nxThumbFor = thumb;
+                    img.src = thumb;
+                }
+                if (NX_FULL_LOADING.has(url)) return;
+                NX_FULL_LOADING.add(url);
+                img.__nxFullUrl = url;
+                NX_FULL_QUEUE.push(() => {
+                    const pre = new Image();
+                    pre.decoding = 'async';
+                    const fin = () => { NX_FULL_ACTIVE--; nxFullPump(); };
+                    pre.onload = () => {
+                        NX_FULL_LOADING.delete(url);
+                        fin();
+                        try { imgCacheStoreFromNetwork(url); } catch (e) {} // копия в постоянный кэш
+                        try {
+                            if (img.__nxPh || !img.isConnected || img.__nxFull === url) return;
+                            const nowShowing = img.complete && img.naturalWidth > 0;
+                            if (img.__nxThumb || !nowShowing) {
+                                img.__nxFull = url; // HTTP-кэш прогрет предзагрузкой — подмена мгновенная
+                                img.__nxOrig = url;
+                                img.__nxWait = 0;
+                                img.src = url;
+                            }
+                        } catch (e) {}
+                    };
+                    pre.onerror = () => {
+                        NX_FULL_LOADING.delete(url);
+                        fin();
+                        try { // b252: полный арт не пришёл — временная заглушка становится постоянной
+                            if (img.__nxWait && img.__nxFullUrl === url && !img.__nxPh) {
+                                img.__nxWait = 0; img.__nxPh = 1;
+                            }
+                        } catch (e) {}
+                    };
+                    pre.src = url;
+                });
+                nxFullPump();
+            } catch (e) {}
+        }
+        function imgCacheAttach(img) { // подключить один <img> к постоянному кэшу
+            try {
+                if (!img || img.__nxC) return;
+                // b303: элемент уже стоит в заглушке — если в кэше есть копия арта,
+                // возвращаем её без обращения к (мёртвой) сети
+                if (img.__nxPh) {
+                    const orig = img.__nxOrig;
+                    if (!orig || orig.indexOf('http') !== 0) return;
+                    img.__nxC = 1;
+                    imgCacheObjUrl(orig).then(ou => {
+                        if (ou && img.__nxPh) { img.__nxPh = 0; img.__nxRetry = 0; img.__nxCacheTried = 0; img.onerror = null; img.style.display = ''; img.src = ou; }
+                    }, () => {});
+                    return;
+                }
+                const raw = img.getAttribute && img.getAttribute('src');
+                if (!raw || raw.indexOf('data:') === 0 || raw.indexOf('blob:') === 0) return;
+                const url = img.src; // абсолютный, уже после mediaUrl()-перезаписи зеркала
+                if (!url || url.indexOf('http') !== 0) return;
+                img.__nxC = 1;
+                const mem = IMG_OBJ.get(url);
+                if (mem) { // мгновенная подмена из памяти — без единого сетевого запроса
+                    imgCacheTouch(url, mem);
+                    if (!img.complete || !img.naturalWidth || img.__nxThumb) img.src = mem;
+                    return;
+                }
+                nxProgressiveAttach(img); // b251: лёгкая миниатюра сразу, полный арт — фоном
+                imgCacheObjUrl(url).then(ou => {
+                    if (ou) {
+                        if (img.__nxPh || img.__nxMir) return; // уже ушёл в заглушку/зеркало
+                        if (img.complete && img.naturalWidth > 0 && !img.__nxThumb) return; // сеть оказалась быстрее — не мигаем
+                        const cur = img.getAttribute('src') || '';
+                        if (!cur || cur.indexOf('blob:') === 0 || cur.indexOf('data:') === 0) return;
+                        img.src = ou;
+                        return;
+                    }
+                    // в кэше нет: грузится как раньше, но копию сохраним на следующий раз
+                    if (img.complete && img.naturalWidth > 0 && !img.__nxThumb) { imgCacheStoreFromNetwork(url); return; }
+                    img.addEventListener('load', () => { if (!img.__nxPh && !img.__nxThumb) imgCacheStoreFromNetwork(url); }, { once: true });
+                }).catch(() => {});
+            } catch (e) {}
+        }
+        function imgCacheScan(root) {
+            try {
+                const scope = (root && root.querySelectorAll) ? root : document;
+                if (scope.tagName === 'IMG') { imgCacheAttach(scope); return; }
+                const list = scope.querySelectorAll('img');
+                for (let i = 0; i < list.length; i++) imgCacheAttach(list[i]);
+            } catch (e) {}
+        }
+        let imgCacheObs = null;
+        function startImageCache() { // стартует один раз из init: скан + наблюдатель за новыми <img>
+            imgCacheScan(document);
+            if (imgCacheObs || !('MutationObserver' in window)) return;
+            try {
+                imgCacheObs = new MutationObserver(muts => {
+                    for (let k = 0; k < muts.length; k++) {
+                        const added = muts[k].addedNodes;
+                        for (let i = 0; i < added.length; i++) {
+                            const n = added[i];
+                            if (!n || n.nodeType !== 1) continue;
+                            if (n.tagName === 'IMG') imgCacheAttach(n);
+                            else if (n.querySelectorAll) imgCacheScan(n);
+                        }
+                    }
+                });
+                imgCacheObs.observe(document.body || document.documentElement, { childList: true, subtree: true });
+            } catch (e) {}
+        }
+
+        function saveMediaBase() {
+            const inp = document.getElementById('cloud-media-base');
+            mediaBaseSet(String((inp && inp.value) || '').trim(), false); // b38: ручная настройка важнее комнатной до публикации
+            const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase();
+            refreshVisibleTabs();
+            try { renderStudio(); } catch (e) {}
+            nxOwnerToast(mediaBase()
+                ? 'Зеркало медиа сохранено: арты и музыка будут грузиться с ' + mediaBase()
+                : 'Зеркало отключено: вернулись оригинальные ссылки', 'success');
+        }
+        function mediaPlaceholderFor(el) {
+            try {
+                const id = el.getAttribute && el.getAttribute('data-card-id');
+                if (id) {
+                    const card = state.cards.find(c => c.id === id);
+                    return (card && sdwPlaceholder(card)) || sdwSvgPlaceholder(card);
+                }
+                return sdwPackPlaceholder(el.alt || '');
+            } catch (e) { return ''; }
+        }
+        // Цепочка для любой картинки: мёртвый хост → зеркало (если задано) → читаемая заглушка.
+        // Вызывается и из делегированного обработчика ошибок, и из inline-onerror.
+        function imgErrorChain(el) {
+            try {
+                const u = String(el.src || '');
+                // b322: если на сайте нет папки media — говорим об этом прямо, вместо тихих дыр
+                if (!window.__nxMediaMissing && u.indexOf('/media/') >= 0 && u.indexOf('http') === 0 && !el.__nxMediaProbe) {
+                    window.__nxMediaMissing = 1;
+                    try { window.__nxMediaMissing = 1; console.warn('[media] не ответила: ' + nxMediaKey(u)); try { nxCrashLog('media miss: ' + nxMediaKey(u)); } catch (e2) {} } catch (e) {}
+                }
+                if (!u || u.indexOf('data:') === 0) return false;
+                                // миниатюра не отдалась (папки media/t/ или media/t2/ ещё не
+                // задеплоены, файл битый, арт добавили после сборки) — показываем
+                // полный арт: карта не должна оставаться заглушкой
+                if (!el.__nxThumbTried && /\/media\/t2?\//.test(u)) {
+                    el.__nxThumbTried = 1;
+                    const full = el.getAttribute && el.getAttribute('data-nx-full');
+                    if (full && full !== u) { el.onerror = null; el.style.display = ''; el.src = full; return true; }
+                }
+                const raw = el.__nxOrig || u;
+                el.__nxOrig = raw;
+                // b252: пустой/битый src (не http) ретраить бессмысленно — сразу заглушка
+                const nxHttp = raw.indexOf('http') === 0;
+                // b248: мобильные сети рвут загрузку — сперва 2 ретрая оригинала, потом заглушка
+                el.__nxRetry = (el.__nxRetry || 0) + 1;
+                const nxThumbFail = !!(el.__nxThumb && u === el.__nxThumbFor); // b252: сервер отверг миниатюру — ретраить её бессмысленно
+                if (nxHttp && !nxThumbFail && el.__nxRetry <= 2 && !el.__nxPh && !el.__nxWait) {
+                    el.onerror = null;
+                    const n = el.__nxRetry;
+                    setTimeout(() => {
+                        if (el.__nxPh) return;
+                        // b251: ретрай тем же URL, без cache-buster (?nxr=…): на мобильной
+                        // сети каждый «новый» URL качал арт заново с нуля — карты не
+                        // успевали прогрузиться до следующего ретрая
+                        el.src = raw;
+                    }, 600 * n);
+                    return true;
+                }
+                // b343: арт мог быть уже авто-отправлен в media/ — пробуем его оттуда
+                if (!el.__nxMediaTried && nxHttp && !el.__nxThumb) {
+                    el.__nxMediaTried = 1; el.__nxMediaProbe = 1; el.onerror = null; el.style.display = '';
+                    el.src = nxMediaFolder() + nxMediaKey(raw);
+                    return true;
+                }
+                const b = mediaBase();
+                if (!el.__nxMir && b && raw.indexOf(MEDIA_DEAD_BASE) === 0) {
+                    el.__nxMir = 1; el.onerror = null; el.style.display = '';
+                    el.src = b + '/' + raw.slice(MEDIA_DEAD_BASE.length);
+                    return true;
+                }
+                // b252: миниатюра дала 404 (у файла нет деривата / ещё не сгенерирован),
+                // а полный арт докачивается фоном — ставим ВРЕМЕННУЮ заглушку вместо
+                // битой картинки WebKit; когда арт придёт, он подменит её сам
+                if (!el.__nxPh && el.__nxThumb && el.__nxFullUrl && NX_FULL_LOADING.has(el.__nxFullUrl)) {
+                    el.__nxWait = 1;
+                    el.onerror = null; el.style.display = '';
+                    const phw = mediaPlaceholderFor(el);
+                    if (phw) { el.src = phw; return true; }
+                }
+                // b302: прежде чем ставить заглушку — заглянем в постоянный кэш: арт мог
+                // быть скачан в прошлых сессиях, даже если сеть/хост сейчас мертвы
+                if (!el.__nxPh && nxHttp && !el.__nxCacheTried) {
+                    el.__nxCacheTried = 1;
+                    const mem = IMG_OBJ.get(raw);
+                    if (mem) { el.onerror = null; el.style.display = ''; el.src = mem; return true; }
+                    // b346: браузер мог закэшировать 404, пока Pages деплоил media/ — один ретрай мимо кэша
+                    if (!el.__nxCb && nxHttp && raw.indexOf('/media/') >= 0) {
+                        el.__nxCb = 1; el.onerror = null; el.style.display = '';
+                        el.src = raw + (raw.indexOf('?') >= 0 ? '&' : '?') + 'nxcb=' + Date.now();
+                        return true;
+                    }
+                    el.__nxWait = 1; el.onerror = null;
+                    imgCacheObjUrl(raw).then(ou => {
+                        el.__nxWait = 0;
+                        if (ou && !el.__nxPh) { el.onerror = null; el.style.display = ''; el.src = ou; }
+                        else imgErrorChain(el);
+                    }, () => { el.__nxWait = 0; imgErrorChain(el); });
+                    return true;
+                }
+                if (!el.__nxPh) {
+                    el.__nxPh = 1; el.onerror = null; el.style.display = '';
+                    const ph = mediaPlaceholderFor(el);
+                    if (ph) { el.src = ph; return true; }
+                }
+            } catch (e) {}
+            return false;
+        }
+        // b248: watchdog — «зависшие» картинки (ни load, ни error) дожигаются в цепочку
+        setInterval(() => {
+            try {
+                if (document.hidden) return; // в фоне не сканируем: WebView и так под нагрузкой
+                const imgs = document.images;
+                for (let i = 0; i < imgs.length; i++) {
+                    const el = imgs[i];
+                    if (el.__nxPh || el.__nxWatch) continue;
+                    if (el.complete || !el.src || el.src.indexOf('data:') === 0) continue;
+                    el.__nxWatch = setTimeout(() => { if (!el.complete && !el.__nxPh) imgErrorChain(el); }, 22000); // b251: 9 c на мобильной сети мало для арта 1–2 МБ
+                    el.addEventListener('load', () => clearTimeout(el.__nxWatch), { once: true });
+                    el.addEventListener('error', () => clearTimeout(el.__nxWatch), { once: true });
+                }
+            } catch (e) {}
+        }, 6000);
+        // b252: СТОРОЖ БИТЫХ КАРТИНОК — раз в 5 секунд долечиваем всё, что показывает
+        // «битый img» (complete && naturalWidth===0): событие ошибки могло потеряться
+        // (ререндер сетки, гонка миниатюры, повторный onerror) — карта не должна
+        // оставаться со значком «?» на экране
+        setInterval(() => {
+            try {
+                if (document.hidden) return;
+                const imgs = document.images;
+                for (let i = 0; i < imgs.length; i++) {
+                    const el = imgs[i];
+                    if (!el || el.__nxPh) continue;
+                    const s = el.src || '';
+                    if (!s || s.indexOf('http') !== 0) continue;
+                    if (el.complete && el.naturalWidth === 0) imgErrorChain(el);
+                }
+            } catch (e) {}
+        }, 5000);
+        // b248: вернулись в сеть / в приложение — заглушки перепроверяются боевыми URL
+        let nxLastRecheck = 0;
+        function nxRecheckImgs() {
+            // b251: не чаще раза в 2 минуты и БЕЗ cache-buster: раньше при каждом
+            // возврате в приложение все заглушки разом перекачивались с новыми
+            // ?nxr=… — это и есть «игра подвисает» на слабых устройствах
+            const now = Date.now();
+            if (now - nxLastRecheck < 120000) return;
+            nxLastRecheck = now;
+            try {
+                document.querySelectorAll('img').forEach(el => {
+                    if (el.__nxPh && el.__nxOrig) {
+                        el.__nxPh = 0; el.__nxRetry = 0; el.__nxThumbFor = ''; el.__nxFull = ''; el.__nxCacheTried = 0;
+                        nxProgressiveAttach(el); // миниатюра сразу + полный арт фоном
+                    }
+                });
+            } catch (e) {}
+        }
+        window.addEventListener('online', nxRecheckImgs);
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) nxRecheckImgs(); });
+        // Делегированный обработчик: ловит ошибки ВСЕХ <img> (capture), включая те,
+        // у которых inline-onerror прятал элемент — вместо чёрной дыры будет заглушка с названием
+        document.addEventListener('error', ev => {
+            const el = ev && ev.target;
+            if (!el || el.tagName !== 'IMG') return;
+            imgErrorChain(el);
+        }, true);
+        function sdwPackPlaceholder(title) {
+            const fbKey = 'pack:' + (title || '');
+            if (FB_CACHE[fbKey]) return FB_CACHE[fbKey];
+            let out = '';
+            try {
+                const W = 300, H = 400;
+                const cv = document.createElement('canvas');
+                cv.width = W; cv.height = H;
+                const g = cv.getContext('2d');
+                if (!g) throw new Error('no-2d-context');
+                const grad = g.createLinearGradient(0, 0, W, H);
+                grad.addColorStop(0, '#14532d'); grad.addColorStop(0.5, '#0f172a'); grad.addColorStop(1, '#1e3a8a');
+                g.fillStyle = grad; g.fillRect(0, 0, W, H);
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.font = '70px sans-serif'; g.fillText('🃏', W / 2, 150);
+                g.fillStyle = '#f5f3ff'; g.font = 'bold 30px Inter, sans-serif';
+                wrapCanvasText(g, title ? String(title).toUpperCase() : 'ПАК БЕЗ АРТА', W / 2, 260, W - 40, 32);
+                g.fillStyle = '#c4b5fd'; g.font = '14px Inter, sans-serif';
+                g.fillText('источник арта не отвечает', W / 2, 330);
+                out = cv.toDataURL('image/jpeg', 0.82);
+            } catch (e) { out = ''; }
+            if (!out) out = sdwSvgPlaceholder({ name: title || 'ПАК БЕЗ АРТА', rarity: 'legendary' });
+            FB_CACHE[fbKey] = out;
+            return out;
+        }
+
+        // SVG-заглушка чистой строкой: работает даже если canvas/toDataURL
+        // заблокирован приватностью браузера — никаких внешних запросов
+        function sdwSvgPlaceholder(card) {
+            const name = String((card && card.name) || 'Карта').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const col = ({ common: '#64748b', rare: '#3b82f6', epic: '#a855f7', legendary: '#f59e0b' })[(card && card.rarity) || 'common'] || '#64748b';
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400">' +
+                '<rect width="300" height="400" fill="#0f172a"/>' +
+                '<rect x="8" y="8" width="284" height="384" fill="none" stroke="' + col + '" stroke-width="4"/>' +
+                '<circle cx="150" cy="140" r="52" fill="' + col + '" opacity="0.9"/>' +
+                '<text x="150" y="155" font-size="40" text-anchor="middle" fill="#0b1220" font-family="sans-serif" font-weight="bold">SD</text>' +
+                '<text x="150" y="252" font-size="26" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-weight="bold">' + name + '</text>' +
+                '<text x="150" y="284" font-size="13" text-anchor="middle" fill="#94a3b8" font-family="sans-serif">Scooby-Doo! World of Mystery</text>' +
+                '<text x="150" y="360" font-size="12" text-anchor="middle" fill="' + col + '" font-family="sans-serif">скан недоступен офлайн</text>' +
+                '</svg>';
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        }
+
+        function imgFallback(el) {
+            el.onerror = null;
+            let ph = '';
+            try {
+                const id = el.getAttribute('data-card-id');
+                const card = id ? state.cards.find(c => c.id === id) : null;
+                ph = (card && sdwPlaceholder(card)) || '';
+            } catch (e) { ph = ''; }
+            if (!ph) {
+                try { ph = sdwPackPlaceholder() || ''; } catch (e) { ph = ''; }
+            }
+            if (!ph) {
+                try {
+                    const id2 = el.getAttribute('data-card-id');
+                    ph = sdwSvgPlaceholder(id2 ? state.cards.find(c => c.id === id2) : null);
+                } catch (e) { ph = ''; }
+            }
+            if (ph) el.src = ph;
+        }
+
+        function getHoloClass(rarity) {
+            if (rarity === 'legendary') return 'holo-card holo-legendary';
+            if (rarity === 'epic') return 'holo-card holo-epic';
+            return '';
+        }
+
+        // ===== Композиция карты: где имя/описание, выравнивание, эффект.
+        // Настройки живут в card.layout и задаются в Студии с живым предпросмотром.
+        const CARD_FX = ['foil', 'beam', 'spark', 'rainbow', 'gold', 'pulse', 'snow', 'fire', 'galaxy', 'lightning', 'wave', 'frost', 'neon', 'matrix', 'rain', 'bubbles', 'leaves', 'mist', 'aurora', 'disco', 'starfall', 'plasma', 'glitch', 'scan', 'rays', 'confetti', 'embers', 'crystal', 'sunset', 'honey', 'venom', 'ocean', 'vaporwave', 'rune', 'ink', 'frostfire', 'eclipse', 'comet', 'sakura', 'sand', 'smoke', 'electric', 'holy', 'void', 'candy', 'steam', 'circuit', 'feather', 'moonlight'];
+        function cardLayoutOf(card) {
+            const L = (card && card.layout) || {};
+            const align = (L.align === 'center' || L.align === 'right') ? L.align : 'left';
+            return {
+                namePos: L.namePos === 'top' ? 'top' : 'bottom',
+                descPos: (L.descPos === 'top' || L.descPos === 'hide') ? L.descPos : 'bottom',
+                align: align,
+                shine: (CARD_FX.indexOf(L.shine) >= 0 || L.shine === 'none') ? L.shine : 'auto',
+                text: align === 'center' ? 'text-center' : (align === 'right' ? 'text-right' : 'text-left'),
+                justify: align === 'center' ? 'justify-center' : (align === 'right' ? 'justify-end' : 'justify-start')
+            };
+        }
+        function cardHoloClass(card) {
+            return cardLayoutOf(card).shine === 'auto' ? getHoloClass(card.rarity) : '';
+        }
+        function cardShineOverlay(card, z) {
+            const sh = cardLayoutOf(card).shine;
+            if (CARD_FX.indexOf(sh) >= 0) {
+                return `<div class="absolute inset-0 pointer-events-none fx-${sh}" style="z-index:${z || 30};"></div>`;
+            }
+            return '';
+        }
+        // ===== Ауры за картой: 42 варианта в стиле «Любовь и музыка» —
+        // милые SVG-фигурки, волнами всплывающие за картой =====
+        const CARD_AURAS = ['hearts', 'notes', 'stars', 'snowflakes', 'moons', 'suns', 'clouds', 'rainbows', 'planets', 'rockets', 'leaves', 'flowers', 'roses', 'butterflies', 'feathers', 'drops', 'fish', 'shells', 'birds', 'candies', 'balloons', 'gifts', 'bubbles', 'coins', 'crowns', 'clovers', 'flames', 'bolts', 'gems', 'diamonds', 'potions', 'skulls', 'ghosts', 'pumpkins', 'bats', 'bones', 'ladybugs', 'bees', 'paws', 'swords', 'shields', 'smiles'];
+        function cardAuraOf(card) {
+            const a = (card && card.aura) || 'none';
+            return CARD_AURAS.indexOf(a) >= 0 ? a : 'none';
+        }
+        // Тема: палитра + форма спрайта (рисуется в поле 24x24)
+        const AURA_SPRITES = {
+            stars: { c: ['#ffd75e', '#fff3c4', '#fbbf24'], f: c => `<path d="M12 2l2.6 6.2 6.7.5-5.1 4.4 1.6 6.6-5.8-3.6-5.8 3.6 1.6-6.6-5.1-4.4 6.7-.5z" fill="${c}"/>` },
+            snowflakes: { c: ['#bfdbfe', '#e0f2fe', '#93c5fd'], f: c => `<path d="M12 2v20M4 6l16 12M20 6L4 18M2 12h20" stroke="${c}" stroke-width="2" stroke-linecap="round" fill="none"/>` },
+            moons: { c: ['#fde68a', '#fef3c7', '#fcd34d'], f: c => `<path d="M20 14A9 9 0 1 1 10 3a7 7 0 0 0 10 11z" fill="${c}"/>` },
+            suns: { c: ['#fbbf24', '#fb923c', '#fde047'], f: c => `<circle cx="12" cy="12" r="5" fill="${c}"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2 2M17.5 17.5l2 2M19.5 4.5l-2 2M6.5 17.5l-2 2" stroke="${c}" stroke-width="2" stroke-linecap="round"/>` },
+            clouds: { c: ['#e2e8f0', '#f1f5f9', '#cbd5e1'], f: c => `<path d="M6 17a4 4 0 0 1 0-8 6 6 0 0 1 11-1 4.5 4.5 0 0 1 1 9z" fill="${c}"/>` },
+            rainbows: { c: ['#ff6b6b'], f: () => `<g fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M4 18a8 8 0 0 1 16 0" stroke="#ff6b6b"/><path d="M7 18a5 5 0 0 1 10 0" stroke="#ffd75e"/><path d="M10 18a2 2 0 0 1 4 0" stroke="#c4b5fd"/></g>` },
+            planets: { c: ['#60a5fa', '#f472b6', '#fbbf24'], f: c => `<circle cx="12" cy="12" r="6" fill="${c}"/><ellipse cx="12" cy="12" rx="10" ry="3" fill="none" stroke="${c}" stroke-opacity=".7" stroke-width="1.6"/>` },
+            rockets: { c: ['#e2e8f0', '#f87171', '#94a3b8'], f: c => `<path d="M12 2c3 3 4 7 4 10l-4 4-4-4c0-3 1-7 4-10z" fill="${c}"/><circle cx="12" cy="10" r="2" fill="#e0f2fe"/><path d="M8 14l-3 4 3-1zM16 14l3 4-3-1z" fill="${c}"/><path d="M12 17v4" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>` },
+            leaves: { c: ['#f59e0b', '#ea580c', '#fbbf24'], f: c => `<path d="M20 4C10 4 4 10 4 20c10 0 16-6 16-16z" fill="${c}"/><path d="M6 18C10 14 14 10 18 6" stroke="#ffffff55" stroke-width="1.2" fill="none"/>` },
+            flowers: { c: ['#f472b6', '#fb7185', '#e879f9'], f: c => `<g fill="${c}"><circle cx="12" cy="6" r="4"/><circle cx="6" cy="10" r="4"/><circle cx="18" cy="10" r="4"/><circle cx="8" cy="16" r="4"/><circle cx="16" cy="16" r="4"/></g><circle cx="12" cy="11" r="3" fill="#ffd75e"/>` },
+            roses: { c: ['#f43f5e', '#e11d48', '#fb7185'], f: c => `<circle cx="12" cy="10" r="7" fill="${c}"/><path d="M12 10c2 0 3 1.5 3 3s-1.5 3-3 3-3-1.5-3-3c0-1 .8-2 2-2s2 .8 2 2" fill="none" stroke="#ffffff66" stroke-width="1.2"/><path d="M12 17v5M12 19c-2 0-3-1-4-1M12 20c2 0 3-1 4-1" stroke="#3f6212" stroke-width="1.4" fill="none"/>` },
+            butterflies: { c: ['#a78bfa', '#f472b6', '#60a5fa'], f: c => `<g fill="${c}"><ellipse cx="7" cy="9" rx="5" ry="6"/><ellipse cx="17" cy="9" rx="5" ry="6"/><ellipse cx="8" cy="16" rx="4" ry="4.5"/><ellipse cx="16" cy="16" rx="4" ry="4.5"/></g><rect x="11" y="5" width="2" height="14" rx="1" fill="#4a2c17"/>` },
+            feathers: { c: ['#e2e8f0', '#f8fafc', '#cbd5e1'], f: c => `<path d="M20 3C11 5 5 11 3 21c7-1 13-7 17-18z" fill="${c}"/><path d="M4 20L20 4" stroke="#ffffff66" stroke-width="1.1"/>` },
+            drops: { c: ['#60a5fa', '#38bdf8', '#7dd3fc'], f: c => `<path d="M12 2C8 8 5 12 5 16a7 7 0 0 0 14 0c0-4-3-8-7-14z" fill="${c}"/><circle cx="9.5" cy="15" r="1.6" fill="#ffffffaa"/>` },
+            fish: { c: ['#fb923c', '#f87171', '#fbbf24'], f: c => `<path d="M4 12c4-5 10-5 14 0-4 5-10 5-14 0z" fill="${c}"/><path d="M18 12l4-4v8z" fill="${c}"/><circle cx="8" cy="11" r="1" fill="#0b1220"/>` },
+            shells: { c: ['#fda4af', '#fbcfe8', '#f9a8d4'], f: c => `<path d="M12 21C6 17 4 11 6 5c2 2 3 2 6 2s4 0 6-2c2 6 0 12-6 16z" fill="${c}"/><path d="M12 21V7M8 20L7 8M16 20l1-12" stroke="#ffffff44" stroke-width="1" fill="none"/>` },
+            birds: { c: ['#94a3b8', '#e2e8f0', '#64748b'], f: c => `<path d="M3 12c3-4 6-4 9 0 3-4 6-4 9 0" stroke="${c}" stroke-width="2.2" fill="none" stroke-linecap="round"/>` },
+            candies: { c: ['#f472b6', '#fb7185', '#e879f9'], f: c => `<circle cx="12" cy="12" r="6" fill="${c}"/><path d="M6 12L2 8v8zM18 12l4-4v8z" fill="${c}"/><path d="M9 10c1-1 5-1 6 0M9 14c1 1 5 1 6 0" stroke="#ffffff77" stroke-width="1.2" fill="none"/>` },
+            balloons: { c: ['#f87171', '#60a5fa', '#fbbf24'], f: c => `<ellipse cx="12" cy="9" rx="6" ry="7" fill="${c}"/><path d="M12 16c-1 2 1 3 0 6" stroke="${c}" stroke-width="1.4" fill="none"/>` },
+            gifts: { c: ['#f87171', '#60a5fa', '#4ade80'], f: c => `<rect x="4" y="10" width="16" height="10" rx="2" fill="${c}"/><rect x="3" y="7" width="18" height="4" rx="1" fill="${c}"/><rect x="11" y="7" width="2" height="13" fill="#ffffffcc"/><path d="M12 7c-2-4-7-3-6 0M12 7c2-4 7-3 6 0" stroke="#ffffffcc" stroke-width="1.4" fill="none"/>` },
+            bubbles: { c: ['#7dd3fc', '#a5f3fc', '#93c5fd'], f: c => `<circle cx="12" cy="12" r="8" fill="none" stroke="${c}" stroke-width="1.6"/><circle cx="9" cy="9" r="2.2" fill="#ffffffcc"/>` },
+            coins: { c: ['#fbbf24', '#f59e0b', '#fde047'], f: c => `<circle cx="12" cy="12" r="9" fill="${c}"/><circle cx="12" cy="12" r="6" fill="none" stroke="#00000033" stroke-width="1.5"/><path d="M12 9v6M10 10.5h4M10 13.5h4" stroke="#00000055" stroke-width="1.4"/>` },
+            crowns: { c: ['#fbbf24', '#f59e0b', '#fde68a'], f: c => `<path d="M3 18l2-9 5 4 2-8 2 8 5-4 2 9z" fill="${c}"/><rect x="3" y="18" width="18" height="3" rx="1" fill="${c}"/>` },
+            clovers: { c: ['#4ade80', '#22c55e', '#86efac'], f: c => `<g fill="${c}"><circle cx="8.5" cy="8" r="4"/><circle cx="15.5" cy="8" r="4"/><circle cx="8.5" cy="14.5" r="4"/><circle cx="15.5" cy="14.5" r="4"/></g><path d="M12 12c0 4 0 7-1 9" stroke="${c}" stroke-width="1.6" fill="none"/>` },
+            flames: { c: ['#f97316', '#ef4444', '#fbbf24'], f: c => `<path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4 2-7 1 1.5 2 2.5 3 2.5C12 6 12 4 12 2z" fill="${c}"/><path d="M12 12c.8 1.6 2 2.4 2 4a2 2 0 0 1-4 0c0-1.6 1.2-2.4 2-4z" fill="#ffe9a8"/>` },
+            bolts: { c: ['#fde047', '#facc15', '#fef08a'], f: c => `<path d="M13 2L5 13h5l-2 9 9-12h-5l1-8z" fill="${c}"/>` },
+            gems: { c: ['#c084fc', '#a5f3fc', '#f472b6'], f: c => `<path d="M7 3h10l4 6-9 12L3 9z" fill="${c}"/><path d="M3 9h18M12 21L8 9l4-6 4 6-4 12" stroke="#ffffff55" stroke-width="1" fill="none"/>` },
+            diamonds: { c: ['#a5f3fc', '#e0f2fe', '#67e8f9'], f: c => `<path d="M12 3l7 7-7 11L5 10z" fill="${c}"/><path d="M5 10h14M12 21L9 10l3-7 3 7-3 11" stroke="#ffffff55" stroke-width="1" fill="none"/>` },
+            potions: { c: ['#c084fc', '#4ade80', '#f472b6'], f: c => `<path d="M10 3h4v5l4 8a4.5 4.5 0 0 1-4 6h-4a4.5 4.5 0 0 1-4-6l4-8z" fill="${c}" fill-opacity=".85"/><rect x="9.5" y="2" width="5" height="2.5" rx="1" fill="#8b5a2b"/><circle cx="10.5" cy="15" r="1.2" fill="#ffffffaa"/><circle cx="13.5" cy="17" r="1" fill="#ffffff88"/>` },
+            skulls: { c: ['#e2e8f0', '#cbd5e1', '#f8fafc'], f: c => `<path d="M12 3a8 8 0 0 1 8 8c0 3-1.5 5-3 6v4H7v-4c-1.5-1-3-3-3-6a8 8 0 0 1 8-8z" fill="${c}"/><circle cx="9" cy="11" r="2.2" fill="#0b1220"/><circle cx="15" cy="11" r="2.2" fill="#0b1220"/><path d="M11 16h2" stroke="#0b1220" stroke-width="1.4"/>` },
+            ghosts: { c: ['#f8fafc', '#e2e8f0', '#dbeafe'], f: c => `<path d="M5 22V11a7 7 0 0 1 14 0v11l-2.8-2-2.3 2-1.9-2-1.9 2-2.3-2z" fill="${c}"/><circle cx="9.5" cy="11" r="1.6" fill="#0b1220"/><circle cx="14.5" cy="11" r="1.6" fill="#0b1220"/>` },
+            pumpkins: { c: ['#f97316', '#ea580c', '#fb923c'], f: c => `<ellipse cx="12" cy="14" rx="8" ry="7" fill="${c}"/><path d="M12 7v14M8 8c-2 4-2 8 0 12M16 8c2 4 2 8 0 12" stroke="#00000033" stroke-width="1.2" fill="none"/><rect x="10.5" y="4" width="3" height="4" rx="1" fill="#3f6212"/>` },
+            bats: { c: ['#475569', '#334155', '#64748b'], f: c => `<path d="M2 9c3 0 4.5 2 5.5 4 1-2 2.5-3 3.5-3 0-2 .5-3 1-4 .5 1 1 2 1 4 1 0 2.5 1 3.5 3 1-2 2.5-4 5.5-4-1 7-5.5 11-10 11S3 16 2 9z" fill="${c}"/>` },
+            bones: { c: ['#e2e8f0', '#f8fafc', '#cbd5e1'], f: c => `<path d="M7 10a2.6 2.6 0 1 1 2-4h6a2.6 2.6 0 1 1 2 4 2.6 2.6 0 1 1-2 4H9a2.6 2.6 0 1 1-2-4z" fill="${c}"/>` },
+            ladybugs: { c: ['#ef4444', '#dc2626', '#f87171'], f: c => `<path d="M12 5a8 8 0 0 1 8 8c0 5-4 8-8 8s-8-3-8-8a8 8 0 0 1 8-8z" fill="${c}"/><circle cx="12" cy="5" r="3" fill="#1c1917"/><path d="M12 6v15" stroke="#1c1917" stroke-width="1.4"/><circle cx="9" cy="12" r="1.4" fill="#1c1917"/><circle cx="15" cy="14" r="1.4" fill="#1c1917"/>` },
+            bees: { c: ['#fbbf24', '#f59e0b', '#fde047'], f: c => `<ellipse cx="12" cy="14" rx="6" ry="5" fill="${c}"/><path d="M8 12h8M8 15h8" stroke="#1c1917" stroke-width="1.6"/><ellipse cx="8" cy="8" rx="4" ry="2.6" fill="#ffffffaa"/><ellipse cx="16" cy="8" rx="4" ry="2.6" fill="#ffffffaa"/>` },
+            paws: { c: ['#a78bfa', '#f472b6', '#94a3b8'], f: c => `<g fill="${c}"><ellipse cx="7" cy="8" rx="2.4" ry="3"/><ellipse cx="12" cy="6.5" rx="2.4" ry="3"/><ellipse cx="17" cy="8" rx="2.4" ry="3"/><path d="M12 11c4 0 7 3 7 6s-3 4-7 4-7-1-7-4 3-6 7-6z"/></g>` },
+            swords: { c: ['#cbd5e1', '#e2e8f0', '#94a3b8'], f: c => `<path d="M12 2l2.5 12h-5z" fill="${c}"/><rect x="8" y="14" width="8" height="2" rx="1" fill="#8b5a2b"/><rect x="11" y="16" width="2" height="5" rx="1" fill="#8b5a2b"/><circle cx="12" cy="21.5" r="1.4" fill="#fbbf24"/>` },
+            shields: { c: ['#60a5fa', '#4ade80', '#fbbf24'], f: c => `<path d="M12 2l8 3v6c0 6-4 9-8 11-4-2-8-5-8-11V5z" fill="${c}"/><path d="M12 5v14M7 8h10" stroke="#ffffff55" stroke-width="1.4"/>` },
+            smiles: { c: ['#fbbf24', '#fde047', '#f59e0b'], f: c => `<circle cx="12" cy="12" r="9" fill="${c}"/><circle cx="9" cy="10" r="1.4" fill="#1c1917"/><circle cx="15" cy="10" r="1.4" fill="#1c1917"/><path d="M8 14c1.5 2.5 6.5 2.5 8 0" stroke="#1c1917" stroke-width="1.6" fill="none" stroke-linecap="round"/>` }
+        };
+        // шесть спрайтов в трёх волнах: разные размеры, прозрачность и фаза
+        function auraSpritesSVG(key) {
+            const T = AURA_SPRITES[key];
+            if (!T) return '';
+            const spots = [[28, 225, .95, 0], [150, 252, .7, 1], [78, 242, .85, 2], [168, 208, .6, 0], [12, 252, .65, 1], [112, 232, .9, 2]];
+            const grp = (cls, idx) => `<g class="${cls}">` + idx.map(i => {
+                const p = spots[i];
+                return `<g transform="translate(${p[0]} ${p[1]}) scale(${p[2]})" opacity="${(0.95 - p[2] * 0.25).toFixed(2)}">${T.f(T.c[p[3] % T.c.length])}</g>`;
+            }).join('') + `</g>`;
+            return `<svg viewBox="0 0 200 300" preserveAspectRatio="none" aria-hidden="true">` + grp('sp1', [0, 1]) + grp('sp2', [2, 3]) + grp('sp3', [4, 5]) + `</svg>`;
+        }
+        function auraHeartsSVG() {
+            const h = (x, y, s, o) => `<path d="M12 21 C4 14 0 9 0 5 C0 1 3 0 6 0 C9 0 11 2 12 4 C13 2 15 0 18 0 C21 0 24 1 24 5 C24 9 20 14 12 21 Z" transform="translate(${x} ${y}) scale(${s})" opacity="${o}"/>`;
+            return `<svg viewBox="0 0 200 300" preserveAspectRatio="none" aria-hidden="true">
+                <g class="sp1" fill="#ff8fb3">${h(30, 220, .9, .9)}${h(150, 250, .6, .7)}</g>
+                <g class="sp2" fill="#ff6b9e">${h(70, 240, .7, .85)}${h(170, 210, .5, .6)}</g>
+                <g class="sp3" fill="#ffa8c5">${h(10, 250, .55, .7)}${h(110, 230, .8, .8)}</g>
+            </svg>`;
+        }
+        function auraNotesSVG() {
+            const n = (x, y, s, o) => `<g transform="translate(${x} ${y}) scale(${s})" opacity="${o}"><ellipse cx="10" cy="22" rx="6" ry="4.4"/><path d="M16 22 V4 Q23 6 25 11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></g>`;
+            return `<svg viewBox="0 0 200 300" preserveAspectRatio="none" aria-hidden="true" style="color:#c4b5fd" fill="#c4b5fd">
+                <g class="sp1">${n(30, 220, 1, .9)}${n(150, 250, .7, .7)}</g>
+                <g class="sp2" style="color:#a5f3fc" fill="#a5f3fc">${n(80, 240, .8, .85)}${n(170, 210, .6, .6)}</g>
+                <g class="sp3" style="color:#fbcfe8" fill="#fbcfe8">${n(10, 250, .65, .7)}${n(115, 230, .9, .8)}</g>
+            </svg>`;
+        }
+        // ставит ауру на контейнер (просмотр карты, предпросмотр в Студии)
+        function applyCardAura(el, card, cls) {
+            if (!el) return;
+            const a = cardAuraOf(card);
+            el.className = 'aura ' + cls + (a === 'none' ? ' hidden' : ' aura-' + a);
+            el.innerHTML = (a === 'hearts') ? auraHeartsSVG() : ((a === 'notes') ? auraNotesSVG() : (AURA_SPRITES[a] ? auraSpritesSVG(a) : ''));
+        }
+        // Две текстовые зоны лица карты: верхняя (бейджи + опционно имя/описание)
+        // и нижняя (остальное + статы/статус)
+        function cardTextZones(L, badgeHtml, nameHtml, descHtml, extraHtml) {
+            const top = [badgeHtml];
+            const bottom = [];
+            if (L.namePos === 'top') top.push(nameHtml); else bottom.push(nameHtml);
+            if (L.descPos === 'top') top.push(descHtml);
+            else if (L.descPos === 'bottom') bottom.push(descHtml);
+            bottom.push(extraHtml);
+            return {
+                top: `<div class="relative z-20 flex flex-col space-y-1 w-full">${top.join('')}</div>`,
+                bottom: `<div class="relative z-20 flex flex-col space-y-1 w-full">${bottom.join('')}</div>`
+            };
+        }
+
+        // ============ ПРОГРЕССИЯ: КОНСТАНТЫ ============
+        const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary'];
+        const RARITY_WEIGHTS = { common: 60, rare: 25, epic: 12, legendary: 3 };
+        const RARITY_LABELS_RU = { common: 'Обычная', rare: 'Редкая', epic: 'Эпическая', legendary: 'Легендарная' };
+        const RAR_COLORS = { common: '#94a3b8', rare: '#38bdf8', epic: '#c084fc', legendary: '#fbbf24' }; // b18
+        const DAILY_REWARDS = [100, 200, 350, 500, 750, 1000, 2000];
+        const PITY_LIMIT = 10; // каждый 10-й пак без epic+ гарантирует epic+
+
+        function pluralRu(n, one, few, many) {
+            const mod10 = n % 10, mod100 = n % 100;
+            if (mod10 === 1 && mod100 !== 11) return one;
+            if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+            return many;
+        }
+
+        function fmtDate(d) {
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        function todayStr() { return fmtDate(new Date()); }
+        function yesterdayStr() { const d = new Date(); d.setDate(d.getDate() - 1); return fmtDate(d); }
+        function timeToMidnightStr() {
+            const now = new Date();
+            const mid = new Date(now); mid.setHours(24, 0, 0, 0);
+            const diff = mid - now;
+            const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000);
+            return `${h}ч ${String(m).padStart(2, '0')}м`;
+        }
+        function updateCountdowns() {
+            document.querySelectorAll('.js-countdown').forEach(el => el.textContent = timeToMidnightStr());
+        }
+
+        const defaultStats = {
+            packsOpened: 0, rarePlusFound: 0, epicPlusFound: 0, legendariesFound: 0,
+            duplicatesSold: 0, coinsFromDupes: 0, cardsCreated: 0, bestStreak: 0,
+            battlesWon: 0, battlesLost: 0, flawlessWins: 0, championWins: 0, oppWins: {},
+            battleStreak: 0, bestBattleStreak: 0,
+            durakWins: 0, durakLosses: 0, durakStreak: 0, bestDurakStreak: 0
+        };
+
+        // Пул ежедневных заданий
+        const MISSION_POOL = [
+            { type: 'open_pack', icon: 'fa-box-open', color: 'from-fuchsia-500 to-purple-600', variants: [[1, 80], [2, 150], [3, 250]], desc: n => `Открыть ${n} ${pluralRu(n, 'бустер пак', 'бустер пака', 'бустер паков')}` },
+            { type: 'collect_new', icon: 'fa-layer-group', color: 'from-teal-500 to-emerald-600', variants: [[3, 140], [5, 220]], desc: n => `Получить ${n} ${pluralRu(n, 'новую карту', 'новые карты', 'новых карт')}` },
+            { type: 'find_rare_plus', icon: 'fa-gem', color: 'from-sky-500 to-blue-600', variants: [[1, 120], [2, 200]], desc: n => `Найти ${n} ${pluralRu(n, 'карту Rare+', 'карты Rare+', 'карт Rare+')}` },
+            { type: 'find_epic_plus', icon: 'fa-hat-wizard', color: 'from-purple-500 to-fuchsia-600', variants: [[1, 200]], desc: n => `Найти ${n} ${pluralRu(n, 'карту Epic или Legendary', 'карты Epic или Legendary', 'карт Epic или Legendary')}` },
+            { type: 'sell_dupe', icon: 'fa-recycle', color: 'from-amber-500 to-orange-600', variants: [[2, 100], [4, 180]], desc: n => `Продать ${n} ${pluralRu(n, 'дубликат', 'дубликата', 'дубликатов')}` },
+            { type: 'earn_dupe_coins', icon: 'fa-coins', color: 'from-yellow-500 to-amber-600', variants: [[100, 120], [250, 200]], desc: n => `Заработать ${n} монет на дубликатах` },
+            { type: 'open_album', icon: 'fa-book-open', color: 'from-emerald-500 to-teal-600', variants: [[1, 50], [2, 90]], desc: n => `Заглянуть в ${n === 1 ? 'любой альбом' : n + ' альбома(ов)'}` },
+            // b122: задания про Арену и Дурака убраны; добавлено больше заданий по мини-играм.
+            // Поле game объединяет задания одной игры — генератор берёт по одному из каждой группы.
+            { type: 'spin_slots', game: 'slots', icon: 'fa-lemon', color: 'from-lime-500 to-green-600', variants: [[3, 100], [10, 220]], desc: n => `Крутить «Слоты» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'win_slots', game: 'slots', icon: 'fa-clover', color: 'from-green-500 to-emerald-600', variants: [[1, 150], [3, 320]], desc: n => `Выиграть ${n} ${pluralRu(n, 'раз', 'раза', 'раз')} в «Слотах»` },
+            { type: 'slots_coins', game: 'slots', icon: 'fa-sack-dollar', color: 'from-emerald-500 to-teal-600', variants: [[500, 140], [1500, 260]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Слотах»` },
+            { type: 'spin_grid', game: 'grid', icon: 'fa-table-cells', color: 'from-sky-500 to-cyan-600', variants: [[3, 100], [8, 200]], desc: n => `Крутить «Сетку» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'win_grid', game: 'grid', icon: 'fa-border-all', color: 'from-blue-500 to-indigo-600', variants: [[1, 150], [3, 320]], desc: n => `Выиграть ${n} ${pluralRu(n, 'раз', 'раза', 'раз')} в «Сетке»` },
+            { type: 'grid_coins', game: 'grid', icon: 'fa-coins', color: 'from-cyan-500 to-blue-600', variants: [[500, 140], [2000, 280]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Сетке»` },
+            { type: 'spin_lines', game: 'lines', icon: 'fa-bars-staggered', color: 'from-violet-500 to-purple-600', variants: [[3, 100], [8, 200]], desc: n => `Крутить «Линии» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'win_lines', game: 'lines', icon: 'fa-align-left', color: 'from-indigo-500 to-violet-600', variants: [[1, 150], [3, 320]], desc: n => `Выиграть ${n} ${pluralRu(n, 'раз', 'раза', 'раз')} в «Линиях»` },
+            { type: 'lines_coins', game: 'lines', icon: 'fa-money-bill-wave', color: 'from-purple-500 to-fuchsia-600', variants: [[500, 150], [2500, 320]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Линиях»` },
+            { type: 'wheel_spin', game: 'wheel', icon: 'fa-dharmachakra', color: 'from-orange-500 to-red-600', variants: [[3, 120], [8, 240]], desc: n => `Крутить «Колесо» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'wheel_coins', game: 'wheel', icon: 'fa-circle-dot', color: 'from-rose-500 to-orange-600', variants: [[300, 130], [1500, 260]], desc: n => `Выиграть ${fmtCoins(n)} монет на «Колесе»` },
+            { type: 'mines_open', game: 'mines', icon: 'fa-square', color: 'from-teal-600 to-slate-700', variants: [[5, 120], [12, 260]], desc: n => `Открыть ${n} ${pluralRu(n, 'безопасную клетку', 'безопасные клетки', 'безопасных клеток')} в «Минах»` },
+            { type: 'mines_win', game: 'mines', icon: 'fa-bomb', color: 'from-slate-500 to-slate-700', variants: [[1, 180], [3, 400]], desc: n => `Забрать выигрыш в «Минах» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` },
+            { type: 'mines_coins', game: 'mines', icon: 'fa-gem', color: 'from-cyan-600 to-slate-700', variants: [[500, 150], [2500, 320]], desc: n => `Выиграть ${fmtCoins(n)} монет в «Минах»` },
+            { type: 'mine_ore', game: 'miner', icon: 'fa-helmet-safety', color: 'from-yellow-600 to-amber-700', variants: [[2000, 120], [10000, 250]], desc: n => `Добыть ${fmtCoins(n)} руды в «Шахте»` },
+            { type: 'miner_upgrade', game: 'miner', icon: 'fa-screwdriver-wrench', color: 'from-amber-600 to-yellow-700', variants: [[1, 150], [2, 320]], desc: n => `Улучшить «Шахту» ${n} ${pluralRu(n, 'раз', 'раза', 'раз')}` }
+        ];
+        // b121: задания про Студию/создание навсегда убраны из пула; старые списки чистятся в ensureDailyMissions
+        // b122: 8 заданий в день; Арена и Дурак больше не участвуют
+        const MISSIONS_PER_DAY = 8;
+
+        function collectedCount(s) { return Object.keys(s.collection || {}).length; }
+        function completedAlbums(s) {
+            return s.packs.filter(p => {
+                const cs = s.cards.filter(c => c.packId === p.id);
+                return cs.length > 0 && cs.every(c => s.collection[c.id]);
+            }).length;
+        }
+
+        // Достижения
+        const ACHIEVEMENTS = [
+            { id: 'first_card', icon: 'fa-layer-group', title: 'Первая карта', desc: 'Получите свою первую карту', reward: 50, check: s => collectedCount(s) >= 1, prog: s => [collectedCount(s), 1] },
+            { id: 'collector_10', icon: 'fa-clone', title: 'Коллекционер', desc: 'Соберите 10 уникальных карт', reward: 100, check: s => collectedCount(s) >= 10, prog: s => [collectedCount(s), 10] },
+            { id: 'collector_25', icon: 'fa-swatchbook', title: 'Опытный коллекционер', desc: 'Соберите 25 уникальных карт', reward: 250, check: s => collectedCount(s) >= 25, prog: s => [collectedCount(s), 25] },
+            { id: 'collector_50', icon: 'fa-crown', title: 'Мастер коллекции', desc: 'Соберите 50 уникальных карт', reward: 600, check: s => collectedCount(s) >= 50, prog: s => [collectedCount(s), 50] },
+            { id: 'rare_find', icon: 'fa-gem', title: 'Редкая находка', desc: 'Получите карту Rare или выше', reward: 75, check: s => s.stats.rarePlusFound >= 1, prog: s => [Math.min(s.stats.rarePlusFound, 1), 1] },
+            { id: 'epic_find', icon: 'fa-hat-wizard', title: 'Эпическая находка', desc: 'Получите карту Epic или Legendary', reward: 150, check: s => s.stats.epicPlusFound >= 1, prog: s => [Math.min(s.stats.epicPlusFound, 1), 1] },
+            { id: 'legendary_find', icon: 'fa-star', title: 'ЛЕГЕНДА!', desc: 'Получите легендарную карту', reward: 500, check: s => s.stats.legendariesFound >= 1, prog: s => [Math.min(s.stats.legendariesFound, 1), 1] },
+            { id: 'packs_5', icon: 'fa-box-open', title: 'Начинающий вскрыватель', desc: 'Откройте 5 бустер паков', reward: 100, check: s => s.stats.packsOpened >= 5, prog: s => [s.stats.packsOpened, 5] },
+            { id: 'packs_20', icon: 'fa-truck-fast', title: 'Любитель паков', desc: 'Откройте 20 бустер паков', reward: 300, check: s => s.stats.packsOpened >= 20, prog: s => [s.stats.packsOpened, 20] },
+            { id: 'packs_50', icon: 'fa-industry', title: 'Машина распаковки', desc: 'Откройте 50 бустер паков', reward: 800, check: s => s.stats.packsOpened >= 50, prog: s => [s.stats.packsOpened, 50] },
+            { id: 'dupes_10', icon: 'fa-recycle', title: 'Дубликат-торговец', desc: 'Продайте 10 дубликатов', reward: 150, check: s => s.stats.duplicatesSold >= 10, prog: s => [s.stats.duplicatesSold, 10] },
+            { id: 'dupes_50', icon: 'fa-money-bill-trend-up', title: 'Торговый магнат', desc: 'Продайте 50 дубликатов', reward: 400, check: s => s.stats.duplicatesSold >= 50, prog: s => [s.stats.duplicatesSold, 50] },
+            { id: 'album_complete', icon: 'fa-book-open', title: 'Полный альбом', desc: 'Полностью соберите один из альбомов', reward: 750, check: s => completedAlbums(s) >= 1, prog: s => [completedAlbums(s), 1] },
+            { id: 'albums_3', icon: 'fa-box-archive', title: 'Архивариус', desc: 'Соберите 3 альбома полностью', reward: 1200, check: s => completedAlbums(s) >= 3, prog: s => [Math.min(completedAlbums(s), 3), 3] },
+            { id: 'albums_5', icon: 'fa-crown', title: 'Мастер коллекции', desc: 'Соберите 5 альбомов полностью', reward: 2500, check: s => completedAlbums(s) >= 5, prog: s => [Math.min(completedAlbums(s), 5), 5] },
+            { id: 'albums_10', icon: 'fa-gem', title: 'Живая легенда', desc: 'Соберите 10 альбомов полностью', reward: 5000, check: s => completedAlbums(s) >= 10, prog: s => [Math.min(completedAlbums(s), 10), 10] },
+            { id: 'rich', icon: 'fa-coins', title: 'Богач', desc: 'Имейте 2000+ монет одновременно', reward: 200, check: s => s.coins >= 2000, prog: s => [Math.min(s.coins, 2000), 2000] },
+            { id: 'streak_7', icon: 'fa-calendar-check', title: 'Неделя без пропусков', desc: 'Забирайте награду 7 дней подряд', reward: 600, check: s => Math.max(s.daily.streak, s.stats.bestStreak) >= 7, prog: s => [Math.min(Math.max(s.daily.streak, s.stats.bestStreak), 7), 7] },
+            { id: 'all_missions', icon: 'fa-list-check', title: 'Идеальный день', desc: 'Выполните все задания дня', reward: 150, check: s => s.missions && s.missions.list && s.missions.list.length > 0 && s.missions.list.every(m => m.claimed) },
+            { id: 'first_win', icon: 'fa-hand-fist', title: 'Первая победа', desc: 'Выиграйте свой первый бой на Арене', reward: 100, check: s => s.stats.battlesWon >= 1, prog: s => [Math.min(s.stats.battlesWon, 1), 1] },
+            { id: 'wins_10', icon: 'fa-shield-halved', title: 'Ветеран арены', desc: 'Выиграйте 10 боёв', reward: 300, check: s => s.stats.battlesWon >= 10, prog: s => [s.stats.battlesWon, 10] },
+            { id: 'wins_25', icon: 'fa-medal', title: 'Гладиатор', desc: 'Выиграйте 25 боёв', reward: 600, check: s => s.stats.battlesWon >= 25, prog: s => [s.stats.battlesWon, 25] },
+            { id: 'flawless', icon: 'fa-star', title: 'Безупречная победа', desc: 'Выиграйте бой, не потеряв ни одного бойца', reward: 250, check: s => s.stats.flawlessWins >= 1, prog: s => [Math.min(s.stats.flawlessWins, 1), 1] },
+            { id: 'battle_streak3', icon: 'fa-fire', title: 'На волне побед', desc: 'Выиграйте 3 боя подряд на Арене', reward: 250, check: s => (s.stats.bestBattleStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestBattleStreak || 0, 3), 3] },
+            { id: 'champion_down', icon: 'fa-crown', title: 'Убийца королей', desc: 'Победите Чемпиона «Коллекционер карт»', reward: 800, check: s => (s.stats.championWins || 0) >= 1, prog: s => [Math.min(s.stats.championWins || 0, 1), 1] },
+            { id: 'durak_win', icon: 'fa-diamond', title: 'Не дурак!', desc: 'Выиграйте партию в «Дурака»', reward: 150, check: s => (s.stats.durakWins || 0) >= 1, prog: s => [Math.min(s.stats.durakWins || 0, 1), 1] },
+            { id: 'durak_streak3', icon: 'fa-fire', title: 'Серийный победитель', desc: '3 победы в «Дурака» подряд', reward: 200, check: s => (s.stats.bestDurakStreak || 0) >= 3, prog: s => [Math.min(s.stats.bestDurakStreak || 0, 3), 3] },
+            // b61: награды по играм
+            { id: 'slots_win_1', icon: 'fa-lemon', title: 'Первый спин', desc: 'Выиграйте в автомате «Слоты»', reward: 100, check: s => (s.stats.slotsWins || 0) >= 1, prog: s => [Math.min(s.stats.slotsWins || 0, 1), 1] },
+            { id: 'slots_win_10', icon: 'fa-lemon', title: 'Мастер слотов', desc: '10 выигрышей в автомате «Слоты»', reward: 300, check: s => (s.stats.slotsWins || 0) >= 10, prog: s => [Math.min(s.stats.slotsWins || 0, 10), 10] },
+            { id: 'slots_jackpot', icon: 'fa-crown', title: 'Охотник за джекпотом', desc: 'Сорвите джекпот на любом из автоматов', reward: 1000, check: s => (s.stats.jackpots || 0) >= 1, prog: s => [Math.min(s.stats.jackpots || 0, 1), 1] },
+            { id: 'grid_win_1', icon: 'fa-border-all', title: 'Первый каскад', desc: 'Выиграйте в «Сеточном слоте»', reward: 100, check: s => (s.stats.gridWins || 0) >= 1, prog: s => [Math.min(s.stats.gridWins || 0, 1), 1] },
+            { id: 'grid_win_10', icon: 'fa-border-all', title: 'Мастер сетки', desc: '10 выигрышей в «Сеточном слоте»', reward: 300, check: s => (s.stats.gridWins || 0) >= 10, prog: s => [Math.min(s.stats.gridWins || 0, 10), 10] },
+            { id: 'grid_chain3', icon: 'fa-link', title: 'Цепь цепей', desc: 'Цепь из 3+ каскадов за один спин в Сетке', reward: 500, check: s => (s.stats.bestGridChain || 0) >= 3, prog: s => [Math.min(s.stats.bestGridChain || 0, 3), 3] },
+            { id: 'miner_lvl5', icon: 'fa-helmet-safety', title: 'Бригадир', desc: 'Прокачайте кирку в «Шахте» до 5 уровня', reward: 400, check: s => (s.stats.minerLvl || 0) >= 5, prog: s => [Math.min(s.stats.minerLvl || 0, 5), 5] },
+            { id: 'miner_lvl10', icon: 'fa-gem', title: 'Хозяин шахты', desc: 'Прокачайте кирку до 10 уровня', reward: 800, check: s => (s.stats.minerLvl || 0) >= 10, prog: s => [Math.min(s.stats.minerLvl || 0, 10), 10] },
+            // b121: новые достижения по играм
+            { id: 'lines_win_10', icon: 'fa-align-left', title: 'Мастер линий', desc: '10 выигрышей в «Линиях»', reward: 300, check: s => (s.stats.linesWins || 0) >= 10, prog: s => [Math.min(s.stats.linesWins || 0, 10), 10] },
+            { id: 'wheel_spin_10', icon: 'fa-dharmachakra', title: 'Колесо фортуны', desc: 'Крутите «Колесо» 10 раз', reward: 250, check: s => (s.stats.wheelSpins || 0) >= 10, prog: s => [Math.min(s.stats.wheelSpins || 0, 10), 10] },
+            { id: 'mines_win_10', icon: 'fa-bomb', title: 'Сапёр', desc: '10 успешных заборов выигрыша в «Минах»', reward: 400, check: s => (s.stats.minesWins || 0) >= 10, prog: s => [Math.min(s.stats.minesWins || 0, 10), 10] }
+        ];
+
+        // Стандартный набор — паки и карты из авторского сохранения
+        // nexus_tcg_backup.json (встроено в игру). Старый фан-набор
+        // «Скуби-Ду: Наш фан-набор» (pack-sdc) из стандарта УДАЛЁН.
+        const STANDARD_PACKS = [
+            {"id": "pack-1790758898081", "title": "Говорящая с призраками", "description": "Мелинда Гордон только что вышла замуж и открыла собственный антикварный магазин. С виду она такая же, как большинство девушек. Но на самом деле Мелинда обладает редчайшей способностью общаться с духами умерших людей. Девушка использует этот дар, чтобы передавать важную информацию из мира мертвых в мир живых...", "image": "media/g0.jpg", "price": 100, "color": "black", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Ghost%20Whisperer%20Intro%20Opening%20Credits%20-%20Abertura%20Series%20%28128k%29.mp3", "musicOff": false},
+            {"id": "pack-1790759015849", "title": "Сверхъестественное", "description": "Сериал рассказывает о приключениях братьев Сэма и Дина Винчестеров, которые путешествуют по Соединённым Штатам на чёрном автомобиле Chevrolet Impala 1967 года, расследуют паранормальные явления, многие из которых основаны на американских городских легендах и фольклоре, и сражаются с порождениями зла, такими как демоны и призраки.", "image": "media/s0.jpg", "price": 100, "color": "black", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Supernatural%20-%20Carry%20On%20Wayward%20Son%20%28Music%20Video%29.mp3", "musicOff": false},
+            {"id": "pack-1790759140403", "title": "Доктор Кто", "description": "Инопланетянин-гуманоид, называющий себя Доктором, путешествует через время и пространство в космическом корабле, который снаружи выглядит как полицейская будка 50-х годов. Доктор чрезвычайно эксцентричен и имеет невероятные знания в областях технологии, истории и науки. Он путешествует вместе со своими компаньонами, попутно борясь против космических злодеев и спасая Землю от бесчисленных врагов.", "image": NX_EMBED_MEDIA['ba249bef08b2357bf2130e321d8bb37f(1).jpg'], "price": 100, "color": "black", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Doctor%20Who%20Season.mp3", "musicOff": false},
+            {"id": "pack-1790762837197", "title": "Скуби-Ду!", "description": "Однажды мальчик по имени Шэгги встречает бездомного щенка, которому дает довольно странную кличку – Скуби-ду. Это становится началом не только настоящей дружбы, но и множества удивительных событий, в которых главные герои принимают самое активное участие. При поддержке школьников Дафни, Фредди и Вельмы приятели создают частное детективное агентство, мечтая помогать городским властям справляться с различными преступниками. Вскоре наступает момент, когда отважным сыщикам приходится столкнуться с реальной опасностью: Подлый Дик собирается выпустить на свободу Цербера, жуткую собаку-призрака, а отчаянная команда должна любой ценой остановить приближающийся апокалипсис.", "image": NX_EMBED_MEDIA['SD_World_of_Mystery.jpg'], "price": 100, "color": "gold", "shimmer": "matte", "musicUrl": "https://archive.org/download/poster-set/Simple%20Plan%20-%20What%27s%20New%20Scooby%20Doo%20%28Official%20Lyric%20Video%29%20-%20SimplePlan%20%28128k%29.mp3", "musicOff": false}
+        ];
+        const STANDARD_CARDS = [
+            {"id": "card-1790762986400", "packId": "pack-1790762837197", "name": "Скуби-Ду", "description": "Верный друг", "rarity": "legendary", "image": NX_EMBED_MEDIA['skubi1.jpg']},
+            {"id": "card-1790763095764", "packId": "pack-1790762837197", "name": "Шегги", "description": "Трусливый, но верный друг", "rarity": "legendary", "image": NX_EMBED_MEDIA['skubi2.jpg']},
+            {"id": "card-1790763213286", "packId": "pack-1790762837197", "name": "Дафна", "description": "Стильная сыщица", "rarity": "legendary", "image": NX_EMBED_MEDIA['skubi3.jpg']},
+            {"id": "card-1790763378586", "packId": "pack-1790762837197", "name": "Фред", "description": "Мастер ловушек", "rarity": "legendary", "image": NX_EMBED_MEDIA['skubi4.jpg']},
+            {"id": "card-1790763471884", "packId": "pack-1790762837197", "name": "Велма", "description": "Главный мозг команды", "rarity": "legendary", "image": NX_EMBED_MEDIA['skubi5.jpg']},
+            {"id": "card-1790805683832", "packId": "pack-1790762837197", "name": "Скрэппи-Ду", "description": "Маленький, гиперактивный и самоуверенный племянник Скуби-Ду", "rarity": "legendary", "image": NX_EMBED_MEDIA['skubi6.jpg']},
+            {"id": "card-1790808827852", "packId": "pack-1790762837197", "name": "Мистическая машина", "description": "Едут на новую загадку", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi7.jpg']},
+            {"id": "card-1790808944494", "packId": "pack-1790762837197", "name": "Черный рыцарь", "description": "Пугал посетителей музея.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi8.jpg']},
+            {"id": "card-1790809042346", "packId": "pack-1790762837197", "name": "Призрак капитана Катлера", "description": "Светящийся водолаз, охранявший затонувшее золото.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi9.jpg']},
+            {"id": "card-1790809120718", "packId": "pack-1790762837197", "name": "Фантом из замка", "description": "Иллюзионист, пугавший людей в старом замке.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi10.jpg']},
+            {"id": "card-1790809206355", "packId": "pack-1790762837197", "name": "Шахтёр-сорокдевятник ", "description": "Призрак с фонарём в заброшенной шахте.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi11.jpg']},
+            {"id": "card-1790809311768", "packId": "pack-1790762837197", "name": "Зелёный призрак ", "description": "Светящийся призрак в особняке.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi12.jpg']},
+            {"id": "card-1790810571300", "packId": "pack-1790762837197", "name": "Призрак клоуна ", "description": "Терроризировал луна-парк.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi13.jpg']},
+            {"id": "card-1790811744706", "packId": "pack-1790762837197", "name": "Кукловод", "description": "Управлял марионетками, чтобы пугать людей в театре.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi14.jpg']},
+            {"id": "card-1790811974959", "packId": "pack-1790762837197", "name": "Мумия", "description": "Пугал посетителей музея, чтобы скрыть кражу.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi15.jpg']},
+            {"id": "card-1790813055255", "packId": "pack-1790762837197", "name": "Ведьма", "description": "Пугала людей в старом доме.", "rarity": "epic", "image": NX_EMBED_MEDIA['skubi16.jpg']},
+            {"id": "card-1790813843486", "packId": "pack-1790762837197", "name": "Космический призрак", "description": "Инопланетянин с жутким смехом.", "rarity": "epic", "image": "media/skubi17.jpg"},
+            {"id": "card-1790814269408", "packId": "pack-1790762837197", "name": "Призрак Хайда ", "description": "Пугал людей в особняке.", "rarity": "epic", "image": "media/skubi18.jpg"},
+            {"id": "card-1790814794985", "packId": "pack-1790762837197", "name": "Большой страшный оборотень", "description": "Пугал жителей города.", "rarity": "epic", "image": "media/skubi19.jpg"}
+        ];
+        STANDARD_CARDS.forEach(c => defaultCards.push({ id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image }));
+        STANDARD_PACKS.forEach(p => defaultPacks.push(Object.assign({}, p)));
+        // Идентификаторы стандартного набора — они в облако не синхронизируются (встроены в игру)
+        const STANDARD_IDS = {};
+        STANDARD_PACKS.forEach(p => { STANDARD_IDS[p.id] = 1; });
+        STANDARD_CARDS.forEach(c => { STANDARD_IDS[c.id] = 1; });
+        // b37: ключи курирования стандартного набора — объявлены здесь, потому что
+        // загрузочная миграция (фиксация решений создателя) работает раньше облачного раздела
+        const STD_MOD_KEY = 'nexus_std_mod';
+        const STD_MOD_REMOTE_KEY = 'nexus_std_mod_remote';
+        // b46: списки полей для patch-записей правок стандарта. Объявлены здесь (а не в облачном
+        // разделе): загрузочная миграция работает раньше и иначе ловила бы TDZ-ошибку
+        // b173: таймеры продажи, премьера, график и снятие с продажи стандартного пака — тоже часть комнаты
+        const STD_PACK_FIELDS = ['title', 'description', 'image', 'price', 'color', 'shimmer', 'musicUrl', 'musicOff', 'saleUntil', 'premiereAt', 'schedule', 'retired'];
+        const STD_CARD_FIELDS = ['name', 'description', 'rarity', 'image', 'layout', 'aura', 'atk', 'hp', 'musicUrl'];
+
+        let state = {
+            coins: parseInt(LS.getItem('nexus_coins')) || 1000,
+            packs: JSON.parse(LS.getItem('nexus_packs')) || defaultPacks,
+            cards: JSON.parse(LS.getItem('nexus_cards')) || defaultCards,
+            collection: JSON.parse(LS.getItem('nexus_collection')) || {},
+            stats: Object.assign({}, defaultStats, JSON.parse(LS.getItem('nexus_stats') || '{}')),
+            daily: Object.assign({ lastClaimDate: null, streak: 0, lastDurakWinDate: null }, JSON.parse(LS.getItem('nexus_daily') || '{}')),
+            missions: JSON.parse(LS.getItem('nexus_missions') || 'null') || { date: null, list: [] },
+            achievements: JSON.parse(LS.getItem('nexus_achievements') || '{}'),
+            pity: Object.assign({ packsSinceEpic: 0 }, JSON.parse(LS.getItem('nexus_pity') || '{}')),
+            deck: JSON.parse(LS.getItem('nexus_deck') || '[]'),
+            history: JSON.parse(LS.getItem('nexus_history') || '[]'),
+            albumBonus: JSON.parse(LS.getItem('nexus_album_bonus') || '{}'),
+            // b277: статистика продаж паков и покупки в окнах теперь переживают перезапуск
+            packStats: JSON.parse(LS.getItem('nexus_pack_stats') || '{}'),
+            windowBuys: JSON.parse(LS.getItem('nexus_window_buys') || '{}'),
+            currentAlbumPackId: null
+        };
+        // нормализация вложенных объектов после миграции
+        state.stats.oppWins = Object.assign({}, state.stats.oppWins || {});
+        if (!Array.isArray(state.deck)) state.deck = [];
+        if (!Array.isArray(state.history)) state.history = [];
+        if (!state.albumBonus || typeof state.albumBonus !== 'object') state.albumBonus = {};
+        // Тяжёлые base64-арты Скуби не пишем в localStorage — храним ссылки,
+        // а в памяти держим полные data-URI (защищает от переполнения квоты)
+        const SCOOBY_REF = {};
+        defaultCards.forEach(c => { if (c.image) SCOOBY_REF[c.id] = c.image; }); // b323: все встроенные карты, не только sc-/sdc-
+        const SCOOBY_PACK_REF = {};
+        defaultPacks.forEach(p => { if (p.image) SCOOBY_PACK_REF[p.id] = p.image; }); // b323: все встроенные паки
+
+        function resolveMediaRefs() {
+            state.cards.forEach(c => {
+                if (typeof c.image === 'string' && c.image.indexOf('ref:') === 0) c.image = SCOOBY_REF[c.image.slice(4)] || '';
+            });
+            state.packs.forEach(p => {
+                if (typeof p.image === 'string' && p.image.indexOf('ref:') === 0) p.image = SCOOBY_PACK_REF[p.image.slice(4)] || ''; // b323
+                // b13: внешний вид по умолчанию для старых сейвов и импорта
+                if (!PACK_COLORS[p.color]) p.color = 'silver';
+                if (!PACK_SHIMMERS[p.shimmer]) p.shimmer = 'holo';
+            });
+        }
+        function lightCard(c) {
+            return (c.image && SCOOBY_REF[c.id] && SCOOBY_REF[c.id] === c.image) ? Object.assign({}, c, { image: 'ref:' + c.id }) : c; // b323
+        }
+        function lightPack(p) {
+            return (p.image && SCOOBY_PACK_REF[p.id] && SCOOBY_PACK_REF[p.id] === p.image) ? Object.assign({}, p, { image: 'ref:' + p.id }) : p; // b323
+        }
+
+        // Миграция: пак «Scooby-Doo! Великие тайны мира» для старых сохранений
+        (function migrateScoobyPack() {
+            // Удалённые наборы (Cyber Nexus, Fantasy Legends, русские сканы) вычищаем из сейвов
+            ['pack-1', 'pack-2', 'pack-scooby'].forEach(pid => {
+                state.packs = state.packs.filter(pp => pp.id !== pid);
+                state.cards = state.cards.filter(cc => cc.packId !== pid);
+            });
+            state.deck = (state.deck || []).filter(id => state.cards.some(cc => cc.id === id));
+            // Нерабочий wiki-пак (403 на сканы) убираем из старых сохранений
+            state.packs = state.packs.filter(pp => pp.id !== 'pack-sdw');
+            state.cards = state.cards.filter(cc => cc.packId !== 'pack-sdw');
+            // фан-набор «Скуби-Ду: Наш фан-набор» удалён из стандартного набора:
+            // вычищаем его и его карты из старых сохранений навсегда
+            state.packs = state.packs.filter(pp => pp.id !== 'pack-sdc');
+            state.cards = state.cards.filter(cc => cc.packId !== 'pack-sdc');
+        })();
+        // b30: ЛЕЧЕНИЕ после массовых зачисток (b28–b29): они ставили надгробия на всё
+        // содержимое комнаты, из-за чего новые паки создателя не доходили до участников
+        // и всё удалялось. Снимаем блокировки: чистим надгробия массовых зачисток и
+        // устаревшие флаги. Точечные удаления создателя (deletePack/deleteCard)
+        // продолжат работать: их надгробия создаются заново при каждом удалении.
+        (function migrateHealCloud() {
+            try {
+                if (LS.getItem('nexus_heal_b30') === '1') return;
+                LS.removeItem('nexus_cloud_tombs');
+                LS.removeItem('nexus_wipe_all_packs');
+                LS.removeItem('nexus_wipe_room_done');
+                LS.removeItem('nexus_cloud_dirty'); // не пушим случайно пустой каталог
+                LS.setItem('nexus_heal_b30', '1');
+            } catch (e) {}
+        })();
+        // b33: ЛЕЧЕНИЕ синхронизации после b27–b32. В комнате и в localStorage накопились
+        // «надгробия» массовой зачистки — в том числе на паки стандартного набора. Из-за них
+        // общий каталог комнаты схлопнулся в пустой, а удалённое нельзя было вернуть:
+        // надгробия жили вечно и переиздавались при каждой публикации. Чистим их разово;
+        // следующая публикация создателя соберёт каталог заново (уже через слияние с комнатой)
+        // и заодно очистит саму комнату. Точечные удаления создателя продолжат работать —
+        // их надгробия создаются заново при каждом удалении и устаревают через 30 дней.
+        (function migrateHealCloudB33() {
+            try {
+                if (LS.getItem('nexus_heal_b33') === '1') return;
+                LS.removeItem('nexus_cloud_tombs');
+                LS.removeItem('nexus_cloud_remote_tombs');
+                LS.removeItem('nexus_cloud_dirty'); // не публикуем случайно пустой каталог
+                LS.setItem('nexus_heal_b33', '1');
+            } catch (e) {}
+        })();
+        // b31: возврат встроенного стандартного набора в сохранения, из которых он был
+        // вычищен миграциями b27/b28. Досевает только недостающие паки/карты,
+        // пользовательский контент не трогает. Выполняется один раз.
+        (function migrateRestoreStandard() {
+            try { if (LS.getItem('nexus_restore_b31') === '1') return; } catch (e) { return; }
+            let added = false;
+            STANDARD_PACKS.forEach(p => {
+                if (!state.packs.some(x => x.id === p.id)) { state.packs.push(Object.assign({}, p)); added = true; }
+            });
+            STANDARD_CARDS.forEach(c => {
+                if (!state.cards.some(x => x.id === c.id)) {
+                    state.cards.push({ id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image });
+                    added = true;
+                }
+            });
+            try { LS.setItem('nexus_restore_b31', '1'); } catch (e) {}
+            if (added) saveState();
+        })();
+        // b34/b37: стандартный набор мог быть вырезан из сохранений надгробиями b27–b32 (они жили
+        // вечно и удаляли даже встроенные паки) — такие устройства досеваем. НО с b37 отсутствие
+        // стандартного пака может быть и осознанным решением создателя («убрал лишнее»): на
+        // устройстве-создателе комнаты фиксируем это в stdMod (и оно уедет в комнату), а на
+        // устройстве-участнике просто досеваем стандарт. Дальше досев выполняется при каждом
+        // запуске (reseedStandard) с уважением к stdMod.
+        (function migrateRestoreStandardB34() {
+            let ownerish = false;
+            try {
+                const roomCode = String(LS.getItem('nexus_cloud_room') || '').trim();
+                ownerish = !!roomCode && (LS.getItem('nexus_cloud_owner_room') === roomCode || !!LS.getItem('nexus_cloud_auth_' + roomCode));
+            } catch (e) {}
+            // b37: фиксация текущей курировки отдельным флагом (не зависит от nexus_restore_b34,
+            // который мог сработать раньше на устройствах, пострадавших от старых надгробий)
+            try {
+                if (LS.getItem('nexus_stdmod_init') !== '1') {
+                    LS.setItem('nexus_stdmod_init', '1');
+                    if (ownerish) {
+                        const mark = [];
+                        STANDARD_PACKS.forEach(p => { if (!state.packs.some(x => x.id === p.id)) mark.push({ id: p.id, off: 1, at: Date.now() }); });
+                        STANDARD_CARDS.forEach(c => { if (!state.cards.some(x => x.id === c.id) && !mark.some(m => m.id === c.packId)) mark.push({ id: c.id, off: 1, at: Date.now() }); });
+                        if (mark.length) cloudStdModSave(cloudStdMod().concat(mark));
+                    }
+                }
+            } catch (e) {}
+            // b46: правки стандарта, сделанные ДО b46, фиксируем как patch-записи на устройстве-
+            // создателе — они уедут в комнату на ближайшей сверке и доедут до игроков
+            try {
+                if (LS.getItem('nexus_stdmod_edit_init') !== '1') {
+                    LS.setItem('nexus_stdmod_edit_init', '1');
+                    let ownerish2 = false;
+                    try {
+                        const rc2 = String(LS.getItem('nexus_cloud_room') || '').trim();
+                        ownerish2 = !!rc2 && (LS.getItem('nexus_cloud_owner_room') === rc2 || !!LS.getItem('nexus_cloud_auth_' + rc2));
+                    } catch (e) {}
+                    if (ownerish2) {
+                        state.packs.forEach(p => { if (STANDARD_IDS[p.id]) cloudStdTouch(p); });
+                        state.cards.forEach(c => { if (STANDARD_IDS[c.id]) cloudStdTouch(c); });
+                    }
+                }
+            } catch (e) {}
+            // b173: таймеры/снятие с продажи стандартных паков, поставленные ДО этой сборки,
+            // в patch-записях не фиксировались — фиксируем один раз на устройстве-создателе,
+            // чтобы они доехали до комнаты
+            try {
+                if (LS.getItem('nexus_stdmod_timer_init') !== '1') {
+                    LS.setItem('nexus_stdmod_timer_init', '1');
+                    let ownerish3 = false;
+                    try {
+                        const rc3 = String(LS.getItem('nexus_cloud_room') || '').trim();
+                        ownerish3 = !!rc3 && (LS.getItem('nexus_cloud_owner_room') === rc3 || !!LS.getItem('nexus_cloud_auth_' + rc3));
+                    } catch (e) {}
+                    if (ownerish3) {
+                        state.packs.forEach(p => { if (STANDARD_IDS[p.id]) cloudStdTouch(p); });
+                    }
+                }
+            } catch (e) {}
+            let rsChanged = false;
+            try { rsChanged = !!reseedStandard(); } catch (e) {}
+            try { if (applyStdPatches()) rsChanged = true; } catch (e) {}
+            try { if (rsChanged) saveState(); } catch (e) {}
+        })();
+        resolveMediaRefs();
+
+        function saveState() {
+            try {
+                LS.setItem('nexus_coins', state.coins);
+                LS.setItem('nexus_packs', JSON.stringify(state.packs.map(lightPack)));
+                LS.setItem('nexus_cards', JSON.stringify(state.cards.map(lightCard)));
+                LS.setItem('nexus_collection', JSON.stringify(state.collection));
+                LS.setItem('nexus_stats', JSON.stringify(state.stats));
+                LS.setItem('nexus_daily', JSON.stringify(state.daily));
+                LS.setItem('nexus_missions', JSON.stringify(state.missions));
+                LS.setItem('nexus_achievements', JSON.stringify(state.achievements));
+                LS.setItem('nexus_pity', JSON.stringify(state.pity));
+                LS.setItem('nexus_deck', JSON.stringify(state.deck));
+                LS.setItem('nexus_history', JSON.stringify((state.history || []).slice(0, 30)));
+                LS.setItem('nexus_album_bonus', JSON.stringify(state.albumBonus || {}));
+                LS.setItem('nexus_pack_stats', JSON.stringify(state.packStats || {})); // b277
+                LS.setItem('nexus_window_buys', JSON.stringify(state.windowBuys || {})); // b277
+            } catch (err) {
+                // Квота localStorage или private-режим: игра НЕ должна падать
+                try {
+                    LS.setItem('nexus_coins', state.coins);
+                    LS.setItem('nexus_cards', JSON.stringify(state.cards.map(lightCard)));
+                    LS.setItem('nexus_packs', JSON.stringify(state.packs.map(lightPack)));
+                } catch (err2) { /* работаем без сохранений */ }
+            }
+        }
+
+        function downloadSaveFile(dataStr) {
+            try {
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.href = url;
+                downloadAnchor.download = 'nexus_tcg_backup.json';
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                document.body.removeChild(downloadAnchor);
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+                return true;
+            } catch (err) {
+                return false;
+            }
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(state, null, 2);
+            // В песочницах/iframe скачивание файлов блокируется — показываем окно с текстом
+            let inFrame = false;
+            try { inFrame = window.self !== window.top; } catch (err) { inFrame = true; }
+            if (!inFrame && downloadSaveFile(dataStr)) {
+                showToast('Резервная копия успешно экспортирована!', 'success');
+                return;
+            }
+            openExportModal(dataStr);
+        }
+
+        function openExportModal(dataStr) {
+            const ta = document.getElementById('export-json');
+            if (ta) ta.value = dataStr || JSON.stringify(state, null, 2);
+            document.getElementById('modal-export').classList.remove('hidden');
+        }
+
+        function closeExportModal() {
+            document.getElementById('modal-export').classList.add('hidden');
+        }
+
+        function downloadExportJson() {
+            const ta = document.getElementById('export-json');
+            const dataStr = ta && ta.value ? ta.value : JSON.stringify(state, null, 2);
+            if (downloadSaveFile(dataStr)) showToast('Файл сохранения скачивается!', 'success');
+            else showToast('Скачивание заблокировано браузером — скопируйте текст', 'error');
+        }
+
+        function copyExportJson() {
+            const ta = document.getElementById('export-json');
+            if (!ta) return;
+            ta.focus();
+            ta.select();
+            let ok = false;
+            try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+            if (!ok && typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(ta.value).then(
+                    () => showToast('Скопировано в буфер обмена!', 'success'),
+                    () => showToast('Выделите текст и скопируйте вручную (Ctrl+C)', 'error')
+                );
+                return;
+            }
+            showToast(ok ? 'Скопировано в буфер обмена!' : 'Выделите текст и скопируйте вручную (Ctrl+C)', ok ? 'success' : 'error');
+        }
+
+        // b279: ядро импорта сохранения. Вызывается и чтением файла, и QR-переносом
+        // (совместимость со старыми полными резервными копиями состояния).
+        function applyImportObject(imported) {
+            if (!imported || !imported.packs || !imported.cards) return false;
+            // b33: у контента из файла обычно нет updatedAt, а без него облако считало
+            // такие паки «старее» комнатных и затирало их при первом же получении данных —
+            // то есть импорт не синхронизировался вовсе. Ставим свежую метку.
+            const impTs = Date.now();
+            const stampImported = arr => (Array.isArray(arr) ? arr : []).forEach(o => {
+                if (o && typeof o === 'object' && !(o.updatedAt > 0)) o.updatedAt = impTs;
+            });
+            stampImported(imported.packs); stampImported(imported.cards);
+            state.coins = imported.coins || 1000;
+            state.packs = imported.packs;
+            state.cards = imported.cards;
+            state.collection = imported.collection || {};
+            state.stats = Object.assign({}, defaultStats, imported.stats || {});
+            state.daily = Object.assign({ lastClaimDate: null, streak: 0, lastDurakWinDate: null }, imported.daily || {});
+            state.missions = (imported.missions && imported.missions.list) ? imported.missions : { date: null, list: [] };
+            state.achievements = imported.achievements || {};
+            state.pity = Object.assign({ packsSinceEpic: 0 }, imported.pity || {});
+            state.deck = Array.isArray(imported.deck) ? imported.deck : [];
+            state.history = Array.isArray(imported.history) ? imported.history.slice(0, 30) : [];
+            state.albumBonus = (imported.albumBonus && typeof imported.albumBonus === 'object') ? imported.albumBonus : {};
+            state.packStats = (imported.packStats && typeof imported.packStats === 'object') ? imported.packStats : {}; // b277
+            state.windowBuys = (imported.windowBuys && typeof imported.windowBuys === 'object') ? imported.windowBuys : {}; // b277
+            state.stats.oppWins = Object.assign({}, state.stats.oppWins || {});
+            state.currentAlbumPackId = null;
+            resolveMediaRefs();
+            saveState();
+            // b33: импорт отправляется в комнату — но не «вслепую», а через слияние
+            // с текущим каталогом комнаты, поэтому чужие паки он не затирает.
+            cloudPublishSoon();
+            updateCoinDisplay();
+            checkAlbumRewards();
+            ensureDailyMissions();
+            updateDailyDot();
+            switchTab('store');
+            checkAchievements();
+            showToast('Данные успешно импортированы! Общий каталог комнаты обновится автоматически', 'success');
+            return true;
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = function(e) {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (!applyImportObject(imported)) showToast('Неверный формат файла сохранения!', 'error');
+                    } catch (err) {
+                        showToast('Ошибка при чтении JSON файла!', 'error');
+                    }
+                };
+            }
+        }
+
+        // ============ СБРОС ПРОГРЕССА (b17) ============
+        // Кнопка в Студии открывает модалку подтверждения: сброс выполняется
+        // только если вписать слово СБРОС — защита от случайного клика.
+        function openResetModal() {
+            const inp = document.getElementById('reset-confirm-input');
+            if (inp) inp.value = '';
+            onResetConfirmInput();
+            const m = document.getElementById('modal-reset');
+            if (m) m.classList.remove('hidden');
+            if (inp && inp.focus) setTimeout(() => { try { inp.focus(); } catch (e) {} }, 60);
+        }
+
+        function closeResetModal() {
+            const m = document.getElementById('modal-reset');
+            if (m) m.classList.add('hidden');
+        }
+
+        function resetWordTyped() {
+            const inp = document.getElementById('reset-confirm-input');
+            return !!inp && String(inp.value || '').trim().toUpperCase() === 'СБРОС';
+        }
+
+        function onResetConfirmInput() {
+            const btn = document.getElementById('reset-confirm-btn');
+            if (btn) btn.disabled = !resetWordTyped();
+        }
+
+        function resetProgress() {
+            if (!resetWordTyped()) { showToast('Введите слово СБРОС, чтобы подтвердить сброс', 'error'); return; }
+            PackMusic.stop(); // b19: если трек играл — глушим
+            // 1) Хранилище: стираем все игровые ключи (настройка звука nexus_sound сохраняется)
+            ['nexus_coins', 'nexus_packs', 'nexus_cards', 'nexus_collection', 'nexus_stats',
+             'nexus_daily', 'nexus_missions', 'nexus_achievements', 'nexus_pity', 'nexus_deck'].forEach(k => {
+                try { LS.removeItem(k); } catch (e) {}
+            });
+            try {
+                // подстраховка: выметаем и любые другие nexus_*-ключи старых сохранений
+                if (typeof LS.key === 'function' && typeof LS.length === 'number') {
+                    const doomed = [];
+                    for (let i = 0; i < LS.length; i++) {
+                        const k = LS.key(i);
+                        // b19: nexus_pack_music (ссылка на трек вскрытия) — пользовательская настройка, как и звук
+                        // b28: надгробия удалений и метка полной очистки — данные синхронизации,
+                        // сброс прогресса не должен их стирать, иначе удалённые паки вернутся из облака
+                        // b33: ВЕСЬ облачный контекст (nexus_cloud_*) и метки миграций — это не прогресс.
+                        // Раньше сброс заодно удалял код комнаты, логин/пароль создателя и идентификатор
+                        // устройства: создатель превращался в «участника» собственной комнаты, а его
+                        // следующая публикация с пустым локальным каталогом стирала комнату у всех игроков.
+                        const keepSync = k === 'nexus_sound' || k === PACK_MUSIC_KEY ||
+                            k.indexOf('nexus_cloud_') === 0 || k.indexOf('nexus_heal_') === 0 || k.indexOf('nexus_restore_') === 0 ||
+                            k === 'nexus_site_stats_v1' || k === 'nexus_stats_zero_ack'; // b277: реестр статистики сайта и метки команд админа — данные синхронизации
+                        if (k && k.indexOf('nexus_') === 0 && !keepSync) doomed.push(k);
+                    }
+                    doomed.forEach(k => LS.removeItem(k));
+                }
+            } catch (e) { /* память-режим: выметать нечего */ }
+            // 2) Состояние — ровно как после первой установки
+            state.coins = 1000;
+            state.packs = defaultPacks.map(p => Object.assign({}, p));
+            state.cards = defaultCards.map(c => Object.assign({}, c));
+            state.collection = {};
+            state.stats = Object.assign({}, defaultStats, { oppWins: {} });
+            state.daily = { lastClaimDate: null, streak: 0, lastDurakWinDate: null };
+            state.missions = { date: null, list: [] };
+            state.achievements = {};
+            state.pity = { packsSinceEpic: 0 };
+            state.deck = [];
+            state.history = [];
+            state.albumBonus = {};
+            state.packStats = {}; // b277
+            state.windowBuys = {}; // b277
+            state.currentAlbumPackId = null;
+            resolveMediaRefs();
+            saveState();
+            // b33: сброс прогресса — не повод отправлять в комнату пустой каталог
+            cloudDirtyClear();
+            cloudPushFailAt = 0;
+            // 3) Интерфейс — как после первой загрузки
+            closeResetModal();
+            updateCoinDisplay();
+            ensureDailyMissions();
+            updateDailyDot();
+            switchTab('store');
+            showToast('Прогресс сброшен: игра снова как после установки', 'success');
+            // b33: общий каталог комнаты — не «прогресс», возвращаем его на экран
+            if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
+        }
+
+        // b218: пока открыто окно вскрытия (2D или 3D), уведомления не мелькают поверх
+        // фольги — всё кроме ошибок уходит в очередь и показывается после закрытия окна
+        const TOAST_QUEUE = [];
+        function unboxingIsOpen() {
+            const m1 = document.getElementById('modal-unboxing');
+            const m2 = document.getElementById('modal-pack3d');
+            return !!(m1 && !m1.classList.contains('hidden')) || !!(m2 && !m2.classList.contains('hidden'));
+        }
+        function flushToastQueue() {
+            const q = TOAST_QUEUE.splice(0, TOAST_QUEUE.length);
+            q.forEach(([m, t], i) => setTimeout(() => showToast(m, t), 250 + i * 160));
+        }
+
+        // b219: стек уведомлений висит сразу ПОД меню вкладок: липкая шапка измерена
+        // один раз и на каждом ресайзе/тосте — меню ушло по высоте — стек последовал
+        function positionToastContainer() {
+            const c = document.getElementById('toast-container');
+            const h = document.querySelector('header');
+            if (!c || !h) return;
+            c.style.top = Math.round(h.getBoundingClientRect().bottom + 8) + 'px';
+        }
+        window.addEventListener('resize', positionToastContainer);
+        positionToastContainer();
+
+        function showToast(message, type = 'success') {
+            if (unboxingIsOpen() && type !== 'error') {
+                TOAST_QUEUE.push([message, type]);
+                while (TOAST_QUEUE.length > 3) TOAST_QUEUE.shift();
+                return null;
+            }
+            const container = document.getElementById('toast-container');
+            positionToastContainer(); // b219: вдруг меню поменяло высоту — стек остаётся под ним
+            const toast = document.createElement('div');
+            // b217: Liquid Glass — стеклянная база одна, оттенок типа задают CSS-переменные
+            const lqType = ['success', 'refund', 'error', 'music'].includes(type) ? type : 'info';
+            toast.className = `lq-toast lq-${lqType} pointer-events-auto w-full px-3.5 py-3 flex items-center gap-3 transform -translate-y-3 opacity-0`;
+            // b19: иконка по типу (ошибка — крестик, иначе сообщения о музыке/ссылках терялись)
+            const toastIcon = type === 'refund' ? 'fa-coins' : type === 'error' ? 'fa-circle-xmark' : type === 'music' ? 'fa-music' : 'fa-check-circle';
+            toast.innerHTML = `<span class="lq-chip"><i class="fa-solid ${toastIcon}"></i></span><span class="lq-msg">${message}</span>`;
+            container.appendChild(toast);
+            // b86: не больше 4 живых тостов — залпы событий не заваливают экран и DOM
+            while (container.childElementCount > 4) container.removeChild(container.firstChild);
+            setTimeout(() => toast.classList.remove('-translate-y-3', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('-translate-y-3', 'opacity-0');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+            return toast;
+        }
+
+        // ============ b128: ЗАЩИТА ОТ КОПИРОВАНИЯ ТЕКСТА И СКАЧКИ КАРТИНОК ============
+        (function () {
+            const isField = t => !!(t && t.closest && t.closest('input, textarea, [contenteditable="true"]'));
+            // Ctrl+C / Ctrl+X и «Копировать» из меню — запрещены вне полей ввода
+            document.addEventListener('copy', e => { if (!isField(e.target)) e.preventDefault(); }, true);
+            document.addEventListener('cut', e => { if (!isField(e.target)) e.preventDefault(); }, true);
+            // Правый клик по картинкам: убираем «Сохранить изображение как…»
+            document.addEventListener('contextmenu', e => {
+                if (e.target && e.target.closest && e.target.closest('img')) e.preventDefault();
+            });
+            // Перетаскивание картинок в папку/на рабочий стол
+            document.addEventListener('dragstart', e => {
+                if (e.target && e.target.closest && e.target.closest('img')) e.preventDefault();
+            });
+        })();
+
+        // ============ ЕЖЕДНЕВНАЯ НАГРАДА ============
+        function canClaimDaily() { return state.daily.lastClaimDate !== todayStr(); }
+
+        function updateDailyDot() {
+            // b244: янтарная точка на обеих кнопках «Награды», пока дневная награда не собрана
+            document.querySelectorAll('.daily-dot').forEach(d => d.classList.toggle('hidden', !canClaimDaily()));
+        }
+
+        function dailyStripHTML() {
+            const claimable = canClaimDaily();
+            const nextDay = claimable ? (state.daily.streak % 7) + 1 : state.daily.streak;
+            let html = '<div class="grid grid-cols-7 gap-1.5 sm:gap-2">';
+            for (let d = 1; d <= 7; d++) {
+                const isNext = claimable && d === nextDay;
+                const isDone = claimable ? (d < nextDay) : (d <= nextDay);
+                const amount = DAILY_REWARDS[d - 1];
+                const cellCls = isNext
+                    ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/40'
+                    : isDone ? 'border-violet-700/60 bg-violet-950/40' : 'border-slate-700 bg-slate-950/60 opacity-60';
+                const isBig = d === 7;
+                html += `
+                    <div class="flex flex-col items-center justify-center rounded-xl border ${cellCls} py-2.5 px-0.5">
+                        <span class="text-[9px] sm:text-[10px] font-semibold text-slate-400">День ${d}</span>
+                        <i class="fa-solid ${isDone && !isNext ? 'fa-circle-check text-violet-400' : 'fa-coins ' + (isBig ? 'text-amber-300' : 'text-amber-400')} ${isBig ? 'text-lg' : 'text-sm'} my-1"></i>
+                        <span class="text-[11px] sm:text-xs font-bold ${isBig ? 'text-amber-300' : 'text-slate-200'}">${amount}</span>
+                    </div>`;
+            }
+            html += '</div>';
+            return html;
+        }
+
+        function claimDailyReward() {
+            if (!canClaimDaily()) {
+                showToast('Награда за сегодня уже получена. Возвращайтесь завтра!', 'error');
+                return;
+            }
+            if (state.daily.lastClaimDate === yesterdayStr()) {
+                // зафиксировать рекорд до сброса цикла (после 7 дней)
+                if (state.daily.streak > state.stats.bestStreak) state.stats.bestStreak = state.daily.streak;
+                state.daily.streak = state.daily.streak >= 7 ? 1 : state.daily.streak + 1;
+            } else {
+                state.daily.streak = 1;
+            }
+            const reward = DAILY_REWARDS[state.daily.streak - 1];
+            state.coins += reward;
+            state.daily.lastClaimDate = todayStr();
+            if (state.daily.streak > state.stats.bestStreak) state.stats.bestStreak = state.daily.streak;
+            saveState();
+            updateCoinDisplay();
+            updateDailyDot();
+            SoundFX.play('achievement');
+            showToast(`🎁 Награда дня ${state.daily.streak}: +${reward} монет!`, 'success');
+            checkAchievements();
+            renderDailyModal();
+            renderRewardsIfVisible();
+        }
+
+        function openDailyModal() {
+            renderDailyModal();
+            document.getElementById('modal-daily').classList.remove('hidden');
+        }
+
+        function closeDailyModal() {
+            document.getElementById('modal-daily').classList.add('hidden');
+        }
+
+        function renderDailyModal() {
+            const body = document.getElementById('daily-modal-body');
+            if (!body) return;
+            const claimable = canClaimDaily();
+            const nextDay = claimable ? (state.daily.streak % 7) + 1 : state.daily.streak;
+            body.innerHTML = `
+                <p class="text-sm text-slate-400 text-center mb-4">Текущая серия: <b class="text-violet-400">${state.daily.streak}</b> ${pluralRu(state.daily.streak, 'день', 'дня', 'дней')} • Рекорд: <b class="text-amber-400">${state.stats.bestStreak}</b></p>
+                ${dailyStripHTML()}
+                <div class="pt-4">
+                    ${claimable
+                        ? `<button onclick="claimDailyReward()" class="lqg lqg-vio w-full py-3 font-bold transition flex items-center justify-center space-x-2"><i class="fa-solid fa-gift"></i><span>Забрать +${DAILY_REWARDS[nextDay - 1]} монет (день ${nextDay})</span></button>`
+                        : `<div class="w-full py-3 bg-slate-800/60 border border-slate-700 rounded-xl text-center text-sm text-slate-300">✅ Награда получена. Следующая через: <span class="js-countdown text-violet-400"></span></div>`}
+                </div>
+                <div class="flex justify-center pt-3">
+                    <button onclick="closeDailyModal();switchTab('rewards');" class="text-xs text-slate-400 hover:text-violet-400 transition font-medium">Задания и достижения <i class="fa-solid fa-arrow-right ml-1"></i></button>
+                </div>`;
+            updateCountdowns();
+        }
+
+        // ============ ЕЖЕДНЕВНЫЕ ЗАДАНИЯ ============
+        function ensureDailyMissions() {
+            const t = todayStr();
+            if (!state.missions || state.missions.date !== t || !Array.isArray(state.missions.list) || state.missions.list.length === 0) {
+                state.missions = { date: t, list: generateDailyMissions() };
+                saveState();
+                return;
+            }
+            // b121: вычищаем задания устаревших типов (Студия, создание; b122: Арена, Дурак)
+            // из старых сохранений и добираем список до 8 актуальных заданий
+            const valid = new Set(MISSION_POOL.map(m => m.type));
+            const before = state.missions.list.length;
+            state.missions.list = state.missions.list.filter(m => m && valid.has(m.type));
+            let guard = 0;
+            while (state.missions.list.length < MISSIONS_PER_DAY && guard++ < 24) {
+                let cand = MISSION_POOL.filter(p => !state.missions.list.some(m => m.type === p.type));
+                if (!cand.length) break;
+                // b123: добор приоритетно из игр, которых ещё нет в списке —
+                // даже у старых сохранений будет по заданию на каждую мини-игру
+                const haveGames = new Set(state.missions.list
+                    .map(m => (MISSION_POOL.find(p => p.type === m.type) || {}).game)
+                    .filter(Boolean));
+                const byGame = cand.filter(p => p.game && !haveGames.has(p.game));
+                if (byGame.length) cand = byGame;
+                const p = cand[Math.floor(Math.random() * cand.length)];
+                const [target, reward] = p.variants[Math.floor(Math.random() * p.variants.length)];
+                state.missions.list.push({ id: `mx${Date.now()}-${Math.floor(Math.random() * 1e6)}`, type: p.type, desc: p.desc(target), target, reward, progress: 0, claimed: false });
+            }
+            if (state.missions.list.length !== before) saveState();
+        }
+
+        function generateDailyMissions() {
+            // b122: 8 заданий в день; гарантируем по одному заданию на каждую мини-игру
+            // (Шахта, Слоты, Сетка, Линии, Мины, Колесо), остальные добираем из всего пула
+            const picked = [];
+            ['miner', 'slots', 'grid', 'lines', 'mines', 'wheel'].forEach(g => {
+                const cand = MISSION_POOL.filter(p => p.game === g && picked.indexOf(p) < 0);
+                if (cand.length) picked.push(cand[Math.floor(Math.random() * cand.length)]);
+            });
+            const rest = MISSION_POOL.filter(p => picked.indexOf(p) < 0).sort(() => Math.random() - 0.5);
+            for (const p of rest) {
+                if (picked.length >= MISSIONS_PER_DAY) break;
+                picked.push(p);
+            }
+            return picked.slice(0, MISSIONS_PER_DAY).map((m, i) => {
+                const [target, reward] = m.variants[Math.floor(Math.random() * m.variants.length)];
+                return { id: `m${i}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`, type: m.type, desc: m.desc(target), target, reward, progress: 0, claimed: false };
+            });
+        }
+
+        function updateMissions(type, amount = 1) {
+            ensureDailyMissions();
+            let changed = false;
+            const completed = [];
+            state.missions.list.forEach(m => {
+                if (m.type === type && !m.claimed && m.progress < m.target) {
+                    m.progress = Math.min(m.target, m.progress + amount);
+                    changed = true;
+                    if (m.progress >= m.target) completed.push(m);
+                }
+            });
+            if (changed) {
+                saveState();
+                completed.forEach(m => showToast(`✅ Задание выполнено: ${m.desc}! Заберите награду во вкладке «Награды»`, 'success'));
+                renderRewardsIfVisible();
+            }
+        }
+
+        function claimMission(idx) {
+            const m = state.missions.list[idx];
+            if (!m || m.claimed || m.progress < m.target) return;
+            m.claimed = true;
+            state.coins += m.reward;
+            saveState();
+            updateCoinDisplay();
+            SoundFX.play('coin');
+            showToast(`Награда за задание: +${m.reward} монет!`, 'success');
+            checkAchievements();
+            renderRewards();
+        }
+
+        // ============ ДОСТИЖЕНИЯ ============
+        function checkAchievements() {
+            const unlockedNow = [];
+            let found = true, guard = 0;
+            while (found && guard < 5) {
+                found = false; guard++;
+                ACHIEVEMENTS.forEach(a => {
+                    if (!state.achievements[a.id]) {
+                        let ok = false;
+                        try { ok = a.check(state); } catch (e) { ok = false; }
+                        if (ok) {
+                            state.achievements[a.id] = Date.now();
+                            state.coins += a.reward;
+                            unlockedNow.push(a);
+                            found = true;
+                        }
+                    }
+                });
+            }
+            if (unlockedNow.length) {
+                saveState();
+                updateCoinDisplay();
+                SoundFX.play('achievement');
+                unlockedNow.forEach(a => showToast(`🏆 Достижение открыто: ${a.title} (+${a.reward} монет)`, 'success'));
+                renderRewardsIfVisible();
+            }
+        }
+
+        // ============ ВКЛАДКА «НАГРАДЫ» ============
+        function renderRewardsIfVisible() {
+            const tab = document.getElementById('tab-rewards');
+            if (tab && !tab.classList.contains('hidden')) renderRewards();
+        }
+
+        function renderRewards() {
+            ensureDailyMissions();
+            document.getElementById('daily-streak-label').innerText = state.daily.streak;
+            document.getElementById('daily-best-label').innerText = state.stats.bestStreak;
+            document.getElementById('rewards-daily-strip').innerHTML = dailyStripHTML();
+
+            const action = document.getElementById('rewards-daily-action');
+            if (canClaimDaily()) {
+                const nextDay = (state.daily.streak % 7) + 1;
+                action.innerHTML = `<button onclick="claimDailyReward()" class="lqg lqg-vio w-full py-3 font-bold transition flex items-center justify-center space-x-2"><i class="fa-solid fa-gift"></i><span>Забрать награду дня ${nextDay}: +${DAILY_REWARDS[nextDay - 1]} монет</span></button>`;
+            } else {
+                action.innerHTML = `<div class="w-full py-3 bg-slate-800/60 border border-slate-700 text-slate-300 font-semibold rounded-xl text-center text-sm">✅ Награда за сегодня получена. Следующая через: <span class="js-countdown text-violet-400"></span></div>`;
+            }
+
+            // Задания (b121: новый дизайн — иконка-плашка, градиентный прогресс; b122: 8 заданий)
+            const list = document.getElementById('rewards-missions-list');
+            list.innerHTML = state.missions.list.map((m, i) => {
+                const meta = MISSION_POOL.find(p => p.type === m.type) || { icon: 'fa-scroll', color: 'from-slate-500 to-slate-700' };
+                const pct = Math.min(100, Math.round(m.progress / m.target * 100));
+                const done = m.progress >= m.target;
+                // b122: монетные задания показывают прогресс в формате 1k/1m
+                const isCoinM = m.type === 'mine_ore' || m.type === 'earn_dupe_coins' || /_coins$/.test(m.type);
+                const progTxt = isCoinM ? `${fmtCoins(Math.min(m.progress, m.target))} / ${fmtCoins(m.target)}` : `${Math.min(m.progress, m.target)} / ${m.target}`;
+                let btn;
+                if (m.claimed) {
+                    btn = `<span class="lqg lqg-vio px-3 py-1.5 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-check mr-1"></i>Получено</span>`;
+                } else if (done) {
+                    btn = `<button onclick="claimMission(${i})" class="lqg lqg-amber px-3 py-1.5 text-xs font-black whitespace-nowrap transition animate-pulse">Забрать +${fmtCoins(m.reward)}</button>`;
+                } else {
+                    btn = `<span class="lqg lqg-slate px-3 py-1.5 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>${fmtCoins(m.reward)}</span>`;
+                }
+                return `
+                    <div class="relative bg-slate-950/80 border ${done && !m.claimed ? 'border-amber-500/40' : 'border-slate-800'} rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 overflow-hidden">
+                        <div class="w-11 h-11 rounded-xl bg-gradient-to-br ${meta.color} flex items-center justify-center shrink-0 shadow-lg"><i class="fa-solid ${meta.icon} text-white text-lg"></i></div>
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-sm font-bold text-slate-100 truncate">${m.desc}</span>
+                                <span class="text-[11px] font-mono ${done ? 'text-violet-400' : 'text-slate-400'} whitespace-nowrap">${progTxt}</span>
+                            </div>
+                            <div class="mt-1.5 w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                <div class="h-full bg-gradient-to-r ${meta.color} transition-all duration-500" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                        ${btn}
+                    </div>`;
+            }).join('');
+
+            // Достижения (secret-достижения видны только после открытия скрытого раздела)
+            const visibleAchievements = ACHIEVEMENTS.filter(a => !a.secret || isHiddenTabUnlocked() || state.achievements[a.id]);
+            const unlockedCount = visibleAchievements.filter(a => state.achievements[a.id]).length;
+            document.getElementById('achievements-counter').innerHTML = `Открыто: <b class="text-amber-400">${unlockedCount}</b> из ${visibleAchievements.length}`;
+            document.getElementById('rewards-achievements-grid').innerHTML = visibleAchievements.map(a => {
+                const unlocked = !!state.achievements[a.id];
+                let prog = null;
+                if (!unlocked && a.prog) { try { prog = a.prog(state); } catch (e) { prog = null; } }
+                const pct = prog ? Math.min(100, Math.round(prog[0] / prog[1] * 100)) : 0;
+                return `
+                    <div class="rounded-xl border p-4 flex items-start space-x-3 transition ${unlocked ? 'bg-amber-500/5 border-amber-500/30' : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'}">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${unlocked ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-500'}">
+                            <i class="fa-solid ${a.icon}"></i>
+                        </div>
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center justify-between gap-2">
+                                <h5 class="font-bold text-sm ${unlocked ? 'text-amber-300' : 'text-slate-300'} truncate">${a.title}</h5>
+                                <span class="text-[11px] font-bold whitespace-nowrap ${unlocked ? 'text-violet-400' : 'text-amber-400/80'}"><i class="fa-solid fa-coins mr-0.5"></i>${unlocked ? '+' + a.reward + ' ✓' : a.reward}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">${a.desc}</p>
+                            ${prog && !unlocked ? `
+                                <div class="mt-2 flex items-center gap-2">
+                                    <div class="flex-grow bg-slate-800 rounded-full h-1.5 overflow-hidden"><div class="bg-slate-500 h-full transition-all duration-500" style="width: ${pct}%"></div></div>
+                                    <span class="text-[10px] font-mono text-slate-500 whitespace-nowrap">${prog[0]}/${prog[1]}</span>
+                                </div>` : ''}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            updateCountdowns();
+        }
+
+        // ============ ВЗВЕШЕННЫЙ ДРОП ПО РЕДКОСТИ ============
+        function pickWeightedRarity(rarities) {
+            const total = rarities.reduce((s, r) => s + (RARITY_WEIGHTS[r] || 1), 0);
+            let roll = Math.random() * total;
+            for (const r of rarities) {
+                roll -= (RARITY_WEIGHTS[r] || 1);
+                if (roll <= 0) return r;
+            }
+            return rarities[rarities.length - 1];
+        }
+
+        function rollCardFromPack(packCards, forceEpicPlus = false) {
+            let pool = packCards;
+            if (forceEpicPlus) {
+                const ep = packCards.filter(c => c.rarity === 'epic' || c.rarity === 'legendary');
+                if (ep.length) pool = ep;
+            }
+            const availRarities = RARITY_ORDER.filter(r => pool.some(c => c.rarity === r));
+            const rarity = pickWeightedRarity(availRarities);
+            const ofRarity = pool.filter(c => c.rarity === rarity);
+            return ofRarity[Math.floor(Math.random() * ofRarity.length)];
+        }
+
+        function getPackOdds(pack) {
+            const cards = state.cards.filter(c => c.packId === pack.id);
+            const present = RARITY_ORDER.filter(r => cards.some(c => c.rarity === r));
+            const total = present.reduce((s, r) => s + RARITY_WEIGHTS[r], 0);
+            return present.map(r => ({ r, pct: Math.round(RARITY_WEIGHTS[r] / total * 100) }));
+        }
+
+        function renderPackOdds(pack) {
+            const odds = getPackOdds(pack);
+            if (!odds.length) return `<p class="text-[11px] text-slate-600 mt-2 italic">В паке пока нет карт</p>`;
+            const cls = {
+                common: 'border-slate-600 text-slate-400',
+                rare: 'border-blue-500/40 text-blue-400',
+                epic: 'border-purple-500/40 text-purple-400',
+                legendary: 'border-amber-500/40 text-amber-400'
+            };
+            return `<div class="flex flex-wrap gap-1 mt-2">${odds.map(o => `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded border ${cls[o.r] || cls.common}">${RARITY_LABELS_RU[o.r]} ${o.pct}%</span>`).join('')}</div>`;
+        }
+
+        function updatePityIndicator() {
+            const el = document.getElementById('pity-indicator');
+            if (!el) return;
+            if (state.pity.packsSinceEpic > 0) {
+                const packsLeft = PITY_LIMIT - state.pity.packsSinceEpic;
+                document.getElementById('pity-indicator-text').innerText = `До гарантированного Epic+: ${packsLeft} ${pluralRu(packsLeft, 'пак', 'пака', 'паков')}`;
+                el.style.display = 'inline-flex';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+
+        // ============ АРЕНА: БОИ С ИИ ============
+        const OPPONENTS = [
+            { id: 'opp-1', name: 'Тренировочный бот', icon: 'fa-robot', tier: 1, reward: 80, deckSize: 4, mult: 0.75, desc: 'Ржавый бот для разминки. Легко победить.', names: ['Учебный дрон', 'Ржавый страж', 'Манекен-мишень', 'Спарринг-бот'] },
+            { id: 'opp-2', name: 'Уличный дуэлянт', icon: 'fa-user-ninja', tier: 2, reward: 150, deckSize: 4, mult: 0.9, desc: 'Быстрый боец неоновых трущоб.', names: ['Уличный самурай', 'Клинок Неона', 'Подворотневый боец', 'Граффити-призрак'] },
+            { id: 'opp-3', name: 'Кибер-рыцарь', icon: 'fa-shield-halved', tier: 3, reward: 250, deckSize: 5, mult: 1.05, desc: 'Бронированный воин цифрового ордена.', names: ['Кибер-оруженосец', 'Хром-страж', 'Рыцарь Сети', 'Лазерный копейщик', 'Бастион Файрвола'] },
+            { id: 'opp-4', name: 'Мастер теней', icon: 'fa-hat-wizard', tier: 4, reward: 400, deckSize: 5, mult: 1.2, desc: 'Повелитель иллюзий и запретных техник.', names: ['Теневой клон', 'Сумеречная иллюзия', 'Ночной охотник', 'Тёмный ритуалист', 'Шёпот Бездны'] },
+            { id: 'opp-5', name: 'Чемпион «Коллекционер карт»', icon: 'fa-crown', tier: 5, reward: 700, deckSize: 6, mult: 1.4, desc: 'Непобеждённый чемпион Арены «Коллекционер карт».', names: ['Титан Коллекции', 'Аватар Вечности', 'Омега-страж', 'Корона Абсолюта', 'Сингулярность', 'Вечный Колосс'] }
+        ];
+        const ENEMY_GRADIENTS = ['from-rose-500 to-orange-500', 'from-purple-500 to-fuchsia-500', 'from-blue-500 to-cyan-500', 'from-emerald-500 to-lime-500', 'from-amber-500 to-yellow-500', 'from-red-600 to-rose-500'];
+        const STAT_RANGES = {
+            common: { atk: [2, 4], hp: [4, 7] },
+            rare: { atk: [4, 6], hp: [6, 9] },
+            epic: { atk: [6, 9], hp: [8, 12] },
+            legendary: { atk: [9, 13], hp: [11, 16] }
+        };
+
+        let battle = null;
+
+        function hashCode(str) {
+            let h = 0;
+            for (let i = 0; i < str.length; i++) { h = ((h << 5) - h) + str.charCodeAt(i); h |= 0; }
+            return Math.abs(h);
+        }
+        function randInt(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
+
+        // Статы карты: ручные (из Студии) или детерминированные от редкости
+        function getCardStats(card) {
+            const r = STAT_RANGES[card.rarity] || STAT_RANGES.common;
+            const key = card.id || card.name || 'x';
+            const customAtk = parseInt(card.atk), customHp = parseInt(card.hp);
+            const atk = customAtk > 0 ? Math.min(30, customAtk) : r.atk[0] + (hashCode(key) % (r.atk[1] - r.atk[0] + 1));
+            const hp = customHp > 0 ? Math.min(50, customHp) : r.hp[0] + (hashCode(key + '_hp') % (r.hp[1] - r.hp[0] + 1));
+            return { atk, hp };
+        }
+
+        function getDeckCards() {
+            return (state.deck || []).map(id => state.cards.find(c => c.id === id)).filter(Boolean);
+        }
+
+        // ----- Лобби: колода и противники -----
+        let battleMode = 'arena';
+
+        function setBattleMode(m) {
+            battleMode = m;
+            const la = document.getElementById('lobby-arena'), ld = document.getElementById('lobby-durak'), lm = document.getElementById('lobby-miner'), lsl = document.getElementById('lobby-slots'), lg = document.getElementById('lobby-grid');
+            if (la) la.classList.toggle('hidden', m !== 'arena');
+            if (ld) ld.classList.add('hidden'); // b236: лобби-заглушка Дурака упразднена
+            if (lm) lm.classList.toggle('hidden', m !== 'miner');
+            if (lsl) lsl.classList.toggle('hidden', m !== 'slots');
+            if (lg) lg.classList.toggle('hidden', m !== 'grid');
+            const lw = document.getElementById('lobby-wheel');
+            if (lw) lw.classList.toggle('hidden', m !== 'wheel');
+            const lmn = document.getElementById('lobby-mines');
+            if (lmn) lmn.classList.toggle('hidden', m !== 'mines');
+            const ll = document.getElementById('lobby-lines');
+            if (ll) ll.classList.toggle('hidden', m !== 'lines');
+            // b125: базовые классы кнопок режимов вынесены в константу —
+            // мобильная сетка 4 колонки (2 ряда), десктоп — как раньше
+            const MODE_BTN_BASE = 'w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2'; // b242: плитка во всю ширину колонки, на lg — горизонтальная пилюля
+            const MODE_BTN_OFF = 'bg-slate-800 text-slate-300 border border-slate-700';
+            const setModeBtn = (id, on, onCls) => {
+                const el = document.getElementById(id);
+                if (el) el.className = MODE_BTN_BASE + ' ' + (on ? onCls : MODE_BTN_OFF);
+            };
+            setModeBtn('mode-arena-btn', m === 'arena', 'lq-on');
+            setModeBtn('mode-durak-btn', m === 'durak', 'lq-on');
+            setModeBtn('mode-miner-btn', m === 'miner', 'lq-on');
+            setModeBtn('mode-slots-btn', m === 'slots', 'lq-on');
+            setModeBtn('mode-grid-btn', m === 'grid', 'lq-on');
+            setModeBtn('mode-wheel-btn', m === 'wheel', 'lq-on');
+            setModeBtn('mode-mines-btn', m === 'mines', 'lq-on');
+            setModeBtn('mode-lines-btn', m === 'lines', 'lq-on');
+            if (m === 'miner') renderMiner();
+            // b250: ушли в другую игру — автостарт предыдущей гасим сразу
+            // (раньше «Линии» при смене игры продолжали крутиться в фоне)
+            if (m !== 'slots' && slots.auto) slotsAutoStop(false, 'смена игры');
+            if (m !== 'grid' && grid.auto) gridAutoStop(false, 'смена игры');
+            if (m !== 'lines' && lines.auto) linesAutoStop(false, 'смена игры');
+            if (m !== 'wheel' && wheel.auto) { wheel.auto = false; try { wheelAutoUI(); } catch (e) {} } // b314
+            nx3dReleaseHidden(m); // b305: скрытые игры отдают WebGL-контексты
+            if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
+            if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
+            if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
+            if (m === 'mines') { renderMinesUI(); } // b79
+            if (m === 'lines') { linesEnsure(); renderLinesUI(); } // b103
+            if (m === 'durak') {
+                // b236: сразу открываем игровое поле, а не лобби
+                renderDurakUI();
+                const w = document.getElementById('durak-wins-label'), l = document.getElementById('durak-loss-label');
+                if (w) w.innerText = state.stats.durakWins || 0;
+                if (l) l.innerText = state.stats.durakLosses || 0;
+                const note = document.getElementById('durak-reward-note');
+                if (note) {
+                    const r = durakCalcWinReward(false);
+                    const bits = [`Сейчас за победу: +${r.total} монет`];
+                    if (state.daily.lastDurakWinDate !== todayStr()) bits.push('×2 за первую победу дня активен!');
+                    if ((state.stats.durakStreak || 0) >= 1) bits.push(`серия: ${state.stats.durakStreak}`);
+                    note.innerHTML = `<i class="fa-solid fa-sack-dollar mr-1"></i>${bits.join(' • ')}`;
+                }
+            }
+            // b239b: кнопки режимов всегда переключают экраны: бой → арена,
+            // дурак → поле, остальные режимы → лобби соответствующей игры
+            const lobbyV = document.getElementById('battle-lobby');
+            const arenaV = document.getElementById('battle-arena');
+            const dviewV = document.getElementById('durak-view');
+            if (battle) {
+                if (lobbyV) lobbyV.classList.add('hidden');
+                if (dviewV) dviewV.classList.add('hidden');
+                if (arenaV) arenaV.classList.remove('hidden');
+            } else if (m === 'durak') {
+                if (lobbyV) lobbyV.classList.add('hidden');
+                if (arenaV) arenaV.classList.add('hidden');
+                if (dviewV) dviewV.classList.remove('hidden');
+            } else {
+                if (arenaV) arenaV.classList.add('hidden');
+                if (dviewV) dviewV.classList.add('hidden');
+                if (lobbyV) lobbyV.classList.remove('hidden');
+            }
+        }
+
+        // ============ b47: ШАХТА «КОЛЛЕКЦИОНЕР КАРТ» (idle-добыча во вкладке «Бой») ============
+        // Привязка к балансу прямая: добыча капает в state.coins каждую секунду,
+        // улучшение кирки покупается за те же монеты. 1 уровень = +1 монета/сек.
+        const MINER_KEY = 'nexus_miner';
+        const MINER_OFFLINE_CAP = 2 * 3600; // b246: офлайн-добыча до 2 часов (правка игрока)
+        function minerLoad() {
+            try {
+                const m = JSON.parse(LS.getItem(MINER_KEY) || 'null');
+                if (m && m.lvl >= 1) return { lvl: Math.floor(m.lvl), mined: Math.floor(m.mined || 0), last: m.last || Date.now() };
+            } catch (e) {}
+            return { lvl: 1, mined: 0, last: Date.now() };
+        }
+        let miner = minerLoad();
+        let minerTickT = null, minerTickN = 0;
+        function minerSave() { miner.last = Date.now(); try { LS.setItem(MINER_KEY, JSON.stringify(miner)); } catch (e) {} }
+        function minerRate() { return miner.lvl; } // 1 сек = 1 монета × уровень
+        function minerCost() { return Math.floor(10000 * Math.pow(1.22, miner.lvl - 1)); } // b245: стартовая кирка 10k (просьба игрока)
+        function minerDur(sec) {
+            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+            return h ? (h + ' ч ' + m + ' мин') : (m + ' мин ' + (sec % 60) + ' сек');
+        }
+        function minerOffline() {
+            const sec = Math.min(MINER_OFFLINE_CAP, Math.max(0, Math.floor((Date.now() - miner.last) / 1000)));
+            if (sec > 5) {
+                const gain = sec * minerRate();
+                state.coins += gain; miner.mined += gain;
+                if (gain > 0) updateMissions('mine_ore', gain); // b121: задание дня
+                return { sec: sec, gain: gain };
+            }
+            return null;
+        }
+        let minerMissionAcc = 0; // b121: батчим прогресс задания «Добыть руду», чтобы не дёргать сохранение каждую секунду
+        function minerTick() {
+            const r = minerRate();
+            state.coins += r; miner.mined += r;
+            minerMissionAcc += r;
+            updateCoinDisplay();
+            if (++minerTickN % 5 === 0) {
+                minerSave(); saveState();
+                if (minerMissionAcc > 0) { updateMissions('mine_ore', minerMissionAcc); minerMissionAcc = 0; }
+            }
+        }
+        function minerStart() {
+            if (minerTickT) return;
+            minerTickT = setInterval(minerTick, 1000);
+            try {
+                window.addEventListener('pagehide', minerSave);
+                document.addEventListener('visibilitychange', () => { if (document.hidden) minerSave(); });
+            } catch (e) {}
+        }
+        function minerUpgrade() {
+            const c = minerCost();
+            if (state.coins < c) {
+                showToast('Не хватает монет: улучшение стоит ' + fmtCoins(c), 'error');
+                // b178: котик сонно мявкает — мол, копи ещё
+                try {
+                    const poor = ['Мяу… монеток не хватает 😿', 'Рано! Копим до ' + fmtCoins(c) + ' монет…', '*сонно машет лапой* ещё чуть-чуть 💤', 'Мяу-мяу! Копилка пустая — я спать.'];
+                    minerCatDance(poor[(Math.random() * poor.length) | 0], 1600, false);
+                } catch (e) {}
+                return;
+            }
+            state.coins -= c;
+            miner.lvl += 1;
+            state.stats.minerLvl = miner.lvl; // b61: награды по играм видят уровень кирки
+            minerSave(); saveState();
+            try { SoundFX.play('coin'); } catch (e) {}
+            updateMissions('miner_upgrade', 1); // b122: задание дня
+            updateCoinDisplay();
+            checkAchievements(); // b61
+            showToast('⛏ Кирка ' + miner.lvl + ' уровня: теперь ' + fmtCoins(minerRate()) + ' монет/сек', 'success');
+            try { minerCatCelebrate(miner.lvl); } catch (e) {} // b178: котик мяукает и танцует за повышение уровня
+        }
+        function renderMiner() {
+            const b = document.getElementById('miner-balance'); if (b) b.textContent = fmtCoins(state.coins);
+            const r = document.getElementById('miner-rate'); if (r) r.textContent = fmtCoins(minerRate()) + '/сек';
+            const l = document.getElementById('miner-lvl'); if (l) l.textContent = 'ур. ' + miner.lvl;
+            const m = document.getElementById('miner-mined'); if (m) m.textContent = fmtCoins(miner.mined);
+            const c = minerCost();
+            const nx = document.getElementById('miner-next'); if (nx) nx.textContent = fmtCoins(Math.max(0, c - state.coins));
+            const bar = document.getElementById('miner-prog'); if (bar) bar.style.width = Math.min(100, (state.coins / c) * 100).toFixed(1) + '%';
+            const pl = document.getElementById('miner-prog-label'); if (pl) pl.textContent = fmtCoins(Math.min(state.coins, c)) + ' / ' + fmtCoins(c);
+            minerCatSettle(true); // b178: спит, пока не накопил на уровень (танец тиком не сбивается)
+            const btn = document.getElementById('miner-btn');
+            if (btn) {
+                btn.innerHTML = '<i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — ' + fmtCoins(c);
+                btn.disabled = state.coins < c;
+                btn.classList.toggle('opacity-40', state.coins < c);
+                btn.classList.toggle('cursor-not-allowed', state.coins < c);
+            }
+            try { minerCatRender(); } catch (e) {} // b178
+        }
+
+        // ============ b178: КОТИК-ШАХТЁР ============
+        // Живёт в панели прокачки кирки: пока монет на улучшение не хватает — спит (💤),
+        // как только накопил — просыпается и точит когти. За каждый новый уровень кирки
+        // (и за приз «кирка +1» в Колесе Фортуны) мяукает и танцует ~3.6 сек, потом снова засыпает.
+        // Тап/клик по котику — погладить: короткое «мяу» и подскок.
+        const CAT_SLEEP_PHRASES = [
+            'Котик спит и видит руду… 💤',
+            '💤 «Мяу… копаем во сне…»',
+            'Спит. Хвост иногда дёргается — значит, копает.',
+            'Храпит в такт кирке: ⛏ … 💤 … ⛏ …',
+            'Свернулся клубком на тёплой породе и спит.',
+            '💤 Сон про гору монет. Не будить.'
+        ];
+        const CAT_READY_PHRASES = [
+            'Копилка полная! Котик проснулся и точит когти 🐾',
+            '👀 Монет хватает на уровень — котик уже не спит!',
+            'Ушки на макушке: жми «Улучшить кирку»!',
+            'Проснулся и следит за кнопкой улучшения 👀',
+            '🐾 Хвост трубой: можно качать кирку!'
+        ];
+        const CAT_DANCE_PHRASES = [
+            'МЯУ! Кирка {L} уровня — танцуем! 🕺',
+            'Мяу-мяу! +{R} монет/сек — праздник! 🎉',
+            'Уровень {L}! Котик отжигает в каске 🎶',
+            'Мяяяу! Шахта богаче — котик довольнее 💃',
+            'Новый уровень = новый танец! Мяу! ✨'
+        ];
+        const CAT_PET_PHRASES = [
+            'Мяу! 🐾',
+            'Мррр… 😽',
+            'Мяяяу! (довольно)',
+            'Фррр-мяу! 🐾',
+            '*мурчит и трётся о кирку* 💛',
+            'Мяу! Ещё монеток и потанцуем!'
+        ];
+        let minerCatMode = 'sleep';      // sleep | ready | dance
+        let minerCatTimer = null, minerCatConfT = null, minerCatWakeT = null, minerCatPetT = null; // b179: отдельные ручки
+        const MINER_CAT_DANCE_MS = 3600;
+
+        function minerCatBox() { return document.getElementById('miner-cat-box'); }
+
+        // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
+        function minerCatRender() {
+            const box = minerCatBox(); if (!box) return;
+            const stage = document.getElementById('miner-cat-stage');
+            const bubble = document.getElementById('kc-bubble');
+            const st = document.getElementById('miner-cat-state');
+            const mode = minerCatMode;
+            if (stage) {
+                stage.classList.toggle('sleeping', mode === 'sleep');
+                stage.classList.toggle('dancing', mode === 'dance');
+                stage.classList.toggle('meowing', mode === 'ready');
+            }
+            box.classList.toggle('dancing', mode === 'dance');
+            box.classList.toggle('meowing', mode === 'ready');
+            const setD = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
+            setD('kc-eyes-closed', mode === 'sleep');
+            setD('kc-eyes-open', mode !== 'sleep');
+            setD('kc-mouth-open', mode === 'dance');   // b179: открытая пасть — только когда мяукает/танцует
+            setD('kc-mouth-smile', mode === 'ready');  // b179: бодрствует = довольная улыбка
+            setD('kc-mouth-sleep', mode === 'sleep');
+            setD('kc-tail-sleep', mode === 'sleep');
+            setD('kc-tail-sleep2', mode === 'sleep');
+            setD('kc-tail-up', mode !== 'sleep');
+            setD('kc-tail-up2', mode !== 'sleep');
+            if (st) {
+                st.textContent = mode === 'dance' ? '🎉 танцует и мяукает!' : (mode === 'ready' ? '👀 не спит — качай кирку!' : '💤 спит');
+                st.className = 'text-[10px] font-black ' + (mode === 'dance' ? 'text-violet-300' : (mode === 'ready' ? 'text-amber-300' : 'text-sky-300'));
+            }
+            if (bubble && !bubble.dataset.locked) {
+                // b179: реплика выбирается ОДИН раз на состояние. Раньше renderMiner тикал
+                // каждую секунду и текст менялся секунду за секундой — сонный котик выглядел
+                // так, будто он не спит, а постоянно болтает.
+                if (minerCatSaidMode !== mode) { minerCatSaidMode = mode; minerCatSaidText = catSayFor(mode); }
+                if (bubble.textContent !== minerCatSaidText) bubble.textContent = minerCatSaidText;
+            }
+        }
+        let minerCatSleepI = 0;
+        function catSleepIdx() { return minerCatSleepI % CAT_SLEEP_PHRASES.length; }
+        // b179: текущая реплика котика — одна на эпизод состояния (сон/бодрствование), без мельтешения
+        let minerCatSaidMode = null, minerCatSaidText = '';
+        function catSayFor(mode) {
+            const arr = mode === 'dance' ? CAT_DANCE_PHRASES : (mode === 'ready' ? CAT_READY_PHRASES : CAT_SLEEP_PHRASES);
+            return catFill(arr[mode === 'sleep' ? catSleepIdx() : (Math.random() * arr.length) | 0]);
+        }
+        function catFill(s) {
+            return String(s).replace('{L}', miner.lvl).replace('{R}', fmtCoins(minerRate())).replace('{C}', fmtCoins(minerCost()));
+        }
+        function minerCatConfetti() {
+            const box = document.getElementById('kc-confetti'); if (!box) return;
+            const em = ['🎉', '✨', '⛏', '🪙', '🐾', '💛', '🎊', '⭐'];
+            let h = '';
+            for (let i = 0; i < 16; i++) {
+                const dx = Math.round((Math.random() * 2 - 1) * 88), dy = Math.round(-48 - Math.random() * 62);
+                const rz = Math.round((Math.random() * 2 - 1) * 300), dl = (Math.random() * 0.35).toFixed(2);
+                h += '<i style="--dx:' + dx + 'px;--dy:' + dy + 'px;--rz:' + rz + 'deg;animation-delay:' + dl + 's;left:' + (16 + Math.random() * 68).toFixed(1) + '%">' + em[(Math.random() * em.length) | 0] + '</i>';
+            }
+            box.innerHTML = h;
+            // отдельный таймер уборки: не трогает minerCatTimer (иначе сбивался бы отбой танца)
+            if (minerCatConfT) clearTimeout(minerCatConfT);
+            minerCatConfT = setTimeout(() => { minerCatConfT = null; const b2 = document.getElementById('kc-confetti'); if (b2) b2.innerHTML = ''; }, 1500);
+        }
+        // мяукает + танцует, потом сам засыпает/просыпается по состоянию копилки
+        function minerCatDance(text, ms, confetti) {
+            minerCatMode = 'dance';
+            const bubble = document.getElementById('kc-bubble');
+            if (bubble) { bubble.dataset.locked = '1'; bubble.textContent = catFill(text || CAT_DANCE_PHRASES[(Math.random() * CAT_DANCE_PHRASES.length) | 0]); }
+            minerCatRender();
+            if (confetti !== false) minerCatConfetti();
+            // «мяу» сразу и ещё раз в конце танца (второе мяу шлём звуковым оффсетом, без вложенных таймеров)
+            try { SoundFX.play('meow'); SoundFX.play('coin'); } catch (e) {}
+            try { if (SoundFX.enabled) SoundFX.meow(0.75, 0.85); } catch (e) {}
+            if (minerCatTimer) clearTimeout(minerCatTimer);
+            minerCatTimer = setTimeout(() => {
+                minerCatTimer = null;
+                if (bubble) delete bubble.dataset.locked;
+                minerCatSettle();
+            }, ms || MINER_CAT_DANCE_MS);
+        }
+        // «после танца»: хватает монет на уровень — бодрствует, иначе снова спит.
+        // fromTick=true — вызов из секундного renderMiner: танец там не прерываем.
+        function minerCatSettle(fromTick) {
+            if (fromTick && minerCatMode === 'dance') return;
+            const prev = minerCatMode;
+            const next = state.coins >= minerCost() ? 'ready' : 'sleep';
+            minerCatMode = next;
+            if (next !== prev) { // b179: смена эмоции только на переходе — сон спокойный, без ежесекундной болтовни
+                minerCatSaidMode = null; // следующая перерисовка возьмёт свежую реплику
+                if (next === 'sleep') minerCatSleepI = (minerCatSleepI + 1) % CAT_SLEEP_PHRASES.length;
+                if (prev === 'sleep' && next === 'ready') catWakeUp();
+            }
+            minerCatRender();
+        }
+        // b179: пробуждение — потягивание + сонное «мяу» (звук только если панель котика реально видна)
+        function catWakeUp() {
+            const stage = document.getElementById('miner-cat-stage');
+            if (stage) {
+                stage.classList.add('waking');
+                if (minerCatWakeT) clearTimeout(minerCatWakeT);
+                minerCatWakeT = setTimeout(() => { minerCatWakeT = null; const s2 = document.getElementById('miner-cat-stage'); if (s2) s2.classList.remove('waking'); }, 1000);
+            }
+            try { const bx = minerCatBox(); if (bx && bx.offsetParent) SoundFX.play('meow2'); } catch (e) {}
+        }
+        // празднование повышения уровня кирки (кнопка «Улучшить» и приз Колеса Фортуны)
+        function minerCatCelebrate(lvl) {
+            minerCatDance(catFill(CAT_DANCE_PHRASES[(Math.random() * CAT_DANCE_PHRASES.length) | 0]).replace('{L}', lvl || miner.lvl), 4200, true);
+        }
+        // погладить котика: короткое «мяу» и подскок (сонного — будим на секунду)
+        function minerCatPet() {
+            if (minerCatMode === 'dance') return;
+            const wasSleep = minerCatMode === 'sleep';
+            const bubble = document.getElementById('kc-bubble');
+            if (bubble) {
+                bubble.dataset.locked = '1';
+                bubble.textContent = wasSleep ? '*просыпается* Мяу?.. 😾' : CAT_PET_PHRASES[(Math.random() * CAT_PET_PHRASES.length) | 0];
+            }
+            minerCatMode = 'ready';
+            minerCatSaidMode = null; // b179: когда замок спадёт — свежая реплика, а не старая
+            minerCatRender();
+            catHop();    // b179: подскок от удовольствия
+            catHearts(); // b179: сердечки
+            try { SoundFX.play(wasSleep ? 'meow2' : 'meow'); } catch (e) {}
+            if (minerCatTimer) clearTimeout(minerCatTimer);
+            minerCatTimer = setTimeout(() => {
+                minerCatTimer = null;
+                if (bubble) delete bubble.dataset.locked;
+                minerCatSettle();
+            }, wasSleep ? 1800 : 1300);
+        }
+        // b179: подскок при поглаживании — класс на ~0.6 сек, таймер отдельный (minerCatTimer не трогаем)
+        function catHop() {
+            const stage = document.getElementById('miner-cat-stage'); if (!stage) return;
+            stage.classList.add('petting');
+            if (minerCatPetT) clearTimeout(minerCatPetT);
+            minerCatPetT = setTimeout(() => { minerCatPetT = null; const s2 = document.getElementById('miner-cat-stage'); if (s2) s2.classList.remove('petting'); }, 620);
+        }
+        // b179: маленький салют из сердечек (тот же контейнер, что и конфетти, но тише и розовее)
+        function catHearts() {
+            const box = document.getElementById('kc-confetti'); if (!box) return;
+            const em = ['💛', '❤', '🧡', '🐾', '✨'];
+            let h = '';
+            for (let i = 0; i < 8; i++) {
+                const dx = Math.round((Math.random() * 2 - 1) * 52), dy = Math.round(-36 - Math.random() * 44);
+                const rz = Math.round((Math.random() * 2 - 1) * 160), dl = (Math.random() * 0.3).toFixed(2);
+                h += '<i style="--dx:' + dx + 'px;--dy:' + dy + 'px;--rz:' + rz + 'deg;animation-delay:' + dl + 's;left:' + (24 + Math.random() * 52).toFixed(1) + '%">' + em[(Math.random() * em.length) | 0] + '</i>';
+            }
+            box.innerHTML = h;
+            if (minerCatConfT) clearTimeout(minerCatConfT);
+            minerCatConfT = setTimeout(() => { minerCatConfT = null; const b2 = document.getElementById('kc-confetti'); if (b2) b2.innerHTML = ''; }, 1500);
+        }
+        // ============ b56: ДЖЕКПОТ (общий банк для Слотов и Сетки) ============
+        const JACKPOT_KEY = 'nexus_jackpot_v2'; // b94: чистый старт банка без тестового мусора старых сессий
+        const JACKPOT_SEED = 1000;
+        const JACKPOT_FEED = 1; // b96: 100% каждой ставки идёт в общий банк сайта
+        // b71: ОБЩИЙ ДЖЕКПОТ САЙТА: каждый игрок копит банк своимCumulative-счётчиком
+        // взносов (led) и выигрышей (won); синхронизация сливает счётчики по правилу
+        // max-на-игрока (CRDT) — взносы не дублируются и не затираются чужими записями.
+        // Банк = сид + Σвзносов − Σвыигрышей. Хранится в отдельном облачном документе
+        // сайта, писать в который могут ВСЕ игроки (а не только создатель комнаты).
+        function jackpotClientId() {
+            let id = '';
+            try { id = LS.getItem('nexus_jackpot_cid') || ''; } catch (e) {}
+            if (!id) {
+                id = 'p' + Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-4);
+                try { LS.setItem('nexus_jackpot_cid', id); } catch (e) {}
+            }
+            return id;
+        }
+        const JACKPOT_CID = jackpotClientId();
+        function jackpotLoad() {
+            try {
+                const j = JSON.parse(LS.getItem(JACKPOT_KEY) || 'null');
+                if (j && j.led) return { led: j.led || {}, won: j.won || {}, wins: j.wins || {}, names: j.names || {}, hall: j.hall || [] };
+                // b71: миграция старого личного банка в собственный взнос игрока
+                if (j && j.pool >= 1) {
+                    const led = {}; const extra = Math.floor(j.pool) - JACKPOT_SEED;
+                    if (extra > 0) led[JACKPOT_CID] = extra;
+                    const wins = {}; if ((j.wins | 0) > 0) wins[JACKPOT_CID] = j.wins | 0;
+                    return { led: led, won: {}, wins: wins };
+                }
+            } catch (e) {}
+            return { led: {}, won: {}, wins: {}, names: {}, hall: [] };
+        }
+        let jackpot = jackpotLoad();
+        // b91: имя игрока для таблицы победителей джекпота
+        const PLAYER_NAME_KEY = 'nexus_player_name';
+        function getPlayerName() {
+            try { return String(LS.getItem(PLAYER_NAME_KEY) || '').trim(); } catch (e) { return ''; }
+        }
+        function setPlayerName(v) {
+            const name = String(v || '').replace(/[<>]/g, '').trim().slice(0, 18);
+            try { LS.setItem(PLAYER_NAME_KEY, name); } catch (e) {}
+            if (name) jackpot.names[JACKPOT_CID] = name;
+            jackpotSave();
+            jpSyncSoon();
+            jackpotRender();
+            nameNeedUI();                       // b287: имя вписали/стёрли — подсветка поля следует за этим
+            if (name) nameRemindClose();        // b287: напоминание больше не нужно
+        }
+
+        // ===== b287: НАПОМИНАНИЕ ОБ ИМЕНИ ИГРОКА =====
+        // У кого имя не вписано: поле в шапке пульсирует янтарным кольцом,
+        // а через пару секунд после старта всплывает стеклянный тост с кнопкой
+        // «Ввести имя» (b288: открывает окно ввода). Крестик откладывает напоминание на
+        // 2 минуты; больше 2 раз за сессию не показываем — не докучаем.
+        let nameRemindCount = 0;
+        function nameNeedUI() {
+            try {
+                const box = document.getElementById('player-name-box');
+                if (box) box.classList.toggle('name-need', !getPlayerName());
+            } catch (e) {}
+        }
+        function nameRemindClose() {
+            try {
+                const t = document.getElementById('name-remind-toast');
+                if (!t) return;
+                t.classList.add('-translate-y-3', 'opacity-0');
+                setTimeout(() => { try { t.remove(); } catch (e) {} }, 500);
+            } catch (e) {}
+        }
+        function focusPlayerName() {
+            try {
+                const inp = document.getElementById('player-name-input');
+                const box = document.getElementById('player-name-box');
+                if (!inp) return;
+                try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, 0); }
+                try { inp.focus({ preventScroll: true }); } catch (e) { inp.focus(); }
+                if (box) { box.classList.remove('name-flash'); void box.offsetWidth; box.classList.add('name-flash'); }
+            } catch (e) {}
+        }
+
+        // ===== b288: ОКНО ВВОДА ИМЕНИ =====
+        // Тост-напоминание и тап по полю/иконке в шапке открывают модалку
+        // #modal-name: крупное поле, Enter — сохранить, Escape/фон/крестик —
+        // отмена. На широких экранах инлайн-ввод в шапке по-прежнему работает.
+        function openNameModal() {
+            try {
+                const m = document.getElementById('modal-name');
+                const inp = document.getElementById('name-modal-input');
+                if (!m || !inp) { focusPlayerName(); return; }
+                inp.value = getPlayerName();
+                onNameModalInput();
+                try { nameRemindClose(); } catch (e) {} // b288: тост-напоминание больше не нужен — окно открыто
+                m.classList.remove('hidden');
+                setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) {} }, 60);
+            } catch (e) {}
+        }
+        function closeNameModal() {
+            try {
+                const m = document.getElementById('modal-name');
+                if (m) m.classList.add('hidden');
+                const err = document.getElementById('name-modal-err');
+                if (err) err.classList.add('hidden');
+            } catch (e) {}
+        }
+        function nameModalValue() {
+            try {
+                const inp = document.getElementById('name-modal-input');
+                return String(inp && inp.value || '').replace(/[<>]/g, '').trim().slice(0, 18);
+            } catch (e) { return ''; }
+        }
+        function onNameModalInput() {
+            try {
+                const err = document.getElementById('name-modal-err');
+                if (err && nameModalValue()) err.classList.add('hidden');
+            } catch (e) {}
+        }
+        function saveNameModal() {
+            try {
+                const name = nameModalValue();
+                if (!name) {
+                    const err = document.getElementById('name-modal-err');
+                    if (err) err.classList.remove('hidden');
+                    return;
+                }
+                setPlayerName(name);
+                const hdr = document.getElementById('player-name-input');
+                if (hdr) hdr.value = name;
+                closeNameModal();
+                const box = document.getElementById('player-name-box');
+                if (box) { box.classList.remove('name-flash'); void box.offsetWidth; box.classList.add('name-flash'); }
+                try { showToast('Имя сохранено: ' + name, 'success'); } catch (e) {}
+            } catch (e) {}
+        }
+        function nameBoxTap(ev) {
+            try {
+                const isInput = !!(ev && ev.target && ev.target.id === 'player-name-input');
+                let narrow = true;
+                try { narrow = window.matchMedia ? window.matchMedia('(max-width:639px)').matches : window.innerWidth <= 639; } catch (e) {}
+                if (isInput && !narrow) return; // десктоп: поле редактируется инлайн
+                if (ev && ev.preventDefault) ev.preventDefault();
+                openNameModal();
+            } catch (e) {}
+        }
+        function nameRemindToast() {
+            try {
+                if (getPlayerName() || nameRemindCount >= 2) return;
+                const container = document.getElementById('toast-container');
+                if (!container || document.getElementById('name-remind-toast')) return;
+                // не вылезать поверх модалок и вскрытия паков — вернуться через 3 с
+                let modalOpen = false;
+                try {
+                    document.querySelectorAll('div[id^="modal-"]').forEach(m => { if (!m.classList.contains('hidden')) modalOpen = true; });
+                } catch (e) {}
+                if (modalOpen || (typeof unboxingIsOpen === 'function' && unboxingIsOpen())) { setTimeout(nameRemindToast, 3000); return; }
+                nameRemindCount++;
+                positionToastContainer();
+                const t = document.createElement('div');
+                t.id = 'name-remind-toast';
+                t.className = 'lq-toast lq-name pointer-events-auto w-full px-3.5 py-3 flex items-center gap-2.5 transform -translate-y-3 opacity-0';
+                t.innerHTML = '<span class="lq-chip"><i class="fa-solid fa-user-pen"></i></span>' +
+                    '<span class="lq-msg">Впишите <b>имя игрока</b> — оно появится в таблице победителей джекпота</span>' +
+                    '<button type="button" class="name-remind-btn">Ввести имя</button>' +
+                    '<button type="button" class="name-remind-x" title="Напомнить позже"><i class="fa-solid fa-xmark"></i></button>';
+                container.appendChild(t);
+                setTimeout(() => { try { t.classList.remove('-translate-y-3', 'opacity-0'); } catch (e) {} }, 10);
+                t.querySelector('.name-remind-btn').addEventListener('click', () => { nameRemindClose(); openNameModal(); }); // b288: открываем окно ввода
+                t.querySelector('.name-remind-x').addEventListener('click', () => {
+                    nameRemindClose();
+                    if (nameRemindCount < 2 && !getPlayerName()) setTimeout(nameRemindToast, 120000);
+                });
+            } catch (e) {}
+        }
+
+        function jackpotPool() {
+            let c = 0, w = 0;
+            for (const k in jackpot.led) c += jackpot.led[k] || 0;
+            for (const k in jackpot.won) w += jackpot.won[k] || 0;
+            return Math.max(JACKPOT_SEED, Math.round(JACKPOT_SEED + c - w));
+        }
+        function jackpotPlayers() { return Object.keys(jackpot.led).length; }
+        function jackpotSave() { try { LS.setItem(JACKPOT_KEY, JSON.stringify(jackpot)); } catch (e) {} }
+        function jackpotMerge(remote) {
+            if (!remote || typeof remote !== 'object') return false;
+            let ch = false;
+            const pick = (dst, src) => {
+                if (!src || typeof src !== 'object') return;
+                for (const k in src) { const v = Math.floor(src[k]) || 0; if (v > (dst[k] || 0)) { dst[k] = v; ch = true; } }
+            };
+            pick(jackpot.led, remote.led); pick(jackpot.won, remote.won); pick(jackpot.wins, remote.wins);
+            // b91: имена игроков: своё локальное имя важнее, чужие — из облака
+            if (remote.names && typeof remote.names === 'object') {
+                for (const k in remote.names) {
+                    const v = String(remote.names[k] || '').slice(0, 18);
+                    if (!v) continue;
+                    if (k === JACKPOT_CID && jackpot.names[k]) continue;
+                    if (jackpot.names[k] !== v) { jackpot.names[k] = v; ch = true; }
+                }
+            }
+            // зал славы победителей: объединяем по метке времени, держим 6 последних
+            if (Array.isArray(remote.hall) && remote.hall.length) {
+                const map = {};
+                (jackpot.hall || []).forEach(h => { if (h && h.t) map[h.t] = h; });
+                remote.hall.forEach(h => { if (h && h.t && !map[h.t]) { map[h.t] = h; ch = true; } });
+                jackpot.hall = Object.keys(map).map(k => map[k]).sort((a, b) => b.t - a.t).slice(0, 20);
+            }
+            if (ch) {
+                jackpotSave(); jackpotRender();
+                // b91: чужая свежая победа — видим её сразу: «чисто и честно»
+                try {
+                    const top = (jackpot.hall || [])[0];
+                    const seen = parseInt(LS.getItem('nexus_jp_seen') || '0', 10) || 0;
+                    if (top && top.t > seen) {
+                        LS.setItem('nexus_jp_seen', String(top.t));
+                        if (top.c !== JACKPOT_CID) showToast('👑 Джекпот сайта выиграл(а) ' + (top.n || 'игрок') + ': +' + fmtCoins(top.a || 0), 'success');
+                    }
+                } catch (e) {}
+            }
+            return ch;
+        }
+        function jackpotFeed(bet) {
+            const x = Math.max(1, Math.round((bet || 0) * JACKPOT_FEED));
+            jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + x;
+            jackpotSave(); jackpotRender(); jpSyncSoon();
+        }
+        // b92: каждый проигрыш пополняет общий банк на 100% потерянной суммы —
+        // джекпот собирает все проигрыши пользователей целиком (раньше было 25%)
+        function jackpotOnLoss(loss) {
+            const add = Math.max(1, Math.round((loss || 0) * 1));
+            jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + add;
+            jackpotSave(); jackpotRender(); jpSyncSoon();
+            return add;
+        }
+        function jackpotWin() {
+            const prize = jackpotPool();
+            jackpot.won[JACKPOT_CID] = (jackpot.won[JACKPOT_CID] || 0) + prize;
+            jackpot.wins[JACKPOT_CID] = (jackpot.wins[JACKPOT_CID] || 0) + 1;
+            // b91: фиксируем победителя по имени — зал славы увидят все игроки сайта
+            const wname = getPlayerName() || ('Игрок-' + JACKPOT_CID.slice(1, 5));
+            jackpot.names[JACKPOT_CID] = wname;
+            jackpot.hall = jackpot.hall || [];
+            jackpot.hall.unshift({ n: wname, a: prize, t: Date.now(), c: JACKPOT_CID });
+            jackpot.hall = jackpot.hall.slice(0, 20);
+            try { LS.setItem('nexus_jp_seen', String(Date.now())); } catch (e) {}
+            jackpotSave();
+            state.coins += prize;
+            state.stats.jackpots = (state.stats.jackpots || 0) + 1;
+            slots.winFlash = performance.now();
+            grid.winFlashT = performance.now();
+            saveState(); updateCoinDisplay();
+            try { SoundFX.play('legendary'); } catch (e) {}
+            launchConfetti(220); // b61: джекпот — полный салют
+            showToast('👑 JACKPOT! Общий банк сайта ваш: +' + fmtCoins(prize) + ' монет', 'success');
+            jackpotRender(); jpSyncNow();
+            return prize;
+        }
+        function jackpotRender() {
+            const pool = jackpotPool();
+            const a = document.getElementById('slots-jackpot');
+            const b = document.getElementById('grid-jackpot');
+            if (a) a.textContent = fmtCoins(pool);
+            if (b) b.textContent = fmtCoins(pool);
+            const note = 'общий банк сайта • копят игроки: ' + jackpotPlayers();
+            const na = document.getElementById('slots-jackpot-note');
+            const nb = document.getElementById('grid-jackpot-note');
+            if (na) na.textContent = note;
+            if (nb) nb.textContent = note;
+            // b91: кто последним сорвал джекпот — видно всем
+            const top = (jackpot.hall || [])[0];
+            const wtxt = top
+                ? '👑 Последний джекпот: ' + (top.n || 'игрок') + ' — +' + fmtCoins(top.a || 0) + ' (' + new Date(top.t).toLocaleDateString() + ')'
+                : '👑 Джекпот сайта ещё не срывали — станьте первым!';
+            const wtitle = (jackpot.hall || []).map(h => (h.n || 'игрок') + ': +' + fmtCoins(h.a || 0) + ' (' + new Date(h.t).toLocaleDateString() + ')').join('\n');
+            const wa = document.getElementById('slots-jp-winner');
+            const wb = document.getElementById('grid-jp-winner');
+            if (wa) { wa.textContent = wtxt; wa.title = wtitle; }
+            if (wb) { wb.textContent = wtxt; wb.title = wtitle; }
+            // b98: ТОП-5 крупнейших срывов банка
+            const topWins = (jackpot.hall || []).slice().sort((a, b) => (b.a || 0) - (a.a || 0)).slice(0, 3); // b101: топ-3
+            const medals = ['🥇', '🥈', '🥉'];
+            const html = topWins.length
+                ? topWins.map((h, i) => '<li><span class="jp-rank">' + (i + 1) + (medals[i] ? ' ' + medals[i] : '.') + '</span><span class="jp-name">' + String(h.n || 'игрок').replace(/[<>&]/g, '') + '</span><span class="jp-amt">+' + fmtCoins(h.a || 0) + '</span><span class="jp-date">' + new Date(h.t || 0).toLocaleDateString() + '</span></li>').join('')
+                : '<li class="jp-empty">Джекпот ещё не срывали — станьте первым в топе!</li>';
+            const la = document.getElementById('slots-jp-top-list');
+            const lb = document.getElementById('grid-jp-top-list');
+            if (la) la.innerHTML = html;
+            if (lb) lb.innerHTML = html;
+            // b107: блок джекпота в Линиях обновляется тем же рендером
+            const cv = document.getElementById('lines-jackpot');
+            if (cv) cv.textContent = fmtCoins(pool);
+            const nv = document.getElementById('lines-jackpot-note');
+            if (nv) nv.textContent = note;
+            const wv = document.getElementById('lines-jp-winner');
+            if (wv) { wv.textContent = wtxt; wv.title = wtitle; }
+            const lv = document.getElementById('lines-jp-top-list');
+            if (lv) lv.innerHTML = html;
+        }
+
+        // ==== b71: синхронизация общего банка джекпота между всеми игроками ====
+        let jpT = null, jpBusy = false, jpLastAt = 0, jpPending = false; // b183: jpPending — отложенный пуш вместо потерянного
+        function jpPath() {
+            try { if (CLOUD.db) return CLOUD.db + '/nexus-jackpot-v2.json'; } catch (e) {}
+            return 'https://textdb.dev/api/data/nexus-tcg-jackpot-v2';
+        }
+        function jpFetch() {
+            const url = jpPath() + (CLOUD.db ? '' : '?nc=' + Date.now());
+            const opt = CLOUD.db ? { headers: { 'Accept': 'application/json' } } : { cache: 'no-store' };
+            return fetch(url, opt).then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.text();
+            }).then(txt => {
+                txt = String(txt || '').trim();
+                if (!txt) return null;
+                try { return JSON.parse(txt); } catch (e) { return null; }
+            });
+        }
+        function jpPush(doc) {
+            // b71: textdb пишет через POST с text/plain (простой запрос без CORS-префлайта,
+            // как и публикация каталога); firebase — классический REST PUT
+            const isDb = !!CLOUD.db;
+            return fetch(jpPath(), {
+                method: isDb ? 'PUT' : 'POST',
+                headers: { 'Content-Type': isDb ? 'application/json' : 'text/plain' },
+                body: JSON.stringify(doc)
+            }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
+        }
+        // b183: наш локальный реестр (max-слияние всего, что мы видели) знает больше, чем облако —
+        // значит чей-то пуш перезаписал документ и часть взносов/выплат/побед потерялась. Возвращаем их повторным циклом.
+        function jpAheadOf(remote) {
+            const rem = remote || {};
+            const flds = ['led', 'won', 'wins'];
+            for (let i = 0; i < flds.length; i++) {
+                const src = jackpot[flds[i]] || {};
+                const dst = (rem[flds[i]] && typeof rem[flds[i]] === 'object') ? rem[flds[i]] : {};
+                for (const k in src) { if ((Math.floor(src[k]) || 0) > (Math.floor(dst[k]) || 0)) return true; }
+            }
+            const hall = Array.isArray(rem.hall) ? rem.hall : [];
+            const seen = {};
+            hall.forEach(h => { if (h && h.t) seen[h.t] = 1; });
+            for (const h of (jackpot.hall || [])) { if (h && h.t && !seen[h.t]) return true; }
+            return false;
+        }
+        function jpSyncNow() {
+            // b183: раньше пуш во время занятого канала молча отбрасывался — так терялись победы
+            // (игрок срывал банк, вкладка закрывалась, и облако про это никогда не узнавало).
+            if (jpBusy) { jpPending = true; return; }
+            jpBusy = true;
+            const cycle = depth => jpFetch().then(remote => {
+                jackpotMerge(remote && remote.jp ? remote.jp : remote);
+                marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
+                siteStatsMerge(remote && remote.st); // b277: чужие записи реестра игроков
+                const doc = jpDoc(); // b183
+                return jpPush(doc).then(() => jpFetch().then(chk => {
+                    const rj = (chk && chk.jp) ? chk.jp : chk;
+                    jackpotMerge(rj);
+                    marketMerge(chk && chk.mk); // b136
+                    siteStatsMerge(chk && chk.st); // b277
+                    // b183: документ перезаписали между нашей записью и чтением ИЛИ в облаке не хватает
+                    // того, что мы уже знаем (чужая выплата/взнос) — повторяем цикл, пока не сойдётся
+                    const clobbered = chk && chk.updatedAt && chk.updatedAt !== doc.updatedAt;
+                    if (depth < 3 && (clobbered || jpAheadOf(rj))) return cycle(depth + 1);
+                    marketCreditLedger();       // b136: продавцу прилетели монеты
+                    marketEnforceLimit();       // b142: выкуп лишних одинаковых лотов
+                    siteStatsApplyToMe();       // b277: команды админа мне — обнуление баланса / блокировка
+                    statsRenderIfVisible();     // b277
+                    renderMarketIfVisible();
+                }));
+            }).catch(() => { /* офлайн или облако недоступно — банк дождётся следующей синхронизации */ })
+              .then(() => { jpBusy = false; jpLastAt = Date.now(); if (jpPending) { jpPending = false; jpSyncNow(); } }); // b183: догоняющий пуш
+            cycle(0);
+        }
+        function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }
+        // b183: документ общего банка (тот же, что пушит jpSyncNow) — нужен и для аварийной отправки
+        function jpDoc() {
+            return {
+                jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall },
+                mk: marketDoc(), // b136
+                st: siteStatsDoc(), // b277: статистика игроков сайта — балансы, паки, джекпоты
+                updatedAt: Date.now() + '-' + JACKPOT_CID
+            };
+        }
+        // b183: аварийная отправка при скрытии/закрытии вкладки: sendBeacon (textdb) или keepalive-fetch (firebase).
+        // Без неё игрок, сорвавший банк и закрывший страницу, уносил выплату с собой — банк у остальных не уменьшался.
+        function jpFlush() {
+            try {
+                const body = JSON.stringify(jpDoc());
+                if (CLOUD.db) {
+                    fetch(jpPath(), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(() => {});
+                    return;
+                }
+                if (typeof navigator !== 'undefined' && navigator.sendBeacon && typeof Blob !== 'undefined') {
+                    if (navigator.sendBeacon(jpPath(), new Blob([body], { type: 'text/plain' }))) return;
+                }
+                fetch(jpPath(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body, keepalive: true }).catch(() => {});
+            } catch (e) { /* офлайн — банк дождётся следующей синхронизации */ }
+        }
+
+        // ============ b277: СТАТИСТИКА САЙТА — пользователи, паки, джекпоты ============
+        // Живёт в том же облачном документе, что и общий джекпот (jpDoc → поле st):
+        // каждый игрок публикует свой баланс, число вскрытых паков (в разбивке по пакам),
+        // победы и взносы в джекпот; Студия показывает всех одной таблицей.
+        // b278: сюда же добавился прогресс альбомов — поле alb = {packId: [собрано, всего]}.
+        // Команды админа: z[cid] — обнулить баланс, b[cid] — блокировка/разблокировка.
+        // Команда срабатывает на устройстве цели при ближайшей синхронизации.
+        function siteStatsLoad() {
+            try {
+                const j = JSON.parse(LS.getItem('nexus_site_stats_v1') || 'null');
+                if (j && typeof j === 'object') return { p: j.p || {}, b: j.b || {}, z: j.z || {} };
+            } catch (e) {}
+            return { p: {}, b: {}, z: {} };
+        }
+        let siteStats = siteStatsLoad();
+        function siteStatsSave() { try { LS.setItem('nexus_site_stats_v1', JSON.stringify(siteStats)); } catch (e) {} }
+        function siteStatsNorm(cid, e) {
+            e = e || {};
+            const o = {
+                cid: String(cid || '').slice(0, 24),
+                n: String(e.n || '').slice(0, 24),
+                bal: Math.max(0, Math.floor(e.bal) || 0),
+                op: Math.max(0, Math.floor(e.op) || 0),
+                jp: Math.max(0, Math.floor(e.jp) || 0),
+                fed: Math.max(0, Math.floor(e.fed) || 0),
+                won: Math.max(0, Math.floor(e.won) || 0),
+                at: Math.floor(e.at) || 0,
+                pk: {},
+                alb: {}
+            };
+            if (e.pk && typeof e.pk === 'object') {
+                Object.keys(e.pk).slice(0, 24).forEach(k => { const v = Math.floor(e.pk[k]) || 0; if (v > 0) o.pk[String(k).slice(0, 40)] = v; });
+            }
+            if (e.alb && typeof e.alb === 'object') { // b278: альбомы {packId: [собрано, всего]}
+                Object.keys(e.alb).slice(0, 24).forEach(k => {
+                    const v = e.alb[k];
+                    if (!Array.isArray(v) || v.length < 2) return;
+                    const t = Math.min(500, Math.max(0, Math.floor(v[1]) || 0));
+                    if (t <= 0) return;
+                    o.alb[String(k).slice(0, 40)] = [Math.min(t, Math.max(0, Math.floor(v[0]) || 0)), t];
+                });
+            }
+            return o;
+        }
+        // b278: насколько у игрока собраны альбомы — по каждому паку [собрано карт, всего].
+        // Публикуется в облаке вместе с остальной статистикой, чтобы Студия видела прогресс всех.
+        function siteStatsAlbums() {
+            const out = {};
+            try {
+                const byPack = {};
+                (state.cards || []).forEach(c => {
+                    if (!c || !c.packId) return;
+                    const a = byPack[c.packId] || (byPack[c.packId] = { h: 0, t: 0 });
+                    a.t++;
+                    if (state.collection && state.collection[c.id]) a.h++;
+                });
+                Object.keys(byPack).slice(0, 24).forEach(pid => { const a = byPack[pid]; if (a.t > 0) out[String(pid).slice(0, 40)] = [a.h, a.t]; });
+            } catch (e) {}
+            return out;
+        }
+        function albSum(alb) { // итог по всем пакам: карты, процент, сколько альбомов закрыто полностью
+            let have = 0, total = 0, done = 0, packs = 0;
+            if (alb && typeof alb === 'object') {
+                for (const pid in alb) {
+                    const v = alb[pid];
+                    if (!Array.isArray(v) || v.length < 2) continue;
+                    const t = Math.max(0, Math.floor(v[1]) || 0);
+                    if (t <= 0) continue;
+                    const h = Math.min(t, Math.max(0, Math.floor(v[0]) || 0));
+                    have += h; total += t; packs++;
+                    if (h >= t) done++;
+                }
+            }
+            return { have: have, total: total, packs: packs, done: done, pct: total > 0 ? Math.round(have / total * 100) : 0 };
+        }
+        function siteStatsSelfUpdate() {
+            try {
+                const e = siteStatsNorm(JACKPOT_CID, siteStats.p[JACKPOT_CID] || {});
+                e.n = getPlayerName() || ('Игрок-' + JACKPOT_CID.slice(1, 5));
+                e.bal = Math.max(0, Math.floor(state.coins) || 0);
+                e.op = Math.max(0, Math.floor(state.stats && state.stats.packsOpened) || 0);
+                e.jp = Math.floor(jackpot.wins[JACKPOT_CID]) || 0;
+                e.fed = Math.floor(jackpot.led[JACKPOT_CID]) || 0;
+                e.won = Math.floor(jackpot.won[JACKPOT_CID]) || 0;
+                const pk = {};
+                const ps = state.packStats || {};
+                Object.keys(ps).slice(0, 24).forEach(id => { const o = Math.floor(ps[id] && ps[id].opens) || 0; if (o > 0) pk[id] = o; });
+                e.pk = pk;
+                e.alb = siteStatsAlbums(); // b278
+                e.at = Date.now();
+                siteStats.p[JACKPOT_CID] = e;
+            } catch (err) {}
+        }
+        function siteStatsMerge(rst) {
+            if (!rst || typeof rst !== 'object') return false;
+            let ch = false;
+            if (rst.p && typeof rst.p === 'object') {
+                for (const k in rst.p) {
+                    const cid = String(k).slice(0, 24);
+                    if (!cid || cid === JACKPOT_CID) continue; // своя запись — локальная всегда свежее
+                    const e = siteStatsNorm(cid, rst.p[k]);
+                    const cur = siteStats.p[cid];
+                    if (!cur || e.at >= cur.at) { siteStats.p[cid] = e; ch = true; }
+                }
+            }
+            if (rst.b && typeof rst.b === 'object') {
+                for (const k in rst.b) {
+                    const v = (rst.b[k] && typeof rst.b[k] === 'object') ? { on: rst.b[k].on ? 1 : 0, at: Math.floor(rst.b[k].at) || 0 } : null;
+                    if (!v) continue;
+                    const cur = siteStats.b[k];
+                    if (!cur || v.at > (cur.at || 0)) { siteStats.b[k] = v; ch = true; }
+                }
+            }
+            if (rst.z && typeof rst.z === 'object') {
+                for (const k in rst.z) {
+                    const v = Math.floor(rst.z[k]) || 0;
+                    if (v > (siteStats.z[k] || 0)) { siteStats.z[k] = v; ch = true; }
+                }
+            }
+            if (ch) siteStatsSave();
+            return ch;
+        }
+        function siteStatsDoc() {
+            siteStatsSelfUpdate();
+            const p = {}, b = {}, z = {};
+            const cut30 = Date.now() - 30 * 86400000;
+            Object.keys(siteStats.p).map(k => siteStats.p[k])
+                .sort((a, c) => (c.at || 0) - (a.at || 0)).slice(0, 150)
+                .forEach(e => { if (e.cid) p[e.cid] = { n: e.n, bal: e.bal, op: e.op, jp: e.jp, fed: e.fed, won: e.won, at: e.at, pk: e.pk, alb: e.alb }; }); // b278: + альбомы
+            for (const k in siteStats.b) { const v = siteStats.b[k]; if (v && (v.on || (v.at || 0) > cut30)) b[k] = v; }
+            for (const k in siteStats.z) { if ((siteStats.z[k] || 0) > cut30) z[k] = siteStats.z[k]; }
+            return { p: p, b: b, z: z };
+        }
+        // ——— как блокировка и обнуление действуют на своей стороне ———
+        let statsWasBlocked = !!(siteStats.b[JACKPOT_CID] && siteStats.b[JACKPOT_CID].on);
+        function statsBlocked() { const b = siteStats.b[JACKPOT_CID]; return !!(b && b.on); }
+        function statsBlockGuard(what) {
+            if (!statsBlocked()) return false;
+            showToast('🚫 Вы заблокированы администратором — ' + what + ' недоступны', 'error');
+            return true;
+        }
+        function nxLockModal(text) { // b334: полноэкранный лок для заблокированных/удалённых
+            let m = document.getElementById('nx-lock-modal');
+            if (!m) {
+                m = document.createElement('div');
+                m.id = 'nx-lock-modal';
+                m.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.97);display:flex;align-items:center;justify-content:center;padding:24px;';
+                m.innerHTML = '<div style="max-width:430px;text-align:center;"><i class="fa-solid fa-ban" style="font-size:56px;color:#f43f5e;"></i><div id="nx-lock-text" style="margin-top:18px;font-size:16px;font-weight:800;color:#fecdd3;line-height:1.55;"></div></div>';
+                document.body.appendChild(m);
+            }
+            const t = document.getElementById('nx-lock-text');
+            if (t) t.textContent = text;
+        }
+        function nxHideLockModal() { const m = document.getElementById('nx-lock-modal'); if (m) m.remove(); }
+        function siteStatsApplyToMe() {
+            try {
+                const z = Math.floor(siteStats.z[JACKPOT_CID]) || 0;
+                const ack = parseInt(LS.getItem('nexus_stats_zero_ack') || '0', 10) || 0;
+                if (z > 0 && z > ack) {
+                    LS.setItem('nexus_stats_zero_ack', String(z));
+                    if ((state.coins || 0) !== 0) {
+                        state.coins = 0; saveState(); updateCoinDisplay();
+                        showToast('⚠️ Администратор обнулил ваш баланс', 'error');
+                    }
+                }
+                const on = statsBlocked();
+                // b334: блокировка = полный лок и обнулённый баланс; флаг del или сутки с блокировки = удаление учётки
+                const bm = siteStats.b[JACKPOT_CID];
+                if (on) {
+                    if ((state.coins || 0) !== 0) { state.coins = 0; saveState(); updateCoinDisplay(); }
+                    const del = !!(bm && bm.del);
+                    const over24 = !!(bm && bm.at && (Date.now() - bm.at > 86400000));
+                    if (del || over24) {
+                        try {
+                            if (LS.getItem('nx_wiped_at') !== String(bm.at || 1)) {
+                                const dead = [];
+                                for (let i = 0; i < LS.length; i++) { const k = LS.key(i); if (k && k.indexOf('nexus_') === 0) dead.push(k); }
+                                dead.forEach(k => { try { LS.removeItem(k); } catch (e) {} });
+                                LS.setItem('nx_wiped_at', String(bm.at || 1));
+                            }
+                        } catch (e) {}
+                        nxLockModal('Учётная запись удалена' + (del ? ' администратором' : ': с момента блокировки прошли сутки') + '. Данные стёрты с устройства.', true);
+                    } else {
+                        nxLockModal('Вы заблокированы за нарушение правил игры. Покупки, ставки и вскрытия недоступны. Баланс обнулён.', false);
+                    }
+                } else {
+                    nxHideLockModal();
+                }
+                if (on !== statsWasBlocked) {
+                    statsWasBlocked = on;
+                    showToast(on ? '🚫 Вы заблокированы администратором: покупки и ставки отключены' : '✅ Блокировка снята — покупки и ставки снова доступны', on ? 'error' : 'success');
+                }
+            } catch (e) {}
+        }
+        function statsTouch() { // вскрыл пак / изменился баланс — сразу публикуем себя
+            try { siteStatsSelfUpdate(); siteStatsSave(); statsRenderIfVisible(); } catch (e) {}
+            jpSyncSoon();
+        }
+        // ——— Студия: рендер вкладки «Статистика» ———
+        function statsAgo(ts) {
+            if (!ts) return 'неизвестно';
+            const d = Date.now() - ts;
+            if (d < 60000) return 'только что';
+            if (d < 3600000) return Math.max(1, Math.floor(d / 60000)) + ' мин назад';
+            if (d < 86400000) return Math.max(1, Math.floor(d / 3600000)) + ' ч назад';
+            if (d < 30 * 86400000) return Math.max(1, Math.floor(d / 86400000)) + ' дн назад';
+            try { return new Date(ts).toLocaleDateString('ru-RU'); } catch (e) { return ''; }
+        }
+        let statsArmT = null, statsArmBtn = null;
+        function statsConfirm(btn, label, run) { // двухшаговое подтверждение прямо на кнопке
+            if (!btn) { run(); return; }
+            if (btn.dataset.arm === '1') {
+                clearTimeout(statsArmT); statsArmBtn = null;
+                btn.dataset.arm = ''; btn.innerHTML = btn.dataset.old || btn.innerHTML;
+                run(); return;
+            }
+            if (statsArmBtn && statsArmBtn !== btn) { try { statsArmBtn.dataset.arm = ''; statsArmBtn.innerHTML = statsArmBtn.dataset.old || ''; } catch (e) {} clearTimeout(statsArmT); }
+            btn.dataset.old = btn.innerHTML;
+            btn.dataset.arm = '1';
+            btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i>' + label;
+            statsArmBtn = btn;
+            statsArmT = setTimeout(() => { if (statsArmBtn === btn) { btn.dataset.arm = ''; btn.innerHTML = btn.dataset.old || ''; statsArmBtn = null; } }, 4000);
+        }
+        function statsAdminGuard() {
+            if (typeof cloudGuest === 'function' && cloudGuest()) { showToast('Режим участника: управлять пользователями может только создатель комнаты', 'error'); return true; }
+            return false;
+        }
+        function statsZeroUser(cid, btn) {
+            statsConfirm(btn, 'Точно обнулить?', () => {
+                if (statsAdminGuard()) return;
+                cid = String(cid);
+                const t = Date.now();
+                siteStats.z[cid] = t; siteStatsSave();
+                if (cid === JACKPOT_CID) { try { LS.setItem('nexus_stats_zero_ack', String(t)); } catch (e) {} state.coins = 0; saveState(); updateCoinDisplay(); }
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast('💸 Баланс обнулён — после синхронизации у игрока будет 0 монет', 'success');
+            });
+        }
+        function statsBlockUser(cid, on, btn) {
+            statsConfirm(btn, on ? 'Точно заблокировать?' : 'Разблокировать?', () => {
+                if (statsAdminGuard()) return;
+                cid = String(cid);
+                siteStats.b[cid] = { on: on ? 1 : 0, at: Date.now() };
+                if (on) siteStats.z[cid] = Date.now(); // b334: блокировка обнуляет баланс
+                siteStatsSave();
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast(on ? '🚫 Пользователь заблокирован — после синхронизации у него отключатся покупки и ставки' : '✅ Пользователь разблокирован', on ? 'info' : 'success');
+            });
+        }
+        function nxToggleOnlineOnly() { // b335: фильтр «кто сейчас на сайте»
+            window.__nxOnlineOnly = !window.__nxOnlineOnly;
+            try { statsRender(); } catch (e) {}
+        }
+        // b335: heartbeat онлайна — каждые 30 c помечаем себя активным, пуш в облако не чаще 90 c
+        setInterval(() => {
+            try {
+                if (document.hidden) return;
+                siteStatsSelfUpdate(); siteStatsSave();
+                if (Date.now() - (window.__nxLastBeat || 0) > 90000) { window.__nxLastBeat = Date.now(); jpSyncSoon(); }
+                statsRenderIfVisible();
+            } catch (e) {}
+        }, 30000);
+        document.addEventListener('visibilitychange', () => {
+            try {
+                if (!document.hidden) { siteStatsSelfUpdate(); siteStatsSave(); window.__nxLastBeat = Date.now(); jpSyncSoon(); }
+            } catch (e) {}
+        });
+        function statsDeleteUser(cid, btn) { // b334: удаление: лок+обнуление+стирание с устройства+из списка
+            statsConfirm(btn, 'Удалить игрока безвозвратно?', () => {
+                if (statsAdminGuard()) return;
+                cid = String(cid);
+                siteStats.b[cid] = { on: 1, del: 1, at: Date.now() };
+                siteStats.z[cid] = Date.now();
+                delete siteStats.p[cid];
+                siteStatsSave();
+                try { jpSyncNow(); } catch (e) {}
+                statsRender();
+                showToast('🗑 Игрок удалён: баланс обнулён, доступ отключён, из списка исчез', 'info');
+            });
+        }
+        function statsRenderIfVisible() {
+            if (statsArmBtn) return; // не перестраиваем список, пока идёт подтверждение кнопки
+            const sec = document.querySelector('.studio-sec[data-sec="stats"]');
+            if (sec && !sec.hidden) statsRender();
+        }
+        function statsRefresh() {
+            statsRender();
+            try { jpSyncNow(); } catch (e) {}
+        }
+        function statsRender() {
+            const users = document.getElementById('stats-users');
+            if (!users) return;
+            siteStatsSelfUpdate();
+            let pool = 0, wins = 0, fed = 0, won = 0;
+            try { pool = jackpotPool(); } catch (e) {}
+            for (const k in jackpot.wins) wins += jackpot.wins[k] || 0;
+            for (const k in jackpot.led) fed += jackpot.led[k] || 0;
+            for (const k in jackpot.won) won += jackpot.won[k] || 0;
+            let plist = Object.keys(siteStats.p).map(k => siteStats.p[k]);
+            // b335: онлайн = активность за последние 2 минуты (heartbeat каждые 30 c)
+            const nxNow = Date.now();
+            const nxOnlineCount = plist.filter(e => nxNow - (e.at || 0) < 120000).length;
+            try {
+                const ob = document.getElementById('nx-online-btn');
+                if (ob) ob.innerHTML = '<i class="fa-solid fa-circle mr-1" style="font-size:7px;vertical-align:2px;color:#34d399;"></i>Кто онлайн: ' + nxOnlineCount + (window.__nxOnlineOnly ? ' (фильтр)' : '');
+            } catch (e) {}
+            if (window.__nxOnlineOnly) plist = plist.filter(e => nxNow - (e.at || 0) < 120000);
+            let opens = 0; plist.forEach(e => { opens += e.op || 0; });
+            let albPctSum = 0, albPctN = 0; // b278: средний процент сбора альбомов (по игрокам с данными)
+            plist.forEach(e => { const a = albSum(e.alb); if (a.total > 0) { albPctSum += a.pct; albPctN++; } });
+            const chip = (ic, col, lab, val, ttl) => '<div class="rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0"' + (ttl ? ' title="' + String(ttl).replace(/"/g, '&quot;') + '"' : '') + '><p class="text-[9px] uppercase tracking-wide text-slate-500 flex items-center gap-1.5 truncate"><i class="fa-solid ' + ic + ' ' + col + '"></i>' + lab + '</p><p class="text-sm sm:text-base font-black text-white truncate mt-0.5">' + val + '</p></div>';
+            const sm = document.getElementById('stats-summary');
+            if (sm) sm.innerHTML =
+                chip('fa-crown', 'text-amber-400', 'Джекпот сайта', fmtCoins(pool)) +
+                chip('fa-trophy', 'text-yellow-300', 'Сорвано джекпотов', String(wins)) +
+                chip('fa-users', 'text-sky-400', 'Игроков', String(plist.length)) +
+                chip('fa-box-open', 'text-violet-400', 'Открыто паков', String(opens)) +
+                chip('fa-sack-dollar', 'text-slate-300', 'Внесено в банк', fmtCoins(fed)) +
+                chip('fa-wallet', 'text-violet-300', 'Выплачено из банка', fmtCoins(won)) +
+                chip('fa-book-open', 'text-violet-300', 'Альбомы собраны', (albPctN ? Math.round(albPctSum / albPctN) : 0) + '%', 'Средний прогресс альбомов по игрокам, о которых есть данные');
+            const guest = (typeof cloudGuest === 'function') && cloudGuest();
+            const badge = (ic, txt, cls, ttl) => '<span class="inline-flex items-center gap-1 rounded-md bg-slate-950/70 border border-slate-800 px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap ' + cls + '"' + (ttl ? ' title="' + String(ttl).replace(/"/g, '&quot;') + '"' : '') + '><i class="fa-solid ' + ic + '"></i>' + txt + '</span>'; // b278: + подсказка
+            try { // b334: заблокированные больше суток (или удалённые) убираются из списка
+                const nowTs = Date.now(); let chg = false;
+                for (const k in siteStats.b) {
+                    const bb = siteStats.b[k];
+                    if (bb && (bb.del || (bb.on && bb.at && nowTs - bb.at > 86400000))) { if (siteStats.p[k]) { delete siteStats.p[k]; chg = true; } }
+                }
+                if (chg) siteStatsSave();
+            } catch (e) {}
+            const sorted = plist.slice().sort((a, c) => (c.bal || 0) - (a.bal || 0));
+            try { // b337: список пользователей перестраиваем только при реальных изменениях
+                const sigS = 'S|' + sorted.map(e => e.cid + ':' + (e.bal || 0) + ':' + ((nxNow - (e.at || 0) < 120000) ? 1 : 0) + ':' + !!(siteStats.b[e.cid] && siteStats.b[e.cid].on)).join(',') + '|' + (window.__nxOnlineOnly ? 1 : 0);
+                if (sigS === window.__nxStatsSig) return;
+                window.__nxStatsSig = sigS;
+            } catch (e) {}
+            users.innerHTML = sorted.map((e, i) => {
+                const cid = e.cid, me = cid === JACKPOT_CID;
+                const blk = !!(siteStats.b[cid] && siteStats.b[cid].on);
+                const name = e.n || ('Игрок-' + String(cid).slice(1, 5));
+                const as = albSum(e.alb); // b278: альбомы игрока
+                const btns = guest
+                    ? '<span class="ml-auto text-[9px] text-slate-600 italic">управляет создатель комнаты</span>'
+                    : '<span class="flex items-center gap-1.5 shrink-0 ml-auto">' +
+                        '<button type="button" onclick="statsZeroUser(\'' + cid + '\', this)" title="Обнулить баланс этого игрока" class="px-2 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900/70 border border-rose-800/60 text-rose-300 hover:text-rose-200 text-[10px] font-bold transition"><i class="fa-solid fa-sack-dollar mr-1"></i>Обнулить</button>' +
+                        (blk
+                            ? '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 0, this)" title="Снова разрешить покупки и ставки" class="px-2 py-1 rounded-lg bg-violet-950/60 hover:bg-violet-900/60 border border-violet-800/60 text-violet-300 hover:text-violet-200 text-[10px] font-bold transition"><i class="fa-solid fa-unlock mr-1"></i>Разблокировать</button>'
+                            : '<button type="button" onclick="statsBlockUser(\'' + cid + '\', 1, this)" title="Отключить игроку все покупки и ставки" class="px-2 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-800/60 text-slate-300 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-ban mr-1"></i>Заблокировать</button>') +
+                        '<button type="button" onclick="statsDeleteUser(\'' + cid + '\', this)" title="Удалить игрока: баланс обнуляется, доступ отключается, в течение суток пользователь удаляется" class="px-2 py-1 rounded-lg bg-slate-950 hover:bg-rose-950/80 border border-slate-800 hover:border-rose-800/70 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-trash-can mr-1"></i>Удалить</button>' +
+                      '</span>';
+                return '<div class="rounded-xl border px-2.5 py-2 ' + (blk ? 'border-rose-900/60 bg-rose-950/20' : me ? 'border-violet-700/60 bg-violet-950/20' : 'border-slate-800 bg-slate-950/50') + '">' +
+                    '<div class="flex flex-wrap items-center gap-1.5 min-w-0">' +
+                        '<span class="text-[11px] font-black truncate max-w-[180px] ' + (blk ? 'text-rose-300' : 'text-white') + '">' + (i + 1) + '. ' + cloudEsc(name) + '</span>' +
+                        (me ? badge('fa-user', 'вы', 'text-violet-300') : '') +
+                        (blk ? badge('fa-ban', 'заблокирован', 'text-rose-400') : '') +
+                        ((Date.now() - (e.at || 0) < 120000) ? badge('fa-circle', 'онлайн', 'text-emerald-400') : '') +
+                        '<span class="ml-auto text-[9px] font-mono text-slate-600 truncate max-w-[120px]" title="ID игрока">' + cloudEsc(cid) + '</span>' +
+                    '</div>' +
+                    '<div class="flex flex-wrap items-center gap-1.5 mt-1.5">' +
+                        badge('fa-coins', fmtCoins(e.bal || 0), 'text-amber-300') +
+                        badge('fa-box-open', (e.op || 0) + ' паков', 'text-violet-300') +
+                        (as.total > 0 ? badge('fa-book-open', 'альбомы: ' + as.done + '/' + as.packs + ' · ' + as.pct + '%', 'text-violet-300', 'Собрано ' + as.have + ' из ' + as.total + ' карт • альбомов закрыто полностью: ' + as.done + ' из ' + as.packs) : '') +
+                        badge('fa-crown', 'джекпотов: ' + (e.jp || 0), 'text-yellow-300') +
+                        badge('fa-arrow-up', 'в банк: ' + fmtCoins(e.fed || 0), 'text-slate-300') +
+                        badge('fa-clock', statsAgo(e.at || 0), 'text-slate-400') +
+                        btns +
+                    '</div>' +
+                '</div>';
+            }).join('') || '<p class="text-[11px] text-slate-500">Данных пока нет — пользователи появятся здесь после первой синхронизации с облаком (игра синхронизируется автоматически).</p>';
+            const pkAgg = {};
+            plist.forEach(e => { for (const pid in (e.pk || {})) { const a = pkAgg[pid] || (pkAgg[pid] = { o: 0, u: 0 }); a.o += e.pk[pid]; a.u++; } });
+            const albAgg = {}; // b278: по каждому паку — лучший и средний процент сбора среди игроков
+            plist.forEach(e => {
+                for (const pid in (e.alb || {})) {
+                    const v = e.alb[pid];
+                    if (!Array.isArray(v) || v.length < 2) continue;
+                    const t = Math.max(0, Math.floor(v[1]) || 0);
+                    if (t <= 0) continue;
+                    const h = Math.min(t, Math.max(0, Math.floor(v[0]) || 0));
+                    const pct = Math.round(h / t * 100);
+                    const a = albAgg[pid] || (albAgg[pid] = { pct: -1, u: 0, sum: 0, have: 0, total: 0, n: '' });
+                    a.u++; a.sum += pct;
+                    if (pct > a.pct) { a.pct = pct; a.have = h; a.total = t; a.n = e.n || ('Игрок-' + String(e.cid || '').slice(1, 5)); }
+                }
+            });
+            const known = {};
+            state.packs.forEach(p => { known[p.id] = p; });
+            const lps = state.packStats || {};
+            const rows = Object.keys(pkAgg).map(pid => ({ pid: pid, o: pkAgg[pid].o, u: pkAgg[pid].u }));
+            state.packs.forEach(p => { if (!pkAgg[p.id]) rows.push({ pid: p.id, o: 0, u: 0 }); });
+            Object.keys(albAgg).forEach(pid => { if (!pkAgg[pid] && !known[pid]) rows.push({ pid: pid, o: 0, u: albAgg[pid].u }); }); // b278: паки, известные только по альбомам
+            rows.sort((a, c) => c.o - a.o);
+            const packsEl = document.getElementById('stats-packs');
+            if (packsEl) packsEl.innerHTML = rows.map(r => {
+                const p = known[r.pid];
+                const title = p ? p.title : ('Пак ' + String(r.pid).slice(0, 8));
+                const lp = lps[r.pid] || null;
+                const aa = albAgg[r.pid] || null; // b278
+                return '<div class="rounded-xl border border-slate-800 bg-slate-950/50 px-2.5 py-2 flex flex-wrap items-center gap-1.5">' +
+                    '<span class="text-[11px] font-bold text-white truncate min-w-0 max-w-[220px]"><i class="fa-solid fa-box text-violet-500 mr-1.5"></i>' + cloudEsc(title) + '</span>' +
+                    badge('fa-box-open', 'на сайте: ' + r.o, 'text-violet-300') +
+                    badge('fa-users', 'игроков: ' + r.u, 'text-sky-300') +
+                    (aa && aa.total > 0 ? badge('fa-book-open', 'альбом: ' + aa.pct + '%', 'text-violet-300', 'Лучший результат: ' + aa.have + '/' + aa.total + ' — ' + String(aa.n).replace(/[<>"']/g, '') + ' • средний по игрокам: ' + Math.round(aa.sum / aa.u) + '% • сообщили: ' + aa.u) : '') +
+                    badge('fa-mobile-screen', 'на этом устройстве: ' + ((lp && lp.opens) || 0), 'text-slate-300') +
+                    (lp && lp.revenue ? badge('fa-coins', 'выручка: ' + fmtCoins(lp.revenue), 'text-amber-300') : '') +
+                '</div>';
+            }).join('') || '<p class="text-[11px] text-slate-500">Паков пока нет — создайте их во вкладке «Паки».</p>';
+            const note = document.getElementById('stats-sync-note');
+            if (note) { try { note.textContent = 'обновлено в ' + new Date().toLocaleTimeString('ru-RU') + ' • авто каждые ~60 с'; } catch (e) { note.textContent = ''; } }
+        }
+
+        // ============ b136: БИРЖА ДУБЛИКАТОВ — игроки продают и покупают карты ============
+        // Лоты и квитанции живут в общесайтовом облаке (там же, где джекпот): пишут все,
+        // включая участников комнат. Удалённые лоты помнятся в «надгробиях», чтобы не воскресать.
+        function marketLots() { return Array.isArray(CLOUD.market) ? CLOUD.market : []; }
+        function marketIsMine(l) { return !!(l && l.sid === cloudDeviceId()); }
+        function marketRemoved() {
+            try {
+                const o = JSON.parse(LS.getItem('nexus_market_removed') || '{}');
+                const cut = Date.now() - 7 * 24 * 3600 * 1000;
+                const res = {};
+                Object.keys(o || {}).forEach(k => { if ((o[k] || 0) > cut) res[k] = o[k]; });
+                return res;
+            } catch (e) { return {}; }
+        }
+        function marketRemovedAdd(id) {
+            try { const o = marketRemoved(); o[id] = Date.now(); const ks = Object.keys(o); if (ks.length > 300) delete o[ks[0]]; LS.setItem('nexus_market_removed', JSON.stringify(o)); } catch (e) {}
+        }
+        function marketDoc() {
+            return { lots: marketLots().slice(-80), ledger: (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).slice(-60), rm: marketRemoved() }; // b336: rm — снятые лоты
+        }
+        function marketMerge(rmk) {
+            if (!rmk || typeof rmk !== 'object') return;
+            try { // b336: подтягиваем чужие «снято с продажи» до построения union
+                const rrm = rmk.rm;
+                if (rrm && typeof rrm === 'object') {
+                    const o = JSON.parse(LS.getItem('nexus_market_removed') || '{}');
+                    let ch2 = false;
+                    for (const k in rrm) { if (rrm[k] && (!o[k] || rrm[k] > o[k])) { o[k] = rrm[k]; ch2 = true; } }
+                    if (ch2) LS.setItem('nexus_market_removed', JSON.stringify(o));
+                }
+            } catch (e) {}
+            const removed = marketRemoved();
+            const cur = {};
+            marketLots().forEach(l => { if (l && l.id) cur[l.id] = l; });
+            (Array.isArray(rmk.lots) ? rmk.lots : []).forEach(l => { if (l && l.id) cur[l.id] = l; });
+            Object.keys(cur).forEach(id => { if (removed[id]) delete cur[id]; });
+            CLOUD.market = Object.values(cur);
+            // b326: лоты хранят снапшот карты БЕЗ base64 (чтобы не раздувать облако) —
+            // восстанавливаем арт лота по id карты из коллекции/стандарта/облака
+            try {
+                CLOUD.market.forEach(l => {
+                    const c = l && l.card;
+                    if (!c) return;
+                    if (!c.image || String(c.image).indexOf('blob:') === 0) {
+                        const def = state.cards.find(x => x.id === c.id) || cloudStdFindCard(c.id) || ((CLOUD.cards || []).find(x => x && x.id === c.id));
+                        if (def && def.image) { c.image = def.image; window.__nxMktSig = ''; } // b339: тихая перерисовка должна увидеть восстановление
+                    }
+                });
+            } catch (e) {}
+            // b336: облако без атомарных обновлений — параллельные пуши игроков могли
+            // перезатирать лоты («карточки не доходят»). Держим кэш виденных лотов
+            // 10 минут и возвращаем в облако потерянные (кроме проданных/снятых).
+            try {
+                const soldIds = {};
+                (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).forEach(r => { if (r && r.id) soldIds[r.id] = 1; });
+                (Array.isArray(rmk.ledger) ? rmk.ledger : []).forEach(r => { if (r && r.id) soldIds[r.id] = 1; });
+                const removedIds = marketRemoved();
+                let mcache = {};
+                try { mcache = JSON.parse(LS.getItem('nexus_market_cache') || '{}'); } catch (e) {}
+                const nowM = Date.now();
+                let addedM = 0;
+                for (const id in mcache) {
+                    const e = mcache[id];
+                    if (!e || !e.l || nowM - (e.t || 0) > 600000) continue;
+                    if (cur[id] || removedIds[id] || soldIds['sale-' + id]) continue;
+                    cur[id] = e.l; addedM++;
+                }
+                if (addedM) { CLOUD.market = Object.values(cur); window.__nxMktSig = ''; try { console.log('market: восстановлено лотов из кэша — ' + addedM); } catch (e) {} }
+                const nc = {};
+                CLOUD.market.forEach(l => { if (l && l.id) nc[l.id] = { l: l, t: nowM }; });
+                LS.setItem('nexus_market_cache', JSON.stringify(nc));
+            } catch (e) {}
+            const led = {};
+            (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).forEach(r => { if (r && r.id) led[r.id] = r; });
+            (Array.isArray(rmk.ledger) ? rmk.ledger : []).forEach(r => { if (r && r.id) led[r.id] = r; });
+            let arr = Object.values(led).sort((a, b) => (a.at || 0) - (b.at || 0));
+            if (arr.length > 60) arr = arr.slice(-60);
+            CLOUD.ledger = arr;
+        }
+        function marketSetCollection(id, n) {
+            if (n <= 0) delete state.collection[id]; else state.collection[id] = n;
+        }
+        function marketListCardFor(cardId, priceStr, silent) {
+            if (statsBlockGuard('биржа')) return false; // b277
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return false; }
+            const card = state.cards.find(c => c.id === cardId);
+            if (!card) { showToast('Выберите карту из коллекции', 'error'); return false; }
+            if (cardCopies(cardId) < 1) { showToast('Этой карты нет в коллекции', 'error'); return false; }
+            const raw = parseBetStr(priceStr);
+            if (!isFinite(raw) || raw < 1) { showToast('Укажите цену: число, можно 2k / 1.5m', 'error'); return false; }
+            const price = normBet(raw);
+            marketSetCollection(cardId, cardCopies(cardId) - 1); // копия уходит в эскроу лота
+            const snap = Object.assign({}, card);
+            if (typeof snap.image === 'string' && snap.image.indexOf('data:') === 0) snap.image = ''; // не тащим base64 в облако
+            const lot = {
+                id: 'lot-' + Date.now() + '-' + Math.floor(Math.random() * 1e6),
+                sid: cloudDeviceId(),
+                sname: getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4)),
+                price: price, at: Date.now(), card: snap
+            };
+            CLOUD.market = marketLots().concat([lot]);
+            saveState(); jpSyncNow(); jpSyncSoon(); renderMarket(); // b336: мгновенный пуш лота
+            marketEnforceLimit(); // b142: вдруг это уже пятая такая карта в продаже
+            if (!silent) showToast('🏷 Лот выставлен: ' + card.name + ' за ' + fmtCoins(price), 'success');
+            return true;
+        }
+        function marketListCard() {
+            const sel = document.getElementById('market-card-select');
+            const pi = document.getElementById('market-price-input');
+            const ok = marketListCardFor(sel && sel.value, pi && pi.value);
+            if (ok && pi) pi.value = '';
+            renderMarket();
+        }
+        // b137: продажа копии прямо из окна просмотра карты
+        function openInspectMarket() {
+            const id = (inspectList || [])[inspectIdx];
+            const card = id ? state.cards.find(c => c.id === id) : null;
+            if (!card || cardCopies(id) < 1) { showToast('Этой карты нет в коллекции', 'error'); return; }
+            const nm = document.getElementById('market-list-card-name');
+            if (nm) nm.innerHTML = 'Карта: <b class="text-slate-200">' + cloudEsc(card.name) + '</b> • копий у вас: <b class="text-slate-200">' + cardCopies(id) + '</b>';
+            const pi = document.getElementById('market-list-price');
+            if (pi) pi.value = '';
+            const m = document.getElementById('modal-market-list');
+            if (m) m.classList.remove('hidden');
+            setTimeout(() => { try { pi.focus(); } catch (e) {} }, 60);
+        }
+        function closeInspectMarket() {
+            const m = document.getElementById('modal-market-list');
+            if (m) m.classList.add('hidden');
+        }
+        function confirmInspectMarket() {
+            const id = (inspectList || [])[inspectIdx];
+            const pi = document.getElementById('market-list-price');
+            if (marketListCardFor(id, pi && pi.value)) {
+                closeInspectMarket();
+                updateInspectMarketBtn();
+            }
+        }
+        function updateInspectMarketBtn() {
+            const b = document.getElementById('inspect-market-btn');
+            if (!b) return;
+            const id = (inspectList || [])[inspectIdx];
+            const owned = !!id && cardCopies(id) > 0;
+            b.classList.toggle('hidden', !owned);
+        }
+        // b139: рекомендованная цена дубликата на бирже (выше автовыкупа, по редкости)
+        function marketRecommendPrice(card) {
+            const base = { common: 100, rare: 400, epic: 1000, legendary: 3500 };
+            return base[(card && card.rarity) || 'common'] || 100;
+        }
+        // b143: какие карты текущего вскрытия оказались повторками и какие уже улетели на биржу
+        let unboxDupeIdx = {};
+        let unboxListedIdx = {};
+        function marketMarkListedBtn(idx, price) {
+            const btn = document.getElementById('mk-sell-' + idx);
+            if (btn) btn.outerHTML = '<span class="inline-flex items-center gap-1 px-2 py-1 bg-violet-500/10 text-violet-300 rounded border border-violet-500/30 text-[10px] font-bold"><i class="fa-solid fa-check"></i>На бирже за ' + fmtCoins(price) + '</span>';
+        }
+        // b143: одна кнопка — все раскрытые повторки улетают на биржу
+        function sellAllDupesToMarket() {
+            const idxs = Object.keys(unboxDupeIdx).map(Number).filter(i => !unboxListedIdx[i]);
+            if (!idxs.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }
+            let ok = 0, sum = 0;
+            idxs.forEach(i => {
+                const card = (currentUnboxingCards || [])[i];
+                if (!card || cardCopies(card.id) < 1) return;
+                const price = marketRecommendPrice(card);
+                if (marketListCardFor(card.id, String(price), true)) {
+                    unboxListedIdx[i] = 1;
+                    ok++; sum += price;
+                    marketMarkListedBtn(i, price);
+                }
+            });
+            if (ok) showToast('💰 Повторки отправлены на биржу: ' + ok + ' на сумму ' + fmtCoins(sum), 'success');
+            else showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');
+        }
+        // b139: кнопка под раскрытой повторкой — карта сама улетает на биржу
+        function marketSellRevealed(idx) {
+            const card = (currentUnboxingCards || [])[idx];
+            if (!card) return;
+            const price = marketRecommendPrice(card);
+            if (marketListCardFor(card.id, String(price))) {
+                unboxListedIdx[idx] = 1;
+                marketMarkListedBtn(idx, price);
+            }
+        }
+        function marketCancel(lotId) {
+            const lot = marketLots().find(l => l.id === lotId);
+            if (!lot || !marketIsMine(lot)) return;
+            marketRemovedAdd(lotId);
+            CLOUD.market = marketLots().filter(l => l.id !== lotId);
+            marketSetCollection(lot.card.id, cardCopies(lot.card.id) + 1); // копия вернулась
+            saveState(); jpSyncSoon(); renderMarket();
+            showToast('Лот снят, карта вернулась в коллекцию', 'info');
+        }
+        function marketBuy(lotId) {
+            if (statsBlockGuard('биржа')) return; // b277
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
+            const lot = marketLots().find(l => l.id === lotId);
+            if (!lot) { showToast('Лот уже куплен или снят', 'error'); renderMarket(); return; }
+            if (marketIsMine(lot)) { showToast('Это ваш собственный лот', 'error'); return; }
+            if (state.coins < lot.price) { showToast('Не хватает монет: нужно ' + fmtCoins(lot.price), 'error'); return; }
+            state.coins -= lot.price;
+            marketRemovedAdd(lotId);
+            CLOUD.market = marketLots().filter(l => l.id !== lotId);
+            CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat([{
+                id: 'sale-' + lot.id, sid: lot.sid, amount: lot.price, at: Date.now(),
+                bname: getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4))
+            }]).slice(-60);
+            const isNewDef = !state.cards.some(c => c.id === lot.card.id);
+            if (isNewDef && lot.card) state.cards.push(Object.assign({}, lot.card));
+            marketSetCollection(lot.card.id, cardCopies(lot.card.id) + 1);
+            saveState(); updateCoinDisplay(); checkAchievements();
+            if (isNewDef) updateMissions('collect_new', 1);
+            jpSyncNow(); jpSyncSoon(); renderMarket(); // b336: мгновенный пуш покупки
+            try { preloadImages([lot.card.image]); } catch (e) {}
+            try { SoundFX.play('coin'); } catch (e) {}
+            showToast('🎉 Куплено: «' + (lot.card.name || 'карта') + '» в коллекции!', 'success');
+        }
+        function marketCreditLedger() {
+            const led = Array.isArray(CLOUD.ledger) ? CLOUD.ledger : [];
+            if (!led.length) return;
+            let credited = [];
+            try { credited = JSON.parse(LS.getItem('nexus_market_credited') || '[]'); } catch (e) { credited = []; }
+            const have = {}; credited.forEach(id => { have[id] = 1; });
+            let sum = 0; const added = [];
+            led.forEach(r => {
+                if (!r || r.sid !== cloudDeviceId() || have[r.id]) return;
+                have[r.id] = 1; added.push(r.id); sum += Number(r.amount) || 0;
+            });
+            if (!added.length) return;
+            state.coins += sum;
+            credited = credited.concat(added).slice(-200);
+            try { LS.setItem('nexus_market_credited', JSON.stringify(credited)); } catch (e) {}
+            saveState(); updateCoinDisplay();
+            showToast('🎉 Ваша карта куплена на обмене: +' + fmtCoins(sum) + ' монет', 'success');
+            renderMarketIfVisible();
+        }
+        // ============ b142: ЗАЩИТА ЭКОНОМИКИ — больше 4 одинаковых карт в продаже ============
+        // Игра автоматически ВЫКУПАЕТ лишние лоты (рандомно), по цене выкупа дубликата:
+        // продавцы получают монеты через квитанции, а рынок не затапливается копиями.
+        const MARKET_MAX_PER_CARD = 4;
+        const MARKET_SYS_REFUND = { common: 20, rare: 50, epic: 120, legendary: 300 };
+        function marketEnforceLimit() {
+            const byCard = {};
+            marketLots().forEach(l => {
+                const k = (l && l.card) ? l.card.id : '';
+                if (!k) return;
+                (byCard[k] = byCard[k] || []).push(l);
+            });
+            const bought = [];
+            Object.keys(byCard).forEach(k => {
+                const arr = byCard[k];
+                let excess = arr.length - MARKET_MAX_PER_CARD;
+                if (excess <= 0) return;
+                const pool = arr.slice();
+                while (excess-- > 0 && pool.length) {
+                    const i = Math.floor(Math.random() * pool.length); // рандомный выкуп
+                    bought.push(pool.splice(i, 1)[0]);
+                }
+            });
+            if (!bought.length) return;
+            const gone = {};
+            const receipts = [];
+            bought.forEach(l => {
+                gone[l.id] = 1;
+                marketRemovedAdd(l.id); // лот не должен воскреснуть из старых копий облака
+                receipts.push({
+                    id: 'sys-' + l.id, sid: l.sid,
+                    amount: MARKET_SYS_REFUND[(l.card || {}).rarity] || 20,
+                    at: Date.now(), bname: 'Игрок обмена'
+                });
+            });
+            CLOUD.market = marketLots().filter(l => !gone[l.id]);
+            CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat(receipts).slice(-60);
+            jpSyncSoon();
+            renderMarketIfVisible();
+            // b145: механика выкупа скрыта от игроков — продавцы просто получают
+            // обычное уведомление «ваша карта куплена» через квитанции ниже
+        }
+        function lotTileHTML(l) {
+            // b140: компактная строка лота — много лотов видно сразу
+            const mine = marketIsMine(l);
+            const c = l.card || {};
+            const rar = RAR_COLORS[c.rarity] || '#94a3b8';
+            const pack = state.packs.find(p => p.id === c.packId);
+            return `<div class="nx-cv group flex items-center gap-2.5 rounded-xl border p-1.5 sm:p-2 transition-all duration-200 ${mine ? 'border-violet-500/40 bg-violet-500/[.04]' : 'border-slate-800/80 bg-slate-900/60'} hover:border-violet-500/40 hover:bg-slate-900">
+                <div class="relative w-10 sm:w-12 shrink-0 rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover" decoding="async">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0" style="color:${rar};border-color:${rar}55;background:${rar}14">${RARITY_LABELS_RU[c.rarity] || c.rarity || ''}</span>
+                        <h3 class="font-bold text-white text-[12px] sm:text-[13px] leading-tight truncate min-w-0 flex-1">${cloudEsc(c.name || 'Карта')}</h3>
+                        <span class="shrink-0 text-[12px] sm:text-[13px] font-mono font-black text-violet-200 bg-slate-950/85 border border-violet-400/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm shadow-lg shadow-black/40" title="Номер карты в её паке">#${getCardLocalNumber(c)}</span>
+                    </div>
+                    <p class="text-[9px] text-slate-500 truncate mt-0.5">${mine ? 'ваш лот' : 'продавец: ' + cloudEsc(l.sname || 'игрок')}${pack ? ' • ' + cloudEsc(pack.title) : ''}</p>
+                </div>
+                <span class="lqg lqg-amber inline-flex items-center justify-center gap-1 text-[11px] font-black px-2 py-1 shrink-0 w-16" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
+                ${mine
+                    ? `<button onclick="marketCancel('${l.id}')" class="lqg lqg-slate px-2.5 py-1.5 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-xmark mr-1"></i><span class="hidden sm:inline">Снять лот</span><span class="sm:hidden">Снять</span></button>`
+                    : `<button onclick="marketBuy('${l.id}')" class="lqg lqg-vio px-2.5 py-1.5 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-cart-shopping mr-1"></i><span class="hidden sm:inline">Купить</span><span class="sm:hidden">&#10003;</span></button>`}
+            </div>`;
+        }
+        // b224: вид списка лотов в «Обмене» — сетка (2 колонки на широких экранах)
+        // или строки (1 колонка): тот же сегмент-тумблер, что в альбомах; выбор запоминается
+        let marketViewMode = 'grid';
+        try { if (LS.getItem('nexus_market_view') === 'rows') marketViewMode = 'rows'; } catch (e) {}
+        function setMarketView(v) {
+            marketViewMode = (v === 'rows') ? 'rows' : 'grid';
+            try { LS.setItem('nexus_market_view', marketViewMode); } catch (e) {}
+            applyMarketView();
+            renderMarketIfVisible(); // b224b: перерисовать лоты новым видом плиток
+        }
+        function applyMarketView() {
+            const on = 'px-2.5 py-2 text-xs transition bg-violet-600 text-white';
+            const off = 'px-2.5 py-2 text-xs transition bg-slate-900 text-slate-400 hover:text-white';
+            const g = document.getElementById('market-view-grid');
+            const r = document.getElementById('market-view-rows');
+            if (g) g.className = marketViewMode === 'grid' ? on : off;
+            if (r) r.className = marketViewMode === 'rows' ? on : off;
+            // b224b: сетка — вертикальные плитки в 2–4 колонки; строки — горизонтальные лоты в 1 колонку
+            const cls = marketViewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-1.5' : 'grid grid-cols-1 gap-1.5';
+            const a = document.getElementById('market-list'); if (a) a.className = cls;
+            const b = document.getElementById('market-my-lots'); if (b) b.className = cls;
+        }
+        applyMarketView();
+
+        // b224b: компактная вертикальная плитка лота для режима «Сетка» —
+        // 2–4 колонки на любой ширине, чтобы тумблер реально менял вид даже на телефоне
+        function lotCardHTML(l) {
+            const mine = marketIsMine(l);
+            const c = l.card || {};
+            const rar = RAR_COLORS[c.rarity] || '#94a3b8';
+            return `<div class="nx-cv group relative rounded-xl border p-1.5 transition-all duration-200 flex flex-col gap-1.5 ${mine ? 'border-violet-500/40 bg-violet-500/[.04]' : 'border-slate-800/80 bg-slate-900/60'} hover:border-violet-500/40 hover:bg-slate-900">
+                <div class="relative w-full rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover" decoding="async">
+                    <span class="absolute top-1 left-1 text-[7px] font-black uppercase tracking-wider px-1 py-0.5 rounded border" style="color:${rar};border-color:${rar}55;background:${rar}22">${RARITY_LABELS_RU[c.rarity] || c.rarity || ''}</span>
+                    <span class="absolute top-1.5 right-1.5 text-[12px] sm:text-[13px] font-mono font-black text-violet-200 bg-slate-950/85 border border-violet-400/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm shadow-lg shadow-black/40">#${getCardLocalNumber(c)}</span>
+                </div>
+                <h3 class="font-bold text-white text-[11px] leading-tight truncate">${cloudEsc(c.name || 'Карта')}</h3>
+                <p class="text-[8px] text-slate-500 truncate">${mine ? 'ваш лот' : cloudEsc(l.sname || 'игрок')}</p>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="lqg lqg-amber inline-flex items-center justify-center gap-1 text-[10px] font-black px-1.5 py-1 shrink-0" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
+                    ${mine
+                        ? `<button onclick="marketCancel('${l.id}')" title="Снять лот" class="lqg lqg-slate px-2 py-1 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-xmark"></i></button>`
+                        : `<button onclick="marketBuy('${l.id}')" title="Купить" class="lqg lqg-vio px-2 py-1 text-[10px] font-bold transition shrink-0"><i class="fa-solid fa-cart-shopping"></i></button>`}
+                </div>
+            </div>`;
+        }
+        function renderMarket() {
+            // b337: тихая перерисовка — не трогаем DOM, пока ничего не изменилось (нет мигания)
+            try {
+                const ps0 = (document.getElementById('market-pack') || {}).value || '';
+                const as0 = (document.getElementById('market-album') || {}).value || '';
+                const q0 = String((document.getElementById('market-search') || {}).value || '').trim().toLowerCase();
+                const rar0 = String((document.getElementById('market-rarity') || {}).value || '');
+                const sort0 = String((document.getElementById('market-sort') || {}).value || '');
+                const sig = 'M|' + marketViewMode + '|' + marketLots().map(l => l.id + ':' + l.price + ':' + ((l.card && l.card.image) ? 1 : 0)).join(',') + '|' + ps0 + '|' + as0 + '|' + q0 + '|' + rar0 + '|' + sort0 + '|' +
+                    state.cards.filter(c => cardCopies(c.id) > 0).map(c => c.id + cardCopies(c.id)).join(',');
+                if (sig === window.__nxMktSig) return;
+                window.__nxMktSig = sig;
+            } catch (e) {}
+            const sel = document.getElementById('market-card-select');
+            if (sel) {
+                const owned = state.cards.filter(c => cardCopies(c.id) > 0);
+                const keep = sel.value;
+                sel.innerHTML = owned.length
+                    ? owned.map(c => `<option value="${c.id}">#${getCardLocalNumber(c)} ${cloudEsc(c.name)} • ${RARITY_LABELS_RU[c.rarity] || c.rarity} • копий: ${cardCopies(c.id)}</option>`).join('')
+                    : '<option value="">В коллекции нет карт</option>';
+                if (keep && owned.some(c => c.id === keep)) sel.value = keep;
+            }
+            // b138: фильтр по паку/альбому
+            const psel = document.getElementById('market-pack');
+            if (psel) {
+                const keepP = psel.value;
+                psel.innerHTML = '<option value="">Все паки и альбомы</option>' + state.packs.map(p => `<option value="${p.id}">${cloudEsc(p.title)}${packIsRetired(p) ? ' • архив' : ''}</option>`).join('');
+                if (keepP && state.packs.some(p => p.id === keepP)) psel.value = keepP;
+            }
+            const my = marketLots().filter(marketIsMine).sort((a, b) => (b.at || 0) - (a.at || 0));
+            let others = marketLots().filter(l => !marketIsMine(l));
+            const q = String((document.getElementById('market-search') || {}).value || '').trim().toLowerCase();
+            const fpk = psel ? psel.value : '';
+            const frar = (document.getElementById('market-rarity') || {}).value || '';
+            const fsort = (document.getElementById('market-sort') || {}).value || 'new';
+            others = others.filter(l => {
+                const c = l.card || {};
+                if (q) {
+                    const nameOk = String(c.name || '').toLowerCase().indexOf(q) >= 0;
+                    // b146: поиск по номеру карты в альбоме: «14», «014», «#14»
+                    const qn = q.replace(/^#/, '');
+                    const numOk = /^\d+$/.test(qn) && (function () {
+                        const num = getCardLocalNumber(c); // «014»
+                        return num === String(parseInt(qn, 10)).padStart(3, '0') || num.indexOf(qn) >= 0;
+                    })();
+                    if (!nameOk && !numOk) return false;
+                }
+                if (fpk && c.packId !== fpk) return false;
+                if (frar && c.rarity !== frar) return false;
+                return true;
+            });
+            others.sort((a, b) => {
+                if (fsort === 'cheap') return (a.price || 0) - (b.price || 0);
+                if (fsort === 'exp') return (b.price || 0) - (a.price || 0);
+                if (fsort === 'name') return String((a.card || {}).name || '').localeCompare(String((b.card || {}).name || ''), 'ru');
+                return (b.at || 0) - (a.at || 0);
+            });
+            const found = document.getElementById('market-found');
+            if (found) found.innerHTML = 'Найдено лотов: <b class="text-violet-300">' + others.length + '</b>' + (q || fpk || frar ? ' по фильтру' : '');
+            const myBox = document.getElementById('market-my-lots');
+            const tileFn = marketViewMode === 'grid' ? lotCardHTML : lotTileHTML; // b224b
+            if (myBox) myBox.innerHTML = my.length ? my.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">У вас пока нет активных лотов.</p>';
+            const listBox = document.getElementById('market-list');
+            if (listBox) {
+                if (!CLOUD.connected()) listBox.innerHTML = '<p class="text-[11px] text-slate-500 col-span-full">Биржа недоступна: облако отключено.</p>';
+                else listBox.innerHTML = others.length ? others.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>';
+            }
+            const sc = document.getElementById('market-stat-coins');
+            if (sc) sc.textContent = fmtCoins(state.coins);
+        }
+        function marketSubTab(which) {
+            const buy = document.getElementById('market-panel-buy');
+            const sell = document.getElementById('market-panel-sell');
+            const bb = document.getElementById('market-subtab-buy');
+            const bs = document.getElementById('market-subtab-sell');
+            const onBuy = which !== 'sell';
+            if (buy) buy.classList.toggle('hidden', !onBuy);
+            if (sell) sell.classList.toggle('hidden', onBuy);
+            if (bb) bb.className = 'px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap ' + (onBuy ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-slate-950 shadow-lg shadow-violet-500/30' : 'bg-transparent text-slate-400 hover:text-white');
+            if (bs) bs.className = 'px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap ' + (!onBuy ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-slate-950 shadow-lg shadow-violet-500/30' : 'bg-transparent text-slate-400 hover:text-white');
+            try { LS.setItem('nexus_market_subtab', onBuy ? 'buy' : 'sell'); } catch (e) {}
+        }
+        function renderMarketIfVisible() {
+            const t = document.getElementById('tab-market');
+            if (t && !t.classList.contains('hidden')) renderMarket();
+        }
+        function marketRefresh() {
+            if (!CLOUD.connected()) { showToast('Облако отключено', 'error'); return; }
+            jpSyncNow();
+            renderMarket();
+            showToast('🔄 Биржа обновляется…', 'info');
+        }
+
+        // взвешенный выбор символа: JACKPOT редок
+        // b220: джекпот выпадает РЕЖЕ (жалоба «слишком часто»):
+        // Слоты: вес 3 из 53 ≈ 5.7% на барабан (было 6 → три подряд ≈ 1 из 820) → три подряд ≈ 1 из 5 500 спинов.
+        // Сетка: вес 2 на ячейку (было 4 → 3+ карт ≈ 1 из 6 спинов) → 3+ карт JACKPOT ≈ 1 из 25 спинов.
+        const SLOTS_JP_W = 3, GRID_JP_W = 2;
+        function slotsWeightedRand(jw) {
+            const syms = slots.symbols;
+            if (!syms.length) return 0;
+            const wJp = (Number.isFinite(+jw) && +jw > 0) ? +jw : SLOTS_JP_W;
+            let tot = 0;
+            for (let i = 0; i < syms.length; i++) tot += syms[i].jackpot ? wJp : 10;
+            let r = Math.random() * tot;
+            for (let i = 0; i < syms.length; i++) { r -= syms[i].jackpot ? wJp : 10; if (r <= 0) return i; }
+            return syms.length - 1;
+        }
+
+        // ============ b49: СЛОТЫ «Коллекционер карт» (3D-барабаны с картами сайта) ============
+        // b95: ставки до 1m, ставка 250 убрана. b221: добавлены все «буквы» — K, M, B (до 1b),
+        // чтобы любой порядок суммы был в один тап; поле ввода понимает те же буквы
+        const SLOTS_BETS = [100, 1000, 5000, 10000, 20000, 50000, 100000, 1000000, 5000000, 10000000, 100000000, 1000000000, 1000000000000, 1000000000000000];
+        const SLOTS_MULT = { common: 8, rare: 12, epic: 18, legendary: 30 };
+        const slots = { renderer: null, scene: null, camera: null, reels: [], symbols: [], symKey: '', spinning: false, bet: 100, lastWin: 0, lastResult: null, ready: false, fallback: false, animId: null, lastT: 0 };
+        // b85: пользователь сам выбирает, какие карты крутить в Слотах и Сетке.
+        // Нет выбора — стандартный набор (первые 5 карт с артами).
+        const SLOT_CARDS_KEY = 'nexus_slot_cards';
+        function getSlotCardIds() {
+            try { const a = JSON.parse(LS.getItem(SLOT_CARDS_KEY) || '[]'); return Array.isArray(a) ? a.filter(x => typeof x === 'string') : []; } catch (e) { return []; }
+        }
+        function setSlotCardIds(ids) {
+            try { LS.setItem(SLOT_CARDS_KEY, JSON.stringify(ids.slice(0, 5))); } catch (e) {}
+        }
+        function slotCardsLabels() {
+            const ids = getSlotCardIds();
+            const txt = ids.length ? 'Карты: мои (' + ids.length + ')' : 'Карты: стандарт';
+            const a = document.getElementById('slots-cards-btn');
+            const b = document.getElementById('grid-cards-btn');
+            const c = document.getElementById('lines-cards-btn');
+            if (a) a.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
+            if (b) b.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
+            if (c) c.innerHTML = '<i class="fa-solid fa-layer-group mr-1"></i>' + txt;
+        }
+        function slotsApplySymbols() {
+            const oldSyms = slots.symbols || [];
+            slots.symbols = slotsSymbols();
+            slots.symKey = slots.symbols.map(sl => sl.id).join(',');
+            if (slots.ready && !slots.fallback && slots.reels && slots.reels.length && slots.symbols.length === oldSyms.length) {
+                for (let i = 0; i < slots.symbols.length; i++) {
+                    let nt = null;
+                    try { nt = slotsSymbolCanvas(slots.symbols[i]); } catch (e) { continue; }
+                    for (let ri = 0; ri < slots.reels.length; ri++) {
+                        const mesh = slots.reels[ri].children[i + 1];
+                        if (!mesh || !mesh.material) continue;
+                        try { if (mesh.material.map && mesh.material.map !== nt) mesh.material.map.dispose(); } catch (e) {}
+                        mesh.material.map = nt;
+                        mesh.material.needsUpdate = true;
+                    }
+                }
+            } else if (slots.ready || slots.fallback) {
+                // изменилось число символов — пересоздаём машину при следующем входе
+                try { if (slots.renderer) { slots.renderer.dispose(); slots.renderer.forceContextLoss && slots.renderer.forceContextLoss(); } } catch (e) {}
+                slots.ready = false; slots.fallback = false; slots.reels = [];
+                const c = document.getElementById('slots-container'); if (c) c.innerHTML = '';
+            }
+            if (slots.fallback) { try { slotsRenderFallback(); } catch (e) {} }
+            gridTexCacheReset();
+            slotCardsLabels();
+        }
+        function gridTexCacheReset() {
+            try { for (const k in gridTexCache) { if (gridTexCache[k] && gridTexCache[k].dispose) gridTexCache[k].dispose(); delete gridTexCache[k]; } } catch (e) {}
+        }
+        let slotCardPick = [];
+        function openSlotCardPicker() {
+            slotCardPick = getSlotCardIds().slice();
+            renderSlotCardList();
+            const m = document.getElementById('modal-slotcards');
+            if (m) m.classList.remove('hidden');
+        }
+        function renderSlotCardList() {
+            const box = document.getElementById('slotcards-list');
+            if (box) {
+                const cards = (state.cards || []).filter(c => c && c.id);
+                if (!cards.length) {
+                    box.innerHTML = '<p class="col-span-3 sm:col-span-5 text-xs text-slate-400">У вас пока нет карт — создайте их в Студии или откройте паки. Пока работают стандартные карты сайта.</p>';
+                } else {
+                    box.innerHTML = cards.map(c => {
+                        const on = slotCardPick.indexOf(c.id) >= 0;
+                        const rar = RAR_COLORS[c.rarity] || '#e2e8f0';
+                        return '<button type="button" onclick="toggleSlotCard(\'' + c.id + '\')" class="lqg lqg-card p-2 text-left transition ' + (on ? 'lqg-vio' : 'lqg-slate') + '"' + (on ? ' style="border-color:rgba(196,181,253,.55)"' : '') + '>' +
+                            '<p class="text-[11px] font-bold text-white truncate">' + (c.name || c.id) + '</p>' +
+                            '<p class="text-[9px] font-bold uppercase mt-0.5" style="color:' + rar + '">' + (RARITY_LABELS_RU[c.rarity] || c.rarity || '') + '</p>' +
+                            '<p class="text-[9px] text-slate-400 mt-0.5">' + (on ? '<i class="fa-solid fa-check mr-1"></i>выбрана' : 'выбрать') + '</p>' +
+                            '</button>';
+                    }).join('');
+                }
+            }
+        }
+        function toggleSlotCard(id) {
+            const i = slotCardPick.indexOf(id);
+            if (i >= 0) slotCardPick.splice(i, 1);
+            else {
+                if (slotCardPick.length >= 5) { showToast('Можно выбрать не больше 5 карт', 'error'); return; }
+                slotCardPick.push(id);
+            }
+            renderSlotCardList();
+        }
+        function closeSlotCardPicker() { const m = document.getElementById('modal-slotcards'); if (m) m.classList.add('hidden'); }
+        function saveSlotCards() {
+            setSlotCardIds(slotCardPick);
+            slotsApplySymbols();
+            closeSlotCardPicker();
+            showToast(slotCardPick.length ? '🃏 Ваши карты установлены в Слоты и Сетку (' + slotCardPick.length + ')' : '🃏 Выбор сохранён', 'success');
+            try { renderSlotsUI(); } catch (e) {}
+            try { renderGridUI(); } catch (e) {}
+        }
+        function resetSlotCards() {
+            setSlotCardIds([]);
+            slotCardPick = [];
+            slotsApplySymbols();
+            closeSlotCardPicker();
+            showToast('🃏 Возвращены стандартные карты сайта', 'success');
+            try { renderSlotsUI(); } catch (e) {}
+            try { renderGridUI(); } catch (e) {}
+        }
+        function slotsSymbols() {
+            const seen = {};
+            const pool = [];
+            state.cards.forEach(c => {
+                if (!c || !c.id || seen[c.id]) return;
+                seen[c.id] = 1;
+                pool.push(c);
+            });
+            pool.sort((a, b) => (b.image ? 1 : 0) - (a.image ? 1 : 0));
+            // b85: приоритет — выбор пользователя; нет выбора — стандартные первые 5
+            const byId = {};
+            pool.forEach(c => { byId[c.id] = c; });
+            let src = [];
+            getSlotCardIds().forEach(id => { if (byId[id] && src.length < 5 && src.indexOf(byId[id]) < 0) src.push(byId[id]); });
+            if (!src.length) src = pool.slice(0, 5);
+            const used = {};
+            src.forEach(c => { used[c.id] = 1; });
+            const rest = pool.filter(c => !used[c.id]);
+            while (src.length < 5 && rest.length) src.push(rest.shift());
+            const syms = src.slice(0, 5).map(c => ({ id: c.id, name: c.name || c.id, rarity: c.rarity || 'common', image: c.image || '' }));
+            while (syms.length < 3) syms.push({ id: 'sym-' + syms.length, name: 'Джокер', rarity: 'legendary', image: '' });
+            syms.push({ id: 'sym-jackpot', name: 'JACKPOT', rarity: 'legendary', image: '', jackpot: true }); // b56
+            return syms;
+        }
+
+                function slotsSymbolCanvas(sym, SW, SH) {
+            // b51/b55: символ — вытянутый вертикальный бустер; размеры параметризованы:
+            // классические слоты 224×512, сетка 256×400 — пропорции плоскости и текстуры
+            // совпадают, поэтому карты нигде не растянуты
+            const W = (Number.isFinite(+SW) && +SW > 8) ? +SW : 224; // b55: защита от случайных аргументов (map передаёт index/array)
+            const H = (Number.isFinite(+SH) && +SH > 8) ? +SH : 512;
+            const CR = Math.max(26, Math.round(H * 0.09));
+            const PL = Math.max(52, Math.round(H * 0.165));
+            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const col = (typeof RAR_COLORS !== 'undefined' && RAR_COLORS[sym.rarity]) || '#94a3b8';
+            if (sym.jackpot) {
+                // b56: золотой символ джекпота
+                const rg = g.createRadialGradient(W / 2, H * 0.42, 8, W / 2, H * 0.42, H * 0.6);
+                rg.addColorStop(0, '#fff7cf'); rg.addColorStop(0.35, '#fbbf24'); rg.addColorStop(1, '#78350f');
+                g.fillStyle = rg; g.fillRect(0, 0, W, H);
+                g.fillStyle = '#7c2d12'; g.font = 'bold ' + Math.round(H * 0.17) + 'px Inter, sans-serif';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText('★', W / 2, H * 0.38);
+                g.fillStyle = '#431407'; g.font = '900 ' + Math.round(H * 0.07) + 'px Inter, sans-serif';
+                g.fillText('JACKPOT', W / 2, H * 0.6);
+                g.strokeStyle = '#fef3c7'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
+                const texJ = new THREE.CanvasTexture(cv);
+                try { texJ.encoding = THREE.sRGBEncoding; texJ.anisotropy = PACK3D_ANISO; } catch (e) {}
+                return texJ;
+            }
+            const bg = g.createLinearGradient(0, 0, W, H);
+            bg.addColorStop(0, '#0b1220'); bg.addColorStop(1, col + '40');
+            g.fillStyle = bg; g.fillRect(0, 0, W, H);
+            g.fillStyle = 'rgba(226,232,240,.14)';
+            g.fillRect(0, 0, 9, H); g.fillRect(W - 9, 0, 9, H);
+            const crimp = (y0) => {
+                const gr = g.createLinearGradient(0, y0, 0, y0 + CR);
+                gr.addColorStop(0, 'rgba(226,232,240,.78)'); gr.addColorStop(0.5, 'rgba(148,163,184,.72)'); gr.addColorStop(1, 'rgba(71,85,105,.78)');
+                g.fillStyle = gr; g.fillRect(0, y0, W, CR);
+                g.fillStyle = 'rgba(15,23,42,.35)';
+                for (let x = 0; x < W; x += 8) g.fillRect(x, y0, 3, CR);
+            };
+            crimp(0); crimp(H - CR);
+            const artTop = CR, artH = H - CR * 2 - PL;
+            if (sym.image) {
+                loadImgSafe(sym.image, img => {
+                    g.save();
+                    g.beginPath(); g.rect(9, artTop, W - 18, artH); g.clip();
+                    // b52: подложка-cover затемняется, поверх — картинка ЦЕЛИКОМ (contain)
+                    coverDrawImage(g, img, W, artH);
+                    g.fillStyle = 'rgba(2,6,23,.62)'; g.fillRect(9, artTop, W - 18, artH);
+                    const iw = img.width || 1, ih = img.height || 1;
+                    const sc = Math.min((W - 26) / iw, (artH - 14) / ih);
+                    const dw = iw * sc, dh = ih * sc;
+                    g.drawImage(img, (W - dw) / 2, artTop + (artH - dh) / 2, dw, dh);
+                    g.restore();
+                    const vg = g.createLinearGradient(0, artTop + artH - Math.round(H * 0.2), 0, artTop + artH);
+                    vg.addColorStop(0, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.85)');
+                    g.fillStyle = vg; g.fillRect(9, artTop + artH - Math.round(H * 0.2), W - 18, Math.round(H * 0.2));
+                    tex.needsUpdate = true;
+                });
+            } else {
+                g.fillStyle = col; g.font = 'bold ' + Math.round(H * 0.21) + 'px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillText(String(sym.name).slice(0, 1).toUpperCase(), W / 2, artTop + artH / 2);
+            }
+            g.fillStyle = 'rgba(2,6,23,.92)'; g.fillRect(9, H - CR - PL, W - 18, PL);
+            g.fillStyle = col; g.fillRect(9, H - CR - PL - 3, W - 18, 3);
+            g.fillStyle = '#f8fafc'; g.font = 'bold ' + Math.round(H * 0.052) + 'px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+            wrapCanvasText(g, sym.name, W / 2, H - CR - PL / 2, W - 30, Math.round(H * 0.056));
+            g.strokeStyle = col; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
+            const tex = new THREE.CanvasTexture(cv);
+            try { tex.encoding = THREE.sRGBEncoding; tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+            return tex;
+        }
+
+        function slotsEnsure() {
+            const container = document.getElementById('slots-container');
+            if (!container) return;
+            if (slots.ready || slots.fallback) return;
+            // b49: символы собираем ДО попытки создать WebGL — они нужны и фолбэку
+            slots.symbols = slotsSymbols();
+            slots.symKey = slots.symbols.map(sl => sl.id).join(',');
+            if (nxWeakGpu() && !nxForce3d()) { slots.fallback = true; slotsRenderFallback(); return; } // b309
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { slots.fallback = true; slotsRenderFallback(); return; }
+            slots.renderer = renderer;
+            try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) {}
+            try { renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
+            const w = container.clientWidth || 640, h = container.clientHeight || 340;
+            renderer.setPixelRatio(nxPixelRatio()); // b308
+            renderer.setSize(w, h);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            container.classList.remove('hidden'); // b307
+            const sfbx = document.getElementById('slots-fallback'); if (sfbx) sfbx.classList.add('hidden');
+            nxGuardContextLoss(renderer, 'slots', () => { cancelAnimationFrame(slots.animId); slots.animId = 0; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; slots.ctxLoss = (slots.ctxLoss || 0) + 1; if (slots.ctxLoss >= 2) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} } if (slots.ctxLoss <= 2) { slots.fallback = false; setTimeout(() => { try { if (battleMode === 'slots') slotsEnsure(); } catch (e) {} }, 1200 * slots.ctxLoss); } else { slots.fallback = true; try { slotsRenderFallback(); } catch (e) {} } });
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 60); // b52: шире кадр — маркиза целиком
+            camera.position.set(0, 0.3, 7.9);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.7, 40); l1.position.set(2.5, 3, 5); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.5, 40); l2.position.set(-3, -2, 4); scene.add(l2);
+            const env = makeStudioEnv();
+            // b51: пропорции вертикальной машины объявлены до корпуса: символы-паки вытянутые
+            const N = slots.symbols.length;
+            const H = 2.4, AW = 1.02; // b52: вытянутые вертикальные бустеры
+            const R = H / (2 * Math.sin(Math.PI / N));
+            // корпус автомата
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
+            // b50: корпус под вертикальные барабаны (размеры выводятся из радиуса R ниже,
+            // здесь задаются относительно SH/AR — см. после создания барабанов)
+            const addFrame = (w, h, d, x, y, z) => { const msh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat); msh.position.set(x, y, z); scene.add(msh); return msh; };
+            // b51: фон — радиальное свечение с звёздами за автоматом
+            const bgCv = document.createElement('canvas'); bgCv.width = 512; bgCv.height = 384;
+            const bgx = bgCv.getContext('2d');
+            const bgr = bgx.createRadialGradient(256, 168, 24, 256, 190, 340);
+            bgr.addColorStop(0, '#4c1d95'); bgr.addColorStop(0.45, '#1e1b4b'); bgr.addColorStop(1, '#020617');
+            bgx.fillStyle = bgr; bgx.fillRect(0, 0, 512, 384);
+            for (let i = 0; i < 110; i++) {
+                const x = (i * 97 + 13) % 512, y = (i * 61 + 7) % 384, rr = (i % 3) * 0.5 + 0.5;
+                bgx.globalAlpha = 0.2 + (i % 5) * 0.13;
+                bgx.fillStyle = '#ffffff';
+                bgx.beginPath(); bgx.arc(x, y, rr, 0, Math.PI * 2); bgx.fill();
+            }
+            bgx.globalAlpha = 1;
+            const bgTex = new THREE.CanvasTexture(bgCv);
+            try { bgTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(30, 14), new THREE.MeshBasicMaterial({ map: bgTex }));
+            bgMesh.position.set(0, 0.25, -(R + 1.5)); scene.add(bgMesh);
+            // b51: боковой неон и глянцевый пол
+            const neonL = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), new THREE.MeshBasicMaterial({ color: 0xe879f9 }));
+            neonL.position.set(-2.66, 0, -R * 0.3); scene.add(neonL);
+            const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+            neonR.position.set(2.66, 0, -R * 0.3); scene.add(neonR);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(0, -(H / 2 + 1.05), -R / 2 + 0.4); scene.add(floor);
+            const back = addFrame(4.5, H + 1.7, 0.4, 0, 0, -(R + 0.45));
+            const top = addFrame(4.5, 0.5, R + 0.9, 0, H / 2 + 0.55, -R / 2);
+            const bot = addFrame(4.5, 0.5, R + 0.9, 0, -(H / 2 + 0.55), -R / 2);
+            // b52: радиальное свечение прямо за барабанами — машина «светится изнутри»
+            const gc = document.createElement('canvas'); gc.width = gc.height = 256;
+            const gx = gc.getContext('2d');
+            const gr2 = gx.createRadialGradient(128, 128, 10, 128, 128, 126);
+            gr2.addColorStop(0, 'rgba(232,121,249,.5)'); gr2.addColorStop(0.5, 'rgba(124,58,237,.25)'); gr2.addColorStop(1, 'rgba(2,6,23,0)');
+            gx.fillStyle = gr2; gx.fillRect(0, 0, 256, 256);
+            const glowPlane = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 5.2),
+                new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false }));
+            glowPlane.position.set(0, 0.1, -(R * 0.55)); scene.add(glowPlane);
+            // маркиза с названием
+            const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
+            const mg = mq.getContext('2d');
+            const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
+            mgrad.addColorStop(0, '#4a044e'); mgrad.addColorStop(0.5, '#86198f'); mgrad.addColorStop(1, '#4a044e');
+            mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
+            mg.fillStyle = '#fde68a'; mg.font = '900 52px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+            mg.fillText('★ КОЛЛЕКЦИОНЕР КАРТ • СЛОТЫ ★', 512, 68);
+            const mqTex = new THREE.CanvasTexture(mq);
+            try { mqTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const mqMesh = new THREE.Mesh(new THREE.PlaneGeometry(4.15, 0.46), new THREE.MeshBasicMaterial({ map: mqTex }));
+            mqMesh.position.set(0, 1.95, 0.0); scene.add(mqMesh);
+            // барабаны: керн + плоскости-символы по окружности.
+            // b50: грани ВЕРТИКАЛЬНЫЕ (портретный мини-пак): высота символа H фиксирована,
+            // радиус барабана выводится из числа символов, ширина грани — вдоль оси.
+            const texs = slots.symbols.map(sl => slotsSymbolCanvas(sl)); // b55: не передавать index/array из map()
+            const coreGeo = new THREE.CylinderGeometry(R - 0.05, R - 0.05, AW, 32, 1, false);
+            coreGeo.rotateZ(Math.PI / 2);
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0x0a0f1a, roughness: 0.6, metalness: 0.3 });
+            const planeGeo = new THREE.PlaneGeometry(AW, 2 * R * Math.sin(Math.PI / N) * 0.96);
+            slots.reels = [];
+            for (let ri = 0; ri < 3; ri++) {
+                const grp = new THREE.Group();
+                const core = new THREE.Mesh(coreGeo, coreMat);
+                grp.add(core);
+                for (let i = 0; i < N; i++) {
+                    const th = (i + 0.5) / N * Math.PI * 2;
+                    const m = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ map: texs[i], roughness: 0.34, metalness: 0.22, envMap: env, envMapIntensity: 0.55, side: THREE.FrontSide }));
+                    m.position.set(0, R * Math.sin(th), R * Math.cos(th));
+                    m.rotation.x = -th;
+                    grp.add(m);
+                }
+                grp.position.x = (ri - 1) * (AW + 0.24);
+                grp.rotation.x = (0.5 / N) * Math.PI * 2; // символ 0 по линии выплаты
+                grp.userData = { phase: 'idle', speed: 0, t0: 0, dur: 0, from: 0, delta: 0, final: 0, target: 0 };
+                scene.add(grp);
+                slots.reels.push(grp);
+            }
+            // b51: золотой багет вокруг окна барабанов
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const trimX = 3 * (AW + 0.24) / 2 + 0.10;
+            const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.09, H + 0.24, 0.1), goldMat); tv1.position.set(-trimX, 0, R + 0.04); scene.add(tv1);
+            const tv2 = tv1.clone(); tv2.position.x = trimX; scene.add(tv2);
+            const th1 = new THREE.Mesh(new THREE.BoxGeometry(trimX * 2 + 0.09, 0.09, 0.1), goldMat); th1.position.set(0, H / 2 + 0.12, R + 0.04); scene.add(th1);
+            const th2 = th1.clone(); th2.position.y = -(H / 2 + 0.12); scene.add(th2);
+            // b52: золотые шарики по углам багета — нарядная фурнитура
+            const capGeo = new THREE.SphereGeometry(0.085, 12, 12);
+            [[-trimX, H / 2 + 0.12], [trimX, H / 2 + 0.12], [-trimX, -(H / 2 + 0.12)], [trimX, -(H / 2 + 0.12)]].forEach(pt => {
+                const cap = new THREE.Mesh(capGeo, goldMat);
+                cap.position.set(pt[0], pt[1], R + 0.05);
+                scene.add(cap);
+            });
+            // b51: линия выплаты с мягким свечением
+            const line = new THREE.Mesh(new THREE.BoxGeometry(trimX * 2 + 0.8, 0.035, 0.03), new THREE.MeshBasicMaterial({ color: 0xfbbf24 }));
+            line.position.set(0, 0, R + 0.16); scene.add(line);
+            const lineGlow = new THREE.Mesh(new THREE.BoxGeometry(trimX * 2 + 0.8, 0.12, 0.012), new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false }));
+            lineGlow.position.set(0, 0, R + 0.15); scene.add(lineGlow);
+            // b51: лампочки маркизы — бегущий блик в цикле рендера
+            slots.bulbs = [];
+            const bulbGeo = new THREE.SphereGeometry(0.045, 10, 10);
+            for (let i = 0; i < 15; i++) {
+                const bm = new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xffc94d, emissiveIntensity: 1, roughness: 0.4 });
+                const b = new THREE.Mesh(bulbGeo, bm);
+                b.position.set(-2.05 + i * (4.1 / 14), H / 2 + 1.85, 0.5);
+                scene.add(b); slots.bulbs.push(b);
+            }
+            // b52: маркиза — «корона» над верхней балкой: своя подложка, ничего не перекрывает
+            const mqBack = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.56, 0.14), new THREE.MeshStandardMaterial({ color: 0x2a0a33, roughness: 0.5, metalness: 0.6, envMap: env, envMapIntensity: 0.6 }));
+            mqBack.position.set(0, H / 2 + 1.02, 0.42); scene.add(mqBack);
+            mqMesh.position.set(0, H / 2 + 1.55, 0.55); // b58: маркиза над верхом барабанов — ничего не перекрывает
+            // b52: парящие искры вокруг автомата
+            const spN = 42;
+            const spGeo = new THREE.BufferGeometry();
+            const spPos = new Float32Array(spN * 3);
+            for (let i = 0; i < spN; i++) {
+                spPos[i * 3] = (Math.random() - 0.5) * 7.4;
+                spPos[i * 3 + 1] = (Math.random() - 0.5) * 4.8;
+                spPos[i * 3 + 2] = -(R * 0.4) + Math.random() * (R * 0.9);
+            }
+            spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3));
+            const spMat = new THREE.PointsMaterial({ color: 0xffe6a9, size: 0.06, map: makeSparkTexture(), transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
+            slots.sparks = new THREE.Points(spGeo, spMat);
+            scene.add(slots.sparks);
+            slots.lineGlow = lineGlow;
+            slots.winFlash = 0;
+            camera.position.set(0, 0.3, R + 6.4); // b52/b58: весь автомат с лампочками и полом в кадре
+            camera.lookAt(0, 0.1, 0);
+            slots.scene = scene; slots.camera = camera;
+            slots.ready = true;
+            slots.desktopZ = camera.position.z;
+            renderer.domElement.style.cursor = 'pointer';
+            renderer.domElement.addEventListener('click', () => slotsSpin()); // b58: тап по машине = спин
+            if (!window._nx3dSlots) {
+                window._nx3dSlots = 1;
+                const rs = () => {
+                    const c = document.getElementById('slots-container');
+                    if (c && slots.renderer) nx3dResizeSimple(slots.renderer, slots.camera, c, [2.3, 4.0, slots.desktopZ || 8]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+                rs();
+            }
+            slots.lastT = performance.now();
+            const loop = () => {
+                slots.animId = requestAnimationFrame(loop);
+                try { // b62: кадр защищён — см. nx3dLoopBail
+                const now = performance.now();
+                const dt = Math.min(0.05, (now - slots.lastT) / 1000);
+                slots.lastT = now;
+                // b51/b52: бегущий блик лампочек; на выигрыше — ускоренное мигание всей иллюминации
+                const wf = slots.winFlash && (now - slots.winFlash < 1200);
+                if (slots.bulbs && slots.bulbs.length) {
+                    const tb = now / 1000;
+                    const boost = wf ? 1.7 : 1;
+                    const spd = wf ? 14 : 5;
+                    for (let i = 0; i < slots.bulbs.length; i++) {
+                        slots.bulbs[i].material.emissiveIntensity = (0.5 + 1.1 * (0.5 + 0.5 * Math.sin(tb * spd + i * 0.85))) * boost;
+                    }
+                }
+                if (slots.sparks) {
+                    const pa = slots.sparks.geometry.attributes.position.array;
+                    for (let i = 1; i < pa.length; i += 3) { pa[i] += dt * 0.35; if (pa[i] > 2.5) pa[i] = -2.5; }
+                    slots.sparks.geometry.attributes.position.needsUpdate = true;
+                }
+                if (slots.lineGlow) slots.lineGlow.material.opacity = wf ? 0.35 + 0.5 * Math.abs(Math.sin(now / 80)) : 0.3;
+                let allDone = true;
+                slots.reels.forEach(grp => {
+                    const u = grp.userData;
+                    if (u.phase === 'spin') {
+                        grp.rotation.x += u.speed * dt;
+                        if (now - u.t0 > u.dur) {
+                            u.phase = 'stop';
+                            u.t0 = now;
+                            u.from = grp.rotation.x;
+                            const theta = u.target;
+                            const twoPi = Math.PI * 2;
+                            // докручиваем ВПЕРЁД по ходу вращения до нужного символа + ещё оборот
+                            let k = (theta - u.from) % twoPi;
+                            if (k < 0) k += twoPi;
+                            k += twoPi;
+                            u.delta = k;
+                            u.final = u.from + k;
+                            u.dur = 700;
+                        }
+                        allDone = false;
+                    } else if (u.phase === 'stop') {
+                        const k = Math.min(1, (now - u.t0) / u.dur);
+                        const e = 1 - Math.pow(1 - k, 3);
+                        grp.rotation.x = u.from + u.delta * e;
+                        if (k >= 1) { u.phase = 'idle'; grp.rotation.x = u.final; }
+                        else allDone = false;
+                    }
+                });
+                if (slots.spinning && allDone) {
+                    slots.spinning = false;
+                    slotsFinish(slots.lastResult, slots.bet);
+                }
+                renderer.render(scene, camera);
+                } catch (e) { nx3dLoopBail('slots', e, () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; }); }
+            };
+            loop();
+        }
+        function slotsTheta(i) { const N = slots.symbols.length || 1; return (i + 0.5) / N * Math.PI * 2; }
+        // b93: АВТОПРОКРУТКА слотов и сетки: интервал дожидается окончания спина
+        // и запускает следующий; стоп — кнопка, джекпот, нехватка монет или смена режима
+        function slotsToggleAuto() {
+            if (slots.auto) { slotsAutoStop(false); return; }
+            slots.auto = true;
+            clearInterval(slots.autoT);
+            slots.autoT = setInterval(() => {
+                try {
+                    if (!slots.auto) return;
+                    if (document.hidden || slots.spinning) return;
+                    if (state.coins < slots.bet) { slotsAutoStop(false, 'не хватает монет'); return; }
+                    slotsSpin();
+                } catch (e) {}
+            }, 900);
+            renderSlotsUI();
+            showToast('🔄 Слоты: автопрокрутка включена', 'success');
+        }
+        function slotsAutoStop(byWin, reason) {
+            slots.auto = false;
+            clearInterval(slots.autoT); slots.autoT = null;
+            renderSlotsUI();
+            if (byWin) showToast('🎰 Автопрокрутка остановлена: джекпот!', 'success');
+            else if (reason) showToast('🎰 Автопрокрутка остановлена: ' + reason, 'refund');
+        }
+        function gridToggleAuto() {
+            if (grid.auto) { gridAutoStop(false); return; }
+            grid.auto = true;
+            clearInterval(grid.autoT);
+            grid.autoT = setInterval(() => {
+                try {
+                    if (!grid.auto) return;
+                    if (document.hidden || grid.spinning) return;
+                    if (state.coins < grid.bet) { gridAutoStop(false, 'не хватает монет'); return; }
+                    gridSpin();
+                } catch (e) {}
+            }, 900);
+            renderGridUI();
+            showToast('🔄 Сетка: автопрокрутка включена', 'success');
+        }
+        function gridAutoStop(byWin, reason) {
+            grid.auto = false;
+            clearInterval(grid.autoT); grid.autoT = null;
+            renderGridUI();
+            if (byWin) showToast('🏆 Автопрокрутка остановлена: крупный выигрыш!', 'success');
+            else if (reason) showToast('🏆 Автопрокрутка остановлена: ' + reason, 'refund');
+        }
+        function slotsSpin() {
+            if (slots.spinning) return;
+            if (statsBlockGuard('слоты')) return; // b277
+            const bet = slots.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet), 'error'); return; }
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            state.coins -= bet;
+            state.stats.slotsSpins = (state.stats.slotsSpins || 0) + 1;
+            updateMissions('spin_slots', 1); // b121: задание дня
+            jackpotFeed(bet); // b96: 100% ставки в банк
+            saveState(); updateCoinDisplay(); renderSlotsUI();
+            const N = slots.symbols.length;
+            const res = [0, 1, 2].map(() => slotsWeightedRand()); // b56: JACKPOT редок
+            slots.lastResult = res;
+            try { SoundFX.play('click'); } catch (e) {}
+            if (!slots.ready || slots.fallback) {
+                slotsRenderFallback(res);
+                setTimeout(() => slotsFinish(res, bet), 700);
+                return;
+            }
+            slots.spinning = true;
+            slots.reels.forEach((grp, i) => {
+                const u = grp.userData;
+                u.phase = 'spin';
+                u.speed = 7.5 + i * 1.4;
+                u.t0 = performance.now();
+                u.dur = 900 + i * 450;
+                u.target = slotsTheta(res[i]) + Math.PI * 2 * 0; // финальный угол (mod 2π приводится в stop)
+            });
+        }
+        function slotsFinish(res, bet) {
+            const syms = res.map(i => slots.symbols[i] || { rarity: 'common', name: '?' });
+            // b56: три JACKPOT подряд = весь банк
+            if (res[0] === res[1] && res[1] === res[2] && syms[0] && syms[0].jackpot) {
+                jackpotWin();
+                renderSlotsUI();
+                return;
+            }
+            let mult = 0, kind = '';
+            if (res[0] === res[1] && res[1] === res[2]) { mult = SLOTS_MULT[syms[0].rarity] || 8; kind = 'джекпот'; if (slots.auto) slotsAutoStop(true); }
+            else if (res[0] === res[1] || res[1] === res[2] || res[0] === res[2]) { mult = 2; kind = 'пара'; }
+            const win = bet * mult;
+            slots.lastWin = win;
+            if (win > 0) {
+                state.coins += win;
+                state.stats.slotsWins = (state.stats.slotsWins || 0) + 1;
+                updateMissions('win_slots', 1); // b122: задание дня
+                updateMissions('slots_coins', win); // b122: задание дня
+                slots.winFlash = performance.now(); // b52: иллюминация празднует
+                try { SoundFX.play(mult >= 8 ? 'legendary' : 'coin'); } catch (e) {}
+                launchConfetti(mult >= 8 ? 140 : 70); // b61: конфетти на выигрыш
+                checkAchievements(); // b61: награды по играм
+                showToast('🎰 ' + kind + '! Выигрыш +' + fmtCoins(win) + ' монет', 'success');
+            } else {
+                const add = jackpotOnLoss(bet); // b94: джекпот растёт на 100% проигрыша
+                showToast('Мимо — банк джекпота вырос на +' + fmtCoins(add) + ' и теперь ' + fmtCoins(jackpotPool()), 'refund');
+            }
+            saveState(); updateCoinDisplay(); renderSlotsUI();
+        }
+        // ============ b131: СВОЯ СТАВКА — пользователь может вписать любую сумму ============
+        function parseBetStr(sv) {
+            let t = String(sv == null ? '' : sv).trim().toLowerCase().replace(/\s+/g, '');
+            if (!t) return NaN;
+            let mult = 1;
+            const last = t[t.length - 1];
+            if (last === 'k' || last === 'к') { mult = 1e3; t = t.slice(0, -1); }
+            else if (last === 'm' || last === 'м') { mult = 1e6; t = t.slice(0, -1); }
+            else if (last === 'b' || last === 'б') { mult = 1e9; t = t.slice(0, -1); } // b221: миллиарды тоже буквой
+            else if (last === 't' || last === 'т') { mult = 1e12; t = t.slice(0, -1); } // b222: триллионы
+            else if (last === 'q') { mult = 1e15; t = t.slice(0, -1); } // b222: квадриллионы
+            const n = Number(t.replace(',', '.'));
+            if (!isFinite(n) || n <= 0) return NaN;
+            return n * mult;
+        }
+        function normBet(b) {
+            b = Math.floor(Number(b));
+            if (!isFinite(b) || b < 1) return 1;
+            if (b > 1e15) return 1e15; // b222: потолок ставки — буква q
+            return b;
+        }
+        function applyCustomBet(game, val) {
+            const v = parseBetStr(val);
+            if (!isFinite(v)) return;
+            const b = normBet(v);
+            if (game === 'slots') slotsSetBet(b);
+            else if (game === 'grid') gridSetBet(b);
+            else if (game === 'lines') linesSetBet(b);
+            else if (game === 'wheel') wheelSetBet(b);
+            else if (game === 'mines') minesSetBet(b);
+            else if (game === 'durak') durakSetBet(b);
+            syncBetInput(game);
+        }
+        // b228: степпер ставки — стрелки «−/+» листают пресеты (100…1q);
+        // если вписана своя сумма, прыжок к ближайшей ступени вверх/вниз
+        function stepBet(game, dir) {
+            const cur = game === 'slots' ? slots.bet : game === 'grid' ? grid.bet : game === 'lines' ? lines.bet : game === 'wheel' ? wheel.bet : game === 'durak' ? durakBet : mines.bet;
+            const arr = SLOTS_BETS;
+            let idx = arr.indexOf(cur);
+            if (idx === -1) {
+                if (dir > 0) { idx = arr.findIndex(v => v > cur); if (idx === -1) idx = arr.length - 1; }
+                else { idx = -1; for (let i = arr.length - 1; i >= 0; i--) if (arr[i] < cur) { idx = i; break; } if (idx === -1) idx = 0; }
+            } else {
+                idx = Math.min(arr.length - 1, Math.max(0, idx + dir));
+            }
+            const b = normBet(arr[idx]);
+            if (game === 'slots') slotsSetBet(b);
+            else if (game === 'grid') gridSetBet(b);
+            else if (game === 'lines') linesSetBet(b);
+            else if (game === 'wheel') wheelSetBet(b);
+            else if (game === 'mines') minesSetBet(b);
+            else if (game === 'durak') durakSetBet(b);
+            syncBetInput(game);
+        }
+
+        function syncBetInput(game) {
+            const el = document.getElementById(game + '-bet-input');
+            if (!el || document.activeElement === el) return;
+            const cur = game === 'slots' ? slots.bet : game === 'grid' ? grid.bet : game === 'lines' ? lines.bet : game === 'wheel' ? wheel.bet : game === 'durak' ? durakBet : mines.bet;
+            el.value = fmtCoins(cur);
+        }
+
+        function slotsSetBet(b) {
+            b = normBet(b);
+            slots.bet = b;
+            renderSlotsUI();
+        }
+        function slotsRenderFallback(res) {
+            const box = document.getElementById('slots-fallback');
+            const cont = document.getElementById('slots-container');
+            if (cont) cont.classList.add('hidden');
+            if (!box) return;
+            box.classList.remove('hidden');
+            const syms = (res || [0, 0, 0]).map(i => slots.symbols[i] || { name: '?', rarity: 'common', image: '' });
+            box.innerHTML = syms.map(s => {
+                const col = (typeof RAR_COLORS !== 'undefined' && RAR_COLORS[s.rarity]) || '#94a3b8';
+                const img = s.image ? `<img src="${mediaUrl(s.image)}" alt="${s.name}" class="w-full h-full object-cover" onerror="imgErrorChain(this)" loading="lazy" decoding="async">` : '';
+                return `<div class="relative aspect-square rounded-xl border-2 overflow-hidden bg-slate-950" style="border-color:${col}">${img}<span class="absolute bottom-0 inset-x-0 text-[10px] font-bold text-white bg-slate-950/80 px-1 py-0.5 truncate">${s.name}</span></div>`;
+            }).join('');
+        }
+        function renderSlotsUI() {
+            syncBetInput('slots');
+            slotCardsLabels();
+            jackpotRender(); // b56
+            const b = document.getElementById('slots-balance'); if (b) b.textContent = fmtCoins(state.coins);
+            const bets = document.getElementById('slots-bets');
+            if (bets) {
+                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="slotsSetBet(${v})" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ${slots.bet === v ? 'bg-fuchsia-600/90 border-fuchsia-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
+            }
+            const ab = document.getElementById('slots-auto-btn');
+            if (ab) {
+                ab.innerHTML = slots.auto ? '<i class="fa-solid fa-pause mr-1"></i>Авто: ВКЛ' : '<i class="fa-solid fa-play mr-1"></i>Авто: выкл';
+                ab.className = slots.auto ? 'lq-on w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-fuchsia-500 text-white text-sm font-black transition shadow-lg shadow-fuchsia-950/40 animate-pulse' : 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition';
+            }
+            const spin = document.getElementById('slots-spin');
+            if (spin) {
+                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(slots.bet);
+                spin.disabled = state.coins < slots.bet || slots.spinning;
+                spin.classList.toggle('opacity-40', state.coins < slots.bet);
+            }
+            const lw = document.getElementById('slots-last');
+            if (lw) lw.innerHTML = slots.lastWin > 0 ? ('Последний выигрыш: <b class="text-violet-300">+' + fmtCoins(slots.lastWin) + '</b>') : 'Последний выигрыш: —';
+            const st = document.getElementById('slots-stats');
+            if (st) st.textContent = 'спинов: ' + (state.stats.slotsSpins || 0) + ' • побед: ' + (state.stats.slotsWins || 0);
+        }
+        // ============ b53/b54: СЕТОЧНЫЙ СЛОТ 5×4 — каскады и цепи; с b54 поле в 3D ============
+        // Пять вертикальных барабанов по четыре карты: поток символов при вращении,
+        // поочерёдная остановка, подсветка и взрывы выигрышных ячеек, каскадное падение новых.
+        // Без WebGL — прежний DOM-фолбэк с теми же правилами и выплатой.
+        const GRID_CHAIN = [1, 1.5, 2, 3, 5, 8];
+        const GRID_COLS = 5, GRID_ROWS = 4;
+        const grid = { cells: [], spinning: false, bet: 100, lastWin: 0, chain: 0, total: 0, phase3d: '', jpPaid: 0 }; // b183: jpPaid — сколько из total уже начислил jackpotWin
+        const grid3d = { renderer: null, scene: null, camera: null, reels: [], ready: false, failed: false, animId: null, lastT: 0, bursts: [], hl: {}, drops: [], cellW: 0.98, cellH: 1.5 };
+        function gridRandSym() {
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            return slots.symbols[slotsWeightedRand(GRID_JP_W)]; // b183: свой вес JACKPOT для Сетки
+        }
+        function gridPay(count, rarity) {
+            if (count < 8) return 0;
+            const base = count >= 12 ? 15 : (count >= 10 ? 5 : 2);
+            const rm = ({ common: 1, rare: 1.5, epic: 2, legendary: 3 })[rarity] || 1;
+            return Math.round(base * rm);
+        }
+        function gridGroups() {
+            const m = {};
+            grid.cells.forEach((s, i) => {
+                if (!m[s.id]) m[s.id] = { id: s.id, rarity: s.rarity, name: s.name, jackpot: !!s.jackpot, idxs: [] };
+                m[s.id].idxs.push(i);
+            });
+            return Object.keys(m).map(k => ({ id: m[k].id, rarity: m[k].rarity, name: m[k].name, jackpot: !!m[k].jackpot, count: m[k].idxs.length, idxs: m[k].idxs }));
+        }
+        // ---------------- DOM-фолбэк (без WebGL) ----------------
+        function gridCellHTML(sym, i, mark, anim) {
+            const col = (typeof RAR_COLORS !== 'undefined' && RAR_COLORS[sym.rarity]) || '#94a3b8';
+            const won = !!(mark && mark.has && mark.has(i));
+            const img = sym.image
+                ? `<img src="${mediaUrl(sym.image)}" alt="${sym.name}" class="absolute inset-0 w-full h-full object-cover" onerror="imgErrorChain(this)" loading="lazy" decoding="async">`
+                : `<div class="absolute inset-0 flex items-center justify-center" style="background:linear-gradient(160deg,#0b1220,${col}44)"><span style="color:${col};font-size:26px;font-weight:900">${String(sym.name).slice(0, 1).toUpperCase()}</span></div>`;
+            return `<div class="relative rounded-md overflow-hidden border-2 ${won ? 'grid-anim-' + anim : (anim === 'drop' ? 'grid-anim-drop' : '')}" style="border-color:${won ? '#fbbf24' : col + '88'};aspect-ratio:.52;${won ? 'box-shadow:0 0 14px ' + col + 'aa;' : ''}">
+                ${img}
+                <div class="absolute inset-x-0 bottom-0 text-[8px] sm:text-[9px] font-bold text-white bg-slate-950/85 px-1 py-0.5 text-center truncate">${sym.name}</div>
+            </div>`;
+        }
+        function gridRenderCells(mark, anim) {
+            const wrap = document.getElementById('grid-wrap');
+            if (!wrap) return;
+            wrap.innerHTML = grid.cells.map((s, i) => gridCellHTML(s, i, mark, anim)).join('');
+        }
+        // ---------------- 3D-сцена ----------------
+        const gridTexCache = {};
+        function gridTexFor(sym) {
+            if (!gridTexCache[sym.id]) gridTexCache[sym.id] = slotsSymbolCanvas(sym, 256, 400); // b55: пропорция как у плоскости
+            return gridTexCache[sym.id];
+        }
+        function grid3dEnsure() {
+            if (grid3d.ready || grid3d.failed) return;
+            if (nxWeakGpu() && !nxForce3d()) { grid3d.failed = true; return; } // b309
+            const container = document.getElementById('grid3d-container');
+            if (!container) return;
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { grid3d.failed = true; return; }
+            grid3d.renderer = renderer;
+            try { PACK3D_ANISO = Math.max(1, Math.min(8, renderer.capabilities.getMaxAnisotropy() || 4)); } catch (e) {}
+            try { renderer.outputEncoding = THREE.sRGBEncoding; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.08; } catch (e) {}
+            const w = container.clientWidth || 900, h = container.clientHeight || 540;
+            renderer.setPixelRatio(nxPixelRatio()); // b308
+            renderer.setSize(w, h);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'grid', () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; grid3d.ctxLoss = (grid3d.ctxLoss || 0) + 1; if (grid3d.ctxLoss >= 2) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} } if (grid3d.ctxLoss <= 2) { setTimeout(() => { try { if (battleMode === 'grid') { grid3dEnsure(); gridEnsure(); } } catch (e) {} }, 1200 * grid3d.ctxLoss); } else { try { gridEnsure(); } catch (e) {} } });
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(44, w / h, 0.1, 80);
+            camera.position.set(0, 0, 10.6); // b54: весь автомат с лампочками и полом в кадре
+            scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.65, 50); l1.position.set(3, 3.5, 6); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.5, 50); l2.position.set(-4, -2.5, 5); scene.add(l2);
+            const env = makeStudioEnv();
+            const CW = grid3d.cellW, CH = grid3d.cellH;
+            const WW = GRID_COLS * CW, WH = GRID_ROWS * CH;
+            // фон: радиальное свечение со звёздами
+            const bgCv = document.createElement('canvas'); bgCv.width = 512; bgCv.height = 384;
+            const bgx = bgCv.getContext('2d');
+            const bgr = bgx.createRadialGradient(256, 170, 24, 256, 190, 340);
+            bgr.addColorStop(0, '#4c1d95'); bgr.addColorStop(0.45, '#1e1b4b'); bgr.addColorStop(1, '#020617');
+            bgx.fillStyle = bgr; bgx.fillRect(0, 0, 512, 384);
+            for (let i = 0; i < 110; i++) {
+                const x = (i * 97 + 13) % 512, y = (i * 61 + 7) % 384, rr = (i % 3) * 0.5 + 0.5;
+                bgx.globalAlpha = 0.2 + (i % 5) * 0.13;
+                bgx.fillStyle = '#ffffff';
+                bgx.beginPath(); bgx.arc(x, y, rr, 0, Math.PI * 2); bgx.fill();
+            }
+            bgx.globalAlpha = 1;
+            const bgTex = new THREE.CanvasTexture(bgCv);
+            try { bgTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const bgMesh = new THREE.Mesh(new THREE.PlaneGeometry(30, 14), new THREE.MeshBasicMaterial({ map: bgTex }));
+            bgMesh.position.set(0, 0.2, -4.5); scene.add(bgMesh);
+            // неон по бокам и глянцевый пол
+            const neonL = new THREE.Mesh(new THREE.BoxGeometry(0.08, WH + 2.2, 0.08), new THREE.MeshBasicMaterial({ color: 0xe879f9 }));
+            neonL.position.set(-(WW / 2 + 0.55), 0, -1); scene.add(neonL);
+            const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.08, WH + 2.2, 0.08), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
+            neonR.position.set(WW / 2 + 0.55, 0, -1); scene.add(neonR);
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(0, -(WH / 2 + 1.15), 0.5); scene.add(floor);
+            // корпус и золотой багет вокруг окна
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
+            const back = new THREE.Mesh(new THREE.BoxGeometry(WW + 1.6, WH + 1.8, 0.4), frameMat);
+            back.position.set(0, 0, -2.2); scene.add(back);
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const bx = WW / 2 + 0.12, by = WH / 2 + 0.12;
+            const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, WH + 0.34, 0.12), goldMat); tv1.position.set(-bx, 0, 0.72); scene.add(tv1);
+            const tv2 = tv1.clone(); tv2.position.x = bx; scene.add(tv2);
+            const th1 = new THREE.Mesh(new THREE.BoxGeometry(bx * 2 + 0.12, 0.12, 0.12), goldMat); th1.position.set(0, by, 0.72); scene.add(th1);
+            const th2 = th1.clone(); th2.position.y = -by; scene.add(th2);
+            const capGeo = new THREE.SphereGeometry(0.11, 12, 12);
+            [[-bx, by], [bx, by], [-bx, -by], [bx, -by]].forEach(pt => {
+                const cap = new THREE.Mesh(capGeo, goldMat);
+                cap.position.set(pt[0], pt[1], 0.74);
+                scene.add(cap);
+            });
+            // маркиза над окном
+            const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
+            const mg = mq.getContext('2d');
+            const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
+            mgrad.addColorStop(0, '#4a044e'); mgrad.addColorStop(0.5, '#86198f'); mgrad.addColorStop(1, '#4a044e');
+            mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
+            mg.fillStyle = '#fde68a'; mg.font = '900 44px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+            mg.fillText('★ СЕТОЧНЫЙ СЛОТ • КОЛЛЕКЦИОНЕР КАРТ ★', 512, 68);
+            const mqTex = new THREE.CanvasTexture(mq);
+            try { mqTex.encoding = THREE.sRGBEncoding; } catch (e) {}
+            const mqMesh = new THREE.Mesh(new THREE.PlaneGeometry(WW + 1.2, 0.52), new THREE.MeshBasicMaterial({ map: mqTex }));
+            mqMesh.position.set(0, WH / 2 + 0.62, 0.6); scene.add(mqMesh);
+            // лампочки маркизы
+            grid3d.bulbs = [];
+            const bulbGeo = new THREE.SphereGeometry(0.05, 10, 10);
+            for (let i = 0; i < 17; i++) {
+                const bm = new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xffc94d, emissiveIntensity: 1, roughness: 0.4 });
+                const b = new THREE.Mesh(bulbGeo, bm);
+                b.position.set(-(WW / 2 + 0.4) + i * ((WW + 0.8) / 16), WH / 2 + 0.98, 0.55);
+                scene.add(b); grid3d.bulbs.push(b);
+            }
+            // крышки, скрывающие служебные ряды барабанов
+            const coverMat = new THREE.MeshStandardMaterial({ color: 0x141024, roughness: 0.55, metalness: 0.5 });
+            const covT = new THREE.Mesh(new THREE.BoxGeometry(WW + 0.2, CH, 0.5), coverMat);
+            covT.position.set(0, WH / 2 + CH / 2 - 0.02, 0.1); scene.add(covT);
+            const covB = covT.clone(); covB.position.y = -(WH / 2 + CH / 2 - 0.02); scene.add(covB);
+            // барабаны: 6 плоскостей (ряды -1..4), поток символов вниз
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            const planeGeo = new THREE.PlaneGeometry(CH * 0.94 * 0.64, CH * 0.94); // b55: пропорция плоскости = пропорции текстуры 256×400
+            grid3d.reels = [];
+            for (let c = 0; c < GRID_COLS; c++) {
+                const grp = new THREE.Group();
+                const colSyms = [];
+                const meshes = [];
+                for (let r = -1; r < GRID_ROWS + 1; r++) {
+                    const sym = gridRandSym();
+                    colSyms.push(sym);
+                    const mat = new THREE.MeshStandardMaterial({ map: gridTexFor(sym), roughness: 0.35, metalness: 0.2, envMap: env, envMapIntensity: 0.5 });
+                    const msh = new THREE.Mesh(planeGeo, mat);
+                    msh.position.set(0, (1.5 - r) * CH, 0);
+                    grp.add(msh);
+                    meshes.push(msh);
+                }
+                grp.position.x = (c - 2) * CW;
+                grp.userData = { col: colSyms, meshes: meshes, yOff: 0, phase: 'idle', speed: 0, tStop: 0, from: 0, t0: 0 };
+                scene.add(grp);
+                grid3d.reels.push(grp);
+            }
+            grid3d.scene = scene; grid3d.camera = camera;
+            grid3d.ready = true;
+            grid3d.desktopZ = camera.position.z;
+            renderer.domElement.style.cursor = 'pointer';
+            renderer.domElement.addEventListener('click', () => gridSpin()); // b58: тап по машине = спин
+            if (!window._nx3dGrid) {
+                window._nx3dGrid = 1;
+                const rs = () => {
+                    const c = document.getElementById('grid3d-container');
+                    if (c && grid3d.renderer) nx3dResizeSimple(grid3d.renderer, grid3d.camera, c, [3.3, 4.35, grid3d.desktopZ || 10.6]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+                rs();
+            }
+            grid3d.lastT = performance.now();
+            const loop = () => {
+                grid3d.animId = requestAnimationFrame(loop);
+                try { // b62: кадр защищён — см. nx3dLoopBail
+                const now = performance.now();
+                const dt = Math.min(0.05, (now - grid3d.lastT) / 1000);
+                grid3d.lastT = now;
+                let allIdle = true;
+                grid3d.reels.forEach(grp => {
+                    const u = grp.userData;
+                    if (u.phase === 'spin') {
+                        allIdle = false;
+                        u.yOff += u.speed * dt;
+                        while (u.yOff >= CH) {
+                            u.yOff -= CH;
+                            for (let j = u.col.length - 1; j > 0; j--) u.col[j] = u.col[j - 1];
+                            u.col[0] = gridRandSym();
+                            for (let j = 0; j < u.meshes.length; j++) u.meshes[j].material.map = gridTexFor(u.col[j]);
+                        }
+                        for (let j = 0; j < u.meshes.length; j++) u.meshes[j].position.y = (1.5 - (j - 1)) * CH - u.yOff;
+                        if (now >= u.tStop) { u.phase = 'align'; u.t0 = now; u.from = u.yOff; }
+                    } else if (u.phase === 'align') {
+                        allIdle = false;
+                        const k = Math.min(1, (now - u.t0) / 320);
+                        const e = 1 - Math.pow(1 - k, 3);
+                        u.yOff = u.from * (1 - e);
+                        for (let j = 0; j < u.meshes.length; j++) u.meshes[j].position.y = (1.5 - (j - 1)) * CH - u.yOff;
+                        if (k >= 1) { u.yOff = 0; u.phase = 'idle'; }
+                    }
+                });
+                // подсветка выигрышных ячеек
+                const hlKeys = Object.keys(grid3d.hl);
+                for (let i = 0; i < hlKeys.length; i++) {
+                    const key = hlKeys[i], t0 = grid3d.hl[key];
+                    const msh = grid3dMeshByIdx(Number(key));
+                    if (!msh) { delete grid3d.hl[key]; continue; }
+                    if (now - t0 > 1200) { msh.material.emissiveIntensity = 0; msh.scale.set(1, 1, 1); delete grid3d.hl[key]; continue; }
+                    // b55: выигрышные карты МИГАЮТ:.square-волна свечением + пульс размером
+                    const on = Math.floor((now - t0) / 110) % 2 === 0;
+                    msh.material.emissive = new THREE.Color(0xfbbf24);
+                    msh.material.emissiveIntensity = on ? 1.6 : 0.12;
+                    const sc = on ? 1.07 : 1.0;
+                    msh.scale.set(sc, sc, 1);
+                }
+                // каскадное падение новых карт
+                for (let i = grid3d.drops.length - 1; i >= 0; i--) {
+                    const d = grid3d.drops[i];
+                    const k = Math.min(1, (now - d.t0) / 480);
+                    const c1 = 1.70158, c3 = c1 + 1;
+                    const eb = 1 + c3 * Math.pow(k - 1, 3) + c1 * Math.pow(k - 1, 2);
+                    d.mesh.position.y = d.to + (d.from - d.to) * (1 - eb);
+                    if (k >= 1) { d.mesh.position.y = d.to; grid3d.drops.splice(i, 1); }
+                }
+                // искры выигрыша
+                for (let i = grid3d.bursts.length - 1; i >= 0; i--) {
+                    const b = grid3d.bursts[i];
+                    const t = (now - b.t0) / 750;
+                    if (t >= 1) { grid3d.scene.remove(b.points); b.points.geometry.dispose(); grid3d.bursts.splice(i, 1); continue; }
+                    const arr = b.points.geometry.attributes.position.array;
+                    for (let j = 0; j < b.vel.length; j++) {
+                        arr[j * 3] += b.vel[j].x * dt;
+                        arr[j * 3 + 1] += b.vel[j].y * dt - 2.2 * dt * t;
+                        arr[j * 3 + 2] += b.vel[j].z * dt;
+                    }
+                    b.points.geometry.attributes.position.needsUpdate = true;
+                    b.points.material.opacity = 1 - t;
+                }
+                // лампочки: бегущий блик, на выигрыше — праздник
+                if (grid3d.bulbs && grid3d.bulbs.length) {
+                    const wf = grid.winFlashT && (now - grid.winFlashT < 1200);
+                    const tb = now / 1000;
+                    for (let i = 0; i < grid3d.bulbs.length; i++) {
+                        grid3d.bulbs[i].material.emissiveIntensity = (0.5 + 1.1 * (0.5 + 0.5 * Math.sin(tb * (wf ? 14 : 5) + i * 0.8))) * (wf ? 1.7 : 1);
+                    }
+                }
+                if (grid.spinning && grid.phase3d === 'spinning' && allIdle) {
+                    grid.phase3d = 'stopped';
+                    grid.cells = grid3dVisibleCells();
+                    gridStep(grid.bet);
+                }
+                renderer.render(scene, camera);
+                } catch (e) { nx3dLoopBail('grid', e, () => { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; }); }
+            };
+            loop();
+        }
+        function grid3dMeshByIdx(idx) {
+            const col = Math.floor(idx / GRID_ROWS), row = idx % GRID_ROWS;
+            const grp = grid3d.reels[col];
+            return grp ? grp.userData.meshes[row + 1] : null;
+        }
+        function grid3dVisibleCells() {
+            const out = [];
+            for (let c = 0; c < GRID_COLS; c++) {
+                const col = grid3d.reels[c].userData.col;
+                for (let r = 0; r < GRID_ROWS; r++) out[c * GRID_ROWS + r] = col[r + 1];
+            }
+            return out;
+        }
+        function grid3dStartSpin() {
+            grid3d.reels.forEach((grp, ci) => {
+                const u = grp.userData;
+                u.phase = 'spin';
+                u.speed = 7.5 + ci * 0.7;
+                u.tStop = performance.now() + 1000 + ci * 260;
+            });
+        }
+        function grid3dHighlight(idxSet) {
+            const now = performance.now();
+            idxSet.forEach(i => { grid3d.hl[String(i)] = now; });
+        }
+        function grid3dBurstAt(idxSet) {
+            idxSet.forEach(i => {
+                const msh = grid3dMeshByIdx(i);
+                if (!msh) return;
+                const P = 14;
+                const geo = new THREE.BufferGeometry();
+                const pos = new Float32Array(P * 3);
+                const vel = [];
+                const wp = new THREE.Vector3();
+                msh.getWorldPosition(wp);
+                for (let j = 0; j < P; j++) {
+                    pos[j * 3] = wp.x; pos[j * 3 + 1] = wp.y; pos[j * 3 + 2] = wp.z + 0.3;
+                    const a = Math.random() * Math.PI * 2, sp = 1 + Math.random() * 2.4;
+                    vel.push(new THREE.Vector3(Math.cos(a) * sp, Math.abs(Math.sin(a)) * sp + 0.8, 0.4 + Math.random() * 0.8));
+                }
+                geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                const mat = new THREE.PointsMaterial({ color: 0xffe6a9, size: 0.09, map: makeSparkTexture(), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+                const points = new THREE.Points(geo, mat);
+                grid3d.scene.add(points);
+                grid3d.bursts.push({ points: points, vel: vel, t0: performance.now() });
+            });
+        }
+        function grid3dApplyCells(idxSet) {
+            idxSet.forEach(i => {
+                const col = Math.floor(i / GRID_ROWS), row = i % GRID_ROWS;
+                const grp = grid3d.reels[col];
+                const sym = grid.cells[i];
+                grp.userData.col[row + 1] = sym;
+                const msh = grp.userData.meshes[row + 1];
+                msh.material.map = gridTexFor(sym);
+                msh.material.emissiveIntensity = 0;
+                msh.scale.set(1, 1, 1);
+                msh.material.needsUpdate = true;
+                grid3d.drops.push({ mesh: msh, t0: performance.now(), from: msh.position.y + CH_DROP(), to: msh.position.y });
+            });
+        }
+        function CH_DROP() { return grid3d.cellH * 1.35; }
+        // ---------------- общий цикл игры ----------------
+        function gridEnsure() {
+            grid3dEnsure();
+            const box = document.getElementById('grid3d-box');
+            const frame = document.getElementById('grid-dom-frame');
+            if (grid3d.ready) {
+                if (box) box.classList.remove('hidden');
+                if (frame) frame.classList.add('hidden');
+                if (grid.cells.length !== GRID_COLS * GRID_ROWS) grid.cells = grid3dVisibleCells();
+            } else {
+                if (box) box.classList.add('hidden');
+                if (frame) frame.classList.remove('hidden');
+                if (grid.cells.length !== GRID_COLS * GRID_ROWS) grid.cells = Array.from({ length: GRID_COLS * GRID_ROWS }, () => gridRandSym());
+                gridRenderCells(null, '');
+            }
+        }
+        function gridShowChainText(text) {
+            ['grid-chain', 'grid-chain-3d'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = text;
+                el.classList.remove('go');
+                void el.offsetWidth;
+                el.classList.add('go');
+            });
+        }
+        function gridShowChain(chain, add) {
+            ['grid-chain', 'grid-chain-3d'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.textContent = 'Цепь ×' + chain + '!  +' + fmtCoins(add);
+                el.classList.remove('go');
+                void el.offsetWidth;
+                el.classList.add('go');
+            });
+        }
+        function gridSetBet(b) {
+            b = normBet(b);
+            grid.bet = b;
+            renderGridUI();
+        }
+        function gridSpin() {
+            if (grid.spinning) return;
+            if (statsBlockGuard('ставки в сетке')) return; // b277
+            const bet = grid.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet), 'error'); return; }
+            state.coins -= bet;
+            state.stats.gridSpins = (state.stats.gridSpins || 0) + 1;
+            updateMissions('spin_grid', 1); // b122: задание дня
+            jackpotFeed(bet); // b96: 100% ставки в банк
+            saveState(); updateCoinDisplay(); renderGridUI();
+            grid.spinning = true; grid.chain = 0; grid.total = 0; grid.jpPaid = 0; grid.lastBet = bet; // b57 / b183
+            try { SoundFX.play('click'); } catch (e) {}
+            if (grid3d.ready) {
+                grid.phase3d = 'spinning';
+                grid3dStartSpin();
+            } else {
+                grid.phase3d = '';
+                grid.cells = Array.from({ length: GRID_COLS * GRID_ROWS }, () => gridRandSym());
+                const all = new Set(grid.cells.map((_, i) => i));
+                gridRenderCells(all, 'drop');
+                setTimeout(() => gridStep(bet), 700);
+            }
+        }
+        function gridStep(bet) {
+            const groups = gridGroups();
+            // b56: 3+ карт JACKPOT где угодно на поле = весь банк
+            const jg = groups.find(gp => gp.jackpot && gp.count >= 3);
+            if (jg) {
+                const idxSet = new Set(jg.idxs);
+                const prize = jackpotWin(); // b183: монеты уже начислены внутри jackpotWin
+                grid.jpPaid = (grid.jpPaid || 0) + prize; // b183: gridEnd эту часть второй раз не платит
+                grid.total += prize;
+                grid.chain = Math.max(grid.chain, 1);
+                gridShowChainText('👑 JACKPOT!  +' + fmtCoins(prize));
+                if (grid3d.ready) { grid3dHighlight(idxSet); grid3dBurstAt(idxSet); }
+                else gridRenderCells(idxSet, 'win');
+                setTimeout(() => gridEnd(), 1300);
+                return;
+            }
+            const wins = groups.filter(gp => !gp.jackpot && gridPay(gp.count, gp.rarity) > 0);
+            if (!wins.length || grid.chain >= GRID_CHAIN.length) { gridEnd(); return; }
+            const cm = GRID_CHAIN[grid.chain];
+            let add = 0;
+            wins.forEach(gp => { add += bet * gridPay(gp.count, gp.rarity) * cm; });
+            add = Math.round(add);
+            grid.total += add;
+            grid.chain++;
+            grid.winFlashT = performance.now();
+            const idxSet = new Set();
+            wins.forEach(gp => gp.idxs.forEach(i => idxSet.add(i)));
+            gridShowChain(grid.chain, add);
+            try { SoundFX.play(grid.chain > 1 ? 'legendary' : 'coin'); } catch (e) {}
+            if (grid3d.ready) {
+                grid3dHighlight(idxSet);
+                setTimeout(() => {
+                    grid3dBurstAt(idxSet);
+                    setTimeout(() => {
+                        idxSet.forEach(i => { grid.cells[i] = gridRandSym(); });
+                        grid3dApplyCells(idxSet);
+                        setTimeout(() => gridStep(bet), 560);
+                    }, 220);
+                }, 700);
+            } else {
+                gridRenderCells(idxSet, 'win');
+                setTimeout(() => {
+                    gridRenderCells(idxSet, 'burst');
+                    setTimeout(() => {
+                        idxSet.forEach(i => { grid.cells[i] = gridRandSym(); });
+                        gridRenderCells(idxSet, 'drop');
+                        setTimeout(() => gridStep(bet), 650);
+                    }, 350);
+                }, 900);
+            }
+        }
+        function gridEnd() {
+            grid.spinning = false;
+            grid.phase3d = '';
+            if (grid.total > 0) {
+                // b183: раньше банк начислялся дважды (jackpotWin + gridEnd) — монеты печатались из воздуха.
+                // В статистику и тосты по-прежнему идёт весь выигрыш, а в баланс — только не-джекпотная часть.
+                const addCoins = Math.max(0, grid.total - (grid.jpPaid || 0));
+                if (addCoins > 0) state.coins += addCoins;
+                state.stats.gridWins = (state.stats.gridWins || 0) + 1;
+                updateMissions('win_grid', 1); // b121: задание дня
+                updateMissions('grid_coins', grid.total); // b122: задание дня
+                state.stats.bestGridChain = Math.max(state.stats.bestGridChain || 0, grid.chain); // b61
+                grid.lastWin = grid.total;
+                grid.winFlashT = performance.now();
+                launchConfetti(grid.chain > 1 ? 140 : 70); // b61
+                checkAchievements(); // b61
+                try { SoundFX.play('coin'); } catch (e) {}
+                showToast('🏆 Сетка: +' + fmtCoins(grid.total) + ' монет' + (grid.chain > 1 ? ' (цепей: ' + grid.chain + ')' : ''), 'success');
+                if (grid.auto && grid.total >= (grid.lastBet || grid.bet) * 10) gridAutoStop(true); // b93
+            } else {
+                grid.lastWin = 0;
+                const add = jackpotOnLoss(grid.lastBet || grid.bet); // b94: +100% проигрыша в банк
+                showToast('Сетка тихая — банк джекпота вырос на +' + fmtCoins(add) + ' и теперь ' + fmtCoins(jackpotPool()), 'refund');
+            }
+            saveState(); updateCoinDisplay(); renderGridUI();
+        }
+        function renderGridUI() {
+            syncBetInput('grid');
+            slotCardsLabels();
+            jackpotRender(); // b56
+            const b = document.getElementById('grid-balance'); if (b) b.textContent = fmtCoins(state.coins);
+            const bets = document.getElementById('grid-bets');
+            if (bets) {
+                bets.innerHTML = SLOTS_BETS.map(v => `<button type="button" onclick="gridSetBet(${v})" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ${grid.bet === v ? 'bg-violet-600/90 border-violet-500/60 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700'}">${fmtCoins(v)}</button>`).join('');
+            }
+            const gb = document.getElementById('grid-auto-btn');
+            if (gb) {
+                gb.innerHTML = grid.auto ? '<i class="fa-solid fa-pause mr-1"></i>Авто: ВКЛ' : '<i class="fa-solid fa-play mr-1"></i>Авто: выкл';
+                gb.className = grid.auto ? 'lq-on w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-violet-500 text-white text-sm font-black transition shadow-lg shadow-violet-950/40 animate-pulse' : 'w-full sm:w-auto px-4 py-3 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-sm font-black transition';
+            }
+            const spin = document.getElementById('grid-spin');
+            if (spin) {
+                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(grid.bet);
+                spin.disabled = state.coins < grid.bet || grid.spinning;
+                spin.classList.toggle('opacity-40', state.coins < grid.bet);
+            }
+            const lw = document.getElementById('grid-last');
+            if (lw) lw.innerHTML = grid.lastWin > 0 ? ('Последний выигрыш: <b class="text-violet-300">+' + fmtCoins(grid.lastWin) + '</b>') : 'Последний выигрыш: —';
+            const st = document.getElementById('grid-stats');
+            if (st) st.textContent = 'спинов: ' + (state.stats.gridSpins || 0) + ' • побед: ' + (state.stats.gridWins || 0);
+        }
+        function renderBattleTab() {
+            const lobby = document.getElementById('battle-lobby');
+            const arena = document.getElementById('battle-arena');
+            const dview = document.getElementById('durak-view');
+            if (battle) {
+                lobby.classList.add('hidden');
+                dview.classList.add('hidden');
+                arena.classList.remove('hidden');
+                renderArena();
+            } else if (durak || battleMode === 'durak') {
+                // b236: без лобби-заглушки — поле открыто сразу, старт через уведомление
+                lobby.classList.add('hidden');
+                arena.classList.add('hidden');
+                dview.classList.remove('hidden');
+                renderDurakUI();
+            } else {
+                arena.classList.add('hidden');
+                dview.classList.add('hidden');
+                lobby.classList.remove('hidden');
+                renderLobby();
+                renderMiner(); // b47
+                renderSlotsUI(); // b49
+                renderGridUI(); // b53
+                // b239b: setBattleMode здесь не зовём — видимость синхронизирует он сам
+            }
+        }
+
+        function renderLobby() {
+            // очистка колоды от удалённых карт
+            state.deck = (state.deck || []).filter(id => state.cards.some(c => c.id === id));
+            const deckCards = getDeckCards();
+            const power = deckCards.reduce((s, c) => { const st = getCardStats(c); return s + st.atk + st.hp; }, 0);
+            document.getElementById('deck-power-badge').innerText = power;
+            document.getElementById('battles-won-badge').innerText = state.stats.battlesWon;
+            document.getElementById('battles-lost-badge').innerText = state.stats.battlesLost;
+            const streakBadge = document.getElementById('battle-streak-badge');
+            if (streakBadge) streakBadge.innerText = state.stats.battleStreak || 0;
+            renderBattleHistory();
+
+            // Слоты колоды
+            const slots = document.getElementById('deck-slots');
+            let slotsHTML = deckCards.map(c => {
+                const st = getCardStats(c);
+                return `
+                    <div class="relative bg-slate-950 border-2 ${getRarityClass(c.rarity)} rounded-xl p-1.5 w-[88px] shrink-0">
+                        <img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" alt="${c.name}" class="w-full h-20 object-cover rounded-lg" onerror="imgErrorChain(this);" data-card-id="${c.id}" loading="lazy" decoding="async">
+                        <p class="text-[10px] font-bold text-white truncate mt-1">${c.name}</p>
+                        <p class="text-[10px] text-slate-400 font-mono"><span class="text-amber-400">⚔${st.atk}</span> <span class="text-rose-400">❤${st.hp}</span></p>
+                        <button onclick="removeFromDeck('${c.id}')" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-600 hover:bg-rose-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center transition shadow" title="Убрать из колоды"><i class="fa-solid fa-xmark"></i></button>
+                    </div>`;
+            }).join('');
+            for (let i = deckCards.length; i < 5; i++) {
+                slotsHTML += `<div class="w-[88px] h-[136px] border-2 border-dashed border-slate-700 rounded-xl flex flex-col items-center justify-center text-slate-600 shrink-0"><i class="fa-solid fa-plus text-sm"></i><span class="text-[9px] mt-1">слот</span></div>`;
+            }
+            slots.innerHTML = slotsHTML;
+
+            // Коллекция (только собранные карты)
+            const col = document.getElementById('deck-collection');
+            const owned = state.cards.filter(c => state.collection[c.id]);
+            if (!owned.length) {
+                col.innerHTML = `<div class="col-span-full text-center py-8 text-slate-500 text-xs">Пока нет собранных карт.<br>Откройте паки в Магазине!</div>`;
+            } else {
+                col.innerHTML = owned.map(c => {
+                    const st = getCardStats(c);
+                    const inDeck = state.deck.includes(c.id);
+                    const copies = cardCopies(c.id); // b18
+                    return `
+                        <div onclick="addToDeck('${c.id}')" class="relative cursor-pointer rounded-lg border ${getRarityClass(c.rarity)} bg-slate-950 p-1 overflow-hidden transition hover:scale-105 ${inDeck ? 'opacity-40' : ''}" title="${inDeck ? 'Уже в колоде' : 'Добавить в колоду'}">
+                            <img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" alt="${c.name}" class="w-full h-14 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}" loading="lazy" decoding="async">
+                            <p class="text-[9px] font-bold text-white truncate mt-0.5">${c.name}</p>
+                            <p class="text-[9px] font-mono text-slate-400"><span class="text-amber-400">⚔${st.atk}</span> <span class="text-rose-400">❤${st.hp}</span></p>
+                            ${copies > 1 ? `<span class="absolute top-0.5 left-0.5 text-[9px] bg-amber-500/90 text-slate-950 rounded px-1 font-black">×${copies}</span>` : ''}
+                            ${inDeck ? '<span class="absolute top-0.5 right-0.5 text-[9px] bg-violet-600 text-white rounded px-1 font-bold">в колоде</span>' : ''}
+                        </div>`;
+                }).join('');
+            }
+
+            // Противники
+            const oppList = document.getElementById('opponents-list');
+            const deckReady = deckCards.length >= 3;
+            oppList.innerHTML = OPPONENTS.map(o => {
+                const wins = (state.stats.oppWins || {})[o.id] || 0;
+                const stars = '★'.repeat(o.tier) + '☆'.repeat(5 - o.tier);
+                return `
+                    <div class="flex items-center space-x-4 bg-slate-950 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${ENEMY_GRADIENTS[o.tier - 1]} flex items-center justify-center shadow-lg shrink-0">
+                            <i class="fa-solid ${o.icon} text-white text-lg"></i>
+                        </div>
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <h5 class="font-bold text-white text-sm truncate">${o.name}</h5>
+                                <span class="text-[10px] text-amber-400 tracking-tighter shrink-0">${stars}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 truncate">${o.desc}</p>
+                            <p class="text-[10px] mt-0.5 text-slate-400">
+                                <span class="text-amber-400 font-semibold"><i class="fa-solid fa-coins mr-0.5"></i>${o.reward}</span>
+                                <span class="mx-1.5 text-slate-700">•</span>
+                                <span>${o.deckSize} ${pluralRu(o.deckSize, 'боец', 'бойца', 'бойцов')} из базы карт</span>
+                                ${wins > 0 ? `<span class="mx-1.5 text-slate-700">•</span><span class="text-violet-400">побед: ${wins}</span>` : ''}
+                            </p>
+                        </div>
+                        <button onclick="startBattle('${o.id}')" ${deckReady ? '' : 'disabled title="Соберите колоду минимум из 3 карт"'} class="lqg ${deckReady ? 'lqg-rose' : 'lqg-slate opacity-60 cursor-not-allowed'} px-4 py-2 text-xs font-bold transition shrink-0">
+                            <i class="fa-solid fa-hand-fist mr-1"></i> В бой!
+                        </button>
+                    </div>`;
+            }).join('');
+            if (!deckReady) {
+                oppList.innerHTML += `<p class="text-[11px] text-slate-500 text-center pt-1"><i class="fa-solid fa-circle-exclamation text-amber-500/70 mr-1"></i>Для боя соберите колоду минимум из 3 карт</p>`;
+            }
+        }
+
+        function addToDeck(cardId) {
+            if (state.deck.includes(cardId)) { showToast('Эта карта уже в колоде', 'error'); return; }
+            if (state.deck.length >= 5) { showToast('В колоде максимум 5 карт — сначала уберите одну', 'error'); return; }
+            state.deck.push(cardId);
+            saveState();
+            renderLobby();
+        }
+
+        function removeFromDeck(cardId) {
+            state.deck = state.deck.filter(id => id !== cardId);
+            saveState();
+            renderLobby();
+        }
+
+        // ----- Авто-колода: 5 сильнейших собранных карт по суммарной мощи -----
+        function autoBuildDeck() {
+            const owned = state.cards.filter(c => state.collection[c.id]);
+            if (owned.length < 3) { showToast('Для авто-колоды нужно минимум 3 собранные карты', 'error'); return; }
+            const power = c => { const st = getCardStats(c); return st.atk + st.hp; };
+            const top = owned.slice().sort((a, b) =>
+                power(b) - power(a) ||
+                RARITY_ORDER.indexOf(b.rarity) - RARITY_ORDER.indexOf(a.rarity) ||
+                (a.name || '').localeCompare(b.name || '', 'ru')
+            ).slice(0, 5);
+            state.deck = top.map(c => c.id);
+            saveState();
+            renderLobby();
+            const p = top.reduce((s, c) => s + power(c), 0);
+            SoundFX.play('swap');
+            showToast(`⚡ Авто-колода собрана: сила ${p} (бойцов: ${top.length})`, 'success');
+        }
+
+        function clearDeck() {
+            if (!state.deck.length) { showToast('Колода уже пуста', 'info'); return; }
+            state.deck = [];
+            saveState();
+            renderLobby();
+            showToast('Колода очищена', 'success');
+        }
+
+        // ----- История боёв и серии побед -----
+        function pushBattleHistory(e) {
+            if (!Array.isArray(state.history)) state.history = [];
+            state.history.unshift(Object.assign({ t: Date.now() }, e));
+            state.history = state.history.slice(0, 30);
+        }
+
+        function renderBattleHistory() {
+            const list = document.getElementById('battle-history-list');
+            if (!list) return;
+            const st = document.getElementById('history-streak');
+            if (st) st.innerText = state.stats.battleStreak || 0;
+            const bs = document.getElementById('history-best-streak');
+            if (bs) bs.innerText = state.stats.bestBattleStreak || 0;
+
+            const h = Array.isArray(state.history) ? state.history : [];
+            if (!h.length) {
+                list.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Боёв ещё не было — соберите колоду и выберите противника выше.</p>`;
+                return;
+            }
+            const fmt = t => {
+                try {
+                    const d = new Date(t);
+                    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                } catch (e) { return ''; }
+            };
+            list.innerHTML = h.slice(0, 8).map(x => `
+                <div class="flex items-center gap-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 px-3 py-2">
+                    <span class="w-7 h-7 shrink-0 rounded-lg flex items-center justify-center text-[10px] font-black border ${x.win ? 'bg-violet-500/15 border-violet-500/40 text-violet-300' : 'bg-rose-500/10 border-rose-500/30 text-rose-300'}">${x.win ? 'W' : 'L'}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-slate-200 truncate">${x.opp || 'Противник'}${x.flawless ? ' <span class="text-amber-300">• безупречно</span>' : ''}${x.exit ? ' <span class="text-slate-500">• выход из боя</span>' : ''}</p>
+                        <p class="text-[10px] text-slate-500">${fmt(x.t)}</p>
+                    </div>
+                    ${x.streak > 1 ? `<span class="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold text-amber-300/90 shrink-0"><i class="fa-solid fa-fire"></i>${x.streak}</span>` : ''}
+                    ${x.win && x.reward ? `<span class="text-[11px] font-bold text-amber-300 shrink-0"><i class="fa-solid fa-coins mr-1"></i>+${x.reward}</span>` : ''}
+                </div>`).join('');
+        }
+
+        // ----- Начало боя -----
+        function mkPlayerFighter(card) {
+            const s = getCardStats(card);
+            return { cardId: card.id, name: card.name, image: card.image, rarity: card.rarity, atk: s.atk, hp: s.hp, maxHp: s.hp, defending: false, dead: false };
+        }
+
+        // Колода противника собирается из НАСТОЯЩИХ карт базы (state.cards).
+        // Детерминированно по сидy противника: у каждого оппонента свой постоянный состав.
+        // Tier задаёт полосу редкостей: бот — обычные, Чемпион — эпики и легендарки.
+        function generateEnemyDeck(opp) {
+            const size = opp.deckSize || 4;
+            const pool = state.cards || [];
+            if (!pool.length) {
+                // Фолбэк: база пуста — синтетические бойцы
+                return (opp.names || []).slice(0, size).map((n, i) => {
+                    const h = hashCode(opp.id + '-' + i);
+                    const atk = Math.max(1, Math.round((3 + h % 5) * opp.mult));
+                    const hp = Math.max(3, Math.round((6 + (h >> 3) % 7) * opp.mult));
+                    return { name: n, icon: opp.icon, grad: ENEMY_GRADIENTS[(opp.tier - 1 + i) % ENEMY_GRADIENTS.length], atk, hp, maxHp: hp, defending: false, dead: false, enemy: true };
+                });
+            }
+            const rarIdx = { common: 0, rare: 1, epic: 2, legendary: 3 };
+            const bands = { 1: [0, 1], 2: [0, 2], 3: [1, 2], 4: [1, 3], 5: [2, 3] };
+            const band = bands[opp.tier] || [0, 3];
+            let slice = pool.filter(c => (rarIdx[c.rarity] ?? 0) >= band[0] && (rarIdx[c.rarity] ?? 0) <= band[1]);
+            if (!slice.length) slice = pool.slice();
+            const seed = hashCode(opp.id);
+            const used = {};
+            const deck = [];
+            for (let i = 0; i < size; i++) {
+                let idx = (seed + i * 7919 + Math.floor(seed / (i + 3))) % slice.length;
+                let guard = 0;
+                while (used[slice[idx].id] && guard < slice.length) { idx = (idx + 1) % slice.length; guard++; }
+                used[slice[idx].id] = true;
+                const c = slice[idx];
+                const st = getCardStats(c);
+                const atk = Math.max(1, Math.round(st.atk * opp.mult));
+                const hp = Math.max(3, Math.round(st.hp * opp.mult));
+                deck.push({
+                    name: c.name, image: c.image, rarity: c.rarity,
+                    atk, hp, maxHp: hp, defending: false, dead: false,
+                    enemy: true, icon: opp.icon,
+                    grad: ENEMY_GRADIENTS[(opp.tier - 1 + i) % ENEMY_GRADIENTS.length]
+                });
+            }
+            return deck;
+        }
+
+        function startBattle(oppId) {
+            stopAllGameAutos('начало боя'); // b250
+            const opp = OPPONENTS.find(o => o.id === oppId);
+            if (!opp) return;
+            const deck = getDeckCards();
+            if (deck.length < 3) { showToast('Соберите колоду минимум из 3 карт!', 'error'); return; }
+            battle = {
+                opp,
+                player: deck.map(mkPlayerFighter),
+                enemy: generateEnemyDeck(opp),
+                pActive: 0, eActive: 0,
+                log: [], over: false, result: null,
+                playerTurn: true, busy: false, awaitingSwap: false
+            };
+            battleLog(`⚡ Бой начался: вы против «${opp.name}»!`);
+            battleLog(`🎯 Цель: победить всех бойцов противника. Награда: ${opp.reward} монет.`);
+            document.getElementById('battle-lobby').classList.add('hidden');
+            document.getElementById('battle-arena').classList.remove('hidden');
+            renderArena();
+        }
+
+        function battleLog(msg) {
+            battle.log.push(msg);
+            if (battle.log.length > 40) battle.log.shift();
+        }
+
+        function findStrongestAlive(list) {
+            let best = -1;
+            list.forEach((f, i) => { if (!f.dead && (best === -1 || f.atk > list[best].atk)) best = i; });
+            return best;
+        }
+
+        function dealDamage(target, dmg) {
+            if (target.defending) { dmg = Math.ceil(dmg / 2); target.defending = false; }
+            dmg = Math.max(1, dmg);
+            target.hp = Math.max(0, target.hp - dmg);
+            return dmg;
+        }
+
+        // ----- Ход игрока -----
+        function playerAction(action) {
+            if (!battle || battle.over || !battle.playerTurn || battle.busy || battle.awaitingSwap) return;
+            const p = battle.player[battle.pActive], e = battle.enemy[battle.eActive];
+            battle.busy = true;
+
+            if (action === 'attack') {
+                const dmg = dealDamage(e, p.atk + randInt(-1, 1));
+                battleLog(`⚔️ ${p.name} атакует ${e.name} на ${dmg} урона!`);
+                SoundFX.play('hit');
+                fxAttack('player', 'attack', dmg, false);
+                updateArenaUI();
+            } else if (action === 'heavy') {
+                if (Math.random() < 0.6) {
+                    const dmg = dealDamage(e, Math.round(p.atk * 1.8));
+                    battleLog(`💥 ${p.name} проводит мощный удар по ${e.name} — ${dmg} урона!`);
+                    SoundFX.play('heavyHit');
+                    fxAttack('player', 'heavy', dmg, false);
+                    updateArenaUI();
+                } else {
+                    battleLog(`🌪️ ${p.name} промахивается мощным ударом!`);
+                    SoundFX.play('miss');
+                    fxAttack('player', 'heavy', 0, true);
+                    updateArenaUI();
+                }
+            } else if (action === 'defend') {
+                p.defending = true;
+                const heal = Math.min(3, p.maxHp - p.hp);
+                p.hp += heal;
+                battleLog(`🛡️ ${p.name} уходит в защиту${heal ? ` и восстанавливает ${heal} HP` : ''}`);
+                SoundFX.play('defend');
+                battle3dPlay('player', 'defend');
+                updateArenaUI();
+                if (heal) showBattleFloat('player', '+' + heal, 'text-violet-400');
+            } else { battle.busy = false; return; }
+
+            // Противник нокаутирован?
+            if (e.hp <= 0 && !e.dead) {
+                e.dead = true;
+                battleLog(`☠️ ${e.name} повержен!`);
+                SoundFX.play('ko');
+                battle3dPlay('enemy', 'ko');
+                const next = findStrongestAlive(battle.enemy);
+                if (next === -1) { endBattle(true); return; }
+                battle.eActive = next;
+                battleLog(`🔻 Противник выпускает ${battle.enemy[next].name}!`);
+                setTimeout(() => { if (battle) battle3dSetFighter('enemy', battle.enemy[battle.eActive], 'swapin'); }, 700);
+            }
+            passTurnToEnemy();
+        }
+
+        function passTurnToEnemy() {
+            battle.playerTurn = false;
+            battle.busy = true;
+            updateArenaUI();
+            setTimeout(enemyTurn, 1000);
+        }
+
+        // ----- Ход ИИ -----
+        function enemyTurn() {
+            if (!battle || battle.over) return;
+            const e = battle.enemy[battle.eActive], p = battle.player[battle.pActive];
+            const heavyDmg = Math.round(e.atk * 1.8);
+            const r = Math.random();
+            let action = 'attack';
+            if (p.hp <= heavyDmg && r < 0.75) action = 'heavy';
+            else if (p.hp <= e.atk + 1) action = 'attack';
+            else if (e.hp <= e.maxHp * 0.25 && r < 0.55) action = 'defend';
+            else if (r < 0.22) action = 'heavy';
+
+            if (action === 'attack') {
+                const dmg = dealDamage(p, e.atk + randInt(-1, 1));
+                battleLog(`⚔️ ${e.name} атакует ${p.name} на ${dmg} урона!`);
+                SoundFX.play('hit');
+                fxAttack('enemy', 'attack', dmg, false);
+                updateArenaUI();
+            } else if (action === 'heavy') {
+                if (Math.random() < 0.6) {
+                    const dmg = dealDamage(p, Math.round(e.atk * 1.8));
+                    battleLog(`💥 ${e.name} проводит мощный удар — ${dmg} урона по ${p.name}!`);
+                    SoundFX.play('heavyHit');
+                    fxAttack('enemy', 'heavy', dmg, false);
+                    updateArenaUI();
+                } else {
+                    battleLog(`🌪️ ${e.name} промахивается мощным ударом!`);
+                    SoundFX.play('miss');
+                    fxAttack('enemy', 'heavy', 0, true);
+                    updateArenaUI();
+                }
+            } else {
+                e.defending = true;
+                const heal = Math.min(3, e.maxHp - e.hp);
+                e.hp += heal;
+                battleLog(`🛡️ ${e.name} уходит в защиту${heal ? ` (+${heal} HP)` : ''}`);
+                SoundFX.play('defend');
+                battle3dPlay('enemy', 'defend');
+                updateArenaUI();
+                if (heal) showBattleFloat('enemy', '+' + heal, 'text-violet-400');
+            }
+
+            // Наш боец нокаутирован?
+            if (p.hp <= 0 && !p.dead) {
+                p.dead = true;
+                battleLog(`☠️ Ваш боец ${p.name} пал!`);
+                SoundFX.play('ko');
+                battle3dPlay('player', 'ko');
+                const next = findStrongestAlive(battle.player);
+                if (next === -1) { endBattle(false); return; }
+                battle.awaitingSwap = 'forced';
+                battle.playerTurn = true;
+                battle.busy = false;
+                updateArenaUI();
+                return;
+            }
+            battle.playerTurn = true;
+            battle.busy = false;
+            updateArenaUI();
+        }
+
+        // ----- Замены -----
+        function requestSwap() {
+            if (!battle || battle.over || !battle.playerTurn || battle.busy || battle.awaitingSwap) return;
+            const hasReserve = battle.player.some((f, i) => !f.dead && i !== battle.pActive);
+            if (!hasReserve) { showToast('Менять не на кого — запас пуст!', 'error'); return; }
+            battle.awaitingSwap = 'voluntary';
+            battle.busy = true;
+            updateArenaUI();
+        }
+
+        function cancelSwap() {
+            if (battle && battle.awaitingSwap === 'voluntary') {
+                battle.awaitingSwap = false;
+                battle.busy = false;
+                updateArenaUI();
+            }
+        }
+
+        function onSwapTo(i) {
+            if (!battle || !battle.awaitingSwap) return;
+            const f = battle.player[i];
+            if (!f || f.dead) return;
+            const mode = battle.awaitingSwap;
+            battle.pActive = i;
+            battle.awaitingSwap = false;
+            battleLog(`🔄 Замена: ${f.name} вступает в бой!`);
+            SoundFX.play('swap');
+            battle3dSetFighter('player', f, 'swapin');
+            if (mode === 'voluntary') {
+                passTurnToEnemy();
+            } else {
+                battle.playerTurn = true;
+                battle.busy = false;
+                updateArenaUI();
+            }
+        }
+
+        // ----- Конец боя -----
+        function endBattle(win) {
+            battle.over = true;
+            battle.result = win;
+            battle.busy = true;
+            battle.playerTurn = false;
+            if (win) {
+                const flawless = battle.player.every(f => !f.dead);
+                const reward = battle.opp.reward;
+                state.coins += reward;
+                state.stats.battlesWon++;
+                state.stats.oppWins[battle.opp.id] = (state.stats.oppWins[battle.opp.id] || 0) + 1;
+                if (flawless) state.stats.flawlessWins++;
+                if (battle.opp.id === 'opp-5') state.stats.championWins = (state.stats.championWins || 0) + 1;
+                // серия побед + бонус каждые 3 победы подряд
+                state.stats.battleStreak = (state.stats.battleStreak || 0) + 1;
+                state.stats.bestBattleStreak = Math.max(state.stats.bestBattleStreak || 0, state.stats.battleStreak);
+                let streakBonus = 0;
+                if (state.stats.battleStreak % 3 === 0) {
+                    streakBonus = 100;
+                    state.coins += streakBonus;
+                }
+                pushBattleHistory({ win: true, opp: battle.opp.name, reward: reward + streakBonus, flawless, streak: state.stats.battleStreak });
+                battleLog(`🏆 ПОБЕДА! Награда: +${reward} монет${flawless ? ' • БЕЗУПРЕЧНО — ни одного павшего бойца!' : ''}${streakBonus ? ` • 🔥 серия ${state.stats.battleStreak}: бонус +${streakBonus}` : ''}`);
+                saveState();
+                updateCoinDisplay();
+                SoundFX.play('win');
+                battle3dPlay('player', 'victory');
+                launchConfetti(flawless ? 180 : 110);
+                showToast(`🏆 Победа над «${battle.opp.name}»! +${reward} монет${streakBonus ? ` • 🔥 серия ${state.stats.battleStreak}: +${streakBonus}` : ''}`, 'success');
+                // b122: задания про Арену убраны из пула
+                checkAchievements();
+            } else {
+                state.stats.battlesLost++;
+                state.stats.battleStreak = 0;
+                pushBattleHistory({ win: false, opp: battle.opp.name, streak: 0 });
+                battleLog('💀 Поражение… Все ваши бойцы пали.');
+                saveState();
+                SoundFX.play('lose');
+                battle3dPlay('enemy', 'victory');
+                showToast('Поражение… Прокачайте колоду и возвращайтесь!', 'error');
+            }
+            updateArenaUI();
+        }
+
+        function exitBattle() {
+            if (battle && !battle.over) {
+                state.stats.battlesLost++;
+                state.stats.battleStreak = 0;
+                pushBattleHistory({ win: false, opp: battle.opp.name, exit: true, streak: 0 });
+                saveState();
+                showToast('Вы покинули поле боя — это засчитано как поражение', 'error');
+            }
+            battle3dDispose();
+            battle = null;
+            renderBattleTab();
+        }
+
+        function rematch() {
+            if (battle && battle.over) {
+                const oid = battle.opp.id;
+                battle = null;
+                startBattle(oid);
+            }
+        }
+
+        // ----- 3D-СЦЕНА БОЯ -----
+        function makeBattleTexture(f) {
+            const W = 512, H = 720;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const tex = new THREE.CanvasTexture(cv);
+            const palette = {
+                common: ['#52525b', '#18181b'], rare: ['#3b82f6', '#1e1b4b'],
+                epic: ['#a855f7', '#2e1065'], legendary: ['#f59e0b', '#451a03']
+            };
+
+            const drawPlate = () => {
+                g.strokeStyle = f.enemy ? 'rgba(248,113,113,.85)' : 'rgba(52,211,153,.85)';
+                g.lineWidth = 10;
+                g.strokeRect(16, 16, W - 32, H - 32);
+                g.fillStyle = 'rgba(2,6,23,.82)';
+                roundRectCanvas(g, 40, H - 190, W - 80, 124, 22); g.fill();
+                g.fillStyle = '#ffffff'; g.font = 'bold 38px Inter, sans-serif';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                wrapCanvasText(g, f.name, W / 2, H - 150, W - 160, 42);
+                g.fillStyle = '#fbbf24'; g.font = 'bold 34px Inter, sans-serif';
+                g.fillText('⚔ ' + f.atk, W / 2, H - 94);
+            };
+
+            const drawBase = () => {
+                const pal = palette[f.rarity] || palette.common;
+                const grad = g.createLinearGradient(0, 0, 0, H);
+                grad.addColorStop(0, pal[0]);
+                grad.addColorStop(1, pal[1]);
+                g.fillStyle = grad; g.fillRect(0, 0, W, H);
+                g.save(); g.translate(W / 2, 260);
+                g.fillStyle = 'rgba(255,255,255,.07)';
+                for (let i = 0; i < 12; i++) {
+                    g.rotate(Math.PI / 6);
+                    g.beginPath(); g.moveTo(0, 0); g.lineTo(-36, -420); g.lineTo(36, -420); g.closePath(); g.fill();
+                }
+                g.restore();
+                if (!f.image) {
+                    g.fillStyle = 'rgba(255,255,255,.16)';
+                    g.beginPath(); g.arc(W / 2, 250, 110, 0, Math.PI * 2); g.fill();
+                    g.fillStyle = '#ffffff'; g.font = 'bold 120px Inter, sans-serif';
+                    g.textAlign = 'center'; g.textBaseline = 'middle';
+                    g.fillText((f.name || '?').charAt(0).toUpperCase(), W / 2, 256);
+                }
+                drawPlate();
+            };
+
+            drawBase();
+            tex.needsUpdate = true;
+            if (f.image) {
+                loadImgSafe(f.image, img => {
+                    if (!coverDrawImage(g, img, W, H)) return;
+                    const grd = g.createLinearGradient(0, H, 0, H * 0.4);
+                    grd.addColorStop(0, 'rgba(2,6,23,.9)');
+                    grd.addColorStop(1, 'rgba(2,6,23,0)');
+                    g.fillStyle = grd; g.fillRect(0, 0, W, H);
+                    drawPlate();
+                    tex.needsUpdate = true;
+                });
+            }
+            return tex;
+        }
+
+        // Небо-купол: ночной градиент с туманностями
+        function makeSkyTexture() {
+            const cv = document.createElement('canvas');
+            cv.width = 512; cv.height = 512;
+            const g = cv.getContext('2d');
+            const grad = g.createLinearGradient(0, 0, 0, 512);
+            grad.addColorStop(0, '#04050d');
+            grad.addColorStop(0.45, '#0d1130');
+            grad.addColorStop(0.72, '#251a4d');
+            grad.addColorStop(0.88, '#3b2a6d');
+            grad.addColorStop(1, '#123047');
+            g.fillStyle = grad;
+            g.fillRect(0, 0, 512, 512);
+            // туманности
+            const neb = (x, y, r, color) => {
+                const rg = g.createRadialGradient(x, y, 0, x, y, r);
+                rg.addColorStop(0, color);
+                rg.addColorStop(1, 'rgba(0,0,0,0)');
+                g.fillStyle = rg;
+                g.fillRect(x - r, y - r, r * 2, r * 2);
+            };
+            neb(140, 300, 130, 'rgba(168,85,247,.16)');
+            neb(380, 260, 150, 'rgba(34,211,238,.12)');
+            neb(260, 380, 170, 'rgba(236,72,153,.10)');
+            // мерцающие звёзды на самом куполе
+            for (let i = 0; i < 160; i++) {
+                const x = Math.random() * 512, y = Math.random() * 360;
+                const a = 0.25 + Math.random() * 0.6;
+                g.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`;
+                const s = Math.random() < 0.85 ? 0.9 : 1.5;
+                g.beginPath(); g.arc(x, y, s, 0, Math.PI * 2); g.fill();
+            }
+            const tex = new THREE.CanvasTexture(cv);
+            return tex;
+        }
+
+        // Пол арены: тёмный камень со свечением, кольцами и рунами
+        function makeFloorTexture() {
+            const S = 1024;
+            const cv = document.createElement('canvas');
+            cv.width = S; cv.height = S;
+            const g = cv.getContext('2d');
+            g.fillStyle = '#0a0f1e';
+            g.fillRect(0, 0, S, S);
+            // центральное свечение
+            const rg = g.createRadialGradient(S / 2, S / 2, 40, S / 2, S / 2, S / 2);
+            rg.addColorStop(0, 'rgba(34,211,238,.16)');
+            rg.addColorStop(0.45, 'rgba(30,64,175,.08)');
+            rg.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = rg;
+            g.fillRect(0, 0, S, S);
+            g.translate(S / 2, S / 2);
+            // концентрические кольца
+            [0.18, 0.3, 0.42, 0.55, 0.7, 0.86].forEach((r, i) => {
+                g.strokeStyle = `rgba(56,189,248,${0.16 - i * 0.018})`;
+                g.lineWidth = i === 0 ? 5 : 3;
+                g.beginPath(); g.arc(0, 0, r * S / 2, 0, Math.PI * 2); g.stroke();
+            });
+            // руны-риски по внешнему кольцу
+            g.strokeStyle = 'rgba(103,232,249,.35)';
+            g.lineWidth = 4;
+            for (let i = 0; i < 60; i++) {
+                const a = (i / 60) * Math.PI * 2;
+                const r1 = 0.9 * S / 2, r2 = (i % 5 === 0 ? 0.82 : 0.86) * S / 2;
+                g.beginPath();
+                g.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
+                g.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);
+                g.stroke();
+            }
+            // внутренние рунические дуги
+            g.strokeStyle = 'rgba(168,85,247,.28)';
+            g.lineWidth = 6;
+            for (let i = 0; i < 8; i++) {
+                g.beginPath();
+                g.arc(0, 0, 0.62 * S / 2, (i / 8) * Math.PI * 2 + 0.12, (i / 8) * Math.PI * 2 + Math.PI / 5);
+                g.stroke();
+            }
+            const tex = new THREE.CanvasTexture(cv);
+            return tex;
+        }
+
+        let battle3d = null;
+
+        function battle3dDispose() {
+            if (!battle3d) return;
+            cancelAnimationFrame(battle3d.raf);
+            try { battle3d.renderer.dispose(); } catch (e) {}
+            const c = document.getElementById('battle-3d-container');
+            if (c) c.innerHTML = '';
+            battle3d = null;
+        }
+
+        function battle3dInit() {
+            battle3dDispose();
+            const container = document.getElementById('battle-3d-container');
+            if (!container || !battle) return;
+            if (typeof THREE === 'undefined' || !webglAvailable()) { battle3d = null; return; }
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { battle3d = null; return; }
+            const w = container.clientWidth || 800, h = container.clientHeight || 360;
+            renderer.setPixelRatio(nxPixelRatio()); // b308
+            renderer.setSize(w, h);
+            container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'battle', () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; nx3dDrop(battle3d.renderer); battle3d.renderer = null; });
+
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x070a18, 14, 30);
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100);
+            camera.position.set(0, 2.6, 8.2);
+            camera.lookAt(0, 1.5, 0);
+            if (!window._nx3dBattle) { // b58
+                window._nx3dBattle = 1;
+                const rs = () => {
+                    const c = document.getElementById('battle-3d-container');
+                    if (c && battle3d && battle3d.renderer) nx3dResizeSimple(battle3d.renderer, battle3d.camera, c, [3.4, 3.2, 8.2]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+            }
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            scene.add(new THREE.HemisphereLight(0x8899ff, 0x080820, 0.35));
+            const lp = new THREE.PointLight(0x34d399, 1.0, 40); lp.position.set(-4, 4, 4); scene.add(lp);
+            const le = new THREE.PointLight(0xfb7185, 1.0, 40); le.position.set(4, 4, 4); scene.add(le);
+
+            // ===== Красивое окружение вместо сетки =====
+            // Небо-купол с градиентом, туманностями и звёздами
+            const sky = new THREE.Mesh(
+                new THREE.SphereGeometry(42, 32, 16),
+                new THREE.MeshBasicMaterial({ map: makeSkyTexture(), side: THREE.BackSide, fog: false })
+            );
+            scene.add(sky);
+
+            // Объёмные звёзды
+            const starGeo = new THREE.BufferGeometry();
+            const starPos = new Float32Array(250 * 3);
+            for (let i = 0; i < 250; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const b = Math.acos(Math.random() * 0.85 + 0.1); // верхняя полусфера
+                const r = 26 + Math.random() * 12;
+                starPos[i * 3] = r * Math.sin(b) * Math.cos(a);
+                starPos[i * 3 + 1] = r * Math.cos(b) + 2;
+                starPos[i * 3 + 2] = r * Math.sin(b) * Math.sin(a);
+            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.17, map: makeSparkTexture(), transparent: true, opacity: 0.85, depthWrite: false, fog: false }));
+            scene.add(stars);
+
+            // Пол арены с магическими кольцами и рунами
+            const floor = new THREE.Mesh(
+                new THREE.CircleGeometry(10, 64),
+                new THREE.MeshStandardMaterial({ map: makeFloorTexture(), roughness: 0.9 })
+            );
+            floor.rotation.x = -Math.PI / 2;
+            scene.add(floor);
+
+            // Светящийся обод арены
+            const rim = new THREE.Mesh(
+                new THREE.RingGeometry(9.55, 10, 72),
+                new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+            );
+            rim.rotation.x = -Math.PI / 2;
+            rim.position.y = 0.02;
+            scene.add(rim);
+
+            // Парящие искры-светлячки
+            const EMB = 46;
+            const embGeo = new THREE.BufferGeometry();
+            const embPos = new Float32Array(EMB * 3);
+            const embSpeed = [];
+            for (let i = 0; i < EMB; i++) {
+                embPos[i * 3] = (Math.random() - 0.5) * 16;
+                embPos[i * 3 + 1] = Math.random() * 6;
+                embPos[i * 3 + 2] = (Math.random() - 0.5) * 8 - 1;
+                embSpeed.push(0.15 + Math.random() * 0.35);
+            }
+            embGeo.setAttribute('position', new THREE.BufferAttribute(embPos, 3));
+            const embers = new THREE.Points(embGeo, new THREE.PointsMaterial({ color: 0x67e8f9, size: 0.09, map: makeSparkTexture(), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false }));
+            scene.add(embers);
+
+            // Кольца-подставки и вращающиеся руны под бойцами
+            const runes = {};
+            const mkRing = (color, x, side) => {
+                const r = new THREE.Mesh(new THREE.CircleGeometry(1.35, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22 }));
+                r.rotation.x = -Math.PI / 2;
+                r.position.set(x, 0.03, 0);
+                scene.add(r);
+                const rune = new THREE.Mesh(
+                    new THREE.RingGeometry(1.5, 1.62, 48, 1, 0, Math.PI * 1.6),
+                    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
+                );
+                rune.rotation.x = -Math.PI / 2;
+                rune.position.set(x, 0.045, 0);
+                scene.add(rune);
+                runes[side] = rune;
+            };
+            mkRing(0x34d399, -2.6, 'player');
+            mkRing(0xfb7185, 2.6, 'enemy');
+
+            const mkFighter = (f, x, rotY) => {
+                const mat = new THREE.MeshStandardMaterial({ map: makeBattleTexture(f), transparent: true, roughness: 0.4, metalness: 0.2, side: THREE.DoubleSide });
+                const m = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 3.22), mat);
+                m.position.set(x, 1.61, 0);
+                m.rotation.y = rotY;
+                scene.add(m);
+                return m;
+            };
+            const meshPlayer = mkFighter(battle.player[battle.pActive], -2.6, 0.32);
+            const meshEnemy = mkFighter(battle.enemy[battle.eActive], 2.6, -0.32);
+
+            battle3d = {
+                renderer, scene, camera,
+                mesh: { player: meshPlayer, enemy: meshEnemy },
+                base: { player: { x: -2.6, rotY: 0.32 }, enemy: { x: 2.6, rotY: -0.32 } },
+                anim: { player: null, enemy: null },
+                flash: { player: null, enemy: null },
+                effects: [], shake: null, raf: null,
+                sky, stars, embers, embGeo, embSpeed, runes
+            };
+            battle3dTick();
+        }
+
+        function battle3dPlay(side, type) {
+            if (!battle3d) return;
+            battle3d.anim[side] = { type, t0: performance.now() };
+            if (type === 'defend') {
+                const m = battle3d.mesh[side];
+                const ring = new THREE.Mesh(
+                    new THREE.RingGeometry(0.9, 1.05, 40),
+                    new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(m.position.x, 0.05, m.position.z);
+                battle3d.scene.add(ring);
+                battle3d.effects.push({ kind: 'ring', mesh: ring, t0: performance.now() });
+            }
+        }
+
+        function battle3dImpact(side, dmg, heavy) {
+            showBattleFloat(side, '−' + dmg, 'text-rose-400');
+            if (!battle3d) return;
+            const now = performance.now();
+            battle3d.flash[side] = { t0: now };
+            battle3d.anim[side] = { type: 'hit', t0: now };
+            if (heavy) battle3d.shake = { t0: now, power: 0.35 };
+            const m = battle3d.mesh[side];
+            const P = heavy ? 40 : 24;
+            const geo = new THREE.BufferGeometry();
+            const pos = new Float32Array(P * 3);
+            const vel = [];
+            for (let i = 0; i < P; i++) {
+                pos[i * 3] = m.position.x; pos[i * 3 + 1] = m.position.y + 0.4; pos[i * 3 + 2] = m.position.z;
+                const a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2, sp = 1.5 + Math.random() * 3;
+                vel.push(new THREE.Vector3(Math.cos(a) * Math.cos(b) * sp, Math.sin(b) * sp + 1.5, Math.sin(a) * Math.cos(b) * sp * 0.6));
+            }
+            geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const mat = new THREE.PointsMaterial({ color: heavy ? 0xf87171 : 0xfbbf24, size: 0.12, map: makeSparkTexture(), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+            const pts = new THREE.Points(geo, mat);
+            battle3d.scene.add(pts);
+            battle3d.effects.push({ kind: 'burst', mesh: pts, geo, vel, t0: now, life: 0.55 });
+        }
+
+        function battle3dSetFighter(side, f, anim) {
+            if (!battle3d || !f) return;
+            const m = battle3d.mesh[side];
+            if (m.material.map) { try { m.material.map.dispose(); } catch (e) {} }
+            m.material.map = makeBattleTexture(f);
+            m.material.needsUpdate = true;
+            m.material.opacity = 1;
+            m.material.color.setRGB(1, 1, 1);
+            m.rotation.z = 0;
+            if (anim) battle3dPlay(side, anim);
+        }
+
+        function battle3dTick() {
+            if (!battle3d) return;
+            battle3d.raf = requestAnimationFrame(battle3dTick);
+            try { // b62: кадр защищён — см. nx3dLoopBail
+            const now = performance.now();
+            const B = battle3d;
+
+            // живое окружение: вращение неба, звёзд, рун и парение искр
+            if (B.sky) B.sky.rotation.y += 0.00035;
+            if (B.stars) B.stars.rotation.y -= 0.00014;
+            if (B.runes) {
+                if (B.runes.player) B.runes.player.rotation.z += 0.006;
+                if (B.runes.enemy) B.runes.enemy.rotation.z -= 0.006;
+            }
+            if (B.embers && B.embGeo) {
+                const arr = B.embGeo.attributes.position.array;
+                for (let i = 0; i < B.embSpeed.length; i++) {
+                    arr[i * 3 + 1] += B.embSpeed[i] * 0.016;
+                    arr[i * 3] += Math.sin(now / 1200 + i * 1.7) * 0.002;
+                    if (arr[i * 3 + 1] > 6.5) arr[i * 3 + 1] = 0;
+                }
+                B.embGeo.attributes.position.needsUpdate = true;
+            }
+
+            if (B.shake) {
+                const st = (now - B.shake.t0) / 1000;
+                const k = Math.max(0, 1 - st / 0.4) * B.shake.power;
+                B.camera.position.x = (Math.random() - 0.5) * k;
+                B.camera.position.y = 2.6 + (Math.random() - 0.5) * k;
+                if (st > 0.4) { B.shake = null; B.camera.position.set(0, 2.6, 8.2); }
+            }
+
+            ['player', 'enemy'].forEach(side => {
+                const m = B.mesh[side];
+                if (!m) return;
+                const base = B.base[side];
+                const dir = side === 'player' ? 1 : -1;
+                let x = base.x;
+                let y = 1.61 + Math.sin(now / 500 + (side === 'player' ? 0 : 2.1)) * 0.07;
+                let z = 0;
+                let rz = 0;
+                let ry = base.rotY + Math.sin(now / 900 + (side === 'player' ? 0 : 1.3)) * 0.04;
+                let scale = 1, op = 1;
+                const a = B.anim[side];
+                if (a) {
+                    const t = (now - a.t0) / 1000;
+                    if (a.type === 'attack') {
+                        const ph = t < 0.16 ? -(t / 0.16) * 0.5 : t < 0.42 ? -0.5 + ((t - 0.16) / 0.26) * 2.9 : 2.4 * (1 - Math.min(1, (t - 0.42) / 0.35));
+                        x += dir * ph;
+                        if (t > 0.8) B.anim[side] = null;
+                    } else if (a.type === 'heavy') {
+                        const ph = t < 0.2 ? -(t / 0.2) * 0.7 : t < 0.5 ? -0.7 + ((t - 0.2) / 0.3) * 3.4 : 2.7 * (1 - Math.min(1, (t - 0.5) / 0.4));
+                        x += dir * ph;
+                        rz = t < 0.55 ? -dir * (t / 0.55) * Math.PI * 2 : 0;
+                        if (t > 0.95) B.anim[side] = null;
+                    } else if (a.type === 'hit') {
+                        x += Math.sin(t * 45) * 0.14 * Math.max(0, 1 - t / 0.4);
+                        if (t > 0.4) B.anim[side] = null;
+                    } else if (a.type === 'dodge') {
+                        z -= Math.sin(Math.min(1, t / 0.4) * Math.PI) * 1.1;
+                        if (t > 0.45) B.anim[side] = null;
+                    } else if (a.type === 'defend') {
+                        y -= Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.15;
+                        if (t > 0.55) B.anim[side] = null;
+                    } else if (a.type === 'ko') {
+                        const k = Math.min(1, t / 0.7);
+                        rz = -dir * k * Math.PI / 2;
+                        y = 1.61 - k * 1.15;
+                        op = 1 - 0.65 * k;
+                    } else if (a.type === 'swapin') {
+                        const k = Math.min(1, t / 0.55);
+                        const ez = 1 - Math.pow(1 - k, 3);
+                        y = 1.61 + (1 - ez) * 3.2;
+                        scale = 0.6 + 0.4 * ez;
+                        ry = base.rotY + (1 - ez) * 1.2;
+                        if (t > 0.6) B.anim[side] = null;
+                    } else if (a.type === 'victory') {
+                        y = 1.61 + Math.abs(Math.sin(t * 5)) * 0.55;
+                        ry = base.rotY + t * 2.4;
+                        if (t > 2.6) B.anim[side] = null;
+                    }
+                }
+                m.position.set(x, y, z);
+                m.rotation.set(0, ry, rz);
+                m.scale.setScalar(scale);
+                m.material.opacity = op;
+                const fl = B.flash[side];
+                if (fl) {
+                    const k = 1 - (now - fl.t0) / 380;
+                    if (k <= 0) { m.material.color.setRGB(1, 1, 1); B.flash[side] = null; }
+                    else m.material.color.setRGB(1, 1 - 0.75 * k, 1 - 0.75 * k);
+                }
+            });
+
+            for (let i = B.effects.length - 1; i >= 0; i--) {
+                const ef = B.effects[i];
+                const t = (now - ef.t0) / 1000;
+                if (ef.kind === 'ring') {
+                    ef.mesh.scale.setScalar(1 + t * 3.2);
+                    ef.mesh.material.opacity = Math.max(0, 0.55 * (1 - t / 0.6));
+                    if (t > 0.6) { B.scene.remove(ef.mesh); ef.mesh.geometry.dispose(); ef.mesh.material.dispose(); B.effects.splice(i, 1); }
+                } else {
+                    const arr = ef.geo.attributes.position.array;
+                    for (let j = 0; j < ef.vel.length; j++) {
+                        ef.vel[j].y -= 6 * 0.016;
+                        arr[j * 3] += ef.vel[j].x * 0.016;
+                        arr[j * 3 + 1] += ef.vel[j].y * 0.016;
+                        arr[j * 3 + 2] += ef.vel[j].z * 0.016;
+                    }
+                    ef.geo.attributes.position.needsUpdate = true;
+                    ef.mesh.material.opacity = Math.max(0, 1 - t / ef.life);
+                    if (t > ef.life) { B.scene.remove(ef.mesh); ef.geo.dispose(); ef.mesh.material.dispose(); B.effects.splice(i, 1); }
+                }
+            }
+
+            B.renderer.render(B.scene, B.camera);
+            } catch (e) { nx3dLoopBail('battle', e, () => { cancelAnimationFrame(battle3d.raf); battle3d.raf = 0; nx3dDrop(battle3d.renderer); battle3d.renderer = null; }); }
+        }
+
+        function otherSide(side) { return side === 'player' ? 'enemy' : 'player'; }
+
+        function fxAttack(side, kind, dmg, missed) {
+            battle3dPlay(side, kind);
+            setTimeout(() => {
+                if (!battle) return;
+                if (missed) {
+                    battle3dPlay(otherSide(side), 'dodge');
+                    showBattleFloat(otherSide(side), 'промах', 'text-slate-300');
+                } else {
+                    battle3dImpact(otherSide(side), dmg, kind === 'heavy');
+                }
+            }, kind === 'heavy' ? 380 : 300);
+        }
+
+        function showBattleFloat(side, text, cls) {
+            const wrap = document.getElementById('battle-floats');
+            if (!wrap) return;
+            const s = document.createElement('span');
+            s.className = 'dmg-float ' + (cls || '');
+            s.textContent = text;
+            s.style.left = side === 'enemy' ? '72%' : '28%';
+            s.style.top = '34%';
+            wrap.appendChild(s);
+            setTimeout(() => s.remove(), 950);
+        }
+
+        // ----- DOM-ИНТЕРФЕЙС АРЕНЫ -----
+        function hudHTML(f, side) {
+            const isP = side === 'player';
+            const hpPct = Math.max(0, Math.round(f.hp / f.maxHp * 100));
+            const hpColor = hpPct > 50 ? (isP ? 'bg-violet-500' : 'bg-rose-500') : hpPct > 25 ? 'bg-amber-500' : 'bg-red-600';
+            return `
+                <div class="flex items-center space-x-2 sm:space-x-3 bg-slate-950/85 border ${isP ? 'border-violet-500/30' : 'border-rose-500/30'} rounded-xl px-3 py-2 backdrop-blur-sm">
+                    <span class="font-bold text-sm ${isP ? 'text-violet-300' : 'text-rose-300'} truncate max-w-[110px] sm:max-w-[150px]">${f.name}</span>
+                    <span class="text-xs font-bold text-amber-400 whitespace-nowrap"><i class="fa-solid fa-bolt mr-0.5"></i>${f.atk}</span>
+                    ${f.defending ? '<span class="text-sky-400 text-xs"><i class="fa-solid fa-shield"></i></span>' : ''}
+                    <div class="w-24 sm:w-40 bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700">
+                        <div class="h-full ${hpColor} transition-all duration-500" style="width:${hpPct}%"></div>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-300 whitespace-nowrap">${f.hp}/${f.maxHp}</span>
+                </div>`;
+        }
+
+        function bottomPanelHTML() {
+            if (battle.over) {
+                const win = battle.result;
+                return `
+                    <div class="rounded-2xl p-6 text-center space-y-3 pop-in border ${win ? 'bg-violet-950/50 border-violet-500/40' : 'bg-rose-950/50 border-rose-500/40'}">
+                        <div class="text-5xl">${win ? '🏆' : '💀'}</div>
+                        <h3 class="text-2xl font-black ${win ? 'text-violet-400' : 'text-rose-400'}">${win ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ'}</h3>
+                        ${win ? `<p class="text-sm text-violet-200">Награда: <b>+${battle.opp.reward}</b> монет${battle.player.every(f => !f.dead) ? ' • <span class="text-amber-300 font-bold">★ Безупречная победа!</span>' : ''}</p>` : '<p class="text-sm text-rose-200">Соберите колоду сильнее и попробуйте снова!</p>'}
+                        <div class="flex justify-center space-x-3 pt-2">
+                            <button onclick="rematch()" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-rose-600/20"><i class="fa-solid fa-rotate-right mr-1.5"></i>Реванш</button>
+                            <button onclick="exitBattle()" class="lqg lqg-slate px-5 py-2.5 font-semibold text-sm transition">В лобби</button>
+                        </div>
+                    </div>`;
+            }
+            if (battle.awaitingSwap) {
+                const forced = battle.awaitingSwap === 'forced';
+                const reserves = battle.player.map((f, i) => ({ f, i })).filter(x => !x.f.dead && x.i !== battle.pActive);
+                return `
+                    <div class="bg-slate-900/90 border border-sky-500/30 rounded-2xl p-4 space-y-3 pop-in">
+                        <p class="text-sm font-bold text-sky-300 text-center">${forced ? '⚠️ Ваш боец пал! Выберите следующего:' : '🔄 Выберите бойца для замены:'}</p>
+                        <div class="flex flex-wrap justify-center gap-3">
+                            ${reserves.map(x => `
+                                <button onclick="onSwapTo(${x.i})" class="bg-slate-950 border-2 ${getRarityClass(x.f.rarity)} rounded-xl p-2 w-24 hover:scale-105 transition text-left">
+                                    <img src="${mediaThumb(x.f.image)}" data-nx-full="${mediaUrl(x.f.image)}" class="w-full h-16 object-cover rounded-lg" onerror="imgErrorChain(this);" data-card-id="${x.f.cardId || ''}" loading="lazy" decoding="async">
+                                    <p class="text-[10px] font-bold text-white truncate mt-1">${x.f.name}</p>
+                                    <p class="text-[10px] font-mono"><span class="text-amber-400">⚔${x.f.atk}</span> <span class="text-rose-400">❤${x.f.hp}</span></p>
+                                </button>`).join('')}
+                        </div>
+                        ${!forced ? '<div class="text-center"><button onclick="cancelSwap()" class="text-xs text-slate-400 hover:text-white transition">Отмена</button></div>' : ''}
+                    </div>`;
+            }
+            const dis = !battle.playerTurn || battle.busy;
+            const btnBase = 'flex flex-col items-center justify-center py-3 rounded-xl font-bold text-sm transition border';
+            const btnOn = 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-white shadow';
+            const btnOff = 'bg-slate-900 border-slate-800 text-slate-600 cursor-not-allowed';
+            return `
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <button onclick="playerAction('attack')" ${dis ? 'disabled' : ''} class="${btnBase} ${dis ? btnOff : btnOn}"><span><i class="fa-solid fa-bolt text-amber-400 mr-1"></i>Атака</span><span class="text-[10px] font-normal text-slate-400 mt-0.5">урон по атаке</span></button>
+                    <button onclick="playerAction('heavy')" ${dis ? 'disabled' : ''} class="${btnBase} ${dis ? btnOff : btnOn}"><span><i class="fa-solid fa-explosion text-rose-400 mr-1"></i>Мощный удар</span><span class="text-[10px] font-normal text-slate-400 mt-0.5">×1.8 • 60% попадания</span></button>
+                    <button onclick="playerAction('defend')" ${dis ? 'disabled' : ''} class="${btnBase} ${dis ? btnOff : btnOn}"><span><i class="fa-solid fa-shield text-sky-400 mr-1"></i>Защита</span><span class="text-[10px] font-normal text-slate-400 mt-0.5">−50% урона • +3 HP</span></button>
+                    <button onclick="requestSwap()" ${dis ? 'disabled' : ''} class="${btnBase} ${dis ? btnOff : btnOn}"><span><i class="fa-solid fa-rotate text-violet-400 mr-1"></i>Замена</span><span class="text-[10px] font-normal text-slate-400 mt-0.5">сменить бойца</span></button>
+                </div>`;
+        }
+
+        function fighterHTML(f, side) {
+            const isP = side === 'player';
+            const hpPct = Math.max(0, Math.round(f.hp / f.maxHp * 100));
+            const hpColor = hpPct > 50 ? (isP ? 'bg-violet-500' : 'bg-rose-500') : hpPct > 25 ? 'bg-amber-500' : 'bg-red-600';
+            const visual = f.image
+                ? `<img src="${mediaThumb(f.image)}" data-nx-full="${mediaUrl(f.image)}" alt="${f.name}" class="w-20 h-28 object-cover rounded-xl shadow-lg shrink-0" onerror="imgErrorChain(this);" data-card-id="${f.cardId || ''}" loading="lazy" decoding="async">`
+                : `<div class="w-20 h-28 rounded-xl bg-gradient-to-br ${f.grad} flex items-center justify-center shadow-lg shrink-0"><i class="fa-solid ${f.icon} text-3xl text-white/90"></i></div>`;
+            return `
+                <div class="relative flex items-center space-x-4 bg-slate-900/90 border ${isP ? 'border-violet-500/30' : 'border-rose-500/30'} rounded-2xl p-4 pop-in">
+                    ${visual}
+                    <div class="flex-grow min-w-0">
+                        <div class="flex justify-between items-center gap-2">
+                            <span class="font-bold text-white truncate">${f.name}</span>
+                            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded whitespace-nowrap ${isP ? 'bg-violet-500/15 text-violet-400 border border-violet-500/30' : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'}">${isP ? 'Ваш боец' : 'Противник'}</span>
+                        </div>
+                        <div class="text-xs text-slate-400 mt-1.5 flex items-center space-x-3">
+                            <span class="font-bold text-amber-400"><i class="fa-solid fa-bolt mr-1"></i>${f.atk}</span>
+                            ${f.defending ? '<span class="text-sky-400 font-semibold"><i class="fa-solid fa-shield mr-1"></i>Защита</span>' : ''}
+                        </div>
+                        <div class="mt-2 w-full bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-700">
+                            <div class="${hpColor} h-full rounded-full transition-all duration-500" style="width:${hpPct}%"></div>
+                        </div>
+                        <div class="text-[10px] font-mono text-slate-400 mt-1">HP: ${f.hp} / ${f.maxHp}</div>
+                    </div>
+                </div>`;
+        }
+
+        function reserveChips(list, activeIdx, color) {
+            const alive = list.map((f, i) => ({ f, i })).filter(x => !x.f.dead && x.i !== activeIdx);
+            if (!alive.length) return `<span class="text-[11px] text-slate-600 italic">запаса нет</span>`;
+            return alive.map(x => `
+                <span class="inline-flex items-center space-x-1 text-[11px] px-2 py-1 rounded-lg bg-slate-900 border border-slate-700 text-slate-300">
+                    <span class="truncate max-w-[90px]">${x.f.name}</span>
+                    <span class="font-mono ${color}">❤${x.f.hp}</span>
+                </span>`).join('');
+        }
+
+        function renderArena() {
+            const arenaEl = document.getElementById('battle-arena');
+            if (!battle || !arenaEl) return;
+            arenaEl.innerHTML = `
+                <div class="space-y-4 max-w-3xl mx-auto">
+                    <div id="arena-topbar"></div>
+                    <div class="relative rounded-2xl overflow-hidden border border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900" style="position:relative;height:clamp(250px,42vh,360px);overflow:hidden;">
+                        <div id="battle-3d-container" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
+                        <div id="hud-enemy" style="position:absolute;top:8px;left:8px;right:8px;z-index:10;pointer-events:none;"></div>
+                        <div id="hud-player" style="position:absolute;bottom:8px;left:8px;right:8px;z-index:10;pointer-events:none;"></div>
+                        <div id="battle-floats" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:20;pointer-events:none;overflow:hidden;"></div>
+                    </div>
+                    <div id="arena-reserves"></div>
+                    <div id="arena-turn"></div>
+                    <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-3 h-32 overflow-y-auto" id="battle-log"></div>
+                    <div id="arena-bottom"></div>
+                </div>`;
+            battle3dInit();
+            updateArenaUI();
+        }
+
+        function updateArenaUI() {
+            if (!battle) return;
+            const p = battle.player[battle.pActive], e = battle.enemy[battle.eActive];
+            const stars = '★'.repeat(battle.opp.tier) + '☆'.repeat(5 - battle.opp.tier);
+
+            const topbar = document.getElementById('arena-topbar');
+            if (topbar) topbar.innerHTML = `
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 rounded-2xl px-3 sm:px-4 py-2.5 sm:py-3">
+                    <button onclick="exitBattle()" class="text-xs font-semibold text-slate-400 hover:text-rose-400 transition flex items-center space-x-1.5"><i class="fa-solid fa-arrow-left"></i><span>Покинуть бой</span></button>
+                    <div class="text-center">
+                        <p class="font-bold text-white text-sm">${battle.opp.name} <span class="text-amber-400 text-[10px] tracking-tighter ml-1">${stars}</span></p>
+                        <p class="text-[10px] text-slate-500">Награда: <span class="text-amber-400 font-semibold">${battle.opp.reward} монет</span></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-slate-500">Бойцы</p>
+                        <p class="text-xs font-bold"><span class="text-violet-400">${battle.player.filter(f => !f.dead).length}</span> <span class="text-slate-600">vs</span> <span class="text-rose-400">${battle.enemy.filter(f => !f.dead).length}</span></p>
+                    </div>
+                </div>`;
+
+            const hudE = document.getElementById('hud-enemy');
+            if (hudE) hudE.innerHTML = `<div style="display:flex;justify-content:flex-start;">${hudHTML(e, 'enemy')}</div>`;
+            const hudP = document.getElementById('hud-player');
+            if (hudP) hudP.innerHTML = `<div style="display:flex;justify-content:flex-end;">${hudHTML(p, 'player')}</div>`;
+
+            const res = document.getElementById('arena-reserves');
+            if (res) res.innerHTML = `
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mr-1">Ваш запас:</span>${reserveChips(battle.player, battle.pActive, 'text-violet-400')}</div>
+                    <div class="flex flex-wrap items-center gap-1.5"><span class="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mr-1">Запас врага:</span>${reserveChips(battle.enemy, battle.eActive, 'text-rose-400')}</div>
+                </div>`;
+
+            const turn = document.getElementById('arena-turn');
+            if (turn) turn.innerHTML = battle.over ? '' : (battle.awaitingSwap ? '' : (battle.playerTurn
+                ? `<div class="text-center text-sm font-bold text-violet-400 animate-pulse py-1">⚡ Ваш ход — выберите действие</div>`
+                : `<div class="text-center text-sm font-bold text-rose-400 py-1"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Ход противника…</div>`));
+
+            const logEl = document.getElementById('battle-log');
+            if (logEl) {
+                logEl.innerHTML = battle.log.map(l => `<p class="text-xs text-slate-300 py-0.5 border-b border-slate-800/50 last:border-0">${l}</p>`).join('');
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+
+            const bottom = document.getElementById('arena-bottom');
+            if (bottom) bottom.innerHTML = bottomPanelHTML();
+
+            // Фолбэк без WebGL: плоские карты внутри рамки
+            if (!battle3d) {
+                const cont = document.getElementById('battle-3d-container');
+                if (cont && !cont.querySelector('canvas')) {
+                    cont.innerHTML = `<div class="w-full h-full flex flex-col sm:flex-row items-center justify-center gap-4 p-4" style="display:flex;align-items:center;justify-content:center;gap:16px;padding:16px;width:100%;height:100%;">${fighterHTML(e, 'enemy')}${fighterHTML(p, 'player')}</div>`;
+                }
+            }
+        }
+
+        // ============ b79: МИНЫ ============
+        // 25 плиток, m мин. Честный множитель: 1/P(все k открытий безопасны) × 0.97.
+        // Забрать выигрыш можно в любой момент; мина сжигает ставку (в джекпот уходит 100% проигрыша),
+        // старт раунда кормит общий джекпот сайта 100% ставки.
+        const MINES_TILES = 25;
+        // b81: плитки мин показывают ВАШИ паки: текстура пака из Студии/облака -> data-URL
+        const MINES_PACK_URL = {};
+        function minesPackUrl(pack, onReady) {
+            let key = 'default';
+            try { if (pack && pack.id) key = pack.id; } catch (e) {}
+            if (MINES_PACK_URL[key]) return MINES_PACK_URL[key];
+            try {
+                const src = (pack && pack.id) ? pack : { color: 'silver', shimmer: 'holo' };
+                let tex = null;
+                tex = makePackTexture(src, () => {
+                    try {
+                        MINES_PACK_URL[key] = tex.image.toDataURL('image/png');
+                        if (onReady) onReady();
+                    } catch (e) {}
+                });
+                const url = tex.image.toDataURL('image/png');
+                MINES_PACK_URL[key] = url;
+                return url;
+            } catch (e) { return ''; }
+        }
+        const MINES_COUNTS = [3, 5, 10];
+        const MINES_EDGE = 0.97;
+        const mines = { active: false, mines: [], picked: [], m: 5, bet: 100 };
+        function minesMult(k, m) {
+            if (k <= 0) return 1;
+            let p = 1;
+            for (let i = 0; i < k; i++) p *= (MINES_TILES - i) / (MINES_TILES - m - i);
+            return Math.floor(p * MINES_EDGE * 100) / 100;
+        }
+        function minesSetBet(b) { b = normBet(b); mines.bet = b; renderMinesUI(); }
+        function minesSetCount(m) { if (MINES_COUNTS.indexOf(m) < 0) return; if (mines.active) return; mines.m = m; renderMinesUI(); }
+        function minesStart() {
+            if (mines.active) return;
+            if (statsBlockGuard('мины')) return; // b277
+            const bet = mines.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            state.coins -= bet;
+            updateCoinDisplay(); saveState();
+            jackpotFeed(bet); // b79: мины тоже кормят общий джекпот
+            const idx = [];
+            for (let i = 0; i < MINES_TILES; i++) idx.push(i);
+            for (let i = idx.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+            mines.mines = idx.slice(0, mines.m);
+            mines.picked = [];
+            mines.active = true;
+            // b81: каждая безопасная плитка прячет один из ваших паков
+            mines.tilePack = [];
+            for (let i = 0; i < MINES_TILES; i++) {
+                mines.tilePack.push((state.packs && state.packs.length) ? state.packs[Math.floor(Math.random() * state.packs.length)] : null);
+            }
+            state.stats.minesRounds = (state.stats.minesRounds || 0) + 1;
+            try { SoundFX.play('click'); } catch (e) {}
+            renderMinesUI();
+        }
+        function minesPick(i) {
+            if (!mines.active || mines.picked.indexOf(i) >= 0) return;
+            mines.picked.push(i);
+            if (mines.mines.indexOf(i) >= 0) { minesEnd(false); return; }
+            updateMissions('mines_open', 1); // b122: задание дня — безопасная клетка
+            try { SoundFX.play('reveal'); } catch (e) {}
+            if (mines.picked.length === MINES_TILES - mines.m) { minesEnd(true); return; }
+            renderMinesUI();
+        }
+        function minesCashout() {
+            if (!mines.active || !mines.picked.length) return;
+            minesEnd(true);
+        }
+        function minesEnd(win) {
+            const bet = mines.bet;
+            const k = mines.picked.length;
+            const mult = minesMult(k, mines.m);
+            let winCoins = 0;
+            if (win && k > 0) winCoins = Math.floor(bet * mult);
+            if (winCoins > 0) {
+                state.coins += winCoins;
+                state.stats.minesWins = (state.stats.minesWins || 0) + 1;
+                updateMissions('mines_win', 1); // b121: задание дня
+                updateMissions('mines_coins', winCoins); // b122: задание дня
+                showToast('💎 Мины: забрали +' + fmtCoins(winCoins) + ' (×' + mult + ')', 'success');
+                if (mult >= 3) launchConfetti(mult >= 8 ? 120 : 60);
+                try { SoundFX.play('coin'); } catch (e) {}
+            } else {
+                jackpotOnLoss(bet); // b79: проигрыш докидывает четверть ставки в общий банк
+                showToast('💥 Мина! Ставка сгорела — общий джекпот подрос', 'refund');
+                try { SoundFX.play('tear'); } catch (e) {}
+            }
+            mines.active = false;
+            saveState(); updateCoinDisplay();
+            checkAchievements();
+            const res = document.getElementById('mines-result');
+            if (res) res.innerHTML = winCoins > 0
+                ? 'Раунд окончен: <b class="text-amber-300">+' + fmtCoins(winCoins) + '</b> (×' + mult + ' за ' + k + ' пак.)'
+                : 'Раунд окончен: <b class="text-rose-300">мина</b> на плитке ' + (mines.picked[mines.picked.length - 1] + 1) + ' из 25';
+            renderMinesUI();
+        }
+        function renderMinesUI() {
+            syncBetInput('mines');
+            const bets = document.getElementById('mines-bets');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="minesSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (mines.bet === v ? 'bg-rose-500 border-rose-400 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '>' + fmtCoins(v) + '</button>').join('');
+            const cnts = document.getElementById('mines-counts');
+            if (cnts) cnts.innerHTML = MINES_COUNTS.map(m => '<button type="button" onclick="minesSetCount(' + m + ')" title="Мин на поле: ' + m + '" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (mines.m === m ? 'bg-slate-200 border-slate-100 text-slate-900' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (mines.active ? 'disabled' : '') + '><i class="fa-solid fa-bomb mr-1"></i>Мины: ' + m + '</button>').join('');
+            // b126: надпись над кнопками — сколько мин будет на игровом поле
+            const mcl = document.getElementById('mines-count-label');
+            if (mcl) mcl.textContent = mines.m;
+            const start = document.getElementById('mines-start');
+            if (start) {
+                start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Начать раунд — ' + fmtCoins(mines.bet);
+                start.classList.toggle('hidden', mines.active);
+                start.disabled = state.coins < mines.bet;
+                start.classList.toggle('opacity-40', state.coins < mines.bet);
+            }
+            const cash = document.getElementById('mines-cash');
+            if (cash) {
+                const k = mines.picked.length;
+                const mult = minesMult(k, mines.m);
+                cash.classList.toggle('hidden', !mines.active || k === 0);
+                cash.innerHTML = '<i class="fa-solid fa-sack-dollar mr-1"></i>Забрать ' + fmtCoins(Math.floor(mines.bet * mult));
+            }
+            const ml = document.getElementById('mines-mult');
+            if (ml) {
+                const k = mines.picked.length;
+                ml.innerHTML = mines.active
+                    ? 'сейчас ×' + minesMult(k, mines.m) + ' → след. ×' + minesMult(k + 1, mines.m) + ' • мин на поле: ' + mines.m
+                    : 'Мины в раунде: ' + mines.m + ' • множитель растёт с каждым паком';
+            }
+            const w = document.getElementById('mines-wins');
+            if (w) w.textContent = state.stats.minesWins || 0;
+            const board = document.getElementById('mines-board');
+            if (board) {
+                let html = '';
+                for (let i = 0; i < MINES_TILES; i++) {
+                    const picked = mines.picked.indexOf(i) >= 0;
+                    const isMine = mines.mines.indexOf(i) >= 0;
+                    const ended = !mines.active && mines.picked.length > 0;
+                    const showGem = picked && !isMine;
+                    const showMine = (picked && isMine) || (ended && isMine);
+                    let cls = 'aspect-square rounded-xl border text-lg sm:text-xl font-black transition flex items-center justify-center ';
+                    let inner = '';
+                    let dis = '';
+                    if (showMine) { cls += 'bg-rose-600/25 border-rose-500/60 text-rose-300'; inner = '<i class="fa-solid fa-bomb"></i>'; dis = 'disabled'; }
+                    else if (showGem) {
+                        cls += 'bg-amber-500/20 border-amber-400/70 drop-shadow-[0_0_8px_rgba(251,191,36,.45)]';
+                        const purl = minesPackUrl(mines.tilePack && mines.tilePack[i], () => renderMinesUI());
+                        inner = '<span class="mines-pack" style="' + (purl ? 'background-image:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.28) 50%,transparent 58%),url(&quot;' + purl + '&quot;);' : '') + '"></span>';
+                        dis = 'disabled';
+                    }
+                    else if (mines.active) { cls += 'bg-slate-800/90 border-slate-600 hover:bg-slate-700 hover:border-violet-400/70 hover:scale-[1.04] text-slate-500 cursor-pointer'; inner = '<i class="fa-solid fa-circle text-[6px]"></i>'; }
+                    else { cls += 'bg-slate-800/50 border-slate-700/60 text-slate-600'; inner = '<i class="fa-solid fa-circle text-[6px]"></i>'; dis = 'disabled'; }
+                    html += '<button type="button" onclick="minesPick(' + i + ')" class="' + cls + '" ' + dis + '>' + inner + '</button>';
+                }
+                board.innerHTML = html;
+            }
+        }
+
+        // ============ b105: СЕТОЧНЫЙ СЛОТ «ЛИНИИ» (классика: 5×3, 10 линий) ============
+        // Барабаны крутятся и останавливаются слева направо. Линия оплаты считается
+        // СЛЕВА НАПРАВО: 3/4/5 одинаковых карт подряд на одной из 10 цветных линий.
+        const LINES_COLS = 5, LINES_ROWS = 3, LINES_CELLS = 15;
+        const LINES_PATHS = [
+            [1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [2, 2, 2, 2, 2],
+            [0, 1, 1, 1, 0], [2, 1, 1, 1, 2],
+            [0, 0, 1, 2, 2], [2, 2, 1, 0, 0],
+            [1, 0, 1, 2, 1], [1, 2, 1, 0, 1], [0, 1, 2, 1, 0]
+        ];
+        const LINE_COLORS = ['#facc15', '#ef4444', '#fb923c', '#86efac', '#93c5fd', '#f8fafc', '#c4b5fd', '#67e8f9', '#4ade80', '#f472b6'];
+        const LINES_PAY = { common: [0.5, 2, 10], rare: [1, 5, 25], epic: [2, 10, 50], legendary: [5, 25, 100] };
+        const lines = { cells: new Array(LINES_CELLS).fill(null), win: {}, winLines: [], spinning: false, bet: 100, built: false, pool: null, auto: false, autoT: null };
+        function linesEnsure() {
+            const board = document.getElementById('lines-board');
+            if (!board || lines.built) return;
+            let html = '';
+            for (let i = 0; i < LINES_CELLS; i++) html += '<div id="lines-tile-' + i + '" class="lines-tile relative aspect-[2/3] rounded-lg border-2 border-slate-700 bg-slate-800/70 flex flex-col items-center justify-center p-1 overflow-hidden"><i class="fa-solid fa-question text-slate-600 text-sm"></i></div>';
+            board.innerHTML = html;
+            let chips = '';
+            for (let li = 0; li < 10; li++) chips += '<span class="lines-chip" id="lines-chip-l-' + li + '" style="background:' + LINE_COLORS[li] + '">' + (li + 1) + '</span>';
+            let chipsR = '';
+            for (let li = 0; li < 10; li++) chipsR += '<span class="lines-chip" id="lines-chip-r-' + li + '" style="background:' + LINE_COLORS[li] + '">' + (li + 1) + '</span>';
+            const cl = document.getElementById('lines-chips-l'), cr = document.getElementById('lines-chips-r');
+            if (cl) cl.innerHTML = chips;
+            if (cr) cr.innerHTML = chipsR;
+            lines.built = true;
+            linesTry3D(); // b109: поле в 3D, если браузер умеет WebGL
+        }
+        // b110: пул спина — ВЫБРАННЫЕ пользователем карты (кнопка «Карты»);
+        // если выбора нет или его карт не хватает — случайные карточки сайта до 3 + JACKPOT
+        function linesMakePool() {
+            if (!slots.symbols.length) slots.symbols = slotsSymbols();
+            const byId = {};
+            (state.cards || []).forEach(c => { if (c && c.id) byId[c.id] = c; });
+            const chosen = [];
+            getSlotCardIds().forEach(id => { if (byId[id] && chosen.indexOf(byId[id]) < 0) chosen.push(byId[id]); });
+            let arr = chosen.slice();
+            for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+            if (arr.length < 3) {
+                // добираем случайными картами сайта, которых нет в выборе
+                const rest = (state.cards || []).filter(c => c && c.id && arr.indexOf(c) < 0);
+                for (let i = rest.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = rest[i]; rest[i] = rest[j]; rest[j] = t; }
+                arr = arr.concat(rest);
+            }
+            if (arr.length < 3) arr = arr.concat(slots.symbols.filter(x => x && !x.jackpot && arr.indexOf(x) < 0));
+            const pick = arr.slice(0, 3);
+            while (pick.length < 3) pick.push(arr[0] || { id: 'sym-x', name: 'Джокер', rarity: 'legendary', image: '' });
+            let jp = null;
+            for (let i = 0; i < slots.symbols.length; i++) if (slots.symbols[i].jackpot) jp = slots.symbols[i];
+            lines.pool = pick.concat([jp || { id: 'sym-jackpot', name: 'JACKPOT', rarity: 'legendary', image: '', jackpot: true }]);
+        }
+        // b220: JACKPOT в Линиях снова редок — 1 из 25 на ячейку (было 3 из 25 → ≈1 из 70 спинов),
+        // остальные 24 равномерно делятся между тремя картами линии. Три JACKPOT подряд ≈ 1 из 1 730 спинов.
+        const LINES_JP_W = 1;
+        function linesRand() {
+            const r = Math.random() * 25;
+            if (r < LINES_JP_W) return 3; // JACKPOT
+            return Math.min(2, Math.floor((r - LINES_JP_W) / ((25 - LINES_JP_W) / 3)));
+        }
+        function linesTileHtml(sym, win) {
+            if (!sym) return '<i class="fa-solid fa-question text-slate-600 text-sm"></i>';
+            if (sym.jackpot) {
+                return '<div class="lines-face lines-jp absolute inset-0 flex flex-col items-center justify-center gap-0.5"><i class="fa-solid fa-crown text-lg"></i><p class="text-[8px] font-black tracking-wider">JACKPOT</p></div>';
+            }
+            const col = RAR_COLORS[sym.rarity] || '#e2e8f0';
+            // b106: плитка — мини-карточка сайта: арт, рамка редкости, имя
+            return '<div class="lines-face lines-card absolute inset-0" style="border-color:' + col + '">' +
+                (sym.image ? '<img src="' + mediaUrl(sym.image) + '" alt="" onerror="imgErrorChain(this)" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async">' : '<div class="absolute inset-0 lines-card-noart" style="--rar:' + col + '"></div>') +
+                '<div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/10 to-slate-950/30"></div>' +
+                '<span class="lines-card-rar" style="color:' + col + ';border-color:' + col + '">' + (RARITY_LABELS_RU[sym.rarity] || sym.rarity || '') + '</span>' +
+                '<p class="absolute bottom-0.5 left-0.5 right-0.5 text-[8px] font-bold text-white leading-tight truncate text-center drop-shadow">' + String(sym.name || '').replace(/[<>&]/g, '') + '</p>' +
+                (win ? '<div class="lines-winpulse absolute inset-0"></div>' : '') +
+                '</div>';
+        }
+        function linesRenderBoard(cols) {
+            for (let i = 0; i < LINES_CELLS; i++) {
+                const col = i % LINES_COLS;
+                if (cols && cols.indexOf(col) < 0) continue;
+                const el = document.getElementById('lines-tile-' + i);
+                if (!el) continue;
+                const sym = lines.cells[i] == null ? null : (lines.pool ? lines.pool[lines.cells[i]] : null);
+                const win = !!lines.win[i];
+                el.innerHTML = linesTileHtml(sym, win);
+                el.className = 'lines-tile relative aspect-[3/4] rounded-lg border-2 flex flex-col items-center justify-center p-1 overflow-hidden ' +
+                    (win ? 'border-amber-400 shadow-[0_0_14px_rgba(251,191,36,.6)]' : 'border-slate-700 bg-slate-800/70');
+            }
+        }
+        function linesDrawWinLines() {
+            const svg = document.getElementById('lines-svg');
+            if (!svg) return;
+            let html = '';
+            (lines.winLines || []).forEach(wl => {
+                const pts = LINES_PATHS[wl.li].map((row, col) => (col * 100 + 50) + ',' + (row * 100 + 50)).join(' ');
+                html += '<polyline points="' + pts + '" fill="none" stroke="' + LINE_COLORS[wl.li] + '" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9" style="filter:drop-shadow(0 0 6px ' + LINE_COLORS[wl.li] + ')"/>';
+            });
+            svg.innerHTML = html;
+            for (let li = 0; li < 10; li++) {
+                const on = (lines.winLines || []).some(w => w.li === li);
+                const a = document.getElementById('lines-chip-l-' + li), b = document.getElementById('lines-chip-r-' + li);
+                if (a) a.classList.toggle('on', on);
+                if (b) b.classList.toggle('on', on);
+            }
+        }
+        function linesClearWin() {
+            lines.win = {}; lines.winLines = [];
+            const svg = document.getElementById('lines-svg');
+            if (svg) svg.innerHTML = '';
+            for (let li = 0; li < 10; li++) {
+                const a = document.getElementById('lines-chip-l-' + li), b = document.getElementById('lines-chip-r-' + li);
+                if (a) a.classList.remove('on');
+                if (b) b.classList.remove('on');
+            }
+        }
+        function linesSetBet(b) { b = normBet(b); lines.bet = b; renderLinesUI(); }
+        function linesMaxBet() { lines.bet = SLOTS_BETS[SLOTS_BETS.length - 1]; renderLinesUI(); }
+        function renderLinesUI() {
+            syncBetInput('lines');
+            const bets = document.getElementById('lines-bets');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="linesSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (lines.bet === v ? 'bg-sky-500 border-sky-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
+            const spin = document.getElementById('lines-spin');
+            if (spin) { spin.disabled = lines.spinning || state.coins < lines.bet; spin.classList.toggle('opacity-40', lines.spinning || state.coins < lines.bet); }
+            const ab = document.getElementById('lines-auto-btn');
+            if (ab) ab.classList.toggle('on', lines.auto);
+            const cr = document.getElementById('lines-credit');
+            if (cr) cr.textContent = fmtCoins(state.coins);
+            const bl = document.getElementById('lines-bet-label');
+            if (bl) bl.textContent = fmtCoins(lines.bet);
+            const sp = document.getElementById('lines-spins');
+            if (sp) sp.textContent = state.stats.linesSpins || 0;
+        }
+        function linesToggleAuto() {
+            if (lines.auto) { linesAutoStop(false); return; }
+            lines.auto = true;
+            lines.autoT = setInterval(() => {
+                try {
+                    if (!lines.auto) return;
+                    if (document.hidden || lines.spinning) return;
+                    if (state.coins < lines.bet) { linesAutoStop(false, 'не хватает монет'); return; }
+                    linesSpin();
+                } catch (e) {}
+            }, 1000);
+            renderLinesUI();
+            showToast('📖 Линии: автопрокрутка включена', 'success');
+        }
+        // b250: отдельный стоп для «Линий» (раньше остановка была только инлайном)
+        function linesAutoStop(byWin, reason) {
+            lines.auto = false;
+            clearInterval(lines.autoT); lines.autoT = null;
+            try { renderLinesUI(); } catch (e) {}
+            if (byWin) showToast('📖 Автопрокрутка остановлена: крупный выигрыш!', 'success');
+            else if (reason) showToast('📖 Автопрокрутка остановлена: ' + reason, 'refund');
+        }
+        // b250: полная остановка АВТО всех автоматов. Вызывается при переходе на другую
+        // вкладку и при смене игры, чтобы интервалы не крутили спины «в фоне»
+        // (это же съедало CPU/батарею на слабых устройствах).
+        function stopAllGameAutos(reason) {
+            try { if (slots.auto) slotsAutoStop(false, reason); } catch (e) {}
+            try { if (grid.auto) gridAutoStop(false, reason); } catch (e) {}
+            try { if (lines.auto) linesAutoStop(false, reason); } catch (e) {}
+        }
+        function linesSpin() {
+            if (lines.spinning) return;
+            if (statsBlockGuard('линии')) return; // b277
+            const bet = lines.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            linesEnsure();
+            linesMakePool();
+            state.coins -= bet;
+            updateCoinDisplay(); saveState();
+            jackpotFeed(bet); // b105: 100% ставки кормят общий банк
+            state.stats.linesSpins = (state.stats.linesSpins || 0) + 1;
+            updateMissions('spin_lines', 1); // b122: задание дня
+            lines.spinning = true;
+            linesClearWin();
+            linesRenderBoard();
+            try { SoundFX.play('whoosh'); } catch (e) {}
+            renderLinesUI();
+            const board = document.getElementById('lines-board');
+            if (board && !lines.mode3d) board.classList.add('spinning');
+            const final = [];
+            for (let i = 0; i < LINES_CELLS; i++) final.push(linesRand());
+            if (lines.mode3d && lines3d.reels.length) { // b109: 3D-спин барабанов
+                linesSpin3D(final, bet);
+                return;
+            }
+            const stopAt = [10, 13, 16, 19, 22]; // тики остановки колонок
+            let tick = 0;
+            const stopped = [false, false, false, false, false];
+            const iv = setInterval(() => {
+                tick++;
+                const moved = [];
+                for (let c = 0; c < LINES_COLS; c++) {
+                    if (stopped[c]) continue;
+                    for (let r = 0; r < LINES_ROWS; r++) lines.cells[r * LINES_COLS + c] = linesRand();
+                    moved.push(c);
+                    if (tick >= stopAt[c]) {
+                        stopped[c] = true;
+                        for (let r = 0; r < LINES_ROWS; r++) lines.cells[r * LINES_COLS + c] = final[r * LINES_COLS + c];
+                        try { SoundFX.play('click'); } catch (e) {}
+                    }
+                }
+                linesRenderBoard(moved);
+                if (stopped.every(x => x)) {
+                    clearInterval(iv);
+                    if (board) board.classList.remove('spinning');
+                    setTimeout(() => linesFinish(final, bet), 300);
+                }
+            }, 80);
+        }
+        function linesFinish(final, bet) {
+            let total = 0, jpHit = false;
+            const winCells = {};
+            const winLines = [];
+            LINES_PATHS.forEach((path, li) => {
+                const first = lines.pool ? lines.pool[final[path[0] * LINES_COLS + 0]] : null;
+                if (!first) return;
+                let count = 1;
+                for (let c = 1; c < LINES_COLS; c++) {
+                    const sy = lines.pool ? lines.pool[final[path[c] * LINES_COLS + c]] : null;
+                    if (!sy || sy.id !== first.id) break;
+                    count++;
+                }
+                if (count < 3) return;
+                for (let c = 0; c < count; c++) winCells[path[c] * LINES_COLS + c] = 1;
+                if (first.jackpot) { jpHit = true; winLines.push({ li: li, count: count }); return; }
+                const pay = (LINES_PAY[first.rarity] || LINES_PAY.common)[count - 3];
+                total += Math.round(bet * pay);
+                winLines.push({ li: li, count: count });
+            });
+            lines.win = winCells;
+            lines.winLines = winLines;
+            lines.cells = final.slice();
+            lines.spinning = false;
+            let jpPrize = 0;
+            if (jpHit) { jpPrize = jackpotWin(); if (lines.auto) linesToggleAuto(); }
+            if (total > 0) {
+                state.coins += total;
+                state.stats.linesWins = (state.stats.linesWins || 0) + 1;
+                updateMissions('win_lines', 1); // b121: задание дня
+                updateMissions('lines_coins', total); // b122: задание дня
+            }
+            if (!total && !jpHit) jackpotOnLoss(bet); // b105: проигрыш отдаёт банку 100% ставки
+            saveState(); updateCoinDisplay();
+            linesRenderBoard();
+            linesDrawWinLines();
+            // b109: выигрышные карты пульсируют в 3D
+            if (lines.mode3d && lines3d.reels.length) {
+                lines3d.pulsePlanes = [];
+                for (let r = 0; r < LINES_ROWS; r++) for (let c = 0; c < LINES_COLS; c++) {
+                    if (!lines.win[r * LINES_COLS + c]) continue;
+                    const rl = lines3d.reels[c];
+                    if (rl && rl.planes[r]) lines3d.pulsePlanes.push(rl.planes[r]);
+                }
+                lines3d.pulseUntil = performance.now() + 1500;
+            }
+            renderLinesUI();
+            const res = document.getElementById('lines-result');
+            if (jpHit) {
+                showToast('👑 ЛИНИЯ JACKPOT! Общий банк сайта ваш: +' + fmtCoins(jpPrize), 'success');
+                launchConfetti(160);
+                if (res) res.innerHTML = 'Линия JACKPOT: <b class="text-amber-300">+' + fmtCoins(jpPrize) + '</b>!';
+            } else if (winLines.length) {
+                const nums = winLines.map(w => w.li + 1).join(', ');
+                showToast('📖 Линии ' + nums + ': +' + fmtCoins(total) + ' монет', 'success');
+                if (winLines.length >= 2) launchConfetti(winLines.length >= 3 ? 100 : 50);
+                try { SoundFX.play('coin'); } catch (e) {}
+                if (res) res.innerHTML = 'Линии <b class="text-sky-300">' + nums + '</b> — +' + fmtCoins(total) + ' монет';
+            } else {
+                try { SoundFX.play('tear'); } catch (e) {}
+                if (res) res.innerHTML = 'Линий нет — 100% ставки ушли в общий джекпот';
+            }
+        }
+
+        // ============ b109: ЛИНIIИ в 3D: пять барабанов-цилиндров, окно в 3 ряда ============
+        const lines3d = { renderer: null, scene: null, camera: null, reels: [], pending: null, pulsePlanes: null, pulseUntil: 0, animId: 0 };
+        // b111: текстура-карточка для барабанов: рамка редкости, имя, и АРТ карты,
+        // дорисовывается сразу, как загрузится скан (зеркало/оригинал)
+        const linesTexCache = {};
+        function linesCardTexture(sym) {
+            if (!sym) return null;
+            if (linesTexCache[sym.id]) return linesTexCache[sym.id];
+            const W = 256, H = 368;
+            const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const col = RAR_COLORS[sym.rarity] || '#e2e8f0';
+            if (g) {
+                const bg = g.createLinearGradient(0, 0, W, H);
+                bg.addColorStop(0, '#1e293b'); bg.addColorStop(1, '#0b1220');
+                g.fillStyle = bg; g.fillRect(0, 0, W, H);
+                if (sym.jackpot) {
+                    const jg = g.createLinearGradient(0, 0, W, H);
+                    jg.addColorStop(0, '#fde68a'); jg.addColorStop(0.5, '#f59e0b'); jg.addColorStop(1, '#b45309');
+                    g.fillStyle = jg; g.fillRect(10, 10, W - 20, H - 104);
+                    g.fillStyle = '#1c1917';
+                    g.font = '900 30px system-ui, sans-serif'; g.textAlign = 'center';
+                    g.fillText('JACKPOT', W / 2, H / 2 - 20);
+                }
+                g.fillStyle = 'rgba(2,6,23,.85)'; g.fillRect(10, H - 84, W - 20, 74);
+                g.fillStyle = '#ffffff'; g.font = '700 26px system-ui, sans-serif'; g.textAlign = 'center';
+                g.fillText(String(sym.name || '').slice(0, 14), W / 2, H - 52);
+                g.fillStyle = col; g.font = '900 18px system-ui, sans-serif';
+                g.fillText(String(RARITY_LABELS_RU[sym.rarity] || sym.rarity || '').toUpperCase(), W / 2, H - 24);
+                g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(5, 5, W - 10, H - 10);
+            }
+            const tex = new THREE.CanvasTexture(cv);
+            try { tex.encoding = THREE.sRGBEncoding; tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+            linesTexCache[sym.id] = tex;
+            if (sym.image && g && !sym.jackpot) {
+                loadImgSafe(sym.image, (img) => {
+                    try {
+                        const dw = W - 20, dh = H - 104;
+                        const ar = (img.width || 1) / (img.height || 1), dr = dw / dh;
+                        let sw, sh, sx, sy;
+                        if (ar > dr) { sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
+                        else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
+                        g.drawImage(img, sx, sy, sw, sh, 10, 10, dw, dh);
+                        g.fillStyle = 'rgba(2,6,23,.85)'; g.fillRect(10, H - 84, W - 20, 74);
+                        g.fillStyle = '#ffffff'; g.font = '700 26px system-ui, sans-serif'; g.textAlign = 'center';
+                        g.fillText(String(sym.name || '').slice(0, 14), W / 2, H - 52);
+                        g.fillStyle = col; g.font = '900 18px system-ui, sans-serif';
+                        g.fillText(String(RARITY_LABELS_RU[sym.rarity] || sym.rarity || '').toUpperCase(), W / 2, H - 24);
+                        g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(5, 5, W - 10, H - 10);
+                        tex.needsUpdate = true;
+                    } catch (e) {}
+                });
+            }
+            return tex;
+        }
+        function linesTry3D() {
+            if (lines.mode3d || lines.no3d) return;
+            if (typeof THREE === 'undefined' || !webglAvailable()) { lines.no3d = true; return; }
+            const box = document.getElementById('lines-3d-box');
+            const board = document.getElementById('lines-board');
+            if (!box) return;
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { lines.no3d = true; return; }
+            const w = box.clientWidth || 640, h = box.clientHeight || 360;
+            renderer.setPixelRatio(nxPixelRatio()); // b308
+            renderer.setSize(w, h);
+            try { renderer.localClippingEnabled = true; } catch (e) {}
+            box.innerHTML = '';
+            box.appendChild(renderer.domElement);
+            // b116: плоскости клиппинга — карты обрезаются ровно по окну барабана,
+            // ничего не торчит из-под разделителей и капюшонов
+            lines3d.clip = [
+                new THREE.Plane(new THREE.Vector3(0, -1, 0), 2.72),
+                new THREE.Plane(new THREE.Vector3(0, 1, 0), 2.72)
+            ];
+            nxGuardContextLoss(renderer, 'lines', () => {
+                lines.mode3d = false; lines.no3d = true;
+                try { nx3dDrop(lines3d.renderer); lines3d.renderer = null; } catch (e) {}
+                try { cancelAnimationFrame(lines3d.animId); lines3d.animId = 0; } catch (e) {}
+                box.classList.add('hidden');
+                if (board) board.classList.remove('hidden');
+                try { box.parentElement.style.aspectRatio = ''; box.parentElement.style.minHeight = ''; } catch (e) {}
+                linesRenderBoard();
+            });
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
+            camera.position.set(0, 0.1, 9.8);
+            scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.75, 40); l1.position.set(3, 5, 7); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.4, 40); l2.position.set(-4, -2, 6); scene.add(l2);
+            const l4 = new THREE.PointLight(0xffffff, 0.35, 30); l4.position.set(0, 4.5, 6); scene.add(l4); // b114: верхний софит — верхний ряд не темнеет
+            // золотой корпус: капюшоны сверху/снизу, стойки и разделители колонок
+            const gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.9 });
+            const dark = new THREE.MeshStandardMaterial({ color: 0x140f08, roughness: 0.6, metalness: 0.4 });
+            const hoodT = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.5, 0.7), gold); hoodT.position.set(0, 2.82, 0.75); scene.add(hoodT);
+            const hoodB = hoodT.clone(); hoodB.position.y = -2.82; scene.add(hoodB);
+            const postL = new THREE.Mesh(new THREE.BoxGeometry(0.32, 6.1, 0.7), gold); postL.position.set(-3.32, 0, 0.75); scene.add(postL);
+            const postR = postL.clone(); postR.position.x = 3.32; scene.add(postR);
+            const backP = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 6.4), dark); backP.position.set(0, 0, -3.0); scene.add(backP);
+            for (let k = -1.5; k <= 1.5; k++) {
+                // b118: разделитель в той же глубине, что и карты: перспектива не
+                // оставляет щелей — кромки карт гарантированно перекрыты
+                const sep = new THREE.Mesh(new THREE.BoxGeometry(0.14, 5.5, 0.2), gold);
+                sep.position.set(k * 1.22, 0, 0.1);
+                scene.add(sep);
+            }
+            // b112: барабаны — плоские колонки: 3 ПРЯМЫЕ карты в ряд (как средняя линия),
+            // вращение = вертикальная вибрация со сменой символов, стоп — точный результат
+            const ROW_H = 1.8;
+            const planeGeo = new THREE.PlaneGeometry(1.18, 1.75); // b117: вертикальные карты, стык уходит под разделитель
+            lines3d.reels = [];
+            for (let c = 0; c < 5; c++) {
+                const grp = new THREE.Group();
+                grp.position.x = (c - 2) * 1.22;
+                const planes = [];
+                for (let r = 0; r < 3; r++) {
+                    const m = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.45, metalness: 0.15, side: THREE.FrontSide, clippingPlanes: lines3d.clip || undefined }));
+                    m.position.set(0, (1 - r) * ROW_H, 0);
+                    grp.add(m);
+                    planes.push(m);
+                }
+                scene.add(grp);
+                lines3d.reels.push({ group: grp, planes: planes, t0: 0, dur: 1, stopped: true, lastSwap: 0, finalCols: null });
+            }
+            // b112: карты на барабанах СРАЗУ при входе — никаких белых плат
+            try {
+                linesMakePool();
+                lines3d.reels.forEach(rl => rl.planes.forEach(m => {
+                    m.material.map = linesCardTexture(lines.pool[Math.floor(Math.random() * lines.pool.length)]);
+                    m.material.needsUpdate = true;
+                }));
+            } catch (e) {}
+            lines3d.renderer = renderer; lines3d.scene = scene; lines3d.camera = camera;
+            lines.mode3d = true;
+            box.classList.remove('hidden');
+            if (board) board.classList.add('hidden');
+            // b113: оболочка поля повторяет пропорции сетки 5×3 — поле без полей
+            try { box.parentElement.style.aspectRatio = '1.13'; box.parentElement.style.minHeight = '0'; } catch (e) {}
+            if (!window._nx3dLines) {
+                window._nx3dLines = 1;
+                const rs = () => {
+                    const b2 = document.getElementById('lines-3d-box');
+                    if (!b2 || !lines3d.renderer) return;
+                    const w = b2.clientWidth || 640, h = b2.clientHeight || 430;
+                    lines3d.renderer.setSize(w, h);
+                    const cam = lines3d.camera;
+                    cam.aspect = w / h;
+                    // b115: камера по сетке вертикальных карт: полуширина 3.05, полувысота 2.7
+                    const t = Math.tan((cam.fov * Math.PI / 180) / 2);
+                    cam.position.z = Math.max(3.05 / (t * cam.aspect), 2.7 / t) * 1.045; // запас — карты видны целиком
+                    cam.updateProjectionMatrix();
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(box, rs);
+                rs();
+            }
+            lines3dTick();
+        }
+        function linesSpin3D(final, bet) {
+            const now = performance.now();
+            for (let c = 0; c < 5; c++) {
+                const rl = lines3d.reels[c];
+                rl.finalCols = [final[c], final[5 + c], final[10 + c]];
+                rl.t0 = now + c * 220;
+                rl.dur = 1500 + c * 260;
+                rl.stopped = false;
+                rl.lastSwap = 0;
+            }
+            lines3d.pending = { final: final, bet: bet };
+        }
+        function lines3dTick() {
+            lines3d.animId = requestAnimationFrame(lines3dTick);
+            try { // b109: кадр под предохранителем
+                const now = performance.now();
+                if (lines.mode3d && lines3d.reels.length) {
+                    let allStopped = true;
+                    for (let c = 0; c < lines3d.reels.length; c++) {
+                        const rl = lines3d.reels[c];
+                        if (rl.stopped) continue;
+                        const t = (now - rl.t0) / rl.dur;
+                        if (t <= 0) { allStopped = false; continue; }
+                        if (t >= 1) {
+                            rl.stopped = true;
+                            rl.group.position.y = 0;
+                            for (let r = 0; r < 3; r++) {
+                                const m = rl.planes[r].material;
+                                m.map = linesCardTexture(lines.pool[rl.finalCols[r]] || null);
+                                m.needsUpdate = true;
+                            }
+                            try { SoundFX.play('click'); } catch (e2) {}
+                        } else {
+                            allStopped = false;
+                            // вращение: вертикальная вибрация + смена карт каждые 90 мс
+                            rl.group.position.y = Math.sin(now / 35 + c * 1.7) * 0.16;
+                            if (now - rl.lastSwap > 90) {
+                                rl.lastSwap = now;
+                                for (let r = 0; r < 3; r++) {
+                                    const m = rl.planes[r].material;
+                                    m.map = linesCardTexture(lines.pool[Math.floor(Math.random() * lines.pool.length)] || null);
+                                    m.needsUpdate = true;
+                                }
+                            }
+                        }
+                    }
+                    if (allStopped && lines3d.pending) {
+                        const p = lines3d.pending; lines3d.pending = null;
+                        setTimeout(() => linesFinish(p.final, p.bet), 300);
+                    }
+                    if (lines3d.pulsePlanes && now < lines3d.pulseUntil) {
+                        const sc = 1 + 0.07 * Math.sin(now / 70);
+                        lines3d.pulsePlanes.forEach(m => m.scale.setScalar(sc));
+                    } else if (lines3d.pulsePlanes) {
+                        lines3d.pulsePlanes.forEach(m => m.scale.setScalar(1));
+                        lines3d.pulsePlanes = null;
+                    }
+                }
+                if (lines.mode3d && lines3d.renderer) lines3d.renderer.render(lines3d.scene, lines3d.camera);
+            } catch (e) {
+                nx3dLoopBail('lines', e, () => {
+                    cancelAnimationFrame(lines3d.animId); lines3d.animId = 0;
+                    lines.mode3d = false; lines.no3d = true;
+                    try { nx3dDrop(lines3d.renderer); lines3d.renderer = null; } catch (e) {}
+                    const box = document.getElementById('lines-3d-box'); const board = document.getElementById('lines-board');
+                    if (box) box.classList.add('hidden');
+                    if (board) { board.classList.remove('hidden'); linesRenderBoard(); }
+                });
+            }
+        }
+
+        // ============ b74: КОЛЕСО ФОРТУНЫ (3D) ============
+        // 16 секторов-призов: множители ставки, случайная карта сайта, кирка +1.
+        // b220: золотой сектор JACKPOT один (1 из 16 спинов) — как до b183; пустые сектора пополняют общий джекпот.
+        const WHEEL_SECTORS = [
+            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
+            { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
+            { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
+            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b },
+            { t: 'mult', m: 2,   label: '×2',   color: 0x8b5cf6 },
+            { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
+            { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
+            { t: 'card',          label: 'КАРТА', color: 0xec4899 },
+            { t: 'jackpot',       label: 'JACKPOT', color: 0xfbbf24 },
+            { t: 'mult', m: 1.5, label: '×1.5', color: 0x14b8a6 },
+            { t: 'mult', m: 1,   label: '×1',   color: 0x10b981 },
+            { t: 'mine',          label: 'КИРКА', color: 0xd97706 },
+            { t: 'mult', m: 0,   label: '0',    color: 0x1e293b }, // b220: второй золотой сектор убран — джекпот снова 1 из 16 спинов (было 1 из 8)
+            { t: 'mult', m: 3,   label: '×3',   color: 0xd946ef },
+            { t: 'mult', m: 0.5, label: '×0.5', color: 0x0ea5e9 },
+            { t: 'mult', m: 5,   label: '×5',   color: 0xeab308 }
+        ];
+        const WHEEL_STEP = Math.PI * 2 / WHEEL_SECTORS.length;
+        const wheel = { renderer: null, scene: null, camera: null, group: null, pointer: null, spinning: false, ready: false, fallback: false, a0: 0, a1: 0, t0: 0, dur: 4600, winIdx: 0, bet: 100, betNow: 0, animId: null, lastT: 0, fbAngle: 0 };
+
+        function wheelLabelTexture(text, hex) {
+            const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96;
+            const g = cv.getContext('2d');
+            if (g) {
+                g.clearRect(0, 0, 256, 96);
+                g.font = '900 44px system-ui, sans-serif';
+                g.textAlign = 'center'; g.textBaseline = 'middle';
+                g.fillStyle = '#' + hex.toString(16).padStart(6, '0');
+                g.strokeStyle = 'rgba(2,6,23,.85)'; g.lineWidth = 8;
+                g.strokeText(text, 128, 48); g.fillText(text, 128, 48);
+            }
+            const tex = new THREE.CanvasTexture(cv);
+            return tex;
+        }
+
+        function wheelEnsure() {
+            if (wheel.ready) return;
+            // b310: новое колесо — всегда 2D (canvas + CSS): без WebGL, без контекстов, без крашей
+            wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return;
+            const container = document.getElementById('wheel-container');
+            if (!container) return;
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e2) {} wheelBuildFallback(); wheel.fallback = true; wheel.ready = true; return; }
+            const w = container.clientWidth || 640, h = container.clientHeight || 420;
+            renderer.setPixelRatio(nxPixelRatio()); // b308
+            renderer.setSize(w, h);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            container.classList.remove('hidden'); // b307
+            const wfbx = document.getElementById('wheel-fallback'); if (wfbx) wfbx.classList.add('hidden');
+            nxGuardContextLoss(renderer, 'wheel', () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.ctxLoss = (wheel.ctxLoss || 0) + 1; if (wheel.ctxLoss >= 2) { try { LS.setItem('nx_weak_gpu', '1'); } catch (e) {} } if (wheel.ctxLoss <= 3) { wheel.fallback = false; try { const c = document.getElementById('wheel-container'); if (c) c.classList.add('hidden'); } catch (e) {} setTimeout(() => { try { if (battleMode === 'wheel') wheelEnsure(); } catch (e) {} }, 1200 * wheel.ctxLoss); } else { wheel.fallback = true; wheelBuildFallback(); } });
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 60);
+            camera.position.set(0, 0, 8.6);
+            scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+            const l1 = new THREE.PointLight(0xfff2cc, 0.7, 40); l1.position.set(3, 3, 6); scene.add(l1);
+            const l2 = new THREE.PointLight(0xd24dff, 0.4, 40); l2.position.set(-4, -2, 5); scene.add(l2);
+            // b75: фон 3D-сцены — софит за колесом и мерцающие звёзды вокруг
+            try {
+                const gc = document.createElement('canvas'); gc.width = gc.height = 256;
+                const gg = gc.getContext('2d');
+                if (gg) {
+                    const rg = gg.createRadialGradient(128, 128, 10, 128, 128, 126);
+                    rg.addColorStop(0, 'rgba(251,191,36,.30)');
+                    rg.addColorStop(0.5, 'rgba(217,70,239,.10)');
+                    rg.addColorStop(1, 'rgba(2,6,23,0)');
+                    gg.fillStyle = rg; gg.fillRect(0, 0, 256, 256);
+                }
+                const glow = new THREE.Mesh(new THREE.PlaneGeometry(11, 9),
+                    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false }));
+                glow.position.z = -2.5;
+                scene.add(glow);
+                const N = 70, pos = new Float32Array(N * 3);
+                for (let i = 0; i < N; i++) {
+                    pos[i * 3] = (Math.random() - 0.5) * 12;
+                    pos[i * 3 + 1] = (Math.random() - 0.5) * 8;
+                    pos[i * 3 + 2] = -3 + Math.random() * 1.5;
+                }
+                const sg = new THREE.BufferGeometry();
+                sg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+                wheel.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: 0xfde68a, size: 0.07, transparent: true, opacity: 0.8, depthWrite: false }));
+                scene.add(wheel.stars);
+            } catch (e) {}
+
+            const group = new THREE.Group();
+            scene.add(group);
+            // секторы-сектора пирога + подписи призов
+            WHEEL_SECTORS.forEach((sec, i) => {
+                const a0 = i * WHEEL_STEP;
+                const geo = new THREE.CircleGeometry(3.05, 24, a0, WHEEL_STEP);
+                const mat = new THREE.MeshStandardMaterial({ color: sec.color, roughness: 0.55, metalness: 0.25, side: THREE.DoubleSide });
+                const mesh = new THREE.Mesh(geo, mat);
+                group.add(mesh);
+                const mid = a0 + WHEEL_STEP / 2;
+                const lt = wheelLabelTexture(sec.label, 0xf8fafc);
+                const lm = new THREE.MeshBasicMaterial({ map: lt, transparent: true, depthWrite: false });
+                const lp = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.56), lm);
+                lp.position.set(Math.cos(mid) * 2.05, Math.sin(mid) * 2.05, 0.06);
+                lp.rotation.z = mid;
+                group.add(lp);
+                // разделитель-искра между секторами
+                const div = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.035, 0.05), new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.3, metalness: 0.8 }));
+                div.position.set(Math.cos(a0) * 1.5, Math.sin(a0) * 1.5, 0.05);
+                div.rotation.z = a0;
+                group.add(div);
+            });
+            // обод, hub и лампочки
+            const rim = new THREE.Mesh(new THREE.TorusGeometry(3.18, 0.14, 12, 72), new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.85 }));
+            rim.position.z = 0.02;
+            group.add(rim);
+            wheel.bulbs = [];
+            for (let i = 0; i < 16; i++) {
+                const a = i * Math.PI * 2 / 16;
+                const b = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 10), new THREE.MeshStandardMaterial({ color: 0xfff7ed, emissive: 0xfbbf24, emissiveIntensity: 0.8, roughness: 0.4 }));
+                b.position.set(Math.cos(a) * 3.18, Math.sin(a) * 3.18, 0.16);
+                group.add(b); wheel.bulbs.push(b);
+            }
+            const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 32), new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.25, metalness: 0.9 }));
+            hub.rotation.x = Math.PI / 2;
+            hub.position.z = 0.12;
+            group.add(hub);
+            // указатель сверху
+            const pointer = new THREE.Mesh(new THREE.ConeGeometry(0.26, 0.75, 4), new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xb91c1c, emissiveIntensity: 0.5, roughness: 0.4 }));
+            pointer.rotation.z = Math.PI;
+            pointer.position.set(0, 3.55, 0.35);
+            scene.add(pointer);
+            wheel.pointer = pointer;
+            // b76: на фоне сцены летают мини-паки сайта — эллиптические орбиты за колесом
+            wheel.fliers = [];
+            try {
+                const packsSrc = (state.packs && state.packs.length) ? state.packs : [{ color: 'silver', shimmer: 'holo' }];
+                for (let i = 0; i < 6; i++) {
+                    const pk = packsSrc[i % packsSrc.length];
+                    const tex = makePackTexture(pk);
+                    try { tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+                    const face = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
+                    const sideM = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6, metalness: 0.4, transparent: true, opacity: 0.55 });
+                    const m = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.25, 0.1), [sideM, sideM, sideM, sideM, face, face]);
+                    m.userData = {
+                        ang: Math.random() * Math.PI * 2,
+                        spd: 0.12 + Math.random() * 0.15,
+                        rx: 4.6 + Math.random() * 1.6,
+                        ry: 1.6 + Math.random() * 1.4,
+                        z: -1.7 - Math.random() * 1.2,
+                        rs: (Math.random() - 0.5) * 1.2
+                    };
+                    scene.add(m);
+                    wheel.fliers.push(m);
+                }
+            } catch (e) {}
+            // b76: тап по самому колесу = спин (кнопка не обязательна)
+            renderer.domElement.style.cursor = 'pointer';
+            renderer.domElement.addEventListener('click', () => wheelSpin());
+
+            wheel.renderer = renderer; wheel.scene = scene; wheel.camera = camera; wheel.group = group;
+            wheel.ready = true;
+            if (!window._nx3dWheel) {
+                window._nx3dWheel = 1;
+                const rs = () => {
+                    const c = document.getElementById('wheel-container');
+                    if (c && wheel.renderer) nx3dResizeSimple(wheel.renderer, wheel.camera, c, [3.6, 3.6, 8.6]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs);
+                rs();
+            }
+            wheel.lastT = performance.now();
+            const loop = () => {
+                wheel.animId = requestAnimationFrame(loop);
+                try { // b74: кадр под предохранителем — см. nx3dLoopBail
+                    const now = performance.now();
+                    if (wheel.spinning) {
+                        const t = Math.min(1, (now - wheel.t0) / wheel.dur);
+                        const ease = 1 - Math.pow(1 - t, 4);
+                        wheel.group.rotation.z = wheel.a0 + (wheel.a1 - wheel.a0) * ease;
+                        // указатель отщёлкивает на секторах
+                        const passed = Math.floor((wheel.group.rotation.z - wheel.a0) / WHEEL_STEP);
+                        wheel.pointer.rotation.x = Math.sin(passed * 1.7) * 0.25;
+                        if (t >= 1) {
+                            wheel.spinning = false;
+                            wheel.group.rotation.z = wheel.a1;
+                            wheelAward(wheel.winIdx);
+                        }
+                    } else {
+                        wheel.pointer.rotation.x *= 0.9;
+                    }
+                    if (wheel.bulbs && wheel.bulbs.length) {
+                        const tb = now / 1000;
+                        for (let i = 0; i < wheel.bulbs.length; i++) {
+                            wheel.bulbs[i].material.emissiveIntensity = 0.5 + 0.6 * (0.5 + 0.5 * Math.sin(tb * 6 + i * 0.8));
+                        }
+                    }
+                    if (wheel.stars) wheel.stars.material.opacity = 0.45 + 0.4 * (0.5 + 0.5 * Math.sin(now / 700));
+                    if (wheel.fliers && wheel.fliers.length) {
+                        const dt = Math.min(0.05, (now - wheel.lastT) / 1000);
+                        for (let i = 0; i < wheel.fliers.length; i++) {
+                            const f = wheel.fliers[i], u = f.userData;
+                            u.ang += u.spd * dt;
+                            f.position.set(Math.cos(u.ang) * u.rx, Math.sin(u.ang * 0.9) * u.ry, u.z);
+                            f.rotation.y += u.rs * dt;
+                            f.rotation.z = Math.sin(u.ang * 0.7) * 0.25;
+                        }
+                    }
+                    wheel.lastT = now;
+                    renderer.render(scene, camera);
+                } catch (e) {
+                    // b77: одиночный сбой кадра не убивает колесо: гасим после 30 сбоев подряд
+                    wheel.errs = (wheel.errs || 0) + 1;
+                    if (wheel.errs > 30) nx3dLoopBail('wheel', e, () => { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.fallback = true; wheelBuildFallback(); });
+                }
+            };
+            loop();
+        }
+
+        function wheelBuildFallback() {
+            // b310: новое колесо Фортуны — чистый 2D: рисуется один раз на canvas,
+            // крутится CSS-трансформом. Ни одного WebGL-контекста: нечему падать.
+            const box = document.getElementById('wheel-fallback'); if (box) box.classList.add('hidden');
+            const cont = document.getElementById('wheel-container'); if (!cont) return;
+            cont.classList.remove('hidden');
+            cont.classList.add('flex', 'items-center', 'justify-center');
+            if (cont.dataset.nx2d) return;
+            cont.dataset.nx2d = '1';
+            cont.innerHTML = '<div onclick="wheelSpin()" style="position:relative;width:min(88vw,390px);aspect-ratio:1/1;cursor:pointer;">' + // b313: тап в любую точку колеса (включая ступицу и указчик) крутит
+                '<div id="wheel-fb-disc" onclick="wheelSpin()" style="position:absolute;inset:0;cursor:pointer;will-change:transform;border-radius:50%;box-shadow:0 0 34px rgba(245,158,11,.38), 0 10px 40px rgba(2,6,23,.6);">' + // b312: тап по колесу крутит (защита от двойного спина уже в wheelSpin)
+                '<div id="wheel-2d-slot" style="position:absolute;inset:0;border-radius:50%;overflow:hidden;"></div></div>' +
+                '<div style="position:absolute;left:50%;top:-10px;transform:translateX(-50%);width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #ef4444;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));z-index:20;"></div>' +
+                '<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:16%;height:16%;border-radius:50%;background:radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 60%, #b45309);box-shadow:0 0 18px rgba(245,158,11,.8), inset 0 -4px 10px rgba(120,53,15,.6);z-index:10;"></div>' +
+                '</div>';
+            wheelBuildSVG(document.getElementById('wheel-2d-slot')); // b315: SVG рисуется везде, даже где canvas молчит
+        }
+        function wheelBuildSVG(slot) {
+            // b321: колесо по референсу пользователя: тёмный обод с гирляндой,
+            // радиальные подписи (как в классике), золотая ступица с бликом. SVG.
+            if (!slot) return;
+            try {
+                const S = 780, C = 390, R2 = 344;
+                const n = WHEEL_SECTORS.length, st = 360 / n;
+                const rad = d => (d - 90) * Math.PI / 180;
+                const px = (d, r) => Math.round((C + Math.cos(rad(d)) * r) * 10) / 10;
+                const py = (d, r) => Math.round((C + Math.sin(rad(d)) * r) * 10) / 10;
+                const p = [];
+                p.push('<defs>' +
+                    '<radialGradient id="wxHub" cx="35%" cy="30%" r="80%"><stop offset="0%" stop-color="#fde68a"/><stop offset="55%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#b45309"/></radialGradient>' +
+                    '<radialGradient id="wxShade" cx="50%" cy="50%" r="50%"><stop offset="72%" stop-color="rgba(2,6,23,0)"/><stop offset="96%" stop-color="rgba(2,6,23,.38)"/><stop offset="100%" stop-color="rgba(2,6,23,.66)"/></radialGradient>' +
+                    '</defs>');
+                p.push('<circle cx="' + C + '" cy="' + C + '" r="388" fill="#0b1220"/>');
+                for (let i = 0; i < 32; i++) { // гирлянда по тёмному ободу
+                    const d = i * 11.25 + 5.625;
+                    const col = i % 2 ? '#fde68a' : '#fbbf24';
+                    p.push('<circle cx="' + px(d, 368) + '" cy="' + py(d, 368) + '" r="9" fill="' + col + '" opacity=".22"/>');
+                    p.push('<circle cx="' + px(d, 368) + '" cy="' + py(d, 368) + '" r="4.2" fill="' + col + '"/>');
+                }
+                for (let i = 0; i < n; i++) { // сектора с объёмом к ободу
+                    const sec = WHEEL_SECTORS[i];
+                    const d0 = i * st, d1 = d0 + st;
+                    const col = '#' + sec.color.toString(16).padStart(6, '0');
+                    const path = 'M' + C + ' ' + C + ' L' + px(d0, R2) + ' ' + py(d0, R2) + ' A' + R2 + ' ' + R2 + ' 0 0 1 ' + px(d1, R2) + ' ' + py(d1, R2) + ' Z';
+                    p.push('<path d="' + path + '" fill="' + col + '" stroke="rgba(2,6,23,.6)" stroke-width="2.5"/>');
+                    p.push('<path d="' + path + '" fill="url(#wxShade)"/>');
+                }
+                for (let i = 0; i < n; i++) { // радиальные подписи, как в референсе
+                    const sec = WHEEL_SECTORS[i];
+                    const dm = i * st + st / 2;
+                    const lum = ((sec.color >> 16 & 255) * 0.299 + (sec.color >> 8 & 255) * 0.587 + (sec.color & 255) * 0.114);
+                    const light = lum > 150;
+                    const fs = sec.label.length > 4 ? 34 : 48;
+                    p.push('<g transform="rotate(' + (dm - 90) + ' ' + C + ' ' + C + ')"><text x="' + (C + 232) + '" y="' + C + '" fill="' + (light ? '#1f2937' : '#ffffff') + '" font-family="Inter, sans-serif" font-weight="800" font-size="' + fs + '" text-anchor="middle" dominant-baseline="middle" paint-order="stroke" stroke="' + (light ? 'rgba(255,255,255,.3)' : 'rgba(2,6,23,.45)') + '" stroke-width="' + (light ? 0 : 4) + '">' + sec.label + '</text></g>');
+                }
+                p.push('<circle cx="' + C + '" cy="' + C + '" r="84" fill="rgba(2,6,23,.55)"/>');
+                p.push('<circle cx="' + C + '" cy="' + C + '" r="68" fill="url(#wxHub)" stroke="#7c2d12" stroke-width="3"/>');
+                p.push('<ellipse cx="368" cy="362" rx="24" ry="14" fill="rgba(255,255,255,.5)"/>');
+                slot.innerHTML = '<svg viewBox="0 0 ' + S + ' ' + S + '" style="width:100%;height:100%;display:block;border-radius:50%;" aria-hidden="true">' + p.join('') + '</svg>';
+            } catch (e) {}
+        }
+        // ---- b314: авто-прокрутка колеса ----
+        function wheelAutoUI() {
+            const b = document.getElementById('wheel-auto');
+            if (!b) return;
+            const on = !!wheel.auto;
+            b.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Авто: ' + (on ? 'вкл' : 'выкл');
+            b.className = on
+                ? 'px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 border border-emerald-400/50 text-white text-sm font-bold transition'
+                : 'px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-sm font-bold transition';
+        }
+        function wheelAutoToggle() {
+            wheel.auto = !wheel.auto;
+            wheelAutoUI();
+            if (wheel.auto) {
+                try { showToast('Авто-прокрутка включена: колесо крутится само, пока не выключите или не кончатся монеты', 'success'); } catch (e) {}
+                wheelAutoStep();
+            } else {
+                try { showToast('Авто-прокрутка выключена', 'success'); } catch (e) {}
+            }
+        }
+        function wheelAutoStep() {
+            try {
+                if (!wheel.auto || wheel.spinning) return; // следующий шаг запустит wheelAward
+                if (state.coins < wheel.bet) {
+                    wheel.auto = false; wheelAutoUI();
+                    showToast('Монет не хватает для авто-прокрутки — авто остановлено', 'error');
+                    return;
+                }
+                wheelSpin();
+            } catch (e) {}
+        }
+        function wheelSetBet(b) {
+            b = normBet(b);
+            wheel.bet = b;
+            renderWheelUI();
+        }
+
+        function renderWheelUI() {
+            syncBetInput('wheel');
+            const bets = document.getElementById('wheel-bets');
+            if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="wheelSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (wheel.bet === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
+            const spin = document.getElementById('wheel-spin');
+            if (spin) {
+                spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet);
+                spin.disabled = wheel.spinning || state.coins < wheel.bet;
+                spin.classList.toggle('opacity-40', wheel.spinning || state.coins < wheel.bet);
+            }
+            const sp = document.getElementById('wheel-spins');
+            if (sp) sp.textContent = state.stats.wheelSpins || 0;
+        }
+
+        function wheelSpin() {
+            if (wheel.spinning) return;
+            if (statsBlockGuard('колесо')) return; // b277
+            const bet = wheel.bet;
+            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            wheelEnsure();
+            state.coins -= bet;
+            updateCoinDisplay(); saveState();
+            jackpotFeed(bet); // b74: колесо тоже кормит общий джекпот
+            state.stats.wheelSpins = (state.stats.wheelSpins || 0) + 1;
+            updateMissions('wheel_spin', 1); // b121: задание дня
+            const idx = Math.floor(Math.random() * WHEEL_SECTORS.length);
+            const jitter = (Math.random() - 0.5) * WHEEL_STEP * 0.6;
+            const mid = idx * WHEEL_STEP + WHEEL_STEP / 2;
+            wheel.winIdx = idx; wheel.betNow = bet;
+            try { SoundFX.play('whoosh'); } catch (e) {}
+            if (wheel.fallback) {
+                const disc = document.getElementById('wheel-fb-disc');
+                const midDeg = idx * 22.5 + 11.25 + (jitter * 180 / Math.PI);
+                const r0 = wheel.fbAngle;
+                let delta = (-(midDeg) - r0) % 360; if (delta < 0) delta += 360;
+                wheel.fbAngle = r0 + delta + 360 * 5;
+                wheel.spinning = true;
+                if (disc) {
+                    disc.style.transition = 'transform 4.6s cubic-bezier(.12,.8,.2,1)';
+                    disc.style.transform = 'rotate(' + wheel.fbAngle + 'deg)';
+                }
+                setTimeout(() => { wheel.spinning = false; wheelAward(idx); try { setTimeout(wheelAutoStep, 800); } catch (e) {} }, 4750);
+                renderWheelUI();
+                return;
+            }
+            if (!wheel.ready) return;
+            const a0 = wheel.group.rotation.z;
+            const need = Math.PI / 2 - (mid + jitter);
+            let delta = (need - a0) % (Math.PI * 2); if (delta < 0) delta += Math.PI * 2;
+            wheel.a0 = a0; wheel.a1 = a0 + delta + Math.PI * 2 * 5;
+            wheel.t0 = performance.now(); wheel.spinning = true;
+            renderWheelUI();
+        }
+
+        function wheelGrantCard() {
+            const packs = state.packs.filter(p => state.cards.some(c => c.packId === p.id));
+            if (!packs.length) return null;
+            const pack = packs[Math.floor(Math.random() * packs.length)];
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            const card = rollCardFromPack(packCards);
+            if (!card) return null;
+            state.collection[card.id] = (state.collection[card.id] || 0) + 1;
+            updateMissions('collect_new', 1);
+            checkAchievements();
+            return card;
+        }
+
+        function wheelAward(idx) {
+            const sec = WHEEL_SECTORS[idx];
+            const bet = wheel.betNow || wheel.bet;
+            let win = 0, paid = false;
+            if (sec.t === 'mult') {
+                win = Math.round(bet * sec.m);
+                // b92: в банк идёт 100% чистого проигрыша (пусто — вся ставка, ×0.5 — половина)
+                if (win < bet) jackpotOnLoss(bet - win);
+            } else if (sec.t === 'card') {
+                const card = wheelGrantCard();
+                if (card) showToast('🎡 Приз: карта «' + card.name + '»! (' + (RARITY_LABELS_RU[card.rarity] || card.rarity) + ')', 'success');
+                else win = bet; // нет паков с картами — возвращаем ставку
+            } else if (sec.t === 'jackpot') {
+                // b75: колесо тоже борется за общий джекпот сайта — сектор срывает весь банк
+                // (jackpotWin сам начисляет монеты и показывает тост)
+                win = jackpotWin();
+                if (win > 0) updateMissions('wheel_coins', win); // b122: задание дня
+                paid = true;
+            } else if (sec.t === 'mine') {
+                miner.lvl += 1;
+                state.stats.minerLvl = miner.lvl;
+                minerSave();
+                checkAchievements();
+                showToast('🎡 Приз: кирка +1 — уровень ' + miner.lvl + '!', 'success');
+                try { minerCatCelebrate(miner.lvl); } catch (e) {} // b178: котик празднует и приз Колеса
+            }
+            if (!paid && win > 0) {
+                state.coins += win;
+                updateMissions('wheel_coins', win); // b122: задание дня
+                showToast('🎡 ' + sec.label + ': +' + fmtCoins(win) + ' монет', 'success');
+                if ((sec.m || 0) >= 3) launchConfetti(sec.m >= 5 ? 140 : 70);
+            } else if (sec.t === 'mult' && sec.m === 0) {
+                showToast('🎡 Пусто — общий джекпот стал больше', 'refund');
+            }
+            saveState(); updateCoinDisplay();
+            const res = document.getElementById('wheel-result');
+            if (res) res.innerHTML = 'Выпало: <b class="text-amber-300">' + sec.label + '</b>' +
+                (sec.t === 'jackpot' ? ' — весь общий банк сайта ваш!' : (win > 0 ? ' — +' + fmtCoins(win) + ' монет' : ''));
+            renderWheelUI();
+        }
+
+        // ============ ДУРАК (3D) ============
+        const DURANK_SUITS = ['♠', '♥', '♦', '♣'];
+        const DURANK_RANKS = ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        const DURANK_VALUES = { '6': 6, '7': 7, '8': 8, '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14 };
+        let durak = null;
+        let durak3d = null;
+
+        function makeDurakDeck() {
+            const deck = [];
+            DURANK_SUITS.forEach(s => DURANK_RANKS.forEach(r => deck.push({ id: `dk-${r}${s}`, rank: r, suit: s, val: DURANK_VALUES[r] })));
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+        }
+
+        function durakCanBeat(def, atk, trumpSuit) {
+            if (def.suit === atk.suit) return def.val > atk.val;
+            return def.suit === trumpSuit && atk.suit !== trumpSuit;
+        }
+
+        function durakLog(msg) {
+            if (!durak) return;
+            durak.log.push(msg);
+            if (durak.log.length > 30) durak.log.shift();
+        }
+
+        function durakActor() {
+            if (!durak || durak.over) return null;
+            if (durak.taking) return durak.attacker;
+            if (!durak.table.length) return durak.attacker;
+            return durak.table.some(p => !p.defend) ? (durak.attacker === 'player' ? 'ai' : 'player') : durak.attacker;
+        }
+
+        function durakTableRanks() {
+            const s = new Set();
+            durak.table.forEach(p => { s.add(p.attack.rank); if (p.defend) s.add(p.defend.rank); });
+            return s;
+        }
+
+        function durakCanAdd(card) {
+            if (!durak.table.length) return false;
+            if (durak.table.length >= 6) return false; // b251: классика — не больше 6 карт атаки за кон
+            if (!durakTableRanks().has(card.rank)) return false;
+            // b252: лимит по руке защищающегося убран по просьбе игрока —
+            // подкидывать можно любые достоинства со стола (до 6 карт атаки)
+            return true;
+        }
+
+        // b237: ставка партии в Дурака — хранится, листается степпером, списывается при раздаче
+        let durakBet = 100;
+        try { durakBet = normBet(Number(LS.getItem('nexus_durak_bet')) || 100); } catch (e) {}
+        function durakSetBet(b) {
+            durakBet = normBet(b);
+            try { LS.setItem('nexus_durak_bet', String(durakBet)); } catch (e) {}
+            syncBetInput('durak');
+            if (!durak || durak.over) renderDurakUI(); // обновить ценник на стартовой панели
+        }
+
+        function startDurak() {
+            stopAllGameAutos('начало партии в дурака'); // b250
+            if (statsBlockGuard('ставка в Дурака')) return; // b277
+            if (state.coins < durakBet) { showToast('Недостаточно монет для ставки ' + fmtCoins(durakBet), 'error'); return; }
+            const deck = makeDurakDeck();
+            const trump = deck[0];
+            const hands = { player: [], ai: [] };
+            for (let i = 0; i < 6; i++) { hands.player.push(deck.pop()); hands.ai.push(deck.pop()); }
+            const lowestTrump = h => h.filter(c => c.suit === trump.suit).reduce((m, c) => (m === null || c.val < m.val ? c : m), null);
+            const pt = lowestTrump(hands.player), at = lowestTrump(hands.ai);
+            const attacker = (at && (!pt || at.val < pt.val)) ? 'ai' : 'player';
+            durak = {
+                deck, trump, trumpSuit: trump.suit, hands, table: [], discard: [],
+                attacker, taking: false, over: false, winner: null, log: [], busy: false,
+                bet: durakBet // b237: ставка партии
+            };
+            state.coins -= durakBet; saveState(); updateCoinDisplay(); SoundFX.play('coin'); // b237: ставка списана
+            jackpotFeed(durakBet); // b238: Дурак кормит общий джекпот — 100% ставки в банк
+            durakLog(`Козырь: ${trump.rank}${trump.suit}. Первым ходит ${attacker === 'player' ? 'игрок' : 'ИИ'}. Ставка: ${fmtCoins(durakBet)}.`);
+            SoundFX.play('swap');
+            battle = null;
+            renderBattleTab();
+            scheduleDurakAi();
+        }
+
+        function exitDurak() {
+            if (durak && !durak.over) showToast('Партия прервана', 'error');
+            durak3dDispose();
+            durak = null;
+            renderBattleTab();
+        }
+
+        function scheduleDurakAi(delay) {
+            if (durak && !durak.over && durakActor() === 'ai') {
+                durak.aiPending = true;
+                setTimeout(durakAiStep, delay || 800);
+            }
+        }
+
+        function durakPlayToTable(side, card) {
+            const hand = durak.hands[side];
+            const i = hand.indexOf(card);
+            if (i < 0) return false; // защита: чужая карта не попадёт на стол и не срежет конец руки
+            hand.splice(i, 1);
+            durak.table.push({ attack: card, defend: null });
+            return true;
+        }
+
+        // ----- Действия игрока -----
+        function durakHandClick(i) {
+            if (!durak || durak.over || durak.busy) return;
+            // защита от двойного клика: вторая карта за 250мс — почти всегда случайность
+            const nowTs = Date.now();
+            if (durak.lastHandClick && nowTs - durak.lastHandClick < 250) return;
+            durak.lastHandClick = nowTs;
+            const actor = durakActor();
+            if (actor !== 'player') { showToast('Сейчас не ваш ход', 'error'); return; }
+            const card = durak.hands.player[i];
+            if (!card) return;
+
+            if (durak.taking) { // ИИ забирается — подкидываем
+                if (!durakCanAdd(card)) { showToast('Подкидывать можно только достоинства со стола', 'error'); return; }
+                durakPlayToTable('player', card);
+                durakLog(`Вы подкинули ${card.rank}${card.suit}`);
+                SoundFX.play('swap');
+                renderDurakUI(); durak3dSync();
+                return;
+            }
+
+            const unresolved = durak.table.filter(p => !p.defend);
+            if (durak.table.length && unresolved.length) { // защищаемся
+                const pair = unresolved[0];
+                if (!durakCanBeat(card, pair.attack, durak.trumpSuit)) {
+                    showToast(`Этой картой не отбить ${pair.attack.rank}${pair.attack.suit}`, 'error');
+                    return;
+                }
+                durak.hands.player.splice(i, 1);
+                pair.defend = card;
+                durakLog(`Вы отбили ${pair.attack.rank}${pair.attack.suit} картой ${card.rank}${card.suit}`);
+                SoundFX.play('swap');
+                renderDurakUI(); durak3dSync();
+                scheduleDurakAi();
+                return;
+            }
+
+            // атака: открытие или подкидывание
+            if (durak.table.length && !durakCanAdd(card)) { showToast('Подкидывать можно только достоинства со стола', 'error'); return; }
+            if (durak.table.length >= 6) { showToast('Максимум 6 карт атаки за кон', 'error'); return; }
+            durakPlayToTable('player', card);
+            durakLog(`Вы ходите картой ${card.rank}${card.suit}`);
+            SoundFX.play('swap');
+            renderDurakUI(); durak3dSync();
+            scheduleDurakAi();
+        }
+
+        function durakPlayerTake() {
+            if (!durak || durak.over || durakActor() !== 'player' || durak.taking) return;
+            durak.taking = true;
+            durak.playerTook = true;
+            durakLog('Вы забираете карты со стола…');
+            renderDurakUI(); durak3dSync();
+            scheduleDurakAi(); // ИИ подкинет и завершит
+        }
+
+        function durakPlayerBito() {
+            if (!durak || durak.over || durakActor() !== 'player' || durak.taking) return;
+            if (!durak.table.length || durak.table.some(p => !p.defend)) return;
+            durakLog('Бито! Карты уходят в отбой.');
+            durakEndRound(true);
+        }
+
+        function durakPlayerDone() {
+            if (!durak || durak.over || !durak.taking || durak.attacker !== 'player') return;
+            durakLog('ИИ забирает карты со стола.');
+            durakEndRound(false);
+        }
+
+        // ----- ИИ -----
+        function durakAiStep() {
+            if (!durak || durak.over) { if (durak) durak.aiPending = false; return; }
+            durak.aiPending = false;
+            if (durakActor() !== 'ai') { renderDurakUI(); return; }
+            const hand = durak.hands.ai;
+
+            if (durak.taking) { // игрок забирается — подкидываем
+                const add = hand.filter(c => durakCanAdd(c)).sort((a, b) => a.val - b.val)[0];
+                if (add) {
+                    durakPlayToTable('ai', add);
+                    durakLog(`ИИ подкидывает ${add.rank}${add.suit}`);
+                    SoundFX.play('swap');
+                    renderDurakUI(); durak3dSync();
+                    scheduleDurakAi(600);
+                    return;
+                }
+                durakEndRound(false);
+                return;
+            }
+
+            const unresolved = durak.table.filter(p => !p.defend);
+            if (durak.table.length && unresolved.length) { // ИИ защищается
+                const pair = unresolved[0];
+                const opts = hand.filter(c => durakCanBeat(c, pair.attack, durak.trumpSuit))
+                    .sort((a, b) => ((a.suit === durak.trumpSuit ? 100 : 0) + a.val) - ((b.suit === durak.trumpSuit ? 100 : 0) + b.val));
+                const use = opts[0];
+                if (!use) {
+                    durak.taking = true;
+                    durakLog('ИИ забирает карты…');
+                    renderDurakUI(); durak3dSync();
+                    return; // игрок-атакующий может подкинуть
+                }
+                hand.splice(hand.indexOf(use), 1);
+                pair.defend = use;
+                durakLog(`ИИ отбил ${pair.attack.rank}${pair.attack.suit} картой ${use.rank}${use.suit}`);
+                SoundFX.play('swap');
+                renderDurakUI(); durak3dSync();
+                if (durak.table.some(p => !p.defend)) scheduleDurakAi(700);
+                return;
+            }
+
+            if (!durak.table.length) { // ИИ открывает атаку
+                const card = hand.filter(c => c.suit !== durak.trumpSuit).sort((a, b) => a.val - b.val)[0]
+                    || hand.sort((a, b) => a.val - b.val)[0];
+                if (!card) { durakEndRound(true); return; }
+                durakPlayToTable('ai', card);
+                durakLog(`ИИ ходит картой ${card.rank}${card.suit}`);
+                SoundFX.play('swap');
+                renderDurakUI(); durak3dSync();
+                return; // игрок защищается
+            }
+
+            // ИИ подкидывает или говорит «бито»
+            const add = hand.filter(c => durakCanAdd(c)).sort((a, b) => a.val - b.val)[0];
+            if (add && add.val <= 11 && durak.hands.player.length > 2) {
+                durakPlayToTable('ai', add);
+                durakLog(`ИИ подкидывает ${add.rank}${add.suit}`);
+                SoundFX.play('swap');
+                renderDurakUI(); durak3dSync();
+                return; // игрок защищается
+            }
+            durakLog('ИИ: бито.');
+            durakEndRound(true);
+        }
+
+        // ----- Конец раунда / партии -----
+        function durakEndRound(defended) {
+            if (!durak || durak.over) return;
+            const defender = durak.attacker === 'player' ? 'ai' : 'player';
+            const cards = durak.table.flatMap(p => [p.attack, p.defend].filter(Boolean));
+            if (defended) durak.discard.push(...cards);
+            else {
+                durak.hands[defender].push(...cards);
+                if (defender === 'player') durak.playerTook = true;
+            }
+            durak.table = [];
+            durak.taking = false;
+            [durak.attacker, defender].forEach(side => {
+                while (durak.hands[side].length < 6 && durak.deck.length) durak.hands[side].push(durak.deck.pop());
+            });
+            if (!durak.deck.length) {
+                const pE = !durak.hands.player.length, aE = !durak.hands.ai.length;
+                if (pE && aE) { durak.over = true; durak.winner = null; }
+                else if (pE) { durak.over = true; durak.winner = 'player'; }
+                else if (aE) { durak.over = true; durak.winner = 'ai'; }
+            }
+            if (!durak.over && defended) durak.attacker = defender;
+            if (durak.over) { durakFinish(); return; }
+            renderDurakUI(); durak3dSync();
+            scheduleDurakAi();
+        }
+
+        // Сколько монет принесёт победа прямо сейчас (база + бонусы)
+        function durakCalcWinReward(perfect) {
+            // b237: награда масштабируется ставкой партии: победа возвращает ставку ×2 плюс бонусы
+            const bet = (durak && durak.bet) || durakBet;
+            const parts = [`Ставка ${fmtCoins(bet)} ×2: +${fmtCoins(bet * 2)}`];
+            let total = bet * 2;
+            if (state.daily.lastDurakWinDate !== todayStr()) { total += bet; parts.push(`Первая победа дня: +${fmtCoins(bet)}`); }
+            const streak = (state.stats.durakStreak || 0) + 1;
+            if (streak >= 2) {
+                const b = Math.min(streak - 1, 3) * Math.round(bet * 0.35);
+                total += b;
+                parts.push(`Серия побед ×${streak}: +${fmtCoins(b)}`);
+            }
+            if (perfect) { const p = Math.round(bet * 0.5); total += p; parts.push(`Ни разу не забрали карты: +${fmtCoins(p)}`); }
+            return { total, parts, streak };
+        }
+
+        function durakFinish() {
+            if (durak.winner === 'player') {
+                const { total, parts, streak } = durakCalcWinReward(!durak.playerTook);
+                state.coins += total;
+                state.stats.durakWins = (state.stats.durakWins || 0) + 1;
+                state.stats.durakStreak = streak;
+                if (streak > (state.stats.bestDurakStreak || 0)) state.stats.bestDurakStreak = streak;
+                state.daily.lastDurakWinDate = todayStr();
+                durak.rewardTotal = total;
+                durak.rewardParts = parts;
+                saveState(); updateCoinDisplay();
+                SoundFX.play('win');
+                launchConfetti(120);
+                showToast(`🃏 Победа в «Дураке»! +${total} монет`, 'success');
+                // b122: задания про Дурака убраны из пула
+                checkAchievements();
+            } else if (durak.winner === 'ai') {
+                state.stats.durakLosses = (state.stats.durakLosses || 0) + 1;
+                state.stats.durakStreak = 0;
+                durak.rewardTotal = 0;
+                durak.rewardParts = [`Поражение: ставка ${fmtCoins(durak.bet || 0)} сгорела и ушла в общий джекпот, серия побед сброшена`];
+                jackpotOnLoss(durak.bet || 0); // b238: проигрыш кормит банк на 100%
+                saveState();
+                SoundFX.play('lose');
+                showToast('В этот раз вы дурак… Реванш?', 'error');
+            } else {
+                state.stats.durakStreak = 0;
+                durak.rewardTotal = 0;
+                state.coins += durak.bet || 0; updateCoinDisplay(); // b238: ничья возвращает ставку
+                durak.rewardParts = [`Ничья: ставка ${fmtCoins(durak.bet || 0)} возвращена`];
+                saveState();
+                showToast('Ничья — оба сбросили карты!', 'success');
+            }
+            renderDurakUI(); durak3dSync();
+        }
+
+        // ----- Интерфейс -----
+        // b233: фарфоровая игральная карта — крупные индексы по углам, большая масть,
+        // внутренняя рамка и тени; используется в руке, на столе и в отбое
+        function durakCardFace(c, cls) {
+            const red = c.suit === '\u2665' || c.suit === '\u2666';
+            const col = red ? 'text-rose-600' : 'text-slate-900';
+            return `
+            <div class="durak-card relative rounded-xl overflow-hidden border border-slate-300/70 bg-gradient-to-br from-white via-slate-50 to-slate-300 shadow-[0_10px_24px_rgba(2,6,23,.45),inset_0_1px_0_rgba(255,255,255,.9)] ${cls}">
+                <div class="absolute inset-[5px] rounded-lg border ${red ? 'border-rose-200/90' : 'border-slate-300/90'} bg-gradient-to-br from-white to-slate-100"></div>
+                <span class="absolute top-1 left-1.5 ${col} font-black leading-none text-sm sm:text-base">${c.rank}<span class="block text-[11px] sm:text-[13px]">${c.suit}</span></span>
+                <span class="absolute bottom-1 right-1.5 rotate-180 ${col} font-black leading-none text-sm sm:text-base">${c.rank}<span class="block text-[11px] sm:text-[13px]">${c.suit}</span></span>
+                <span class="absolute inset-0 flex items-center justify-center ${col} text-3xl sm:text-4xl drop-shadow-[0_2px_2px_rgba(15,23,42,.25)]">${c.suit}</span>
+            </div>`;
+        }
+        function durakCardBack(cls) {
+            return `
+            <div class="durak-card relative rounded-xl overflow-hidden border border-indigo-400/40 bg-gradient-to-br from-indigo-700 via-indigo-900 to-slate-950 shadow-[0_8px_18px_rgba(2,6,23,.5),inset_0_1px_0_rgba(255,255,255,.25)] ${cls}">
+                <div class="absolute inset-[5px] rounded-lg border border-indigo-300/30" style="background:repeating-linear-gradient(45deg, rgba(165,180,252,.16) 0 6px, rgba(30,27,75,.0) 6px 12px)"></div>
+                <span class="absolute inset-0 flex items-center justify-center text-indigo-200/70 text-xl">♠</span>
+            </div>`;
+        }
+
+        function renderDurakUI() {
+            const topbar0 = document.getElementById('durak-topbar');
+            const status0 = document.getElementById('durak-status');
+            const hand0 = document.getElementById('durak-hand');
+            const actions0 = document.getElementById('durak-actions');
+            const cont0 = document.getElementById('durak-3d-container');
+            if (!durak) {
+                // b236: поле открыто сразу; вместо заглушки — уведомление «Начать игру»
+                if (topbar0) topbar0.innerHTML = '';
+                if (hand0) hand0.innerHTML = '';
+                if (status0) status0.innerHTML = '';
+                if (actions0) actions0.innerHTML = '';
+                // b238: уведомление-облачко по центру сукна, а не панель под столом
+                if (cont0) cont0.innerHTML = `
+                    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;">
+                        <div class="rounded-3xl border border-violet-500/35 bg-slate-950/85 backdrop-blur-md px-5 py-4 sm:px-8 sm:py-5 text-center space-y-2.5 shadow-2xl shadow-black/60 pop-in max-w-[94%]">
+                            <h3 class="text-base sm:text-lg font-black text-white"><i class="fa-solid fa-bell text-violet-300 mr-1.5"></i>Начать игру?</h3>
+                            <p class="text-[11px] sm:text-xs text-slate-400">36 карт, козырь из-под колоды, бей или забирай.<br>Победа вернёт ставку ×2 плюс бонусы; ставка кормит общий джекпот.</p>
+                            <div class="flex justify-center">
+                                <div class="flex flex-col items-center gap-1 shrink-0">
+                                    <span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" onclick="stepBet('durak',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button>
+                                        <input id="durak-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2.5 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('durak', this.value)">
+                                        <button type="button" onclick="stepBet('durak',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button onclick="startDurak()" class="lqg lqg-vio px-6 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-play mr-1.5"></i>Начать игру — ${fmtCoins(durakBet)}</button>
+                        </div>
+                    </div>`;
+                return;
+            }
+            const topbar = topbar0;
+            if (topbar) topbar.innerHTML = `
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 border border-slate-800 rounded-2xl px-4 py-3">
+                    <button onclick="exitDurak()" class="text-xs font-semibold text-slate-400 hover:text-rose-400 transition flex items-center space-x-1.5"><i class="fa-solid fa-arrow-left"></i><span>Выйти</span></button>
+                    <div class="flex flex-wrap items-center gap-3 text-xs">
+                        <span class="text-slate-300">Колода: <b class="text-white">${durak.deck.length}</b>${durak.deck.length ? ` <span class="text-amber-300 font-bold">козырь ${durak.trump.rank}${durak.trump.suit}</span>` : ''}</span>
+                        <span class="text-slate-300">Отбой: <b class="text-white">${durak.discard.length}</b></span>
+                        <span class="text-slate-300">Ставка: <b class="text-amber-200">${fmtCoins(durak.bet || 0)}</b></span>
+                        <span class="text-slate-300">ИИ: <b class="text-rose-300">${durak.hands.ai.length}</b> карт</span>
+                    </div>
+                    <span class="text-[10px] text-slate-500 max-w-[180px] truncate">${durak.log.length ? durak.log[durak.log.length - 1] : ''}</span>
+                </div>`;
+
+            const status = document.getElementById('durak-status');
+            if (status) {
+                let txt = '';
+                if (durak.over) txt = durak.winner === 'player' ? '<span class="text-violet-400 font-bold">🏆 Победа!</span>' : durak.winner === 'ai' ? '<span class="text-rose-400 font-bold">💀 Вы дурак…</span>' : '<span class="text-slate-300 font-bold">Ничья</span>';
+                else if (durakActor() === 'ai') txt = '<span class="text-rose-400 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i>ИИ думает…</span>';
+                else if (durak.taking) txt = '<span class="text-amber-300 font-semibold">ИИ забирается: подкиньте карты и нажмите «Готово»</span>';
+                else if (!durak.table.length) txt = '<span class="text-violet-300 font-semibold">Ваш ход: сыграйте карту атаки</span>';
+                else if (durak.table.some(p => !p.defend)) txt = `<span class="text-violet-300 font-semibold">Отбейтесь (${durak.table.filter(p => !p.defend)[0].attack.rank}${durak.table.filter(p => !p.defend)[0].attack.suit}) или заберите</span>`;
+                else txt = '<span class="text-violet-300 font-semibold">Подкиньте карту того же достоинства или «Бито»</span>';
+                status.innerHTML = `<span class="inline-block bg-slate-950/80 border border-slate-700 rounded-xl px-3 py-1.5 text-xs backdrop-blur-sm">${txt}</span>`;
+            }
+
+            const actions = document.getElementById('durak-actions');
+            if (actions) {
+                if (durak.over) {
+                    const win = durak.winner === 'player';
+                    actions.innerHTML = `
+                        <div class="rounded-2xl p-5 text-center space-y-3 border pop-in ${win ? 'bg-violet-950/50 border-violet-500/40' : durak.winner === 'ai' ? 'bg-rose-950/50 border-rose-500/40' : 'bg-slate-900/60 border-slate-700'}">
+                            <div class="text-4xl">${win ? '🏆' : durak.winner === 'ai' ? '🃏' : '🤝'}</div>
+                            <h3 class="text-xl font-black ${win ? 'text-violet-400' : durak.winner === 'ai' ? 'text-rose-400' : 'text-slate-300'}">${win ? 'ПОБЕДА!' : durak.winner === 'ai' ? 'ВЫ ДУРАК…' : 'НИЧЬЯ'}</h3>
+                            ${durak.rewardParts ? `<div class="text-xs space-y-0.5 ${win ? 'text-violet-200' : 'text-slate-400'}">${durak.rewardParts.map(p => `<p>• ${p}</p>`).join('')}${win ? `<p class="pt-1 text-sm font-black text-amber-300">Итого: +${durak.rewardTotal} монет</p>` : ''}</div>` : ''}
+                            <div class="flex justify-center space-x-3 pt-1">
+                                <button onclick="startDurak()" class="lqg lqg-vio px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-rotate-right mr-1.5"></i>Ещё партию</button>
+                                <button onclick="exitDurak()" class="lqg lqg-slate px-5 py-2.5 font-semibold text-sm transition">В лобби</button>
+                            </div>
+                        </div>`;
+                } else {
+                    const actor = durakActor();
+                    const canTake = actor === 'player' && !durak.taking && durak.table.some(p => !p.defend);
+                    const canBito = actor === 'player' && !durak.taking && durak.table.length && !durak.table.some(p => !p.defend);
+                    const canDone = actor === 'player' && durak.taking && durak.attacker === 'player';
+                    actions.innerHTML = `
+                        <div class="flex justify-center gap-3">
+                            ${canTake ? '<button onclick="durakPlayerTake()" class="lqg lqg-amber px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-hand mr-1.5"></i>Забрать</button>' : ''}
+                            ${canBito ? '<button onclick="durakPlayerBito()" class="lqg lqg-vio px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-check mr-1.5"></i>Бито</button>' : ''}
+                            ${canDone ? '<button onclick="durakPlayerDone()" class="lqg lqg-vio px-5 py-2.5 font-bold text-sm transition"><i class="fa-solid fa-check mr-1.5"></i>Готово — ИИ забирает</button>' : ''}
+                        </div>`;
+                }
+            }
+
+            const handEl = document.getElementById('durak-hand');
+            if (handEl) {
+                const myTurn = durakActor() === 'player' && !durak.over;
+                const handN = durak.hands.player.length;
+                const handMid = (handN - 1) / 2;
+                const fanSpread = Math.min(46, 6 + handN * 5); // b235: дуга веера в градусах
+                handEl.innerHTML = durak.hands.player.map((c, i) => {
+                    const isTrump = c.suit === durak.trumpSuit;
+                    const ang = handN > 1 ? (-fanSpread / 2 + fanSpread * i / (handN - 1)) : 0;
+                    const lift = Math.round(Math.pow(Math.abs(i - handMid), 1.5) * 1.6);
+                    // b235: перекрытие считаем под ширину телефона: весь веер влезает в ~320px
+                    const ov = handN > 1 ? Math.max(24, Math.min(62, Math.round(80 - 240 / (handN - 1)))) : 0;
+                    return `
+                        <button onclick="durakHandClick(${i})" style="--ang:${ang.toFixed(1)}deg; --lift:${lift}px; --z:${i + 1}; margin-left:${i ? -ov : 0}px" class="durak-fan relative shrink-0 select-none focus:outline-none ${myTurn ? 'can cursor-pointer' : 'opacity-60 cursor-not-allowed'}">
+                            ${durakCardFace(c, 'w-20 h-28 sm:w-24 sm:h-36')}
+                            ${isTrump ? '<span class="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-amber-400/70 shadow-[0_0_18px_rgba(251,191,36,.35)]"></span><span class="pointer-events-none absolute -top-2.5 left-1/2 -translate-x-1/2 z-10 text-[8px] font-black tracking-wider text-amber-200 bg-slate-950/90 border border-amber-400/60 rounded-full px-1.5 py-0.5 shadow-lg shadow-amber-900/40 whitespace-nowrap">КОЗЫРЬ</span>' : ''}
+                        </button>`;
+                }).join('') || '<p class="text-xs text-slate-500 py-6">Рука пуста</p>';
+            }
+
+            // Watchdog: если ход ИИ, а таймер потерян — перезапускаем шаг ИИ
+            if (!durak.over && durakActor() === 'ai' && !durak.aiPending) scheduleDurakAi(400);
+
+            // Фолбэк-стол без WebGL
+            if (!durak3d) {
+                const cont = document.getElementById('durak-3d-container');
+                if (cont) {
+                    cont.innerHTML = `
+                        <div class="w-full h-full" style="position:relative;width:100%;height:100%;">
+                            <div class="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-[5]">
+                                ${durak.deck.length ? `<div class="w-20 h-14 sm:w-24 sm:h-16 flex items-center justify-center"><div class="rotate-90">${durakCardFace(durak.trump, 'w-14 h-20 sm:w-16 sm:h-24')}</div></div><span class="text-[9px] sm:text-[10px] font-bold text-violet-100/70">колода · ${durak.deck.length}</span>` : ''}
+                            </div>
+                            <div class="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1 z-[5]">
+                                ${durak.discard.length ? `<div class="relative w-12 h-16 sm:w-14 sm:h-20">${durakCardBack('w-full h-full')}<div class="absolute left-1 top-1 w-full h-full opacity-60">${durakCardBack('w-full h-full')}</div></div><span class="text-[9px] sm:text-[10px] font-bold text-violet-100/70">отбой · ${durak.discard.length}</span>` : ''}
+                            </div>
+                            <div class="w-full h-full flex flex-col items-center justify-center gap-2 sm:gap-3" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:10px 72px;width:100%;height:100%;">
+                                <div class="flex justify-center -space-x-6 sm:-space-x-5">
+                                    ${Array.from({ length: Math.min(durak.hands.ai.length, 8) }).map(() => durakCardBack('w-12 h-16 sm:w-14 sm:h-20')).join('') || '<span class="text-[10px] text-violet-100/50 italic">у ИИ пусто</span>'}
+                                </div>
+                                <div class="flex flex-wrap justify-center gap-3 sm:gap-6 pb-8 pt-3">
+                                    ${durak.table.length ? durak.table.map(p => `
+                                        <div class="relative w-20 h-28 sm:w-24 sm:h-36">
+                                            ${durakCardFace(p.attack, 'absolute inset-0 w-full h-full')}
+                                            ${p.defend
+                                                ? `<div class="absolute left-3 top-3 w-full h-full rotate-[16deg]">${durakCardFace(p.defend, 'w-full h-full')}</div>`
+                                                : '<span class="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-amber-300 whitespace-nowrap drop-shadow">не отбита</span>'}
+                                        </div>`).join('') : '<span class="text-xs text-violet-100/50 italic">стол пуст — начните атаку</span>'}
+                                </div>
+                            </div>
+                        </div>`;
+                }
+            }
+        }
+
+        // ----- 3D-стол -----
+        const durakTexCache = {};
+        function durakFaceTexture(card) {
+            const key = card.id;
+            if (durakTexCache[key]) return durakTexCache[key];
+            const W = 256, H = 356;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            g.fillStyle = '#f8fafc';
+            g.fillRect(0, 0, W, H);
+            g.strokeStyle = '#94a3b8'; g.lineWidth = 6;
+            g.strokeRect(6, 6, W - 12, H - 12);
+            const red = card.suit === '♥' || card.suit === '♦';
+            const col = red ? '#e11d48' : '#0f172a';
+            g.fillStyle = col;
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.font = 'bold 52px Inter, sans-serif';
+            g.fillText(card.rank + card.suit, W / 2, H / 2);
+            g.font = 'bold 30px Inter, sans-serif';
+            g.textAlign = 'left';
+            g.fillText(card.rank, 18, 34);
+            g.fillText(card.suit, 18, 66);
+            g.save(); g.translate(W - 18, H - 18); g.rotate(Math.PI);
+            g.textAlign = 'left';
+            g.fillText(card.rank, 0, 0);
+            g.fillText(card.suit, 0, 32);
+            g.restore();
+            const tex = new THREE.CanvasTexture(cv);
+            durakTexCache[key] = tex;
+            return tex;
+        }
+        function durakTrumpTexture(card) {
+            const key = 'trump-' + card.id;
+            if (durakTexCache[key]) return durakTexCache[key];
+            const W = 256, H = 356;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            g.fillStyle = '#f8fafc'; g.fillRect(0, 0, W, H);
+            g.strokeStyle = '#f59e0b'; g.lineWidth = 10;
+            g.strokeRect(5, 5, W - 10, H - 10);
+            const red = card.suit === '♥' || card.suit === '♦';
+            g.fillStyle = red ? '#e11d48' : '#0f172a';
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.font = 'bold 64px Inter, sans-serif';
+            g.fillText(card.rank + card.suit, W / 2, H / 2 - 34);
+            g.font = 'bold 44px Inter, sans-serif';
+            g.fillText(card.suit, W / 2, H / 2 + 34);
+            g.fillStyle = 'rgba(245,158,11,.95)';
+            g.fillRect(0, H - 64, W, 64);
+            g.fillStyle = '#451a03'; g.font = 'bold 34px Inter, sans-serif';
+            g.fillText('КОЗЫРЬ', W / 2, H - 32);
+            const tex = new THREE.CanvasTexture(cv);
+            durakTexCache[key] = tex;
+            return tex;
+        }
+
+        let durakBackTex = null;
+        function durakBackTexture() {
+            if (durakBackTex) return durakBackTex;
+            const W = 256, H = 356;
+            const cv = document.createElement('canvas');
+            cv.width = W; cv.height = H;
+            const g = cv.getContext('2d');
+            const grad = g.createLinearGradient(0, 0, W, H);
+            grad.addColorStop(0, '#1e293b'); grad.addColorStop(0.5, '#0f172a'); grad.addColorStop(1, '#1e293b');
+            g.fillStyle = grad; g.fillRect(0, 0, W, H);
+            g.strokeStyle = 'rgba(52,211,153,.5)'; g.lineWidth = 6;
+            g.strokeRect(10, 10, W - 20, H - 20);
+            g.strokeStyle = 'rgba(52,211,153,.14)'; g.lineWidth = 8;
+            for (let i = -H; i < W + H; i += 34) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + H, H); g.stroke(); }
+            g.fillStyle = 'rgba(16,185,129,.9)';
+            g.beginPath(); g.arc(W / 2, H / 2, 44, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#052e22'; g.font = 'bold 40px Inter, sans-serif';
+            g.textAlign = 'center'; g.textBaseline = 'middle';
+            g.fillText('N', W / 2, H / 2 + 2);
+            durakBackTex = new THREE.CanvasTexture(cv);
+            return durakBackTex;
+        }
+
+        function durakFeltTexture() {
+            const S = 1024;
+            const cv = document.createElement('canvas');
+            cv.width = S; cv.height = S;
+            const g = cv.getContext('2d');
+            const rg = g.createRadialGradient(S / 2, S / 2, 60, S / 2, S / 2, S / 2);
+            rg.addColorStop(0, '#14532d');
+            rg.addColorStop(0.6, '#0b3d21');
+            rg.addColorStop(1, '#052e16');
+            g.fillStyle = rg;
+            g.fillRect(0, 0, S, S);
+            g.strokeStyle = 'rgba(255,255,255,.05)';
+            g.lineWidth = 2;
+            for (let i = 0; i < S; i += 8) { g.beginPath(); g.moveTo(0, i); g.lineTo(S, i); g.stroke(); }
+            g.strokeStyle = 'rgba(250,204,21,.25)';
+            g.lineWidth = 5;
+            g.beginPath(); g.arc(S / 2, S / 2, S * 0.34, 0, Math.PI * 2); g.stroke();
+            return new THREE.CanvasTexture(cv);
+        }
+
+        function durak3dEnsure() {
+            return; // b234: 3D-стол отключён — карты были далеко и крутились; поле теперь 2D
+            if (durak3d) return;
+            const container = document.getElementById('durak-3d-container');
+            if (!container || !durak) return;
+            if (typeof THREE === 'undefined' || !webglAvailable()) { durak3d = null; return; }
+            let renderer;
+            try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
+            catch (e) { durak3d = null; return; }
+            const w = container.clientWidth || 800, h = container.clientHeight || 380;
+            renderer.setPixelRatio(nxPixelRatio()); // b308
+            renderer.setSize(w, h);
+            container.appendChild(renderer.domElement);
+            nxGuardContextLoss(renderer, 'durak', () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; nx3dDrop(durak3d.renderer); durak3d.renderer = null; });
+
+            const scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x050a08, 14, 26);
+            const camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 100); // b233: карты ближе
+            camera.position.set(0, 4.7, 7.3); // b233: стол крупнее в кадре
+            camera.lookAt(0, 0.5, -0.1);
+            if (!window._nx3dDurak) { // b58: стол не растягивается при повороте экрана
+                window._nx3dDurak = 1;
+                const rs = () => {
+                    const c = document.getElementById('durak-3d-container');
+                    if (c && durak3d && durak3d.renderer) nx3dResizeSimple(durak3d.renderer, durak3d.camera, c, [6.2, 4.6, 10.7]);
+                };
+                nx3dOnResize(rs);
+                nx3dObserve(container, rs); // b59
+            }
+
+            scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+            const l1 = new THREE.PointLight(0xfff3c4, 0.9, 40); l1.position.set(0, 6, 4); scene.add(l1);
+            const l2 = new THREE.PointLight(0x34d399, 0.5, 30); l2.position.set(-5, 3, -3); scene.add(l2);
+
+            const table = new THREE.Mesh(new THREE.CircleGeometry(7.6, 64), new THREE.MeshStandardMaterial({ map: durakFeltTexture(), roughness: 0.95 }));
+            table.rotation.x = -Math.PI / 2;
+            scene.add(table);
+            const rim = new THREE.Mesh(new THREE.RingGeometry(7.4, 7.6, 72), new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.4, side: THREE.DoubleSide }));
+            rim.rotation.x = -Math.PI / 2;
+            rim.position.y = 0.02;
+            scene.add(rim);
+
+            const tableGroup = new THREE.Group();
+            const backsGroup = new THREE.Group();
+            scene.add(tableGroup); scene.add(backsGroup);
+
+            durak3d = {
+                renderer, scene, camera, tableGroup, backsGroup,
+                deckMesh: null, trumpMesh: null, discardMesh: null, raf: null
+            };
+            durak3dSync();
+            durak3dTick();
+        }
+
+        function durak3dDispose() {
+            if (!durak3d) return;
+            cancelAnimationFrame(durak3d.raf);
+            try { durak3d.renderer.dispose(); } catch (e) {}
+            const c = document.getElementById('durak-3d-container');
+            if (c) c.innerHTML = '';
+            durak3d = null;
+        }
+
+        // Пары центрируются по текущему количеству на столе — ничего не улетает вбок
+        function durakSlotPos(i, layer, count) {
+            const c = Math.max(1, count || 1);
+            const mid = (c - 1) / 2;
+            return [(i - mid) * 1.62 + layer * 0.36, 0.07 + layer * 0.07, 0.35 + Math.abs(i - mid) * 0.22];
+        }
+
+        function durakCardMesh(spec) {
+            const tex = spec.back ? durakBackTexture() : durakFaceTexture(spec.card);
+            const mat = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 0.55, side: THREE.DoubleSide });
+            const size = spec.small ? [0.95, 1.32] : [1.4, 1.95];
+            const m = new THREE.Mesh(new THREE.PlaneGeometry(size[0], size[1]), mat);
+            m.position.set(spec.pos[0], spec.pos[1], spec.pos[2]);
+            m.rotation.set(-Math.PI / 2 + (spec.back ? 0.3 : 0.62), 0, spec.rotZ || 0);
+            return m;
+        }
+
+        function durakSyncGroup(group, needed) {
+            for (let i = group.children.length - 1; i >= 0; i--) {
+                const ch = group.children[i];
+                if (!needed[ch.userData.key]) {
+                    group.remove(ch);
+                    if (ch.material) ch.material.dispose();
+                }
+            }
+            const have = {};
+            group.children.forEach(c => { have[c.userData.key] = c; });
+            Object.keys(needed).forEach(key => {
+                const spec = needed[key];
+                if (have[key]) {
+                    have[key].userData.target = spec.pos;
+                } else {
+                    const m = durakCardMesh(spec);
+                    m.userData.key = key;
+                    m.userData.spawn = performance.now();
+                    m.userData.target = spec.pos;
+                    group.add(m);
+                }
+            });
+        }
+
+        function durak3dSync() {
+            if (!durak3d || !durak) return;
+            const needed = {};
+            const cnt = durak.table.length;
+            durak.table.forEach((p, i) => {
+                needed['atk-' + i] = { card: p.attack, pos: durakSlotPos(i, 0, cnt), rotZ: (i % 2 ? 0.06 : -0.05) };
+                if (p.defend) needed['def-' + i] = { card: p.defend, pos: durakSlotPos(i, 1, cnt), rotZ: (i % 2 ? -0.05 : 0.07) };
+            });
+            durakSyncGroup(durak3d.tableGroup, needed);
+
+            const nb = {};
+            const n = Math.min(durak.hands.ai.length, 10);
+            for (let i = 0; i < n; i++) {
+                const a = (i - (n - 1) / 2) * 0.17;
+                nb['back-' + i] = {
+                    back: true, small: true,
+                    pos: [Math.sin(a) * 4.2, 0.05 + i * 0.006, -3.1 - Math.cos(a) * 0.4],
+                    rotZ: -a * 0.6
+                };
+            }
+            durakSyncGroup(durak3d.backsGroup, nb);
+
+            const D = durak3d;
+            if (!D.deckMesh) {
+                D.deckMesh = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1, 1.5), new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.6 }));
+                D.deckMesh.position.set(-5.1, 0.3, -1.1);
+                D.scene.add(D.deckMesh);
+                // Козырь: крупная карта, наклонённая к камере, с янтарной лентой «КОЗЫРЬ»
+                D.trumpMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.08), new THREE.MeshStandardMaterial({ transparent: true, side: THREE.DoubleSide }));
+                D.trumpMesh.rotation.set(-Math.PI / 2 + 0.85, 0, 0.16);
+                D.trumpMesh.position.set(-4.5, 0.5, 0.9);
+                D.scene.add(D.trumpMesh);
+                D.trumpGlow = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.16, 40), new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
+                D.trumpGlow.rotation.x = -Math.PI / 2;
+                D.trumpGlow.position.set(-4.5, 0.05, 0.75);
+                D.scene.add(D.trumpGlow);
+                // Отбой: аккуратная стопка рубашек
+                D.discardGroup = new THREE.Group();
+                for (let i = 0; i < 3; i++) {
+                    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 1.46), new THREE.MeshStandardMaterial({ map: durakBackTexture(), transparent: true, side: THREE.DoubleSide }));
+                    m.rotation.set(-Math.PI / 2 + 0.12, 0, -0.35 + i * 0.24);
+                    m.position.set(i * 0.08, i * 0.02, i * 0.1);
+                    D.discardGroup.add(m);
+                }
+                D.discardGroup.position.set(4.9, 0.04, -0.6);
+                D.scene.add(D.discardGroup);
+            }
+            const dn = durak.deck.length;
+            D.deckMesh.visible = dn > 0;
+            D.deckMesh.scale.y = Math.max(0.08, dn * 0.022);
+            D.trumpMesh.visible = dn > 0;
+            if (D.trumpGlow) D.trumpGlow.visible = dn > 0;
+            if (dn > 0) {
+                D.trumpMesh.material.map = durakTrumpTexture(durak.trump);
+                D.trumpMesh.material.needsUpdate = true;
+            }
+            if (D.discardGroup) {
+                const dc = durak.discard.length;
+                D.discardGroup.visible = dc > 0;
+                if (D.discardGroup.children[1]) D.discardGroup.children[1].visible = dc > 8;
+                if (D.discardGroup.children[2]) D.discardGroup.children[2].visible = dc > 16;
+            }
+        }
+
+        function durak3dTick() {
+            if (!durak3d) return;
+            durak3d.raf = requestAnimationFrame(durak3dTick);
+            try { // b62: кадр защищён — см. nx3dLoopBail
+            const now = performance.now();
+            const D = durak3d;
+            D.tableGroup.children.forEach(ch => {
+                if (ch.userData.target) {
+                    ch.position.x += (ch.userData.target[0] - ch.position.x) * 0.16;
+                    ch.position.z += (ch.userData.target[2] - ch.position.z) * 0.16;
+                    ch.position.y = ch.userData.target[1];
+                }
+                if (ch.userData.spawn) {
+                    const k = Math.min(1, (now - ch.userData.spawn) / 350);
+                    const ez = 1 - Math.pow(1 - k, 3);
+                    ch.scale.setScalar(0.35 + 0.65 * ez);
+                    if (k >= 1) ch.userData.spawn = null;
+                }
+            });
+            D.backsGroup.children.forEach(ch => {
+                if (ch.userData.spawn) {
+                    const k = Math.min(1, (now - ch.userData.spawn) / 350);
+                    ch.scale.setScalar(0.35 + 0.65 * (1 - Math.pow(1 - k, 3)));
+                    if (k >= 1) ch.userData.spawn = null;
+                }
+            });
+            if (D.trumpMesh && D.trumpMesh.visible) {
+                D.trumpMesh.position.y = 0.5 + Math.sin(now / 500) * 0.03;
+            }
+            if (D.trumpGlow && D.trumpGlow.visible) {
+                const s = 1 + Math.sin(now / 400) * 0.07;
+                D.trumpGlow.scale.setScalar(s);
+                D.trumpGlow.material.opacity = 0.35 + Math.sin(now / 400) * 0.18;
+            }
+            D.renderer.render(D.scene, D.camera);
+            } catch (e) { nx3dLoopBail('durak', e, () => { cancelAnimationFrame(durak3d.raf); durak3d.raf = 0; nx3dDrop(durak3d.renderer); durak3d.renderer = null; }); }
+        }
+
+        // b47: формат больших чисел баланса: 1000 → 1k, 1 000 000 → 1m, 1e9 → 1b
+        function fmtCoins(n) {
+            n = Math.floor(Number(n) || 0);
+            if (n < 1000) return String(n);
+            const units = [[1e15, 'q'], [1e12, 't'], [1e9, 'b'], [1e6, 'm'], [1e3, 'k']]; // b222: буквы до квадриллионов
+            for (let i = 0; i < units.length; i++) {
+                if (n >= units[i][0]) {
+                    const x = n / units[i][0];
+                    const t = x >= 100 ? Math.floor(x) : Math.floor(x * 10) / 10;
+                    return String(t).replace(/\.0$/, '') + units[i][1];
+                }
+            }
+            return String(n);
+        }
+        function updateCoinDisplay() {
+            document.getElementById('coin-balance').innerText = fmtCoins(state.coins);
+            const sc = document.getElementById('store-stat-coins');
+            if (sc) sc.textContent = fmtCoins(state.coins);
+            renderMiner(); // b47: баланс виден и в шахте
+        }
+
+        // ============ СКРЫТЫЙ РАЗДЕЛ («Студия») ============
+        // Вкладка-редактор спрятана от обычных пользователей: кнопок в навигации не видно,
+        // упоминаний в интерфейсе нет, а прямой вызов switchTab('studio') не срабатывает.
+        // Открывается жестом: 5 быстрых нажатий по вкладке «Награды» (пауза между
+        // нажатиями — не больше HIDDEN_TAP_WINDOW мс, иначе счёт начинается заново).
+        // Флаг хранится отдельно от игрового сейва: «Сброс прогресса» и экспорт/импорт
+        // JSON его не трогают и не раскрывают.
+        const HIDDEN_TAB = 'studio';
+        const HIDDEN_TAB_NAV = ['nav-studio', 'mob-nav-studio'];
+        const HIDDEN_TAB_GESTURE = ['nav-rewards', 'mob-nav-rewards']; // по чему жмём
+        const HIDDEN_TAPS_NEEDED = 5;
+        const HIDDEN_TAP_WINDOW = 1600;
+        const HIDDEN_UI_KEY = 'ui_prefs_v1'; // неприметное имя: похоже на обычные настройки интерфейса
+
+        let hiddenTapCount = 0;
+        let hiddenTapLast = 0;
+        let hiddenTapTimer = null;
+        let hiddenTapHint = null;
+
+        function hiddenUiPrefs() {
+            try { return JSON.parse(LS.getItem(HIDDEN_UI_KEY) || '{}') || {}; } catch (e) { return {}; }
+        }
+        function saveHiddenUiPrefs(p) {
+            try { LS.setItem(HIDDEN_UI_KEY, JSON.stringify(p)); } catch (e) { /* работаем без сохранения */ }
+        }
+        function isHiddenTabUnlocked() {
+            return hiddenUiPrefs().section === 1;
+        }
+        // switchTab() перезаписывает className кнопок, поэтому видимость держим в style.display
+        function applyHiddenTabVisibility() {
+            const on = isHiddenTabUnlocked();
+            HIDDEN_TAB_NAV.forEach(id => {
+                const b = document.getElementById(id);
+                if (b) b.style.display = on ? '' : 'none';
+            });
+        }
+
+        // крошечная подсказка-прогресс у «Наград» — видна только во время жеста
+        function hiddenTapHintShow(count, anchor) {
+            if (!hiddenTapHint) {
+                hiddenTapHint = document.createElement('div');
+                hiddenTapHint.className = 'fixed pointer-events-none px-2 py-1 rounded-full bg-slate-950/90 border border-slate-700/70 text-[9px] font-mono tracking-[0.2em] text-slate-400 shadow-lg transition-opacity duration-300';
+                hiddenTapHint.style.zIndex = '9999';
+                document.body.appendChild(hiddenTapHint);
+            }
+            let dots = '';
+            for (let i = 0; i < HIDDEN_TAPS_NEEDED; i++) dots += i < count ? '●' : '○';
+            hiddenTapHint.textContent = dots;
+            const r = anchor.getBoundingClientRect();
+            hiddenTapHint.style.left = Math.max(8, Math.min(window.innerWidth - 96, r.left + r.width / 2 - 44)) + 'px';
+            hiddenTapHint.style.top = Math.max(4, r.top - 28) + 'px';
+            hiddenTapHint.style.opacity = '1';
+            clearTimeout(hiddenTapTimer);
+            hiddenTapTimer = setTimeout(() => {
+                hiddenTapCount = 0;
+                if (hiddenTapHint) hiddenTapHint.style.opacity = '0';
+            }, HIDDEN_TAP_WINDOW);
+        }
+
+        function onHiddenGestureTap(btn) {
+            if (isHiddenTabUnlocked()) return;
+            const now = Date.now();
+            hiddenTapCount = (now - hiddenTapLast <= HIDDEN_TAP_WINDOW) ? hiddenTapCount + 1 : 1;
+            hiddenTapLast = now;
+            if (hiddenTapCount < 2) { // одиночное нажатие — обычный переход на вкладку, без реакций
+                clearTimeout(hiddenTapTimer);
+                hiddenTapTimer = setTimeout(() => { hiddenTapCount = 0; }, HIDDEN_TAP_WINDOW);
+                return;
+            }
+            if (hiddenTapCount >= HIDDEN_TAPS_NEEDED) {
+                clearTimeout(hiddenTapTimer);
+                hiddenTapCount = 0;
+                if (hiddenTapHint) hiddenTapHint.style.opacity = '0';
+                unlockHiddenTab();
+                return;
+            }
+            // тихий тик — с каждым нажатием чуть выше, ничего не объясняя
+            if (SoundFX.enabled) { try { SoundFX.tone(300 + hiddenTapCount * 90, 0.05, 'sine', 0.05); } catch (e) {} }
+            hiddenTapHintShow(hiddenTapCount, btn);
+        }
+
+        function unlockHiddenTab() {
+            const p = hiddenUiPrefs(); p.section = 1; saveHiddenUiPrefs(p);
+            applyHiddenTabVisibility();
+            if (SoundFX.enabled) {
+                try {
+                    SoundFX.tone(523, 0.12, 'sine', 0.1);
+                    SoundFX.tone(784, 0.14, 'sine', 0.1, 0.09);
+                    SoundFX.tone(1047, 0.22, 'sine', 0.1, 0.18);
+                } catch (e) {}
+            }
+            showToast('🔓 Открыт скрытый раздел: «Студия» появилась в меню', 'success');
+            renderRewardsIfVisible(); // секретное достижение снова показывается
+        }
+
+        function lockHiddenTab() {
+            const p = hiddenUiPrefs(); p.section = 0; saveHiddenUiPrefs(p);
+            hiddenTapCount = 0;
+            clearTimeout(hiddenTapTimer);
+            if (hiddenTapHint) hiddenTapHint.style.opacity = '0';
+            applyHiddenTabVisibility();
+            const tab = document.getElementById('tab-' + HIDDEN_TAB);
+            if (tab && !tab.classList.contains('hidden')) switchTab('store');
+            renderRewardsIfVisible();
+            showToast('Раздел снова скрыт — доступ по жесту: 5 нажатий на «Награды»', 'info');
+        }
+
+        function initHiddenTab() {
+            applyHiddenTabVisibility();
+            HIDDEN_TAB_GESTURE.forEach(id => {
+                const b = document.getElementById(id);
+                if (b && !b.dataset.hiddenGesture) {
+                    b.dataset.hiddenGesture = '1';
+                    b.addEventListener('click', () => onHiddenGestureTap(b));
+                }
+            });
+        }
+
+        // ============ b133: ВХОД В СТУДИЮ ПО ПАРОЛЮ КОМНАТЫ ОБЛАКА ============
+        let studioUnlocked = false; // до конца сессии (перезагрузки страницы)
+        function studioGateNeeded() {
+            // пароль в комнате ещё не задан — гейта нет, Студия открывается как раньше
+            return cloudAuthReady() && !studioUnlocked;
+        }
+        function openStudioPassModal() {
+            const m = document.getElementById('modal-studio-pass');
+            const i = document.getElementById('studio-pass-input');
+            const e = document.getElementById('studio-pass-err');
+            if (i) i.value = '';
+            if (e) e.classList.add('hidden');
+            if (m) m.classList.remove('hidden');
+            setTimeout(() => { try { i.focus(); } catch (e) {} }, 60);
+        }
+        function closeStudioPassModal() {
+            const m = document.getElementById('modal-studio-pass');
+            if (m) m.classList.add('hidden');
+        }
+        async function submitStudioPass() {
+            const i = document.getElementById('studio-pass-input');
+            const e = document.getElementById('studio-pass-err');
+            const showErr = t => { if (e) { e.textContent = t; e.classList.remove('hidden'); } };
+            const pass = String((i && i.value) || '');
+            const ref = CLOUD.remoteAuth || cloudLocalAuth();
+            if (!ref) { studioUnlocked = true; closeStudioPassModal(); switchTab('studio'); return; }
+            if (!pass) { showErr('Введите пароль комнаты'); return; }
+            try {
+                const h = await cloudHashPass(pass, ref.salt);
+                if (String(h) === String(ref.hash)) {
+                    studioUnlocked = true;
+                    // b133: знаешь пароль комнаты = создатель: сохраняем права и на это устройство
+                    try { cloudSaveLocalAuth({ login: ref.login, hash: ref.hash, salt: ref.salt, at: Date.now() }); } catch (e) {}
+                    cloudRole = 'owner';
+                    closeStudioPassModal();
+                    switchTab('studio');
+                    showToast('🔓 Студия открыта до конца сессии', 'success');
+                } else {
+                    showErr('Неверный пароль комнаты');
+                }
+            } catch (err) { showErr('Не удалось проверить пароль'); }
+        }
+
+        // b162: разделы студии — переключение блоков
+        const STUDIO_SECS = ['cloud', 'packs', 'catalog', 'cards', 'schedule', 'story', 'stats']; // b164: + «Каталог»; b253: + «Нарезка карточек» (сторис 9:16); b277: + «Статистика»
+        function showStudioSec(name) {
+            if (STUDIO_SECS.indexOf(name) < 0) name = 'packs';
+            STUDIO_SECS.forEach(function (s) {
+                const panel = document.querySelector('.studio-sec[data-sec="' + s + '"]');
+                if (panel) {
+                    // b162-fix: HTML-атрибут hidden на секциях переопределял класс — синхронизируем и атрибут, и класс, иначе раздел не показывался
+                    panel.hidden = (s !== name);
+                    panel.classList.toggle('hidden', s !== name);
+                }
+                const btn = document.getElementById('studio-nav-' + s);
+                // b260: шесть кнопок в один ряд на всех экранах
+                if (btn) btn.className = 'w-full min-w-0 px-1 sm:px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap overflow-hidden ' + (s === name ? 'bg-violet-600 text-white shadow' : 'bg-slate-800 text-slate-300 border border-slate-700');
+            });
+            if (name === 'story' && window.s9OnShow) window.s9OnShow(); // b254: relayout встроенного резчика
+            if (name === 'stats') { try { statsRender(); jpSyncNow(); } catch (e) {} } // b277: вкладка статистики — сразу тянем свежие данные из облака
+            try { LS.setItem('nexus_studio_sec', name); } catch (e) {}
+        }
+        function switchTab(tabId) {
+            nxTrail('tab:' + tabId);
+            // b250: ушли с вкладки «Игры» — автостарт автоматов выключается сразу,
+            // спины не крутятся и не тратят монеты/CPU на других вкладках
+            if (tabId !== 'battle') stopAllGameAutos('переход на другую вкладку');
+            // b133: Студия — только по паролю комнаты облака
+            if (tabId === 'studio' && studioGateNeeded()) { openStudioPassModal(); return; }
+            // скрытый раздел недоступен, пока не открыт жестом
+            if (tabId === HIDDEN_TAB && !isHiddenTabUnlocked()) {
+                applyHiddenTabVisibility();
+                return;
+            }
+            ['store', 'albums', 'battle', 'rewards', 'market', 'studio'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (navBtn) {
+                    navBtn.className = "px-3 py-2 rounded-lg text-sm font-medium transition-all text-slate-400 hover:text-white";
+                }
+                const mobBtn = document.getElementById(`mob-nav-${t}`);
+                if (mobBtn) {
+                    mobBtn.className = "flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400";
+                }
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeNav = document.getElementById(`nav-${tabId}`);
+            if (activeNav) activeNav.className = "px-3 py-2 rounded-lg text-sm font-medium transition-all bg-violet-600 text-white shadow";
+            const activeMob = document.getElementById(`mob-nav-${tabId}`);
+            if (activeMob) activeMob.className = "flex flex-col items-center text-[11px] leading-tight px-0.5 text-violet-400";
+
+            if (tabId === 'store') renderStore();
+            if (tabId === 'albums') renderAlbumsHub();
+            if (tabId === 'battle') renderBattleTab();
+            if (tabId === 'market') {
+                let sub = 'buy';
+                try { sub = LS.getItem('nexus_market_subtab') === 'sell' ? 'sell' : 'buy'; } catch (e) {}
+                marketSubTab(sub);
+                renderMarket();
+            }
+            if (tabId === 'rewards') renderRewards();
+            if (tabId === 'studio') { let _s = 'packs'; try { _s = LS.getItem('nexus_studio_sec') || 'packs'; } catch (e) {} showStudioSec(_s); renderStudio(); }
+        }
+
+        function preloadPackImages() {
+            state.packs.forEach(p => loadImgSafe(p.image, () => {}));
+        }
+
+        // Наклон 3D-пака за курсором — пакет «оживает» под мышкой
+        function packTilt(e, wrap) {
+            const tilt = wrap.querySelector('.pack3d-tilt');
+            if (!tilt) return;
+            const r = wrap.getBoundingClientRect();
+            const px = (e.clientX - r.left) / r.width - 0.5;
+            const py = (e.clientY - r.top) / r.height - 0.5;
+            tilt.style.transform = `rotateY(${(px * 26).toFixed(1)}deg) rotateX(${(-py * 18).toFixed(1)}deg)`;
+        }
+
+        function packTiltReset(wrap) {
+            const tilt = wrap.querySelector('.pack3d-tilt');
+            if (tilt) tilt.style.transform = '';
+        }
+
+        // ============ КАРУСЕЛЬ БУСТЕР-ПАКОВ (вместо сетки) ============
+        // Карусель: паки стоят В РЯД рядом друг с другом (spacing — шаг между центрами),
+        // боковые чуть отодвинуты назад (depth) и слегка повёрнуты (tilt).
+        // lastOff — чтобы переход с последнего пака на первый был без рывка через весь ряд.
+        let packCarousel = { idx: 0, n: 0, slotW: 200, spacing: 212, depth: 70, tilt: 14, maxVisible: 2, autoTimer: null, dragging: false, moved: false, startX: 0, startY: 0, lastX: 0, lastT: 0, hover: false, lastOff: [] };
+
+        // b147: паки, снятые с продажи, не показываются в магазине, но альбомы и карты покупателей живут
+        let SHOP_LIST = [];
+        // b158: график продажи пака: окно [старт, старт+длительность] с повтором по сессиям (день/неделя)
+        // b161: детерминированный хэш для флеш-сейлов (одинаково у всех игроков)
+        function schedHash(str) {
+            let h = 2166136261;
+            for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+            return h >>> 0;
+        }
+        // b161: флеш-сейл — случайное часовое окно -50% раз в сутки
+        function flashWindowFor(p, now) {
+            const d = new Date(now); d.setHours(0, 0, 0, 0);
+            for (let k = 0; k < 2; k++) {
+                const dayStart = d.getTime() + k * 86400000;
+                const h = schedHash(p.id + ':' + dayStart) % 19;
+                const fs = dayStart + h * 3600000 + 1800000;
+                const fe = fs + 3600000;
+                if (now < fe) return { start: fs, end: fe, done: false, flash: true };
+            }
+            return null;
+        }
+        function packScheduleWindow(p, nowT) {
+            const sc = p && p.schedule;
+            if (!sc || !sc.start || !sc.hours) return null;
+            const dur = sc.hours * 3600000;
+            const now = nowT || Date.now();
+            // b161: активное флеш-окно важнее обычного
+            if (sc.flash) {
+                const f = flashWindowFor(p, now);
+                if (f && now >= f.start && now < f.end) return f;
+            }
+            let s0 = sc.start;
+            let w = null;
+            if (sc.repeat === 'day' || sc.repeat === 'week' || sc.repeat === 'ndays') {
+                const period = sc.repeat === 'day' ? 86400000 : sc.repeat === 'week' ? 604800000 : Math.max(1, sc.periodDays || 1) * 86400000;
+                if (now >= s0) s0 += Math.floor((now - s0) / period) * period;
+                if (now >= s0 + dur) s0 += period;
+                w = { start: s0, end: s0 + dur, done: false };
+            } else if (sc.repeat === 'month') {
+                const base = new Date(sc.start);
+                const cur = new Date(now);
+                const mk = (y, m) => {
+                    const dim = new Date(y, m + 1, 0).getDate();
+                    return new Date(y, m, Math.min(base.getDate(), dim), base.getHours(), base.getMinutes(), base.getSeconds()).getTime();
+                };
+                let cand = mk(cur.getFullYear(), cur.getMonth());
+                if (now >= cand + dur) cand = mk(cur.getFullYear(), cur.getMonth() + 1);
+                w = { start: cand, end: cand + dur, done: false };
+            } else {
+                w = { start: s0, end: s0 + dur, done: now > s0 + dur };
+            }
+            // b161: до обычного окна ближе флеш — показываем флеш
+            if (sc.flash && now < w.start) {
+                const f = flashWindowFor(p, now);
+                if (f && f.start > now && f.start < w.start) return f;
+            }
+            return w;
+        }
+        // b160/b161: цена окна: скидка расписания + голландское падение к концу + флеш -50%
+        function packSalePrice(p) {
+            if (!p) return 0;
+            const w = packScheduleWindow(p);
+            const now = Date.now();
+            if (!w || now < w.start || now >= w.end) return p.price;
+            const sc = p.schedule || {};
+            let disc = sc.discountPct || 0;
+            if (w.flash) disc = Math.max(disc, sc.flashPct || 50);
+            else if (sc.dutchPct > 0) {
+                const pr = Math.max(0, Math.min(1, (now - w.start) / (w.end - w.start)));
+                disc += sc.dutchPct * pr;
+            }
+            disc = Math.min(90, Math.round(disc));
+            return disc > 0 ? Math.max(1, Math.round(p.price * (100 - disc) / 100)) : p.price;
+        }
+        // b165: премьера пака — до даты/времени старта пак виден как «Скоро», купить нельзя
+        function packInPremiere(p) { return !!(p && p.premiereAt && Date.now() < p.premiereAt); }
+        function saleModeOf(p) {
+            if (packInPremiere(p)) return 'prem'; // b165
+            const w = packScheduleWindow(p);
+            if (!w) return '-';
+            return Date.now() < w.start ? 'pre' : 'on';
+        }
+        // b148: пак вне продажи, если снят вручную, истёк таймер ИЛИ разовое расписание завершилось
+        function packIsRetired(p) {
+            if (!p) return false;
+            if (p.retired) return true;
+            if (p.saleUntil && Date.now() > p.saleUntil) return true;
+            const w = packScheduleWindow(p);
+            return !!(w && w.done);
+        }
+        function saleRemainStr(p) {
+            const ms = (p && p.saleUntil ? p.saleUntil : 0) - Date.now();
+            if (ms <= 0) return '';
+            return saleClockStr(ms);
+        }
+        // b149: обратный отсчёт до секунд: «1 д 05:04:03» / «05:04:03»
+        function saleClockStr(ms) {
+            const t = Math.max(0, Math.floor(ms / 1000));
+            const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), ss = t % 60;
+            const p2 = n => String(n).padStart(2, '0');
+            return (d ? d + ' д ' : '') + p2(h) + ':' + p2(m) + ':' + p2(ss);
+        }
+        // b149: эффектный чип-таймер: градиент, блик, пульс; цвет меняется по срочности
+        function saleTimerChip(p, cls) {
+            if (!p || packIsRetired(p)) return '';
+            if (!p.saleUntil && !p.schedule && !p.premiereAt) return '';
+            const w = packScheduleWindow(p);
+            const now = Date.now();
+            let mode = 'end', target = 0;
+            if (p.premiereAt && now < p.premiereAt) { mode = 'prem'; target = p.premiereAt; } // b165: премьера важнее графика
+            else if (w && now < w.start) { mode = 'pre'; target = w.start; }
+            else if (w) { target = w.end; }
+            else if (p.saleUntil) { target = p.saleUntil; }
+            if (!target || target <= now) return '';
+            const flash = !!(w && w.flash && mode === 'end');
+            return '<span data-sale-ends="' + p.id + '" data-sale-mode="' + mode + '" class="sale-timer ' + (mode === 'prem' ? 'sale-prem ' : mode === 'pre' ? 'sale-pre ' : '') + (flash ? 'sale-flash ' : '') + (cls || '') + '" title="' + (mode === 'prem' ? '🎬 Премьера: скоро откроется — продажа начнётся, когда отсчёт закончится' : flash ? '⚡ Флеш-сейл! Скидка 50% до конца отсчёта' : mode === 'pre' ? 'Продажа откроется через отсчёт' : 'Лимитированный пак: продажа закончится через отсчёт') + '"><b><i class="st-ico">' + (mode === 'prem' ? '🎬 ' : flash ? '⚡ ' : mode === 'pre' ? '🕒 ' : '⏳ ') + '</i><span data-sale-txt>' + saleClockStr(target - now) + '</span></b></span>';
+        }
+        // b285: тон карточки-премьеры — акцент пака в трёх дозах: сплошной, свечение, кант
+        function upTint(hex) {
+            let h = String(hex || '#a78bfa').replace('#', '');
+            if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+            const n = parseInt(h, 16);
+            if (!isFinite(n)) return { c: '#a78bfa', g: 'rgba(167,139,250,.16)', b: 'rgba(167,139,250,.34)' }; // b289: фиолетовый дефолт-тинт
+            const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+            return { c: '#' + h, g: 'rgba(' + r + ',' + g + ',' + b + ',.16)', b: 'rgba(' + r + ',' + g + ',' + b + ',.34)' };
+        }
+        // b285: русская плюрализация для счётчика витрины («1 пак / 2 пака / 5 паков»)
+        function upPlural(n) {
+            const d10 = n % 10, d100 = n % 100;
+            if (d10 === 1 && d100 !== 11) return 'пак';
+            if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return 'пака';
+            return 'паков';
+        }
+        let saleSigSeen = '';
+        const SALE_NOTIFIED = new Set(); // b161: напоминания не дублируются
+        function saleStateSig() {
+            return state.packs.map(p => p.id + ':' + (packIsRetired(p) ? 'r' : saleModeOf(p))).join(',');
+        }
+        function saleTick() {
+            // b149/b158: живой отсчёт на всех видимых таймерах (секунда), режимы: до старта и до конца
+            const now = Date.now();
+            document.querySelectorAll('[data-sale-ends]').forEach(el => {
+                const p = state.packs.find(x => x.id === el.getAttribute('data-sale-ends'));
+                if (!p) return;
+                const mode = el.getAttribute('data-sale-mode') || 'end';
+                const w = packScheduleWindow(p);
+                const target = mode === 'prem' ? (p.premiereAt || 0) : mode === 'pre' ? (w ? w.start : 0) : (w ? w.end : (p.saleUntil || 0)); // b165
+                if (!target) return;
+                const ms = target - now;
+                const txt = el.querySelector('[data-sale-txt]');
+                const str = ms > 0 ? saleClockStr(ms) : '00:00:00';
+                if (txt) txt.textContent = str; else el.textContent = str; // b285: эмодзи-префикс теперь в <i class="st-ico">, тик его не затирает
+                el.classList.toggle('sale-warn', mode === 'end' && ms > 0 && ms < 24 * 3600000);
+                el.classList.toggle('sale-hot', mode === 'end' && ms > 0 && ms < 3600000);
+                el.classList.toggle('sale-crit', mode === 'end' && ms > 0 && ms < 10 * 60000);
+            });
+            // b181: живой отсчёт на кнопке панели витрины («Премьера через …» / «Продажа через …»)
+            document.querySelectorAll('[data-btn-cd]').forEach(el => {
+                const p = state.packs.find(x => x.id === el.getAttribute('data-btn-cd'));
+                if (!p) return;
+                const mode = el.getAttribute('data-btn-cd-mode') || 'prem';
+                const w = packScheduleWindow(p);
+                const target = mode === 'prem' ? (p.premiereAt || 0) : (w ? w.start : 0);
+                if (!target) return;
+                el.textContent = saleClockStr(target - now);
+            });
+            // b161: напоминания: за час до старта окна и в момент открытия
+            try {
+                state.packs.forEach(p => {
+                    if (!p.schedule) return;
+                    const w = packScheduleWindow(p);
+                    if (!w || w.done) return;
+                    const dt = w.start - now;
+                    const kPre = p.id + ':' + w.start + ':pre';
+                    const kOn = p.id + ':' + w.start + ':on';
+                    if (dt > 0 && dt <= 3600000 && !SALE_NOTIFIED.has(kPre)) { SALE_NOTIFIED.add(kPre); showToast('🔔 Пак «' + p.title + '» поступит в продажу через час!', 'info'); }
+                    if (dt <= 0 && now < w.end && !SALE_NOTIFIED.has(kOn)) { SALE_NOTIFIED.add(kOn); showToast('🎉 Продажа началась: пак «' + p.title + '» уже в магазине!', 'success'); }
+                });
+                if (SALE_NOTIFIED.size > 400) SALE_NOTIFIED.clear();
+            } catch (e) {}
+            // b158: сменилось состояние продаж (старт/конец окна/истечение) — перерисовываем один раз
+            const sig = saleStateSig();
+            if (saleSigSeen === '') { saleSigSeen = sig; return; }
+            if (sig !== saleSigSeen) {
+                saleSigSeen = sig;
+                SHOP_LIST = shopPacks();
+                try { refreshVisibleTabs(); } catch (e) {}
+            }
+        }
+        function shopPacks() { return state.packs.filter(p => !packIsRetired(p)); }
+        function packOwnedCards(p) { return state.cards.some(c => c.packId === p.id && cardCopies(c.id) > 0); }
+        function visibleAlbumsCount() { return state.packs.filter(p => !packIsRetired(p) || packOwnedCards(p)).length; }
+        function carouselClampIdx() {
+            const n = SHOP_LIST.length;
+            if (n === 0) { packCarousel.idx = 0; packCarousel.n = 0; return; }
+            packCarousel.n = n;
+            packCarousel.idx = ((packCarousel.idx % n) + n) % n;
+        }
+
+        // b44: зигзаг-силуэт для мини-паков витрины: 15 зубцов сверху и снизу, как у 3D-пака.
+        // Генерируется один раз — clip-path одинаков для всех плиток.
+        const PACK_CLIP_POLY = (function () {
+            const teeth = 15, pts = [];
+            const step = 100 / teeth;
+            for (let i = 0; i < teeth; i++) {
+                pts.push((i * step).toFixed(2) + '% 0%');
+                pts.push((i * step + step / 2).toFixed(2) + '% 3.6%');
+            }
+            pts.push('100% 0%', '100% 100%');
+            for (let i = teeth - 1; i >= 0; i--) {
+                pts.push((i * step + step / 2).toFixed(2) + '% 96.4%');
+                pts.push((i * step).toFixed(2) + '% 100%');
+            }
+            pts.push('0% 100%');
+            return 'polygon(' + pts.join(',') + ')';
+        })();
+        // b80: силуэт зигзаг-пака доступен в CSS (мини-паки в Минах)
+        try { document.documentElement.style.setProperty('--packclip', PACK_CLIP_POLY); } catch (e) {}
+
+        // ============ ВИТРИНА МАГАЗИНА: все паки плитками под каруселью ============
+                        function renderStoreShowcase() {
+            const wrap = document.getElementById('store-showcase');
+            const box = document.getElementById('store-showcase-wrap');
+            if (!wrap || !box) return;
+            if (!state.packs.length) { box.style.display = 'none'; return; }
+            box.style.display = '';
+
+            const sp = document.getElementById('store-stat-packs');
+            if (sp) sp.textContent = SHOP_LIST.length;
+            const scards = document.getElementById('store-stat-cards');
+            if (scards) scards.textContent = state.cards.length;
+
+            // b45: витрина — компактный каталог строками: мини-упаковка слева, суть по центру,
+            // цена/карты и действия справа. Плотность как в магазине, без гигантских плиток.
+            wrap.innerHTML = SHOP_LIST.map((pack, i) => {
+                const packCards = state.cards.filter(c => c.packId === pack.id);
+                const cardsInPack = packCards.length;
+                const rarStat = albumRarityStats(packCards);
+                const active = i === packCarousel.idx;
+                const shimName = String((PACK_SHIMMERS[pack.shimmer] && PACK_SHIMMERS[pack.shimmer].name) || pack.shimmer || 'holo');
+                const pal = PACK_COLORS[pack.color] || PACK_COLORS.silver;
+                return `
+                    <div class="album-in" style="animation-delay:${Math.min(i, 10) * 40}ms">
+                        <div data-sc-idx="${i}" class="store-tile ${active ? 'active' : ''} group">
+                            <div class="store-tile-art" style="${packCssVars(pack)}"
+                                 onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });"
+                                 title="Показать пак в карусели">
+                                <img src="${mediaThumbMid(pack.image)}" data-nx-full="${mediaUrl(pack.image)}" alt="${pack.title}" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">
+                                <div class="store-tile-shade"></div>
+                                ${saleTimerChip(pack)}
+                                ${packInPremiere(pack) ? `<span class="absolute top-2 right-2 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-amber-400/95 text-slate-950 shadow-lg shadow-amber-950/50" title="Премьера — скоро откроется"><i class="fa-solid fa-clapperboard"></i>Скоро</span>` : `<span class="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-lg ${packSalePrice(pack) < pack.price ? 'bg-rose-500 text-white shadow-lg shadow-rose-950/50' : 'bg-amber-400/95 text-slate-950 shadow'}" title="Цена вскрытия">${packSalePrice(pack) < pack.price ? `<s class="opacity-70 font-bold mr-0.5">${fmtCoins(pack.price)}</s>` : ''}<i class="fa-solid fa-coins"></i>${fmtCoins(packSalePrice(pack))}</span>`}
+                                <span data-sc-badge class="absolute top-9 right-2 inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-violet-500/90 text-slate-950 ${active ? '' : 'hidden'}"><i class="fa-solid fa-compact-disc"></i>в карусели</span>
+                                <div class="absolute inset-x-0 bottom-0 p-2.5 sm:p-3">
+                                    <h3 class="font-bold text-white text-[12px] sm:text-sm leading-tight line-clamp-2">${pack.title}</h3>
+                                    <div class="mt-1.5 flex items-center justify-between gap-2">
+                                        <span class="text-[9px] text-slate-300 font-mono shrink-0"><i class="fa-solid fa-clone text-violet-300 mr-1"></i>${cardsInPack}</span>
+                                        <span class="flex items-center gap-1 min-w-0 overflow-hidden">${rarStat.length ? rarStat.map(x => `<i class="fa-solid fa-circle shrink-0" style="color:${RAR_COLORS[x.r] || '#94a3b8'};font-size:6px" title="${RARITY_LABELS_RU[x.r] || x.r}: ${x.all} шт."></i><span class="text-[8px] font-mono" style="color:${RAR_COLORS[x.r] || '#94a3b8'}">${x.all}</span>`).join('') : '<span class="text-[9px] text-slate-600">карт пока нет</span>'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="p-2 flex items-center justify-between gap-1.5 border-t border-slate-800/70">
+                                ${packInPremiere(pack)
+                                    ? `<button onclick="buyPack('${pack.id}')" class="lqg lqg-amber flex-1 px-2.5 py-1.5 text-[10px] sm:text-[11px] font-bold transition whitespace-nowrap" title="Премьера: скоро откроется — продажа начнётся, когда отсчёт закончится"><i class="fa-solid fa-clapperboard mr-1"></i>Премьера</button>`
+                                    : `<button onclick="buyPack('${pack.id}')" class="lqg lqg-vio flex-1 px-2.5 py-1.5 text-[10px] sm:text-[11px] font-bold transition whitespace-nowrap"><i class="fa-solid fa-box-open mr-1"></i>Открыть</button>`}
+                                <button onclick="carouselGoTo(${i}); document.getElementById('store-carousel').scrollIntoView({ behavior: 'smooth', block: 'start' });" title="Показать в карусели" class="w-8 h-8 shrink-0 rounded-lg bg-slate-800/80 hover:bg-slate-700 border border-slate-700/70 text-slate-300 hover:text-white flex items-center justify-center transition"><i class="fa-solid fa-compact-disc text-xs"></i></button>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        // подсветка карточки витрины, которая сейчас в центре карусели
+        function updateShowcaseActive() {
+            const wrap = document.getElementById('store-showcase');
+            if (!wrap) return;
+            wrap.querySelectorAll('[data-sc-idx]').forEach(el => {
+                const on = Number(el.getAttribute('data-sc-idx')) === packCarousel.idx;
+                el.classList.toggle('active', on);
+                const b = el.querySelector('[data-sc-badge]');
+                if (b) b.classList.toggle('hidden', !on);
+            });
+        }
+
+        function renderStore() {
+            updatePityIndicator();
+            preloadPackImages();
+            carouselClampIdx();
+
+            const stage = document.getElementById('carousel-stage');
+            const ring = document.getElementById('carousel-ring');
+            const dots = document.getElementById('carousel-dots');
+            const detail = document.getElementById('carousel-detail');
+            const counter = document.getElementById('carousel-counter');
+            if (!ring || !stage) return;
+
+            const emptyMsg = document.getElementById('carousel-empty');
+            SHOP_LIST = shopPacks(); // b147: только паки в продаже
+            // b157: баннер показывает ВСЕ активные лимитированные дропы
+            const sb = document.getElementById('sale-banner');
+            if (sb) {
+                const timed = SHOP_LIST.filter(p => p.saleUntil && !packIsRetired(p)).sort((a, b) => a.saleUntil - b.saleUntil);
+                sb.classList.toggle('hidden', timed.length === 0);
+                const lb = document.getElementById('sale-banner-label');
+                if (lb) lb.textContent = timed.length > 1 ? 'Лимитированные дропы: ' + timed.length : 'Лимитированный дроп';
+                const list = document.getElementById('sale-banner-list');
+                if (list) list.innerHTML = timed.map(p => {
+                    const i = SHOP_LIST.indexOf(p);
+                    return `<button type="button" onclick="carouselGoTo(${i})" class="sale-drop lqg lqg-sky relative z-10 inline-flex items-center gap-2.5 pl-3 pr-2 py-1.5 transition" title="Показать пак в карусели">
+                        <i class="fa-solid fa-box-open text-sky-300/80 text-[11px]"></i>
+                        <span class="text-[11px] sm:text-xs font-bold text-white truncate max-w-[150px] sm:max-w-[280px]">${cloudEsc(p.title)}</span>
+                        <span class="text-[9px] uppercase tracking-wider font-bold text-sky-200/70">успевай до</span>
+                        ${saleTimerChip(p, 'sale-inline')}
+                    </button>`;
+                }).join('');
+            }
+            // b161: блок «Скоро в продаже» — ближайшие окна с отсчётом
+            try {
+                const upBlock = document.getElementById('upcoming-block');
+                const upList = document.getElementById('upcoming-list');
+                if (upBlock && upList) {
+                    const ups = SHOP_LIST.map((p, i) => ({ p: p, i: i, w: packScheduleWindow(p), m: saleModeOf(p) }))
+                        .filter(x => x.m === 'pre' || x.m === 'prem') // b165: премьеры — тоже «скоро»
+                        .map(x => { x.t = x.m === 'prem' ? x.p.premiereAt : (x.w ? x.w.start : 0); return x; })
+                        .sort((a, b) => a.t - b.t).slice(0, 4);
+                    if (ups.length) {
+                        // b285: карточка-«билет»: цветной рельс и плашка в тоне пака | название / мета-строка | таймер; счётчик в шапке
+                        // b286: на ПК билет вертикальный (икона+цена / название / мета / перфорация / таймер-пилюля), ряд по центру
+                        const chipEl = document.getElementById('up-count-chip');
+                        if (chipEl) chipEl.textContent = ups.length + ' ' + upPlural(ups.length);
+                        upList.innerHTML = ups.map(x => {
+                            const prem = x.m === 'prem';
+                            const whenWord = prem ? 'Премьера' : 'Старт';
+                            const whenDate = new Date(x.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                            const t = upTint((PACK_COLORS[x.p.color] || PACK_COLORS.silver).accentText);
+                            return `<button type="button" onclick="carouselGoTo(${x.i})" class="up-card relative z-10 rounded-[16px] text-left transition" style="--upc:${t.c};--upg:${t.g};--upb:${t.b}" title="Показать пак в карусели">
+                                <span class="up-card-ico"><i class="fa-solid ${prem ? 'fa-clapperboard' : 'fa-hourglass-half'}"></i></span>
+                                <span class="up-price"><i class="fa-solid fa-coins"></i>${fmtCoins(x.p.price)}</span>
+                                <b class="up-title">${cloudEsc(x.p.title)}</b>
+                                <span class="up-when"><span class="up-when-word ${prem ? 'w-prem' : 'w-pre'}">${whenWord}</span><span class="up-when-date"><i class="fa-solid fa-calendar-day"></i>${whenDate}</span></span>
+                                <span class="up-perf" aria-hidden="true"></span>
+                                <span class="up-timer">${saleTimerChip(x.p, 'sale-inline')}</span>
+                            </button>`;
+                        }).join('');
+                        upBlock.classList.remove('hidden');
+                    } else upBlock.classList.add('hidden');
+                }
+            } catch (e) { }
+            const noPacks = SHOP_LIST.length === 0;
+            if (noPacks) {
+                ring.innerHTML = '';
+                if (dots) dots.innerHTML = '';
+                if (detail) { detail.innerHTML = ''; detail.style.display = 'none'; }
+                if (counter) counter.innerText = '0 / 0';
+                stage.style.height = '120px';
+                if (emptyMsg) emptyMsg.classList.remove('hidden');
+                ['carousel-prev', 'carousel-next'].forEach(id => { const b = document.getElementById(id); if (b) b.style.display = 'none'; });
+                carouselStopAuto();
+                renderStoreShowcase();
+                return;
+            }
+            if (detail) detail.style.display = '';
+            if (emptyMsg) emptyMsg.classList.add('hidden');
+            ['carousel-prev', 'carousel-next'].forEach(id => { const b = document.getElementById(id); if (b) b.style.display = ''; });
+
+            const n = SHOP_LIST.length;
+            // ширина слота: 5 видимых паков в ряд на широком экране, на телефоне ~44% ширины
+            const slotW = Math.max(116, Math.min(212, Math.round(stage.clientWidth ? stage.clientWidth / 5.1 : 200), Math.round((window.innerWidth || 900) * 0.46)));
+            const slotH = Math.round(slotW / 0.53); // пропорция настоящего пакета
+            // Паки стоят В РЯД с фиксированным зазором: шаг между центрами не меньше
+            // ширины пака, поэтому соседние бустеры не накладываются друг на друга.
+            const gap = Math.max(12, Math.round(slotW * 0.07));
+            const spacing = slotW + gap;            // шаг между центрами паков в ряду
+            const depth = Math.round(slotW * 0.35); // насколько боковые паки отодвинуты назад
+            const tilt = 14;                        // лёгкий поворот боковых паков
+            // Сколько паков показывать по бокам.
+            // Позиция k-го пака на экране: центр = k·spacing, край = k·spacing ± (w/2)·cos(tilt),
+            // всё умножается на масштаб перспективы s = P/(P−z), где z = −k·depth, P = 1500px.
+            const halfStage = Math.max(120, (stage.clientWidth || 900) / 2);
+            const P = 1500;
+            const cosT = Math.cos(tilt * Math.PI / 180);
+            let maxVisible = 0, prevOuter = slotW / 2;
+            for (let k = 1; k <= 4; k++) {
+                const sc = P / (P + k * depth);
+                const centre = k * spacing * sc;
+                const inner = (k * spacing - (slotW / 2) * cosT) * sc;
+                const outer = (k * spacing + (slotW / 2) * cosT) * sc;
+                if (centre > halfStage - 12 || outer > halfStage + slotW * 0.85) break; // не влезает в сцену
+                if (inner < prevOuter + 4) break; // наползал бы на соседа — не показываем
+                maxVisible = k; prevOuter = outer;
+            }
+            maxVisible = Math.max(1, maxVisible);
+            packCarousel.slotW = slotW;
+            packCarousel.spacing = spacing;
+            packCarousel.depth = depth;
+            packCarousel.tilt = tilt;
+            packCarousel.maxVisible = maxVisible;
+
+            const stageH = Math.max(window.innerWidth < 768 ? 320 : 400, slotH + 92);
+            stage.style.height = stageH + 'px';
+            ring.style.marginTop = Math.round(-slotH / 2 - 8) + 'px';
+
+            ring.innerHTML = SHOP_LIST.map((pack, pi) => `
+                <div class="carousel-slot pack3d-wrap" data-i="${pi}" onclick="carouselSlotClick(${pi})" onmousemove="packTilt(event, this)" onmouseleave="packTiltReset(this)" style="width:${slotW}px;height:${slotH}px;margin-left:${Math.round(-slotW / 2)}px;${packCssVars(pack)}">
+                    <div class="pack3d-shadow"></div>
+                    <div class="pack3d-tilt">
+                        <div class="pack3d-float">
+                            <div class="pack3d-face pack3d-front booster">
+                                <div class="booster-foil"></div>
+                                <div class="booster-wrinkle fs${(pi % 3) + 1}"></div>
+                                <div class="booster-crimp booster-crimp-top"></div>
+                                <div class="booster-crimp booster-crimp-bottom"></div>
+                                <div class="booster-notch nl"></div>
+                                <div class="booster-notch nr"></div>
+                                <div class="booster-tearline"></div>
+                                <div class="booster-window">
+                                    <img src="${mediaThumbMid(pack.image)}" data-nx-full="${mediaUrl(pack.image)}" alt="${pack.title}" class="w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">
+                                    <div class="booster-label">${pack.title}</div>
+                                </div>
+                                <div class="booster-round"></div>
+                                <div class="booster-edge"></div>
+                                <div class="booster-holo"></div>
+                                <div class="booster-sparkles"></div>
+                                <div class="booster-gloss"></div>
+                            </div>
+                            <div class="pack3d-face pack3d-back">
+                                <div class="booster-foil"></div>
+                                <div class="booster-wrinkle fs${((pi + 1) % 3) + 1}"></div>
+                                <div class="booster-crimp booster-crimp-top"></div>
+                                <div class="booster-crimp booster-crimp-bottom"></div>
+                                <div class="booster-notch nl"></div>
+                                <div class="booster-notch nr"></div>
+                                <div class="booster-tearline"></div>
+                                <div class="pack3d-back-art">КОЛЛЕКЦИОНЕР<br>КАРТ<br>★ ★ ★</div>
+                                <div class="booster-round"></div>
+                                <div class="booster-edge"></div>
+                                <div class="booster-holo"></div>
+                                <div class="booster-sparkles"></div>
+                            </div>
+                            <div class="pack3d-rim rim-y"></div>
+                            <div class="pack3d-rim rim-x"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            if (dots) {
+                dots.innerHTML = SHOP_LIST.map((p, i) => `<button type="button" class="carousel-dot" data-i="${i}" onclick="carouselGoTo(${i})" aria-label="${p.title}"></button>`).join('');
+            }
+            carouselUpdate(false);
+            carouselBindStage(stage);
+            carouselStartAuto();
+            requestAnimationFrame(() => { try { fitPackLabels(ring); } catch (e) {} });
+            renderStoreShowcase();
+        }
+
+        // Расставить паки в ряд (без наложения друг на друга) и подсветить выбранный
+        function carouselUpdate(animate) {
+            carouselClampIdx();
+            const ring = document.getElementById('carousel-ring');
+            if (!ring) return;
+            const C = packCarousel, n = C.n;
+            const slots = ring.querySelectorAll ? ring.querySelectorAll('.carousel-slot') : [];
+            const first = animate === false;
+            if (first) {
+                // первая отрисовка — расставить мгновенно, без «прокрутки» с нуля
+                ring.classList.add('no-anim');
+                ring.style.transform = 'none';
+                C.lastOff = [];
+            }
+
+            const maxVisible = C.maxVisible || 2;
+            for (let i = 0; i < slots.length; i++) {
+                const el = slots[i];
+                let off = i - C.idx;
+                if (n > 0) off = ((off + n / 2) % n + n) % n - n / 2; // кратчайший путь по ряду
+                const abs = Math.abs(off);
+                // прячем «задний» пак при чётном числе и всё, что дальше края сцены
+                const hidden = abs > maxVisible || (n > 2 && n % 2 === 0 && off === -n / 2);
+                const pos = o => `translateX(${Math.round(o * C.spacing)}px) translateZ(${Math.round(-Math.abs(o) * C.depth)}px) rotateY(${(o * C.tilt).toFixed(2)}deg)`;
+
+                // Перелёт через «хвост» ряда (off скакнул больше чем на 1 — например,
+                // с последнего пака на первый): скрытый пак переносим мгновенно, а видимый
+                // ставим за край сцены, откуда он красиво въезжает на своё место.
+                const jumped = !first && C.lastOff[i] !== undefined && Math.abs(off - C.lastOff[i]) > 1;
+                if (jumped && !hidden) {
+                    const dir = Math.sign(off - C.lastOff[i]) || 1;
+                    const enter = off + dir * (maxVisible + 1);
+                    el.style.transition = 'none';
+                    el.style.transform = pos(enter);
+                    el.style.visibility = 'visible';
+                    el.style.opacity = '0';
+                    void el.offsetWidth; // зафиксировать стартовую точку вне сцены
+                    el.style.transition = '';
+                } else if (jumped) {
+                    el.style.transition = 'opacity .4s ease, filter .4s ease'; // transform — мгновенно
+                }
+                C.lastOff[i] = off;
+
+                // паки стоят в ряд: translateX — место в ряду, translateZ — боковые чуть
+                // дальше от зрителя, rotateY — лёгкий поворот. Шаг ряда = ширина пака +
+                // зазор, поэтому соседи никогда не накладываются друг на друга.
+                el.style.transform = pos(off);
+                el.style.zIndex = String(100 - Math.round(abs * 10));
+                el.style.opacity = hidden ? '0' : String(Math.max(0.22, 1 - abs * 0.3));
+                el.style.filter = abs === 0 ? 'none' : `brightness(${(1 - Math.min(abs * 0.16, 0.55)).toFixed(2)}) saturate(${(1 - Math.min(abs * 0.12, 0.4)).toFixed(2)})`;
+                el.style.pointerEvents = hidden ? 'none' : 'auto';
+                el.style.visibility = hidden ? 'hidden' : 'visible';
+                el.classList.toggle('active', abs === 0);
+                const tiltEl = el.querySelector ? el.querySelector('.pack3d-tilt') : null;
+                if (tiltEl) tiltEl.style.pointerEvents = abs === 0 ? 'auto' : 'none';
+                if (jumped && hidden) { void el.offsetWidth; el.style.transition = ''; }
+            }
+
+            if (first) void ring.offsetWidth; // применить мгновенно, потом вернуть переход
+
+            document.querySelectorAll('.carousel-dot').forEach((d, i) => d.classList.toggle('active', i === C.idx));
+            const counter = document.getElementById('carousel-counter');
+            if (counter) counter.innerText = `${C.idx + 1} / ${n}`;
+            carouselUpdateDetail();
+
+            if (first) ring.classList.remove('no-anim');
+        }
+
+        // Панель выбранного пака: название, шансы, цена и кнопка «Открыть пак»
+        function carouselUpdateDetail() {
+            const det = document.getElementById('carousel-detail');
+            if (!det) return;
+            const idx = packCarousel.idx;
+            const pack = SHOP_LIST[idx];
+            if (!pack) { det.innerHTML = ''; return; }
+            const cardsInPack = state.cards.filter(c => c.packId === pack.id).length;
+            const afford = state.coins >= pack.price;
+            const sw = packScheduleWindow(pack); // b158
+            const prem = packInPremiere(pack); // b165: премьера — пак виден как «Скоро», покупка закрыта
+            const pre = !prem && !!(sw && Date.now() < sw.start);
+            const salePrice = packSalePrice(pack); // b160
+            const hasDisc = salePrice < pack.price;
+            const canBuy = state.coins >= salePrice && !pre && !prem;
+            const palInfo = PACK_COLORS[pack.color] || PACK_COLORS.silver;
+            const shimInfo = PACK_SHIMMERS[pack.shimmer] || PACK_SHIMMERS.holo;
+            det.innerHTML = `
+                <div class="flex flex-col sm:flex-row gap-4 sm:gap-5">
+                    <div class="relative shrink-0 mx-auto sm:mx-0 w-36 sm:w-44">
+                        <div class="relative rounded-2xl overflow-hidden border border-slate-700/60 shadow-2xl shadow-black/60 aspect-[3/4] bg-slate-950">
+                            <img src="${mediaThumbMid(pack.image)}" data-nx-full="${mediaUrl(pack.image)}" alt="${pack.title}" class="w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                            ${saleTimerChip(pack)}
+                            ${prem ? '<span class="absolute top-2 right-2 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-amber-400/95 text-slate-950 shadow-lg shadow-amber-950/50" title="Премьера — скоро откроется"><i class="fa-solid fa-clapperboard"></i>Скоро</span>' : ''}
+                            <span class="absolute bottom-2 left-2 right-2 text-[10px] font-bold text-slate-100 truncate" title="Цвет упаковки и перелив фольги"><i class="fa-solid ${shimInfo.icon} mr-1 text-violet-300"></i>${palInfo.name} • ${shimInfo.name}</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 min-w-0 flex flex-col">
+                        <div class="flex items-start justify-between gap-3">
+                            <h3 class="font-black text-white text-lg sm:text-2xl leading-tight">${pack.title}</h3>
+                            <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg bg-violet-500/10 text-violet-300 border border-violet-500/30">${cardsInPack} карт</span>
+                        </div>
+
+                        <p class="text-[11px] sm:text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">${pack.description || ''}</p>
+                        <div id="carousel-odds" class="mt-3">${renderPackOdds(pack)}</div>
+                        <div class="mt-auto pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
+                            <span id="carousel-price" class="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-br from-amber-400/15 via-amber-500/10 to-amber-600/15 border ${hasDisc ? 'border-rose-500/60' : 'border-amber-500/40'} px-4 py-3 font-black text-amber-300 shadow-inner shadow-amber-950/40 sm:min-w-[132px]">
+                                <i class="fa-solid fa-coins text-amber-400 text-base"></i>
+                                ${hasDisc ? `<span class="text-[11px] leading-none text-slate-500 line-through">${fmtCoins(pack.price)}</span>` : ''}
+                                <span class="text-base sm:text-lg leading-none tracking-wide ${hasDisc ? 'text-rose-300' : ''}">${fmtCoins(salePrice)}</span>
+                                ${hasDisc ? `<span class="text-[9px] uppercase tracking-widest text-rose-300 font-black">-${Math.round(100 - salePrice / pack.price * 100)}%</span>` : '<span class="text-[9px] uppercase tracking-widest text-amber-200/60 font-bold">монет</span>'}
+                            </span>
+                            <button id="carousel-open-btn" onclick="buyPack('${pack.id}')" class="flex-1 px-5 py-3 font-black text-sm tracking-wide rounded-2xl transition-all duration-200 ${canBuy ? 'lqg lqg-vio hover:scale-[1.02] active:scale-[0.99]' : 'lqg lqg-slate opacity-60 cursor-not-allowed'}">
+                                <i class="fa-solid ${prem || pre ? 'fa-clock' : afford ? 'fa-box-open' : 'fa-lock'} mr-2"></i>${prem ? '🎬 Премьера через <b data-btn-cd="' + pack.id + '" data-btn-cd-mode="prem" class="font-black tabular-nums">' + saleClockStr(pack.premiereAt - Date.now()) + '</b>' : pre ? 'Продажа через <b data-btn-cd="' + pack.id + '" data-btn-cd-mode="pre" class="font-black tabular-nums">' + saleClockStr(sw.start - Date.now()) + '</b>' : canBuy ? 'Открыть пак' : 'Не хватает монет'}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            updateShowcaseActive();
+        }
+
+        function carouselGoTo(i) {
+            const n = SHOP_LIST.length;
+            if (!n) return;
+            const target = ((i % n) + n) % n;
+            if (target === packCarousel.idx) return;
+            packCarousel.idx = target;
+            SoundFX.play('click');
+            carouselUpdate(true);
+            carouselRestartAuto();
+        }
+
+        function carouselStep(d) {
+            const n = SHOP_LIST.length;
+            if (!n) return;
+            packCarousel.idx = ((packCarousel.idx + d) % n + n) % n;
+            SoundFX.play('swap');
+            carouselUpdate(true);
+            carouselRestartAuto();
+        }
+
+        // Клик по пакету: боковой — крутим карусель к нему, центральный — сразу покупаем
+        function carouselSlotClick(i) {
+            if (packCarousel.dragging || packCarousel.moved) return;
+            const unbox = document.getElementById('modal-unboxing');
+            if (unbox && !unbox.classList.contains('hidden')) return; // идёт вскрытие — клики мимо
+            if (i === packCarousel.idx) buyPack(SHOP_LIST[i].id);
+            else carouselGoTo(i);
+        }
+
+        // начало перетаскивания кольца мышью (drag-to-spin)
+        function carouselDragStart(e) {
+            if (e && e.button !== undefined && e.button !== 0) return;
+            const C = packCarousel;
+            C.dragging = true; C.moved = false;
+            C.startX = (e && e.clientX) || 0; C.lastX = C.startX; C.lastT = Date.now();
+            const st = document.getElementById('carousel-stage');
+            if (st) st.classList.add('is-dragging');
+            carouselStopAuto();
+            if (e && e.preventDefault) e.preventDefault();
+        }
+
+        function carouselBindStage(stage) {
+            stage = stage || document.getElementById('carousel-stage');
+            if (!stage || stage.dataset.bound === '1') return;
+            stage.dataset.bound = '1';
+            stage.addEventListener('dragstart', ev => ev.preventDefault());
+            const C = packCarousel;
+
+            stage.addEventListener('mouseenter', () => { C.hover = true; carouselStopAuto(); });
+            stage.addEventListener('mouseleave', () => { C.hover = false; C.dragging = false; stage.classList.remove('is-dragging'); carouselStartAuto(); });
+            stage.addEventListener('wheel', ev => {
+                const d = Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : (ev.shiftKey ? ev.deltaY : 0);
+                if (!d) return; // вертикальную прокрутку страницы не ломаем
+                ev.preventDefault();
+                carouselStep(d > 0 ? 1 : -1);
+            }, { passive: false });
+
+            // мышь: перетаскивание кольца
+            window.addEventListener('mousemove', ev => {
+                if (!C.dragging) return;
+                const dx = ev.clientX - C.startX;
+                C.lastX = ev.clientX; C.lastT = Date.now();
+                if (Math.abs(dx) > 8) C.moved = true;
+                if (Math.abs(dx) > 55) { carouselStep(dx < 0 ? 1 : -1); C.startX = ev.clientX; C.moved = true; }
+            });
+            window.addEventListener('mouseup', () => {
+                if (!C.dragging) return;
+                C.dragging = false;
+                const st = document.getElementById('carousel-stage');
+                if (st) st.classList.remove('is-dragging');
+                setTimeout(() => { C.moved = false; }, 60);
+                carouselStartAuto();
+            });
+
+            // клавиатура: стрелки листают карусель, Enter/Пробел — открыть выбранный пак
+            window.addEventListener('keydown', ev => {
+                const tab = document.getElementById('tab-store');
+                if (!tab || tab.classList.contains('hidden')) return;
+                if (ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName || '')) return;
+                const modal = document.getElementById('modal-unboxing');
+                if (modal && !modal.classList.contains('hidden')) return;
+                if (ev.key === 'ArrowLeft') { ev.preventDefault(); carouselStep(-1); }
+                else if (ev.key === 'ArrowRight') { ev.preventDefault(); carouselStep(1); }
+                else if ((ev.key === 'Enter' || ev.key === ' ') && SHOP_LIST[packCarousel.idx]) {
+                    ev.preventDefault(); buyPack(SHOP_LIST[packCarousel.idx].id);
+                }
+            });
+        }
+
+        // свайпы на телефоне
+        function carouselTouchStart(e) {
+            const t = e.touches && e.touches[0]; if (!t) return;
+            const C = packCarousel;
+            C.dragging = true; C.moved = false;
+            C.startX = t.clientX; C.startY = t.clientY; C.lastX = t.clientX; C.lastT = Date.now();
+            carouselStopAuto();
+        }
+        function carouselTouchMove(e) {
+            const C = packCarousel;
+            if (!C.dragging) return;
+            const t = e.touches && e.touches[0]; if (!t) return;
+            const dx = t.clientX - C.startX, dy = t.clientY - C.startY;
+            if (Math.abs(dx) < Math.abs(dy)) return; // вертикальный скролл страницы
+            C.moved = Math.abs(dx) > 10;
+            C.lastX = t.clientX; C.lastT = Date.now();
+            if (Math.abs(dx) > 55) {
+                carouselStep(dx < 0 ? 1 : -1);
+                C.startX = t.clientX;
+                if (e.cancelable && e.preventDefault) e.preventDefault();
+            }
+        }
+        function carouselTouchEnd() {
+            const C = packCarousel;
+            if (!C.dragging) return;
+            C.dragging = false;
+            // короткий быстрый свайп тоже листает
+            if (Date.now() - C.lastT < 350 && Math.abs(C.lastX - C.startX) > 24) carouselStep(C.lastX < C.startX ? 1 : -1);
+            setTimeout(() => { C.moved = false; }, 80);
+            carouselStartAuto();
+        }
+
+        // Автовращение витрины: паки прокручиваются по очереди каждые 15 секунд
+        // (останавливается при наведении/взаимодействии)
+        const CAROUSEL_AUTO_MS = 15000;
+        function carouselStartAuto() {
+            carouselStopAuto();
+            if (state.packs.length < 2) return;
+            if (document.hidden) return;
+            packCarousel.autoTimer = setInterval(() => {
+                if (packCarousel.dragging || packCarousel.hover) return;
+                const tab = document.getElementById('tab-store');
+                if (!tab || tab.classList.contains('hidden')) return;
+                const modal = document.getElementById('modal-unboxing');
+                if (modal && !modal.classList.contains('hidden')) return;
+                // по очереди на один пак вперёд; следующий шаг — ещё через 15 секунд
+                // b62: тик автовращения под предохранителем (поворот экрана/гонка DOM)
+                try {
+                    packCarousel.idx = (packCarousel.idx + 1) % SHOP_LIST.length;
+                    carouselUpdate(true);
+                } catch (e) {
+                    try { console.error('carouselAuto', e); } catch (e2) {}
+                    carouselStopAuto();
+                }
+            }, CAROUSEL_AUTO_MS);
+        }
+        function carouselStopAuto() {
+            if (packCarousel.autoTimer) { clearInterval(packCarousel.autoTimer); packCarousel.autoTimer = null; }
+        }
+        function carouselRestartAuto() { carouselStopAuto(); carouselStartAuto(); }
+        document.addEventListener('visibilitychange', () => { if (document.hidden) carouselStopAuto(); else carouselStartAuto(); });
+        window.addEventListener('resize', () => {
+            if (!state.packs.length) return;
+            const tab = document.getElementById('tab-store');
+            if (tab && tab.classList.contains('hidden')) return;
+            clearTimeout(window._carouselResizeT);
+            // b62: перерисовка витрины при повороте экрана — под предохранителем:
+            // исключение здесь раньше превращалось в тост «Script error.»
+            window._carouselResizeT = setTimeout(() => {
+                try { renderStore(); } catch (e) { try { console.error('renderStore@resize', e); } catch (e2) {} }
+            }, 220);
+        });
+        // b62: после поворота проверяем, не сбросил ли WebKit подложку холстов фольги —
+        // сброшенная фольга = карта открыта (иначе награда зависла бы до «Стереть всё»)
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                try {
+                    const m = document.getElementById('modal-unboxing');
+                    if (!m || m.classList.contains('hidden')) return;
+                    currentUnboxingCards.forEach((_, idx) => {
+                        const st = scratchState[idx];
+                        if (!st || st.revealed) return;
+                        const canvas = document.getElementById('scratch-canvas-' + idx);
+                        if (!canvas) return;
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) { revealCardFully(idx); return; }
+                        const d = ctx.getImageData(0, 0, Math.min(8, canvas.width), Math.min(8, canvas.height)).data;
+                        let opaque = false;
+                        for (let i = 3; i < d.length; i += 4) { if (d[i] !== 0) { opaque = true; break; } }
+                        if (!opaque) revealCardFully(idx);
+                    });
+                } catch (e) {}
+            }, 400);
+        });
+
+        function buyPack(packId) {
+            nxTrail('buy:' + packId);
+            if (statsBlockGuard('покупка паков')) return; // b277
+            const pack = state.packs.find(p => p.id === packId);
+            if (!pack) return;
+            if (packIsRetired(pack)) { showToast('🚫 Пак снят с продажи — купить его больше нельзя', 'error'); return; } // b147+b148
+            if (packInPremiere(pack)) { showToast('🎬 Премьера пака «' + pack.title + '» ещё не состоялась — скоро откроется, осталось ' + saleClockStr(pack.premiereAt - Date.now()), 'info'); return; } // b165
+            const swGuard = packScheduleWindow(pack); // b158: окно продажи ещё не открылось
+            if (swGuard && Date.now() < swGuard.start) { showToast('🕒 Продажа откроется через ' + saleClockStr(swGuard.start - Date.now()), 'info'); return; }
+            const packPrice = packSalePrice(pack); // b160: скидка окна продажи
+            // b161: лимит паков в одни руки за окно
+            if (swGuard && pack.schedule && pack.schedule.limitN > 0 && Date.now() >= swGuard.start && Date.now() < swGuard.end) {
+                const wb0 = state.windowBuys || (state.windowBuys = {});
+                const k0 = pack.id + ':' + swGuard.start;
+                if ((wb0[k0] || 0) >= pack.schedule.limitN) { showToast('🎯 Лимит окна: не больше ' + pack.schedule.limitN + ' ' + pluralRu(pack.schedule.limitN, 'пака', 'паков', 'паков') + ' в одни руки', 'error'); return; }
+            }
+            if (state.coins < packPrice) {
+                showToast('Недостаточно монет!', 'error');
+                return;
+            }
+            state.coins -= packPrice;
+            // b161: счётчик покупок в окне + статистика продаж пака
+            try {
+                const wb = state.windowBuys || (state.windowBuys = {});
+                if (swGuard) { const kk = pack.id + ':' + swGuard.start; wb[kk] = (wb[kk] || 0) + 1; }
+                const ps = state.packStats || (state.packStats = {});
+                const en = ps[pack.id] || (ps[pack.id] = { opens: 0, revenue: 0, days: {} });
+                en.opens++; en.revenue += packPrice;
+                const dk = new Date().toISOString().slice(0, 10);
+                en.days[dk] = (en.days[dk] || 0) + 1;
+            } catch (e) {}
+            updateCoinDisplay();
+            saveState();
+            SoundFX.play('coin');
+
+            const cards = rollPackCards(pack);
+            if (!cards) return;
+
+            // b19: музыка вскрытия стартует по клику (так разрешает браузер) —
+            // играет всю 3D-анимацию и стирание фольги, стоп — когда пак распечатан
+            currentUnboxingPack = pack;
+            PackMusic.startFor(pack);
+
+            if (typeof THREE !== 'undefined' && webglAvailable()) {
+                // b62: любая авария внутри 3D-сборки (память, контекст, текстуры) —
+                // не «Script error.» на весь экран, а тихий переход в 2D-вскрытие
+                try {
+                    openPack3D(pack, cards);
+                } catch (e) {
+                    try { console.error('openPack3D', e); } catch (e2) {}
+                    try {
+                        if (pack3d) { finishPack3D(); }
+                        else {
+                            document.getElementById('modal-pack3d').classList.add('hidden');
+                            const c = document.getElementById('pack3d-container');
+                            if (c) c.innerHTML = '';
+                            showUnboxingUI(pack, cards);
+                        }
+                    } catch (e2) {
+                        try { showUnboxingUI(pack, cards); } catch (e3) {}
+                    }
+                }
+            } else {
+                showUnboxingUI(pack, cards);
+            }
+        }
+
+        let currentUnboxingCards = [];
+        let currentUnboxingPack = null; // b19: для музыки вскрытия
+
+        // b67: Ролл 4 карт с учётом редкости и гаранта (общий для 3D и обычного вскрытия)
+        function rollPackCards(pack) {
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            if (packCards.length === 0) {
+                showToast('В этом паке пока нет карточек!', 'error');
+                state.coins += pack.price;
+                updateCoinDisplay();
+                saveState();
+                return null;
+            }
+
+            const rolled = [];
+            for (let i = 0; i < 4; i++) rolled.push(rollCardFromPack(packCards));
+
+            // Гарант: каждый PITY_LIMIT-й пак без epic+ даёт гарантированный epic+
+            const hasEpicPlusInPack = packCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
+            const gotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
+            if (state.pity.packsSinceEpic >= PITY_LIMIT - 1 && hasEpicPlusInPack && !gotEpicPlus) {
+                rolled[3] = rollCardFromPack(packCards, true);
+            }
+            const finalGotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
+            state.pity.packsSinceEpic = finalGotEpicPlus ? 0 : state.pity.packsSinceEpic + 1;
+
+            state.stats.packsOpened++;
+            saveState();
+            statsTouch(); // b277: свежий баланс и счётчик паков — сразу в общий реестр сайта
+            updatePityIndicator();
+            updateMissions('open_pack', 1);
+            // b130: картинки выпавших карт грузятся сразу, пока идёт анимация вскрытия
+            try { preloadImages(rolled.map(c => c.image)); } catch (e) {}
+
+            return rolled.map(c => ({ ...c, unboxedId: Math.random() }));
+        }
+
+        // b216: кнопка «Купить пак» в окне вскрытия — ценник синхронизируется с паком
+        function syncUnboxBuyBtn(pack) {
+            const b = document.getElementById('unboxing-buy-btn');
+            if (!b) return;
+            if (!pack) { b.classList.add('hidden'); return; }
+            b.classList.remove('hidden');
+            const price = packSalePrice(pack);
+            b.innerHTML = '<i class="fa-solid fa-cart-plus mr-1.5"></i>Купить пак · <i class="fa-solid fa-coins mr-1"></i>' + fmtCoins(price);
+            b.title = 'Купить ещё один пак «' + pack.title + '» за ' + fmtCoins(price) + ' монет, не закрывая окно вскрытия';
+        }
+
+        // b216: покупка ещё одного пака того же набора прямо из окна вскрытия.
+        // Нестёртые карты текущего вскрытия сначала открываются автоматически
+        // (scratchAllCards → processCardReward), чтобы не потерять их при покупке.
+        function buyPackFromUnboxing() {
+            const pack = currentUnboxingPack;
+            if (!pack) { showToast('Пак не определён — закройте окно и купите из магазина', 'error'); return; }
+            scratchAllCards(); // ничего не теряем: неоткрытые карты уходят в коллекцию
+            const before = state.stats.packsOpened;
+            buyPack(pack.id); // все проверки (тираж/премьера/окно/монеты) и тосты — внутри buyPack
+            // 2D-путь: showUnboxingUI уже пересобрал окно с новыми картами.
+            // 3D-путь: старое окно прячем на время новой 3D-анимации — вернётся само в конце
+            if (state.stats.packsOpened > before && !document.getElementById('modal-pack3d').classList.contains('hidden')) {
+                document.getElementById('modal-unboxing').classList.add('hidden');
+            }
+        }
+
+        function showUnboxingUI(pack, cards) {
+            nxTrail('unbox2d');
+            currentUnboxingCards = cards;
+            unboxDupeIdx = {}; unboxListedIdx = {}; // b143: новое вскрытие — новые повторки
+
+            document.getElementById('unboxing-title').innerText = `Вскрытие пака: ${pack.title}`;
+            syncUnboxBuyBtn(pack); // b216: ценник кнопки «Купить пак»
+            const container = document.getElementById('unboxing-cards-container');
+            container.innerHTML = currentUnboxingCards.map((card, idx) => {
+                const L = cardLayoutOf(card);
+                const badgeHtml = `<div class="w-full flex justify-between items-center">
+                        <span class="text-xs font-mono font-bold text-slate-200 bg-slate-950/70 px-2 py-0.5 rounded backdrop-blur-sm">#${getCardLocalNumber(card)}</span>
+                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-900/80 text-slate-200 border border-slate-700 backdrop-blur-sm">${card.rarity}</span>
+                    </div>`;
+                const nameHtml = `<h4 class="w-full font-bold text-white text-base truncate drop-shadow-md ${L.text}">${card.name}</h4>`;
+                const descHtml = `<p class="w-full text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description || ''}</p>`;
+                const extraHtml = `<div id="status-${idx}" class="mt-2 text-xs font-semibold w-full ${L.text}"></div>`;
+                const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, extraHtml);
+                return `
+                <div class="relative w-full card-aspect rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-700/70 bg-slate-900 flex flex-col justify-between p-4 group select-none" style="position:relative;overflow:hidden;">
+                    <!-- b135: лицо карты скрыто (opacity 0), пока фольга не готова: никаких спойлеров и мигания -->
+                    <div data-scratch-face="${idx}" data-rarcls="${getRarityClass(card.rarity)} ${cardHoloClass(card)}" class="absolute inset-0 z-20 flex flex-col justify-between p-4" style="opacity:0;transition:opacity .3s ease;">
+                        <img src="${mediaThumbMid(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/5 to-slate-950/15 z-10"></div>
+                        ${Z.top}
+                        ${Z.bottom}
+                        ${cardShineOverlay(card, 25)}
+                    </div>
+
+                    <!-- Scratch Foil Canvas Layer -->
+                    <canvas id="scratch-canvas-${idx}" class="absolute inset-0 z-30 cursor-crosshair touch-none rounded-2xl" style="position:absolute;top:0;left:0;width:100%;height:100%;z-index:30;" width="300" height="533" onmousedown="startScratch(event, ${idx})" ontouchstart="startScratch(event, ${idx})" onmousemove="doScratch(event, ${idx})" ontouchmove="doScratch(event, ${idx})" onmouseup="stopScratch(${idx})" ontouchend="stopScratch(${idx})" onmouseleave="pauseScratch(${idx})"></canvas>
+
+                    <!-- Centred scratch hint (HTML overlay — always perfectly centred) -->
+                    <div id="scratch-hint-${idx}" style="position:absolute;top:0;left:0;right:0;bottom:0;z-index:40;pointer-events:none;display:flex;align-items:center;justify-content:center;text-align:center;transition:opacity .3s ease;">
+                        <div style="border:2px dashed rgba(148,163,184,.55);border-radius:14px;padding:10px 16px;background:rgba(15,23,42,.45);max-width:86%;">
+                            <p style="margin:0;font-weight:800;color:#e2e8f0;font-size:14px;letter-spacing:.08em;">✨ СТИРАТЬ ЗДЕСЬ ✨</p>
+                            <p style="margin:5px 0 0;font-size:11px;color:#94a3b8;">Водите пальцем или мышкой</p>
+                        </div>
+                    </div>
+                </div>
+            `; }).join('');
+
+            document.getElementById('modal-unboxing').classList.remove('hidden');
+
+            // b19: подхватываем музыку вскрытия и показываем её состояние
+            if (!currentUnboxingPack) currentUnboxingPack = pack;
+            if (!PackMusic.session) PackMusic.startFor(pack);
+            syncUnboxMusicField();
+            updateUnboxMusicUI();
+
+            // Initialize scratch canvas drawings
+            setTimeout(() => {
+                currentUnboxingCards.forEach((_, idx) => {
+                    try { initScratchCanvas(idx); } catch (e) { try { console.error('initScratchCanvas', e); } catch (e2) {} }
+                });
+            }, 50);
+        }
+
+        const scratchState = {};
+
+        function initScratchCanvas(idx) {
+            const canvas = document.getElementById(`scratch-canvas-${idx}`);
+            if (!canvas) return;
+            try {
+            // Внутреннее разрешение = фактический размер карточки на экране:
+            // фольга без растяжения и размытия (подсказка теперь в HTML-оверлее)
+            const rect = canvas.getBoundingClientRect();
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            if (rect.width > 4 && rect.height > 4) {
+                let pw = Math.round(rect.width * dpr), ph = Math.round(rect.height * dpr);
+                // b62: потолок площади холста. На планшетах (WebKit/iOS) суммарная память
+                // холстов ограничена; при переборе getContext('2d') возвращает null и всё
+                // падает с «Cannot set properties of null». Меньше площадь — живее фольга.
+                const MAXPX = 1200000;
+                if (pw * ph > MAXPX) {
+                    const k = Math.sqrt(MAXPX / (pw * ph));
+                    pw = Math.max(2, Math.round(pw * k));
+                    ph = Math.max(2, Math.round(ph * k));
+                }
+                canvas.width = pw;
+                canvas.height = ph;
+            }
+            const ctx = canvas.getContext('2d');
+            // b62: браузер отказал в контексте (предел памяти холстов) — не падаем,
+            // а просто открываем карту без фольги: награда и музыка отработают штатно
+            if (!ctx) {
+                try { canvas.remove(); } catch (e) {}
+                revealCardFully(idx);
+                return;
+            }
+
+            // Draw opaque foil background
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Add shiny foil pattern overlay
+            const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            grad.addColorStop(0, '#334155');
+            grad.addColorStop(0.5, '#475569');
+            grad.addColorStop(1, '#1e293b');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Диагональный блик — фольга выглядит металлической
+            const shine = ctx.createLinearGradient(0, canvas.height, canvas.width, 0);
+            shine.addColorStop(0.42, 'rgba(255,255,255,0)');
+            shine.addColorStop(0.5, 'rgba(255,255,255,0.09)');
+            shine.addColorStop(0.58, 'rgba(255,255,255,0)');
+            ctx.fillStyle = shine;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            scratchState[idx] = { isDrawing: false, scratchedPixels: 0, totalPixels: canvas.width * canvas.height, revealed: false, lastCheck: 0 };
+            // b135: фольга на месте — проявляем лицо под ней; ждём картинку, чтобы не мигало
+            try {
+                const face = document.querySelector('[data-scratch-face="' + idx + '"]');
+                if (face) {
+                    const img = face.querySelector('img');
+                    const show = () => { face.style.opacity = '1'; };
+                    if (!img || img.complete) show();
+                    else { img.addEventListener('load', show, { once: true }); img.addEventListener('error', show, { once: true }); }
+                }
+            } catch (e) {}
+            } catch (e) {
+                // b62: любой сбой холста (память, dpr, скрытый модал) — открываем карту без фольги
+                try { console.error('initScratchCanvas', e); } catch (e2) {}
+                try { canvas.remove(); } catch (e2) {}
+                try { revealCardFully(idx); } catch (e2) {}
+            }
+        }
+
+        // Спрятать HTML-подсказку «СТИРАТЬ ЗДЕСЬ» (первое касание / раскрытие)
+        function hideScratchHint(idx) {
+            const hint = document.getElementById(`scratch-hint-${idx}`);
+            if (hint && hint.style.opacity !== '0') {
+                hint.style.opacity = '0';
+                setTimeout(() => hint.remove(), 350);
+            }
+        }
+
+        function startScratch(e, idx) {
+            e.preventDefault();
+            if (scratchState[idx] && scratchState[idx].revealed) return;
+            if (!scratchState[idx]) scratchState[idx] = { isDrawing: false, revealed: false, lastCheck: 0 };
+            scratchState[idx].isDrawing = true;
+            scratchState[idx].lastX = null;
+            scratchState[idx].lastY = null;
+            hideScratchHint(idx);
+            doScratch(e, idx);
+        }
+
+        function stopScratch(idx) {
+            if (scratchState[idx]) {
+                scratchState[idx].isDrawing = false;
+                scratchState[idx].lastX = null;
+                scratchState[idx].lastY = null;
+            }
+        }
+
+        // Курсор ушёл с карты с зажатой кнопкой: сбрасываем точку, чтобы при
+        // возвращении линия не «прыгала» через полкарты
+        function pauseScratch(idx) {
+            if (scratchState[idx]) {
+                scratchState[idx].lastX = null;
+                scratchState[idx].lastY = null;
+            }
+        }
+
+        // Страховка: кнопку мыши/палец отпустили ВНЕ карты — стирание останавливается
+        function releaseAllScratch() {
+            Object.keys(scratchState).forEach(k => {
+                if (scratchState[k]) {
+                    scratchState[k].isDrawing = false;
+                    scratchState[k].lastX = null;
+                    scratchState[k].lastY = null;
+                }
+            });
+        }
+        document.addEventListener('mouseup', releaseAllScratch);
+        document.addEventListener('touchend', releaseAllScratch);
+
+        function doScratch(e, idx) {
+            const stateObj = scratchState[idx];
+            if (!stateObj || !stateObj.isDrawing || stateObj.revealed) return;
+
+            const canvas = document.getElementById(`scratch-canvas-${idx}`);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            // b62: нет контекста (предел памяти холстов) или нулевой размер — не падаем
+            if (!ctx || !rect.width || !rect.height) return;
+
+            let clientX, clientY;
+            if (e.touches && e.touches[0]) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            try {
+            const x = (clientX - rect.left) * (canvas.width / rect.width);
+            const y = (clientY - rect.top) * (canvas.height / rect.height);
+
+            // Кисть масштабируется под разрешение холста
+            const brush = Math.max(20, canvas.width * 0.13);
+
+            // Непрерывая линия от предыдущей точки к текущей: при быстром
+            // движении мышкой фольга стирается ровной полосой, без «пунктира»
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = 'rgba(0, 0, 0, 1)';
+            ctx.lineWidth = brush * 2;
+            ctx.beginPath();
+            if (stateObj.lastX != null) {
+                ctx.moveTo(stateObj.lastX, stateObj.lastY);
+                ctx.lineTo(x, y);
+            } else {
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + 0.01, y + 0.01);
+            }
+            ctx.stroke();
+            stateObj.lastX = x;
+            stateObj.lastY = y;
+            SoundFX.play('scratch');
+
+            checkScratchProgress(idx);
+            } catch (e) { stateObj.isDrawing = false; }
+        }
+
+        function checkScratchProgress(idx) {
+            const stateObj = scratchState[idx];
+            if (!stateObj || stateObj.revealed) return;
+
+            // Троттлинг: холст теперь в высоком разрешении, проверку пикселей
+            // достаточно делать ~10 раз в секунду
+            const now = Date.now();
+            if (now - (stateObj.lastCheck || 0) < 90) return;
+            stateObj.lastCheck = now;
+
+            const canvas = document.getElementById(`scratch-canvas-${idx}`);
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            // b62: нет контекста — читаем прогресс нечем; открываем карту без фольги,
+            // чтобы вскрытие не зависло навсегда
+            if (!ctx) { revealCardFully(idx); return; }
+
+            // Sample pixels to check clearance (шаг зависит от разрешения)
+            const sampleStep = canvas.width > 600 ? 40 : 20;
+            let transparentCount = 0;
+            let totalChecked = 0;
+
+            let imgData;
+            try {
+                imgData = ctx.getImageData(0, 0, canvas.width, canvas.height, {willReadFrequently: true});
+            } catch (e) {
+                // b62: чтение пикселей запрещено/недоступно — считаем карту открытой
+                revealCardFully(idx);
+                return;
+            }
+            for (let i = 3; i < imgData.data.length; i += 4 * sampleStep) {
+                totalChecked++;
+                if (imgData.data[i] === 0) {
+                    transparentCount++;
+                }
+            }
+
+            if (transparentCount / totalChecked > 0.3) {
+                revealCardFully(idx);
+            }
+        }
+
+        function revealCardFully(idx) {
+            // b19: защита — если состояние стирания ещё не создано (карту открыли
+            // программно), создаём его, иначе открытая карта не засчитается
+            if (!scratchState[idx]) scratchState[idx] = { isDrawing: false, scratchedPixels: 0, totalPixels: 0, revealed: false, lastCheck: 0 };
+            const stateObj = scratchState[idx];
+            if (stateObj && stateObj.revealed) return;
+            stateObj.revealed = true;
+            SoundFX.play('reveal');
+            hideScratchHint(idx);
+
+            const canvas = document.getElementById(`scratch-canvas-${idx}`);
+            if (canvas) {
+                canvas.classList.add('transition-opacity', 'duration-500', 'opacity-0', 'pointer-events-none');
+                setTimeout(() => canvas.remove(), 500);
+            }
+            // b135: открываем лицо и передаём рамке карточки свечение редкости
+            try {
+                const face = document.querySelector('[data-scratch-face="' + idx + '"]');
+                if (face) {
+                    face.style.opacity = '1';
+                    const wrap = face.parentElement;
+                    if (wrap && face.dataset.rarcls) face.dataset.rarcls.split(' ').forEach(c => { if (c) wrap.classList.add(c); });
+                }
+            } catch (e) {}
+
+            processCardReward(idx);
+            PackMusic.checkUnboxingDone(); // b19: все карты открыты — музыка off
+        }
+
+        function scratchAllCards() {
+            let anyRevealed = false;
+            currentUnboxingCards.forEach((_, idx) => {
+                // b19: если состояние стирания ещё не создано — создаём, чтобы
+                // «Стереть всё» гарантированно открыло карту и выключило музыку
+                if (!scratchState[idx]) scratchState[idx] = { isDrawing: false, scratchedPixels: 0, totalPixels: 0, revealed: false, lastCheck: 0 };
+                const stateObj = scratchState[idx];
+                if (stateObj && !stateObj.revealed) {
+                    stateObj.revealed = true;
+                    anyRevealed = true;
+                    hideScratchHint(idx);
+                    const canvas = document.getElementById(`scratch-canvas-${idx}`);
+                    if (canvas) {
+                        canvas.classList.add('transition-opacity', 'duration-300', 'opacity-0', 'pointer-events-none');
+                        setTimeout(() => canvas.remove(), 300);
+                    }
+                    processCardReward(idx);
+                }
+            });
+            if (anyRevealed) SoundFX.play('reveal');
+            PackMusic.checkUnboxingDone(); // b19: «Стереть всё» = пак распечатан
+        }
+
+        function processCardReward(idx) {
+            const card = currentUnboxingCards[idx];
+            const statusEl = document.getElementById(`status-${idx}`);
+            if (!statusEl) return;
+
+            const isAlreadyOwned = state.collection[card.id];
+            if (isAlreadyOwned) {
+                const refundMap = { common: 20, rare: 50, epic: 120, legendary: 300 };
+                const refund = refundMap[card.rarity] || 20;
+                state.collection[card.id] = cardCopies(card.id) + 1; // b18: считаем повторы
+                state.coins += refund;
+                updateCoinDisplay();
+                state.stats.duplicatesSold++;
+                state.stats.coinsFromDupes += refund;
+                unboxDupeIdx[idx] = true; // b143: помним повторку для массовой продажи
+                const mkPrice = marketRecommendPrice(card);
+                const mkBtn = CLOUD.connected()
+                    ? `<button id="mk-sell-${idx}" onclick="marketSellRevealed(${idx})" class="inline-flex items-center gap-1 px-2 py-1 bg-violet-600/90 hover:bg-violet-500 text-white rounded border border-violet-400/50 text-[11px] font-bold backdrop-blur-sm transition shadow-md shadow-violet-950/40"><i class="fa-solid fa-tag"></i><span>Продать на бирже за ${fmtCoins(mkPrice)}</span></button>`
+                    : '';
+                statusEl.innerHTML = `<span class="inline-flex items-center flex-wrap gap-1.5 px-2 py-1 bg-amber-950/90 text-amber-300 rounded border border-amber-500/50 text-[11px] backdrop-blur-sm"><i class="fa-solid fa-coins"></i><span>♻️ Повторка ×${cardCopies(card.id)} (+${refund})</span>${mkBtn}</span>`;
+                showToast(`Повторная карта ${card.name} продана за ${refund} монет!`, 'refund');
+                SoundFX.play('coin');
+                updateMissions('sell_dupe', 1);
+                updateMissions('earn_dupe_coins', refund);
+            } else {
+                state.collection[card.id] = 1; // b18: число копий вместо true
+                statusEl.innerHTML = `<span class="inline-flex items-center space-x-1 px-2 py-1 bg-violet-950/90 text-violet-300 rounded border border-violet-500/50 text-[11px] backdrop-blur-sm"><i class="fa-solid fa-wand-magic-sparkles"></i><span>✨ Новая!</span></span>`;
+                showToast(`Новая карта получена: ${card.name}!`, 'success');
+                updateMissions('collect_new', 1);
+            }
+
+            // Легендарка — особый эффект!
+            if (card.rarity === 'legendary') {
+                SoundFX.play('legendary');
+                launchConfetti(120);
+            }
+
+            // Статистика и задания по редкости
+            if (['rare', 'epic', 'legendary'].includes(card.rarity)) {
+                state.stats.rarePlusFound++;
+                updateMissions('find_rare_plus', 1);
+            }
+            if (['epic', 'legendary'].includes(card.rarity)) {
+                state.stats.epicPlusFound++;
+                updateMissions('find_epic_plus', 1);
+            }
+            if (card.rarity === 'legendary') state.stats.legendariesFound++;
+
+            saveState();
+            checkAlbumRewards();
+            checkAchievements();
+        }
+
+        // ============ НАГРАДЫ ЗА СОБРАННЫЕ АЛЬБОМЫ ============
+        // Альбом, собранный на 100%, единовременно приносит бонус монет.
+        // Выплаченные бонусы запомнились в state.albumBonus (ключ nexus_album_bonus),
+        // поэтому награда даётся ровно один раз на альбом.
+        function albumBonusFor(pack) {
+            const n = state.cards.filter(c => c.packId === pack.id).length;
+            return 200 + n * 10; // чем вместительнее альбом, тем ценнее награда
+        }
+        function isAlbumComplete(pack) {
+            const pc = state.cards.filter(c => c.packId === pack.id);
+            return pc.length > 0 && pc.every(c => state.collection[c.id]);
+        }
+        function checkAlbumRewards() {
+            if (!state.albumBonus || typeof state.albumBonus !== 'object') state.albumBonus = {};
+            const done = [];
+            let total = 0;
+            state.packs.forEach(p => {
+                if (state.albumBonus[p.id]) return;
+                if (!isAlbumComplete(p)) return;
+                const b = albumBonusFor(p);
+                state.albumBonus[p.id] = Date.now();
+                state.coins += b;
+                total += b;
+                done.push({ title: p.title, bonus: b });
+            });
+            if (!done.length) return 0;
+            saveState();
+            updateCoinDisplay();
+            SoundFX.play('achievement');
+            launchConfetti(140);
+            if (done.length === 1) {
+                showToast(`📖 Альбом «${done[0].title}» собран полностью! Бонус +${done[0].bonus} монет`, 'success');
+            } else {
+                showToast(`📖 Альбомов собрано полностью: ${done.length}! Бонус +${total} монет`, 'success');
+            }
+            renderRewardsIfVisible();
+            return total;
+        }
+
+        function closeUnboxingModal() {
+            document.getElementById('modal-unboxing').classList.add('hidden');
+            PackMusic.stop(); // b19: окно закрыли — музыка точно не играет
+            currentUnboxingPack = null;
+            flushToastQueue(); // b218: накопленные за вскрытие уведомления выходят каскадом
+        }
+
+        // ============ b18: АЛЬБОМ 2.0 — ФИЛЬТРЫ, ПОИСК, КОПИИ ============
+        let albumFilter = { rarity: 'all', missing: false, q: '' };
+        let albumViewIds = [];
+
+        function cardCopies(cardId) {
+            const v = state.collection[cardId];
+            if (!v) return 0;
+            return (typeof v === 'number' && v > 0) ? Math.floor(v) : 1;
+        }
+
+        function albumRarityStats(cards) {
+            return RARITY_ORDER.map(r => {
+                const list = cards.filter(c => c.rarity === r);
+                return { r, all: list.length, have: list.filter(c => state.collection[c.id]).length };
+            }).filter(x => x.all > 0);
+        }
+
+        function albumMatches(card) {
+            if (albumFilter.rarity !== 'all' && card.rarity !== albumFilter.rarity) return false;
+            if (albumFilter.missing && state.collection[card.id]) return false;
+            const q = String(albumFilter.q || '').trim().toLowerCase();
+            if (q) {
+                // Поиск работает только по найденным картам — иначе по названию
+                // можно было бы угадывать содержимое закрытых (спойлеры).
+                if (!state.collection[card.id]) return false;
+                const hay = ((card.name || '') + ' ' + (card.description || '')).toLowerCase();
+                if (hay.indexOf(q) < 0) return false;
+            }
+            return true;
+        }
+
+        function albumCardHTML(card, opts) {
+            const compact = !!(opts && opts.compact);
+            // 'full' — полный арт, 'mid' — 512px, 'thumb' — 256px (по умолчанию)
+            const artTier = (opts && opts.art) || (compact ? 'thumb' : 'mid');
+            const artFn = artTier === 'full' ? mediaUrl : (artTier === 'mid' ? mediaThumbMid : mediaThumb);
+            const localNum = getCardLocalNumber(card);
+            const rarLabel = RARITY_LABELS_RU[card.rarity] || card.rarity;
+            const copies = cardCopies(card.id);
+            const rarColor = RAR_COLORS[card.rarity] || '#94a3b8';
+
+            if (!copies) {
+                if (compact) {
+                    return `
+                        <div class="w-full card-aspect rounded-xl border-2 border-slate-800 bg-slate-900/40 p-1.5 sm:p-2 flex flex-col justify-between opacity-70">
+                            <span class="text-[9px] font-mono font-bold text-slate-500">#${localNum}</span>
+                            <div class="flex flex-col items-center justify-center flex-1"><i class="fa-solid fa-lock text-sm sm:text-base text-slate-600"></i></div>
+                            <span class="text-[9px] text-slate-600 truncate text-center">???</span>
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="w-full card-aspect rounded-2xl border-2 border-slate-800 bg-slate-900/40 p-3 sm:p-4 flex flex-col justify-between opacity-70">
+                        <div class="flex justify-between items-center gap-1">
+                            <span class="text-xs font-mono font-bold text-slate-500">#${localNum}</span>
+                            <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-500 truncate">${rarLabel}</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center space-y-2">
+                            <i class="fa-solid fa-lock text-2xl sm:text-3xl text-slate-600"></i>
+                            <span class="text-[11px] font-semibold text-slate-500 text-center">Пока не найдена</span>
+                        </div>
+                        <div class="space-y-1">
+                            <h4 class="font-bold text-slate-500 text-sm truncate">??? <i class="fa-solid fa-eye-slash text-[10px] text-slate-600"></i></h4>
+                            <p class="text-[11px] text-slate-600 line-clamp-2">Без спойлеров: карта откроется, когда вы её найдёте</p>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const L = cardLayoutOf(card);
+            if (compact) {
+                return `
+                    <div onclick="inspectCard('${card.id}')" class="nx-cv relative w-full card-aspect rounded-xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-1.5 sm:p-2 flex flex-col justify-between cursor-pointer shadow-lg hover:scale-[1.03] transition overflow-hidden group">
+                        <img src="${artFn(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
+                        <div class="relative z-10 flex justify-between items-start gap-1">
+                            <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
+                            ${copies > 1 ? `<span class="text-[8px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 backdrop-blur-sm">×${copies}</span>` : ''}
+                        </div>
+                        <h4 class="relative z-10 w-full font-bold text-white text-[10px] truncate drop-shadow-md ${L.text}">${card.name}</h4>
+                        ${cardShineOverlay(card)}
+                    </div>
+                `;
+            }
+            const badgeHtml = `<div class="w-full flex justify-between items-start gap-1">
+                        <span class="text-xs font-mono font-bold text-slate-200 bg-slate-950/70 px-2 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
+                        <span class="flex items-center gap-1 shrink-0">
+                            ${card.musicUrl ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30 backdrop-blur-sm" title="У карты своя музыка — трек играет в просмотре"><i class="fa-solid fa-music"></i></span>` : ''}
+                            ${copies > 1 ? `<span class="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 backdrop-blur-sm" title="Копий в коллекции">×${copies}</span>` : ''}
+                            <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900/80 text-slate-200 border border-slate-700 backdrop-blur-sm" style="color:${rarColor}">${rarLabel}</span>
+                        </span>
+                    </div>`;
+            const nameHtml = `<h4 class="w-full font-bold text-white text-sm sm:text-base truncate drop-shadow-md ${L.text}">${card.name}</h4>`;
+            const descHtml = `<p class="w-full text-[11px] sm:text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description || ''}</p>`;
+            const statsHtml = `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
+                            <span class="text-[10px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${getCardStats(card).atk}</span>
+                            <span class="text-[10px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${getCardStats(card).hp}</span>
+                        </div>`;
+            const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, statsHtml);
+            return `
+                <div onclick="inspectCard('${card.id}')" class="nx-cv relative w-full card-aspect rounded-2xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-3 sm:p-4 flex flex-col justify-between cursor-pointer shadow-xl hover:scale-[1.02] transition overflow-hidden group">
+                    <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
+
+                    ${Z.top}
+
+                    ${Z.bottom}
+                    ${cardShineOverlay(card)}
+                </div>
+            `;
+        }
+
+        // Строка карточки (вид «Строки» внутри альбома)
+        function albumRowHTML(card) {
+            const localNum = getCardLocalNumber(card);
+            const copies = cardCopies(card.id);
+            const rarColor = RAR_COLORS[card.rarity] || '#94a3b8';
+            const rarLabel = RARITY_LABELS_RU[card.rarity] || card.rarity;
+
+            if (!copies) {
+                return `
+                    <div class="flex items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-800/80 bg-slate-900/40 p-2 opacity-80">
+                        <div class="w-9 sm:w-11 shrink-0 rounded-lg border-2 border-slate-800 bg-slate-950/60 flex items-center justify-center" style="aspect-ratio:9/16"><i class="fa-solid fa-lock text-slate-600 text-sm"></i></div>
+                        <span class="font-mono text-[10px] text-slate-600 w-9 sm:w-10 shrink-0">#${localNum}</span>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-sm text-slate-500 truncate">??? <i class="fa-solid fa-eye-slash text-[10px]"></i></h4>
+                            <p class="text-[10px] text-slate-600 truncate">Пока не найдена</p>
+                        </div>
+                        <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border shrink-0" style="color:${rarColor};border-color:${rarColor}44;background:${rarColor}14">${rarLabel}</span>
+                    </div>`;
+            }
+            const st = getCardStats(card);
+            return `
+                <div onclick="inspectCard('${card.id}')" class="nx-cv group flex items-center gap-2.5 sm:gap-3 rounded-xl border border-slate-800/80 bg-slate-900/60 p-2 cursor-pointer transition hover:border-violet-500/40 hover:bg-slate-900">
+                    <div class="relative w-9 sm:w-11 shrink-0 rounded-lg overflow-hidden border-2 shadow" style="aspect-ratio:9/16;border-color:${rarColor}">
+                        <img src="${mediaThumb(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async">
+                    </div>
+                    <span class="font-mono text-[10px] text-slate-500 w-9 sm:w-10 shrink-0">#${localNum}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5">
+                            <h4 class="font-bold text-sm text-white truncate group-hover:text-violet-300 transition-colors">${card.name}</h4>
+                            ${card.musicUrl ? '<i class="fa-solid fa-music text-[9px] text-fuchsia-300" title="У карты своя музыка"></i>' : ''}
+                            ${copies > 1 ? `<span class="text-[9px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 shrink-0">×${copies}</span>` : ''}
+                        </div>
+                        <p class="text-[10px] text-slate-500 truncate">${card.description || ''}</p>
+                    </div>
+                    <span class="hidden md:flex items-center gap-1.5 shrink-0">
+                        <span class="text-[10px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${st.atk}</span>
+                        <span class="text-[10px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${st.hp}</span>
+                    </span>
+                    <span class="hidden sm:inline text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border shrink-0" style="color:${rarColor};border-color:${rarColor}44;background:${rarColor}14">${rarLabel}</span>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-600 group-hover:text-violet-400 transition-colors shrink-0"></i>
+                </div>`;
+        }
+
+        function renderAlbumGrid() {
+            const wrap = document.getElementById('album-grid-wrap');
+            if (!wrap) return '';
+            const pack = state.packs.find(p => p.id === state.currentAlbumPackId);
+            if (!pack) return '';
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            const visible = packCards.filter(c => albumMatches(c));
+            // В просмотре листаются ТОЛЬКО найденные карты: закрытые не попадают
+            // в список листания (←/→, свайп), чтобы не спойлерить их содержимое.
+            albumViewIds = visible.filter(c => cardCopies(c.id) > 0).map(c => c.id);
+
+            const cnt = document.getElementById('album-shown-count');
+            if (cnt) cnt.textContent = `Показано ${visible.length} из ${packCards.length} ${pluralRu(visible.length, 'карта', 'карты', 'карт')}`;
+
+            let out;
+            if (visible.length === 0) {
+                out = `
+                    <div class="text-center py-16 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-2xl">
+                        <i class="fa-solid fa-filter-circle-xmark text-3xl text-slate-700"></i>
+                        <p class="mt-3 text-sm font-semibold text-slate-400">Под фильтр ничего не подошло</p>
+                        <p class="text-xs text-slate-600 mt-1">Показано 0 из ${packCards.length}</p>
+                        <button onclick="resetAlbumFilter()" class="lqg lqg-slate mt-4 px-4 py-2 text-xs font-semibold transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Сбросить фильтры</button>
+                    </div>
+                `;
+            } else {
+                const cv = albumsUiState().cardView;
+                if (cv === 'rows') {
+                    out = `<div class="flex flex-col gap-1.5 sm:gap-2">${visible.map(c => albumRowHTML(c)).join('')}</div>`;
+                } else if (cv === 'album') {
+                    // вид «Альбом»: карточки разложены по страницам, как в настоящем альбоме
+                    const PER = 9;
+                    const pages = [];
+                    for (let i = 0; i < visible.length; i += PER) pages.push(visible.slice(i, i + PER));
+                    out = `<div class="space-y-4 sm:space-y-6">${pages.map((pg, k) => {
+                        const nums = pg.map(c => getCardLocalNumber(c));
+                        return `
+                            <div class="relative rounded-2xl border border-slate-800/80 bg-gradient-to-br from-slate-900/80 to-slate-950/60 p-3 sm:p-5 overflow-hidden shadow-xl">
+                                <div class="absolute inset-0 pointer-events-none opacity-40" style="background-image:radial-gradient(rgba(148,163,184,0.09) 1px, transparent 1px);background-size:14px 14px;"></div>
+                                <div class="relative flex flex-wrap items-center justify-between gap-2 mb-3">
+                                    <span class="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-slate-400"><i class="fa-solid fa-book-open text-violet-400 mr-1.5"></i>Страница ${k + 1} <span class="text-slate-600">из ${pages.length}</span></span>
+                                    <span class="text-[10px] font-mono text-slate-500">карты #${nums[0]}–#${nums[nums.length - 1]}</span>
+                                </div>
+                                <div class="relative grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">${pg.map(c => albumCardHTML(c, { art: 'mid' })).join('')}</div>
+                            </div>`;
+                    }).join('')}</div>`;
+                } else {
+                    const gridCls = cv === 'gallery'
+                        ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8'
+                        : cv === 'compact'
+                            ? 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2.5'
+                            : 'grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6';
+                    out = `<div class="${gridCls}">${visible.map(c => albumCardHTML(c, { compact: cv === 'compact', art: cv === 'gallery' ? 'full' : (cv === 'compact' ? 'thumb' : 'mid') })).join('')}</div>`;
+                }
+            }
+            wrap.innerHTML = out;
+            return out;
+        }
+
+        function setAlbumRarity(r) {
+            albumFilter.rarity = (albumFilter.rarity === r && r !== 'all') ? 'all' : r;
+            renderAlbumsHub();
+        }
+
+        function toggleAlbumMissing() {
+            albumFilter.missing = !albumFilter.missing;
+            renderAlbumsHub();
+        }
+
+        function onAlbumSearch() {
+            const el = document.getElementById('album-search');
+            albumFilter.q = el ? el.value : '';
+            renderAlbumGrid(); // перерисовываем только сетку — фокус в поле не теряется
+        }
+
+        function clearAlbumSearch() {
+            albumFilter.q = '';
+            const el = document.getElementById('album-search');
+            if (el) el.value = '';
+            renderAlbumGrid();
+        }
+
+        function resetAlbumFilter() {
+            albumFilter = { rarity: 'all', missing: false, q: '' };
+            renderAlbumsHub();
+        }
+
+        // Кольцо прогресса (inline-SVG): размер, толщина обводки, подпись в центре
+        function albumRingHTML(pct, size, strokeW, label) {
+            const p = Math.min(100, Math.max(0, pct || 0));
+            const r = (size - strokeW) / 2;
+            const c = 2 * Math.PI * r;
+            const off = c * (1 - p / 100);
+            const color = p >= 100 ? '#fbbf24' : '#a78bfa';
+            const fs = Math.round(size * 0.24);
+            return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="drop-shadow-lg shrink-0" aria-hidden="true">
+                <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="rgba(2,6,23,0.62)" stroke="rgba(148,163,184,0.22)" stroke-width="${strokeW}"></circle>
+                <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})" style="transition: stroke-dashoffset .6s ease"></circle>
+                <text x="50%" y="50%" dy="0.35em" text-anchor="middle" font-size="${fs}" font-weight="800" fill="${p >= 100 ? '#fde68a' : '#e2e8f0'}" font-family="ui-monospace, SFMono-Regular, monospace">${label !== undefined ? label : p + '%'}</text>
+            </svg>`;
+        }
+
+        // ============ ХАБ АЛЬБОМОВ: поиск, вид (сетка/строки), сортировка ============
+        // Настройки вида и сортировки живут в ui_prefs_v1 (не в сейве): сброс прогресса
+        // и экспорт/импорт их не трогают. Поисковый запрос — только на время сессии.
+        let albumsUi = null;
+        const ALBUMS_SORTS = {
+            name: 'По названию',
+            progress: 'По прогрессу',
+            cards: 'По числу карт',
+            missing: 'По недостающим'
+        };
+        // Виды карточек внутри альбома: сетка / альбом-страницы / строки / компактно / крупно
+        const ALBUM_CARD_VIEWS = {
+            grid: 'Сетка',
+            album: 'Альбом',
+            rows: 'Строки',
+            compact: 'Компактно',
+            gallery: 'Крупно'
+        };
+        const ALBUM_CARD_VIEW_ICONS = {
+            grid: 'fa-table-cells-large',
+            album: 'fa-book-open',
+            rows: 'fa-list',
+            compact: 'fa-grip',
+            gallery: 'fa-image'
+        };
+
+        function albumsUiState() {
+            if (!albumsUi) {
+                const p = hiddenUiPrefs().albums || {};
+                albumsUi = {
+                    q: '',
+                    view: p.view === 'rows' ? 'rows' : 'grid',
+                    sort: ALBUMS_SORTS[p.sort] ? p.sort : 'name',
+                    cardView: ALBUM_CARD_VIEWS[p.cardView] ? p.cardView : 'grid'
+                };
+            }
+            return albumsUi;
+        }
+        function saveAlbumsUiPrefs() {
+            const u = albumsUiState();
+            const p = hiddenUiPrefs();
+            p.albums = { view: u.view, sort: u.sort, cardView: u.cardView };
+            saveHiddenUiPrefs(p);
+        }
+        function setAlbumsCardView(v) {
+            const u = albumsUiState();
+            if (!ALBUM_CARD_VIEWS[v] || u.cardView === v) return;
+            u.cardView = v;
+            saveAlbumsUiPrefs();
+            renderAlbumsHub(); // перерисовывает шапку (активная кнопка) и сетку карт
+        }
+        function setAlbumsView(v) {
+            const u = albumsUiState();
+            if (u.view === v) return;
+            u.view = v;
+            saveAlbumsUiPrefs();
+            renderAlbumsHub();
+        }
+        function setAlbumsSort(s) {
+            const u = albumsUiState();
+            if (!ALBUMS_SORTS[s]) return;
+            u.sort = s;
+            saveAlbumsUiPrefs();
+            renderAlbumsList(); // только список: select не теряет фокус
+        }
+        function onAlbumsSearch() {
+            const el = document.getElementById('albums-search');
+            albumsUiState().q = el ? el.value : '';
+            renderAlbumsList(); // только список: фокус в поле не теряется
+        }
+        function clearAlbumsSearch() {
+            albumsUiState().q = '';
+            const el = document.getElementById('albums-search');
+            if (el) el.value = '';
+            renderAlbumsList();
+        }
+        function albumPackStats(pack) {
+            const pc = state.cards.filter(c => c.packId === pack.id);
+            const have = pc.filter(c => state.collection[c.id]).length;
+            return { total: pc.length, have, pct: pc.length ? Math.round(have / pc.length * 100) : 0 };
+        }
+        const albumEsc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+        // Плитка альбома (режим «сетка»)
+        function albumCardTile(pack, i) {
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            const s = albumPackStats(pack);
+            const collectedCount = s.have;
+            const progressPct = s.pct;
+            const copiesTotal = packCards.reduce((t, c) => t + cardCopies(c.id), 0);
+            const copiesNote = copiesTotal > collectedCount ? ' • копий всего ' + copiesTotal : '';
+            const rarStat = albumRarityStats(packCards);
+            const done = s.total > 0 && s.have >= s.total;
+
+            return `
+                <div class="album-in h-full" style="animation-delay:${Math.min(i, 8) * 70}ms">
+                    <div onclick="openAlbum('${pack.id}')" class="group relative h-full flex flex-col rounded-2xl border border-slate-800/80 bg-slate-900/70 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1.5 hover:border-violet-500/40 hover:shadow-2xl hover:shadow-violet-950/50">
+                        <div class="relative pack-aspect overflow-hidden shrink-0">
+                            <img src="${mediaThumbMid(pack.image)}" data-nx-full="${mediaUrl(pack.image)}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.07]" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/25 to-transparent"></div>
+                            <div class="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none"></div>
+                            <div class="absolute top-1.5 right-1.5 origin-top-right scale-[0.78] sm:scale-100 sm:top-2.5 sm:right-2.5">${albumRingHTML(progressPct, 46, 4)}</div>
+                            ${done
+                                ? '<span class="absolute top-2 left-2 sm:top-3 sm:left-3 inline-flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-amber-400/90 text-slate-950 shadow-lg"><i class="fa-solid fa-check"></i>Собран</span>'
+                                : `<span class="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 inline-flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-lg bg-slate-950/70 text-slate-200 border border-slate-700/70 backdrop-blur-sm"><i class="fa-solid fa-clone text-violet-300"></i>${collectedCount} / ${s.total}</span>`}
+                        </div>
+                        <div class="p-3 pt-2.5 sm:p-4 sm:pt-3.5 flex flex-col gap-2.5 sm:gap-3 flex-1">
+                            <div>
+                                <h3 class="font-bold text-white text-sm sm:text-base leading-snug transition-colors group-hover:text-violet-300">${pack.title}${packIsRetired(pack) ? ' <span class="align-middle ml-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-slate-950/85 border border-slate-600/70 text-slate-300">архив</span>' : ''}</h3>
+                                <p class="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 sm:mt-1 line-clamp-2">${pack.description}</p>
+                            </div>
+                            ${rarStat.length ? `
+                            <div class="flex flex-wrap gap-1 sm:gap-1.5">
+                                ${rarStat.map(x => `<span class="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold font-mono border" style="color:${RAR_COLORS[x.r] || '#94a3b8'};border-color:${(RAR_COLORS[x.r] || '#94a3b8')}44;background:${(RAR_COLORS[x.r] || '#94a3b8')}14" title="${RARITY_LABELS_RU[x.r] || x.r}: собрано ${x.have} из ${x.all}"><i class="fa-solid fa-circle text-[6px]"></i>${x.have}/${x.all}</span>`).join('')}
+                            </div>` : ''}
+                            <div class="mt-auto space-y-2.5 sm:space-y-3">
+                                <div>
+                                    <div class="flex items-center justify-between text-[9px] sm:text-[10px] mb-1">
+                                        <span class="uppercase tracking-wider font-bold text-slate-500">Прогресс</span>
+                                        <span class="font-mono text-slate-300">${progressPct}%</span>
+                                    </div>
+                                    <div class="h-1 sm:h-1.5 rounded-full bg-slate-800/90 overflow-hidden">
+                                        <div class="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-300 transition-all duration-700" style="width:${progressPct}%"></div>
+                                    </div>
+                                </div>
+                                <div class="pt-2 sm:pt-3 border-t border-slate-800/70 flex items-center justify-between gap-2">
+                                    <span class="text-[10px] sm:text-[11px] text-slate-400 truncate"><i class="fa-solid fa-layer-group text-slate-500 mr-1 sm:mr-1.5"></i>${collectedCount} / ${s.total}${copiesNote ? `<span class="hidden sm:inline">${copiesNote}</span>` : ''}</span>
+                                    <span class="lqg lqg-vio w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center transition-all duration-300"><i class="fa-solid fa-arrow-right text-[10px] sm:text-xs"></i></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        // Строка альбома (режим «строки»)
+        function albumCardRow(pack, i) {
+            const packCards = state.cards.filter(c => c.packId === pack.id);
+            const s = albumPackStats(pack);
+            const rarStat = albumRarityStats(packCards);
+            const done = s.total > 0 && s.have >= s.total;
+
+            return `
+                <div class="album-in" style="animation-delay:${Math.min(i, 10) * 40}ms">
+                    <div onclick="openAlbum('${pack.id}')" class="group flex items-center gap-3 sm:gap-4 rounded-2xl border border-slate-800/80 bg-slate-900/70 p-2.5 sm:p-3 cursor-pointer transition-all duration-300 hover:border-violet-500/40 hover:bg-slate-900 hover:shadow-xl hover:shadow-violet-950/40">
+                        <div class="relative w-14 sm:w-16 shrink-0 rounded-xl overflow-hidden shadow-md" style="aspect-ratio:0.53">
+                            <img src="${mediaThumb(pack.image)}" data-nx-full="${mediaUrl(pack.image)}" alt="${pack.title}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                            ${done ? '<span class="absolute inset-0 flex items-center justify-center bg-slate-950/40"><i class="fa-solid fa-check text-amber-300 text-sm drop-shadow"></i></span>' : ''}
+                        </div>
+                        <div class="flex-1 min-w-0 space-y-1 sm:space-y-1.5">
+                            <h3 class="font-bold text-white text-sm sm:text-base truncate transition-colors group-hover:text-violet-300">${pack.title}${packIsRetired(pack) ? ' <span class="align-middle ml-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-slate-950/85 border border-slate-600/70 text-slate-300">архив</span>' : ''}</h3>
+                            <p class="text-[10px] sm:text-[11px] text-slate-400 line-clamp-1 sm:line-clamp-2">${pack.description}</p>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-1 sm:h-1.5 rounded-full bg-slate-800/90 overflow-hidden">
+                                    <div class="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-300 transition-all duration-700" style="width:${s.pct}%"></div>
+                                </div>
+                                <span class="text-[9px] sm:text-[10px] font-mono text-slate-400 shrink-0">${s.have}/${s.total} • ${s.pct}%</span>
+                            </div>
+                            ${rarStat.length ? `
+                            <div class="hidden sm:flex flex-wrap gap-1.5">
+                                ${rarStat.map(x => `<span class="inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[9px] font-bold font-mono border" style="color:${RAR_COLORS[x.r] || '#94a3b8'};border-color:${(RAR_COLORS[x.r] || '#94a3b8')}44;background:${(RAR_COLORS[x.r] || '#94a3b8')}14" title="${RARITY_LABELS_RU[x.r] || x.r}: собрано ${x.have} из ${x.all}"><i class="fa-solid fa-circle text-[6px]"></i>${x.have}/${x.all}</span>`).join('')}
+                            </div>` : ''}
+                        </div>
+                        <div class="hidden sm:block shrink-0">${albumRingHTML(s.pct, 44, 4)}</div>
+                        <span class="lqg lqg-vio w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center transition-all duration-300"><i class="fa-solid fa-arrow-right text-xs"></i></span>
+                    </div>
+                </div>`;
+        }
+
+        // Перерисовка только списка альбомов (поиск/сортировка/вид не сбивают фокус)
+        function renderAlbumsList() {
+            const wrap = document.getElementById('albums-list-wrap');
+            if (!wrap) return;
+            const u = albumsUiState();
+            const q = (u.q || '').trim().toLowerCase();
+            const cache = new Map();
+            const stat = p => { if (!cache.has(p.id)) cache.set(p.id, albumPackStats(p)); return cache.get(p.id); };
+
+            let packs = state.packs.filter(p => !packIsRetired(p) || packOwnedCards(p)) // b147: архивные альбомы остаются у владельцев карт
+                .filter(p =>
+                !q || (p.title || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q));
+            const byName = (a, b) => (a.title || '').localeCompare(b.title || '', 'ru');
+            const cmps = {
+                name: byName,
+                progress: (a, b) => stat(b).pct - stat(a).pct || byName(a, b),
+                cards: (a, b) => stat(b).total - stat(a).total || byName(a, b),
+                missing: (a, b) => (stat(b).total - stat(b).have) - (stat(a).total - stat(a).have) || byName(a, b)
+            };
+            packs = packs.slice().sort(cmps[u.sort] || byName);
+
+            const cnt = document.getElementById('albums-shown-count');
+            if (cnt) cnt.textContent = q
+                ? `Найдено: ${packs.length} из ${visibleAlbumsCount()} ${pluralRu(visibleAlbumsCount(), 'альбом', 'альбома', 'альбомов')}`
+                : '';
+
+            if (visibleAlbumsCount() && packs.length === 0) {
+                wrap.innerHTML = `
+                    <div class="text-center py-14 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl">
+                        <i class="fa-solid fa-filter-circle-xmark text-3xl text-slate-700"></i>
+                        <p class="mt-3 text-sm font-semibold text-slate-400">Ничего не нашлось по запросу «${albumEsc(u.q)}»</p>
+                        <button onclick="clearAlbumsSearch()" class="lqg lqg-slate mt-4 px-4 py-2 text-xs font-semibold transition"><i class="fa-solid fa-rotate-left mr-1.5"></i>Сбросить поиск</button>
+                    </div>`;
+                return;
+            }
+
+            wrap.innerHTML = u.view === 'rows'
+                ? `<div class="flex flex-col gap-2 sm:gap-3">${packs.map((p, i) => albumCardRow(p, i)).join('')}</div>`
+                : `<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">${packs.map((p, i) => albumCardTile(p, i)).join('')}</div>`;
+        }
+
+        function renderAlbumsHub() {
+            const container = document.getElementById('albums-view-container');
+            
+            if (state.currentAlbumPackId) {
+                const pack = state.packs.find(p => p.id === state.currentAlbumPackId);
+                if (!pack) {
+                    state.currentAlbumPackId = null;
+                    renderAlbumsHub();
+                    return;
+                }
+
+                const packCards = state.cards.filter(c => c.packId === pack.id);
+                const collectedCount = packCards.filter(c => state.collection[c.id]).length;
+                const progressPct = packCards.length > 0 ? Math.round((collectedCount / packCards.length) * 100) : 0;
+                const copiesTotal = packCards.reduce((s, c) => s + cardCopies(c.id), 0);
+                const dupesTotal = Math.max(0, copiesTotal - collectedCount);
+                const rarStat = albumRarityStats(packCards);
+
+                const chip = (key, label, color) => {
+                    const on = albumFilter.rarity === key;
+                    return `<button onclick="setAlbumRarity('${key}')" class="lqg px-3 py-1.5 text-[11px] font-bold transition ${on ? '' : 'lqg-slate'}"${on ? ` style="--lq-tint:${color}2e; --lq-text:${color}; border-color:${color}80"` : ''}>${label}</button>`;
+                };
+                const u = albumsUiState(); // вид карточек внутри альбома
+
+                container.innerHTML = `
+                    <div class="space-y-3 sm:space-y-4">
+                        <div class="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-800/80 bg-slate-900/70">
+                            <div class="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-sky-500/10 pointer-events-none"></div>
+                            <div class="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-violet-500/10 blur-3xl pointer-events-none"></div>
+                            <div class="relative p-3 sm:p-6">
+                                <!-- b175: строка 1 — выход, обложка, название, кольцо прогресса -->
+                                <div class="flex items-center gap-2.5 sm:gap-5">
+                                    <button onclick="backToAlbumsHub()" class="lqg lqg-slate w-9 h-9 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center transition" title="Ко всем альбомам">
+                                        <i class="fa-solid fa-arrow-left text-sm sm:text-base"></i>
+                                    </button>
+                                    <div class="relative w-14 h-20 sm:w-20 sm:h-28 shrink-0 rounded-lg sm:rounded-xl overflow-hidden border border-slate-700/70 ring-1 ring-white/10 shadow-lg shadow-black/40">
+                                        <img src="${mediaThumb(pack.image)}" data-nx-full="${mediaUrl(pack.image)}" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-white/10 pointer-events-none"></div>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300/80">Альбом${progressPct >= 100 ? ' <span class="tracking-normal text-amber-300"><i class="fa-solid fa-crown mr-0.5"></i>собран</span>' : ''}</div>
+                                        <h2 class="mt-0.5 sm:mt-1 text-base sm:text-2xl font-black text-white break-words leading-tight">${pack.title}</h2>
+                                        <p class="mt-1 sm:mt-1.5 text-[11px] sm:text-xs text-slate-400">Собрано: <span class="text-slate-200 font-semibold">${collectedCount} / ${packCards.length}</span> (${progressPct}%)${dupesTotal > 0 ? ` • повторок: ${dupesTotal}` : ''}${state.albumBonus && state.albumBonus[pack.id] ? ' • <span class="text-amber-300 font-semibold"><i class="fa-solid fa-book-open mr-0.5"></i>бонус альбома получен</span>' : ''}</p>
+                                        <div class="mt-2 sm:hidden h-1.5 rounded-full bg-slate-800/80 overflow-hidden"><div class="h-full rounded-full transition-all duration-500" style="width:${progressPct}%;background:${progressPct >= 100 ? '#fbbf24' : '#a78bfa'}"></div></div>
+                                    </div>
+                                    <div class="sm:hidden shrink-0 pr-0.5">${albumRingHTML(progressPct, 46, 5)}</div>
+                                    <div class="hidden sm:flex items-center gap-3 shrink-0 pr-1">
+                                        ${albumRingHTML(progressPct, 72, 7)}
+                                        <div class="text-[10px] uppercase tracking-wider font-bold text-slate-500 leading-relaxed">общий<br>прогресс</div>
+                                    </div>
+                                </div>
+
+                                <!-- b175: редкости — равные плитки: 2 колонки на телефоне, 4 на планшете и выше -->
+                                ${rarStat.length ? `
+                                <div class="mt-3 sm:mt-5 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2.5">
+                                    ${rarStat.map(x => {
+                                        const col = RAR_COLORS[x.r] || '#94a3b8';
+                                        const rp = x.all ? Math.round(x.have / x.all * 100) : 0;
+                                        return `
+                                        <div class="rounded-xl bg-slate-950/60 border border-slate-800/80 px-2.5 sm:px-3 py-2 sm:py-2.5 min-w-0">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <span class="flex items-center gap-1.5 min-w-0">
+                                                    <i class="fa-solid fa-circle text-[6px] sm:text-[7px] shrink-0" style="color:${col}"></i>
+                                                    <span class="text-[9px] sm:text-[10px] font-black uppercase tracking-wide truncate" style="color:${col}">${RARITY_LABELS_RU[x.r] || x.r}</span>
+                                                </span>
+                                                <span class="text-[10px] sm:text-[11px] font-mono text-slate-300 shrink-0">${x.have}/${x.all}</span>
+                                            </div>
+                                            <div class="mt-1.5 h-1 sm:h-1.5 rounded-full bg-slate-800/80 overflow-hidden"><div class="h-full rounded-full transition-all duration-500" style="width:${rp}%;background:${col}"></div></div>
+                                        </div>`;
+                                    }).join('')}
+                                </div>` : ''}
+
+                                <!-- b175: действия — на телефоне кнопка во всю ширину, на десктопе справа -->
+                                <div class="mt-3 sm:mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                                    <button onclick="sellAlbumDupes('${pack.id}')" title="Выставить все лишние копии карт этого альбома на биржу по рекомендуемой цене (одна копия каждой карты останется в коллекции)" class="lqg lqg-amber order-1 sm:order-2 w-full sm:w-auto shrink-0 px-3 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold transition active:scale-[0.98]"><i class="fa-solid fa-sack-dollar mr-1.5"></i>Продать все повторки${dupesTotal > 0 ? ` <span class="font-mono">(${dupesTotal})</span>` : ''}</button>
+                                    <div class="order-2 sm:order-1 flex-1 min-w-0 text-[10px] sm:text-[11px] text-slate-500 font-medium truncate">
+                                        ${progressPct >= 100 ? '<span class="text-amber-300 font-semibold"><i class="fa-solid fa-trophy mr-1"></i>Альбом собран полностью!</span>' : `Осталось собрать: <span class="text-slate-300 font-semibold">${packCards.length - collectedCount}</span> ${pluralRu(packCards.length - collectedCount, 'карта', 'карты', 'карт')}`}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <div class="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-2.5 sm:p-3 space-y-2.5">
+                            <div class="flex flex-wrap items-center gap-2">
+                                ${chip('all', 'Все', '#a78bfa')}
+                                ${RARITY_ORDER.map(r => chip(r, RARITY_LABELS_RU[r], RAR_COLORS[r])).join('')}
+                                <button onclick="toggleAlbumMissing()" class="lqg px-3 py-1.5 text-[11px] font-bold transition ${albumFilter.missing ? 'lqg-rose' : 'lqg-slate'}"><i class="fa-solid fa-lock mr-1"></i>Только не найденные</button>
+                                <span id="album-shown-count" class="ml-auto text-[10px] font-mono text-slate-500 pr-1 whitespace-nowrap"></span>
+                            </div>
+                            <div class="h-px bg-slate-800/70"></div>
+                            <div class="grid gap-2 sm:grid-cols-[auto_1fr] sm:items-center">
+                                <div class="flex w-full sm:w-auto rounded-xl border border-slate-700 overflow-hidden shrink-0 justify-self-start" title="Вид карточек: сетка, альбом, строки, компактно, крупно">
+                                    ${Object.keys(ALBUM_CARD_VIEWS).map(k => `<button onclick="setAlbumsCardView('${k}')" title="${ALBUM_CARD_VIEWS[k]}" class="flex-1 sm:flex-none px-2.5 py-2 text-[11px] transition ${u.cardView === k ? 'bg-violet-600 text-white' : 'bg-slate-900 text-slate-400 hover:text-white'}"><i class="fa-solid ${ALBUM_CARD_VIEW_ICONS[k]}"></i><span class="hidden lg:inline ml-1">${ALBUM_CARD_VIEWS[k]}</span></button>`).join('')}
+                                </div>
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] pointer-events-none"></i>
+                                    <input id="album-search" type="text" value="${String(albumFilter.q || '').replace(/"/g, '&quot;')}" oninput="onAlbumSearch()" placeholder="Поиск по названию…" autocomplete="off" class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-500">
+                                    <button onclick="clearAlbumSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs ${albumFilter.q ? '' : 'hidden'}" title="Очистить поиск"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="album-grid-wrap"></div>
+                    </div>
+                `;
+                renderAlbumGrid();
+                return;
+            }
+
+            // сводная статистика по всем альбомам для hero-шапки
+            const totals = state.packs.reduce((acc, p) => {
+                const pc = state.cards.filter(c => c.packId === p.id);
+                const cc = pc.filter(c => state.collection[c.id]).length;
+                acc.cards += pc.length;
+                acc.have += cc;
+                if (pc.length && cc >= pc.length) acc.done += 1;
+                return acc;
+            }, { cards: 0, have: 0, done: 0 });
+            const overallPct = totals.cards ? Math.round(totals.have / totals.cards * 100) : 0;
+            const statTile = (value, label, icon, color) => `
+                <div class="rounded-xl sm:rounded-2xl bg-slate-950/60 border border-slate-800/80 px-2 sm:px-3 py-2 sm:py-2.5 backdrop-blur-sm min-w-0">
+                    <div class="flex items-center gap-1 sm:gap-1.5 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-500 truncate"><i class="fa-solid ${icon} shrink-0" style="color:${color}"></i><span class="truncate">${label}</span></div>
+                    <div class="mt-0.5 sm:mt-1 text-sm sm:text-lg font-black text-white leading-none truncate">${value}</div>
+                </div>`;
+            const u = albumsUiState(); // поиск / вид / сортировка хаба
+
+            container.innerHTML = `
+                <div class="space-y-4 sm:space-y-6">
+                    <div class="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-slate-900/70">
+                        <div class="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-sky-500/10 pointer-events-none"></div>
+                        <div class="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-violet-500/10 blur-3xl pointer-events-none"></div>
+                        <div class="absolute -bottom-28 -left-14 w-64 h-64 rounded-full bg-purple-500/10 blur-3xl pointer-events-none"></div>
+                        <div class="relative p-4 sm:p-7 flex flex-col lg:flex-row lg:items-center gap-5 sm:gap-6">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.2em] text-violet-300/90"><i class="fa-solid fa-book-open"></i>Коллекция</div>
+                                        <h2 class="mt-1.5 sm:mt-2 text-xl sm:text-3xl font-black text-white tracking-tight">Альбомы коллекции</h2>
+                                        <p class="text-xs sm:text-sm text-slate-400 mt-1.5 sm:mt-2 max-w-xl">Выберите альбом, чтобы просмотреть карточки конкретного бустер-пака и свой прогресс сборки.</p>
+                                    </div>
+                                    <div class="sm:hidden shrink-0 flex flex-col items-center gap-1 pt-0.5">
+                                        ${albumRingHTML(overallPct, 56, 5)}
+                                        <span class="text-[8px] uppercase tracking-wider font-bold text-slate-500 text-center leading-tight">общий<br>прогресс</span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 sm:mt-5 grid grid-cols-3 gap-1.5 sm:gap-3 max-w-md">
+                                    ${statTile(visibleAlbumsCount(), 'альбомов', 'fa-layer-group', '#a78bfa')}
+                                    ${statTile(totals.have + ' / ' + totals.cards, 'карт собрано', 'fa-clone', '#38bdf8')}
+                                    ${statTile(totals.done, 'собрано полностью', 'fa-circle-check', '#fbbf24')}
+                                </div>
+                            </div>
+                            <div class="hidden sm:flex items-center gap-3 sm:gap-4 shrink-0 lg:pr-2">
+                                ${albumRingHTML(overallPct, 72, 7)}
+                                <div class="text-[9px] sm:text-[10px] uppercase tracking-wider font-bold text-slate-500 leading-relaxed">общий<br>прогресс<br>коллекции</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${state.packs.length === 0 ? `
+                        <div class="text-center py-16 px-4 bg-slate-900/50 border border-dashed border-slate-800 rounded-3xl">
+                            <div class="mx-auto w-14 h-14 rounded-2xl bg-slate-800/70 border border-slate-700 flex items-center justify-center"><i class="fa-solid fa-book-open text-xl text-slate-500"></i></div>
+                            <p class="mt-4 text-sm font-semibold text-slate-400">Нет доступных альбомов.</p>
+                        </div>` : `
+                    <div class="space-y-2.5 sm:space-y-3">
+                        <div class="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-950/50 border border-slate-800/80 px-2.5 sm:px-3 py-2.5">
+                            <div class="relative flex-1 min-w-[9rem]">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] pointer-events-none"></i>
+                                <input id="albums-search" type="text" value="${albumEsc(u.q)}" oninput="onAlbumsSearch()" placeholder="Поиск альбома по названию…" autocomplete="off" class="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-violet-500">
+                                <button onclick="clearAlbumsSearch()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs ${u.q ? '' : 'hidden'}" title="Очистить поиск"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <select id="albums-sort" onchange="setAlbumsSort(this.value)" title="Сортировка альбомов" class="bg-slate-950 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none focus:border-violet-500 cursor-pointer">
+                                ${Object.keys(ALBUMS_SORTS).map(k => `<option value="${k}"${u.sort === k ? ' selected' : ''}>${ALBUMS_SORTS[k]}</option>`).join('')}
+                            </select>
+                            <div class="flex rounded-xl border border-slate-700 overflow-hidden shrink-0" title="Вид списка">
+                                <button onclick="setAlbumsView('grid')" title="Сетка" class="px-2.5 py-2 text-xs transition ${u.view === 'grid' ? 'lqg lqg-vio' : 'lqg lqg-slate'}"><i class="fa-solid fa-table-cells-large"></i></button>
+                                <button onclick="setAlbumsView('rows')" title="Строки" class="px-2.5 py-2 text-xs transition ${u.view === 'rows' ? 'lqg lqg-vio' : 'lqg lqg-slate'}"><i class="fa-solid fa-list"></i></button>
+                            </div>
+                        </div>
+                        <p id="albums-shown-count" class="text-[11px] text-slate-500 font-mono"></p>
+                        <div id="albums-list-wrap"></div>
+                    </div>`}
+                </div>
+            `;
+            renderAlbumsList();
+        }
+
+        // b144: продать все повторки альбома — лишние копии уходят на биржу по рекомендуемой цене
+        function sellAlbumDupes(packId) {
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
+            const cards = state.cards.filter(c => c.packId === packId);
+            let ok = 0, sum = 0;
+            cards.forEach(c => {
+                // одну копию каждой карты оставляем в коллекции — продаём только лишние
+                let excess = cardCopies(c.id) - 1;
+                while (excess-- > 0 && cardCopies(c.id) >= 1) {
+                    const price = marketRecommendPrice(c);
+                    if (marketListCardFor(c.id, String(price), true)) { ok++; sum += price; }
+                    else break;
+                }
+            });
+            if (ok) {
+                marketEnforceLimit(); // b142: защита от наводнения одинаковыми лотами
+                showToast('💰 Повторки альбома отправлены на биржу: ' + ok + ' на сумму ' + fmtCoins(sum), 'success');
+                try { renderAlbumsList(); } catch (e) {}
+            } else {
+                showToast('В этом альбоме нет лишних копий для продажи', 'info');
+            }
+        }
+        function openAlbum(packId) {
+            state.currentAlbumPackId = packId;
+            renderAlbumsHub();
+            updateMissions('open_album', 1);
+        }
+
+        function backToAlbumsHub() {
+            state.currentAlbumPackId = null;
+            renderAlbumsHub();
+        }
+
+        function getCardLocalNumber(card) {
+            const packCards = state.cards.filter(c => c.packId === card.packId);
+            const idx = packCards.findIndex(c => c.id === card.id);
+            return String(idx + 1).padStart(3, '0');
+        }
+
+        function getRarityClass(rarity) {
+            switch (rarity) {
+                case 'rare': return 'rarity-rare';
+                case 'epic': return 'rarity-epic';
+                case 'legendary': return 'rarity-legendary';
+                default: return 'rarity-common';
+            }
+        }
+
+        // ===== b18: просмотр карты — листание по альбому (←/→, свайп, Esc) =====
+        let inspectList = [];
+        let inspectIdx = -1;
+        let inspectTouchX = null;
+
+        function inspectCard(cardId, list) {
+            const card = state.cards.find(c => c.id === cardId);
+            if (!card) return;
+
+            if (Array.isArray(list) && list.length) {
+                inspectList = list.slice();
+            } else if (albumViewIds.indexOf(cardId) >= 0) {
+                inspectList = albumViewIds.slice();
+            } else {
+                inspectList = [cardId];
+            }
+            inspectIdx = inspectList.indexOf(cardId);
+            if (inspectIdx < 0) { inspectList = [cardId]; inspectIdx = 0; }
+
+            const localNum = getCardLocalNumber(card);
+            const st = getCardStats(card);
+            const copies = cardCopies(card.id);
+            const rarLabel = RARITY_LABELS_RU[card.rarity] || card.rarity;
+            const L = cardLayoutOf(card);
+            const badgeHtml = `<div class="w-full flex justify-between items-start gap-2">
+                    <span class="text-xs font-mono font-bold text-slate-200 bg-slate-950/70 px-2 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
+                    <span class="flex items-center gap-1 shrink-0">
+                        ${copies > 1 ? `<span class="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 backdrop-blur-sm">×${copies}</span>` : ''}
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900/80 border border-slate-700 backdrop-blur-sm" style="color:${RAR_COLORS[card.rarity] || '#e2e8f0'}">${rarLabel}</span>
+                    </span>
+                </div>`;
+            const nameHtml = `<h4 class="w-full font-bold text-white text-lg drop-shadow-md break-words ${L.text}">${card.name}</h4>`;
+            const descHtml = `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${card.description || 'Коллекционная карта «Коллекционер карт»'}</p>`;
+            const statsHtml = `<div class="flex items-center space-x-2 pt-1.5 w-full ${L.justify}">
+                    <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-amber-300 bg-slate-950/80 border border-amber-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-bolt"></i><span>${st.atk}</span></span>
+                    <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-rose-300 bg-slate-950/80 border border-rose-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-heart"></i><span>${st.hp}</span></span>
+                </div>`;
+            const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, statsHtml);
+            const renderEl = document.getElementById('inspect-card-render');
+            renderEl.style.transform = '';
+            renderEl.className = `w-full card-aspect rounded-2xl border-2 shadow-2xl relative flex flex-col justify-between p-4 overflow-hidden transition-transform duration-100 ${getRarityClass(card.rarity)} ${cardHoloClass(card)}`;
+            renderEl.innerHTML = `
+                <img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/5 to-slate-950/20 z-10"></div>
+
+                ${Z.top}
+                ${Z.bottom}
+                ${cardShineOverlay(card)}
+            `;
+            applyCardAura(document.getElementById('inspect-aura'), card, 'aura-inspect');
+            // личная музыка карты: играет, пока карта открыта
+            if (card.musicUrl) CardMusic.play(card.musicUrl); else CardMusic.stop();
+
+            updateInspectNav();
+            updateInspectSlotsBtn();
+            updateInspectMarketBtn();
+            document.getElementById('modal-inspect').classList.remove('hidden');
+        }
+
+        // b124: кнопка под карточкой больше не управляет боевой колодой —
+        // она подключает карту к общему набору символов автоматов
+        // «Слоты», «Сетка», «Линии» (nexus_slot_cards, максимум 5 карт)
+        function updateInspectSlotsBtn() {
+            const b = document.getElementById('inspect-slots-btn');
+            if (!b) return;
+            const id = (inspectList || [])[inspectIdx];
+            const owned = !!id && !!state.collection[id];
+            const on = !!id && getSlotCardIds().indexOf(id) >= 0;
+            b.className = `mt-2 px-4 py-2 rounded-xl text-xs font-bold transition ${on ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-600/20' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200'} ${owned ? '' : 'hidden'}`;
+            b.innerHTML = on
+                ? '<i class="fa-solid fa-plug-circle-xmark mr-1.5"></i>Убрать из «Слоты», «Сетка», «Линии»'
+                : '<i class="fa-solid fa-plug mr-1.5"></i>Подключить к «Слоты», «Сетка», «Линии»';
+        }
+
+        function inspectSlotsToggle() {
+            const id = (inspectList || [])[inspectIdx];
+            if (!id) return;
+            if (!state.collection[id]) { showToast('Эта карта ещё не найдена', 'error'); return; }
+            const ids = getSlotCardIds();
+            const i = ids.indexOf(id);
+            if (i >= 0) ids.splice(i, 1);
+            else {
+                if (ids.length >= 5) { showToast('Можно подключить не больше 5 карт — сначала уберите одну из подключённых', 'error'); return; }
+                ids.push(id);
+            }
+            setSlotCardIds(ids);
+            slotsApplySymbols();
+            try { renderSlotsUI(); } catch (e) {}
+            try { renderGridUI(); } catch (e) {}
+            try { renderLinesUI(); } catch (e) {}
+            updateInspectSlotsBtn();
+            showToast(ids.indexOf(id) >= 0
+                ? '🎰 Карта подключена к «Слоты», «Сетка», «Линии»'
+                : '🎰 Карта отключена от автоматов', 'success');
+        }
+
+        function inspectStep(dir) {
+            if (inspectList.length < 2) return;
+            const n = inspectList.length;
+            inspectIdx = ((inspectIdx + dir) % n + n) % n;
+            inspectCard(inspectList[inspectIdx], inspectList);
+        }
+
+        function updateInspectNav() {
+            const multi = inspectList.length > 1;
+            const card = state.cards.find(c => c.id === inspectList[inspectIdx]);
+            const copies = card ? cardCopies(card.id) : 0;
+            ['inspect-prev', 'inspect-next'].forEach(id => {
+                const b = document.getElementById(id);
+                if (!b) return;
+                b.classList.toggle('hidden', !multi);
+                b.style.display = multi ? 'flex' : 'none'; // не полагаемся на порядок CSS-утилит
+            });
+            const c = document.getElementById('inspect-counter');
+            if (c) {
+                c.classList.toggle('hidden', !(multi || copies > 1));
+                const parts = [];
+                if (multi) parts.push(`${inspectIdx + 1} / ${inspectList.length}`);
+                if (copies > 1) parts.push(`копий: ${copies}`);
+                c.textContent = parts.join('  •  ');
+            }
+        }
+
+        function inspectKey(ev) {
+            const m = document.getElementById('modal-inspect');
+            if (!m || m.classList.contains('hidden')) return;
+            if (ev && ev.target && /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName || '')) return;
+            if (!ev || !ev.key) return;
+            if (ev.key === 'Escape') { closeInspectModal(); }
+            else if (ev.key === 'ArrowRight') { inspectStep(1); }
+            else if (ev.key === 'ArrowLeft') { inspectStep(-1); }
+            else return;
+            if (ev.preventDefault) ev.preventDefault();
+        }
+
+        function closeInspectModal() {
+            CardMusic.stop();
+            document.getElementById('modal-inspect').classList.add('hidden');
+        }
+
+        const inspectRender = document.getElementById('inspect-card-render');
+        document.addEventListener('mousemove', (e) => {
+            if (document.getElementById('modal-inspect').classList.contains('hidden')) return;
+            const rect = inspectRender.getBoundingClientRect();
+            const x = e.clientX - rect.left - rect.width / 2;
+            const y = e.clientY - rect.top - rect.height / 2;
+            inspectRender.style.transform = `rotateY(${x / 12}deg) rotateX(${-y / 12}deg)`;
+        });
+        document.addEventListener('keydown', inspectKey);
+        document.addEventListener('touchstart', (e) => {
+            const m = document.getElementById('modal-inspect');
+            if (!m || m.classList.contains('hidden')) { inspectTouchX = null; return; }
+            inspectTouchX = (e.touches && e.touches[0]) ? e.touches[0].clientX : null;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            const m = document.getElementById('modal-inspect');
+            if (!m || m.classList.contains('hidden') || inspectTouchX === null) return;
+            const x = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : null;
+            if (x !== null && Math.abs(x - inspectTouchX) > 40) inspectStep(x < inspectTouchX ? 1 : -1);
+            inspectTouchX = null;
+        }, { passive: true });
+
+        // ============ ОБЛАКО: общий каталог паков и карт для всех пользователей сайта ============
+        // Простой режим (по умолчанию): бесплатное хранилище textdb.dev — БЕЗ регистрации, ключей и кода.
+        // Достаточно придумать код комнаты: у всех, кто введёт тот же код, паки становятся общими.
+        // Продвинутый режим: своя Firebase Realtime Database через официальный REST API (без SDK) — укажите URL базы.
+        // b26: ГЛАВНАЯ КОМНАТА САЙТА — все пользователи подключаются к ней автоматически,
+        // ничего вводить не нужно. «Отключить» запоминает отказ (больше не подключаем насильно),
+        // «Создать комнату» или свой код — переключает на другую комнату.
+        const CLOUD_DEFAULT_ROOM = '7j8uytui';
+        var cloudDefaultApplied = false; // b26: главная комната подставлена автоматически (нужно предложить пароль создателю)
+        function cloudOptOut() { try { return LS.getItem('nexus_cloud_off') === '1'; } catch (e) { return false; } }
+        function cloudOptOutSet(v) { try { if (v) LS.setItem('nexus_cloud_off', '1'); else LS.removeItem('nexus_cloud_off'); } catch (e) {} }
+        const CLOUD = {
+            db: (function () { try { return String(LS.getItem('nexus_cloud_db') || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; } })(),
+            room: (function () {
+                // b26: своей комнаты нет и пользователь не отключался — подставляем главную.
+                // В localStorage её запишет cloudInit — там же проверяется явный отказ.
+                try {
+                    const r = LS.getItem('nexus_cloud_room');
+                    if (r) return r;
+                    if (cloudOptOut()) return '';
+                    cloudDefaultApplied = true;
+                    return CLOUD_DEFAULT_ROOM;
+                } catch (e) { return CLOUD_DEFAULT_ROOM; }
+            })(),
+            lastSync: 0,
+            lastErr: '',
+            remotePacks: 0,   // b33: сколько паков/карт реально лежит в комнате (статус + страховки)
+            remoteCards: 0,
+            ownerUnknown: false, // b23: в облаке ещё нет метки создателя (old payload / пустая комната)
+            market: [],          // b136: лоты биржи дубликатов (общесайтовый канал)
+            ledger: [],          // b136: квитанции продаж (продавец получает монеты)
+            remoteAuth: null,    // b24: { login, hash, salt } — логин и хэш пароля комнаты из облака
+            remoteFilled: false, // b24: в комнате уже есть опубликованный каталог
+            remoteOwnerId: '',   // b24: метка устройства создателя из облака
+            needAuth: false,     // b24: пароль комнаты ещё не задан
+            promptAuth: false,   // b24: после подключения сразу показать форму пароля
+            backend() { return this.db ? 'firebase' : 'textdb'; },
+            path() {
+                if (this.db) return this.db + '/nexus-rooms/' + this.room + '.json';
+                return 'https://textdb.dev/api/data/nexus-tcg-room-' + this.room;
+            },
+            connected() { return !!this.room; },
+            fetch() {
+                if (!this.connected()) return Promise.resolve(null);
+                if (this.db) {
+                    return fetch(this.path(), { headers: { 'Accept': 'application/json' } }).then(r => {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.json(); // null, если комната ещё пустая
+                    });
+                }
+                return fetch(this.path() + '?nc=' + Date.now(), { cache: 'no-store' }).then(r => { // b25: анти-кэш
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.text();
+                }).then(txt => {
+                    txt = String(txt || '').trim();
+                    if (!txt) return null; // комната ещё пустая
+                    try { return JSON.parse(txt); } catch (e) { throw new Error('облако вернуло не-JSON'); }
+                });
+            },
+            push(catalog) {
+                if (!this.room) this.newRoom();
+                const body = JSON.stringify(catalog);
+                if (this.db) {
+                    return fetch(this.path(), {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body
+                    }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
+                }
+                return fetch(this.path(), {
+                    method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body
+                }).then(r => {
+                    if (!r.ok) throw new Error(r.status === 413 ? 'данные слишком большие для простого хранилища' : 'HTTP ' + r.status);
+                    return true;
+                });
+            },
+            // b25: аварийная отправка при закрытии страницы — sendBeacon/keepalive доставляет данные,
+            // даже если вкладка уже закрыта (обычный fetch браузер на закрытии обрывает)
+            flush(catalog) {
+                if (!this.connected()) return false;
+                const body = JSON.stringify(catalog);
+                try {
+                    if (this.db) {
+                        fetch(this.path(), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true }).catch(() => {});
+                        return true;
+                    }
+                    if (typeof navigator !== 'undefined' && navigator.sendBeacon && typeof Blob !== 'undefined') {
+                        return !!navigator.sendBeacon(this.path(), new Blob([body], { type: 'text/plain' }));
+                    }
+                    fetch(this.path(), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: body, keepalive: true }).catch(() => {});
+                    return true;
+                } catch (e) { return false; }
+            },
+            newRoom() {
+                const abc = 'abcdefghijkmnpqrstuvwxyz23456789';
+                let r = ''; for (let i = 0; i < 8; i++) r += abc[Math.floor(Math.random() * abc.length)];
+                this.room = r; try { LS.setItem('nexus_cloud_room', r); } catch (e) {}
+                const inp = document.getElementById('cloud-room'); if (inp) inp.value = r;
+                return r;
+            }
+        };
+        // b23/b24: РОЛИ В КОМНАТЕ. Создатель комнаты редактирует паки/карточки и публикует изменения;
+        // участники (все, кто ввёл тот же код) получают контент в режиме «только просмотр»:
+        // создание/редактирование/удаление в Студии и публикация в облако для них отключены.
+        // b24: права создателя подтверждаются ЛОГИНОМ И ПАРОЛЕМ КОМНАТЫ. Их задаёт создатель при
+        // создании комнаты, в облаке хранится только хэш пароля с солью (сам пароль никуда не уходит).
+        // На любом другом устройстве (или после очистки данных браузера), чтобы снова стать создателем,
+        // нужно ввести эти логин и пароль. Без пароля комнаты публикация отключена.
+        let cloudRole = null; // 'owner' | 'guest' | null (пока не подключены)
+        let cloudAuthFormMode = ''; // '' | 'login' | 'set' | 'change' — какая форма пароля сейчас открыта
+        function cloudDeviceId() {
+            try {
+                let id = LS.getItem('nexus_cloud_devid');
+                if (!id) { id = 'd-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); LS.setItem('nexus_cloud_devid', id); }
+                return id;
+            } catch (e) { return 'd-local'; }
+        }
+        function cloudOwnerRoom() { try { return LS.getItem('nexus_cloud_owner_room') || ''; } catch (e) { return ''; } }
+        function cloudSetOwnerRoom(code) { try { if (code) LS.setItem('nexus_cloud_owner_room', code); else LS.removeItem('nexus_cloud_owner_room'); } catch (e) {} }
+        function cloudGuest() { return CLOUD.connected() && cloudRole === 'guest'; }
+
+        // ------------------- b24: ЛОГИН И ПАРОЛЬ КОМНАТЫ -------------------
+        function cloudAuthKey() { return 'nexus_cloud_auth_' + CLOUD.room; }
+        // Свои (сохранённые на этом устройстве) логин/пароль комнаты — доказательство прав создателя
+        function cloudLocalAuth() {
+            if (!CLOUD.room) return null;
+            try {
+                const a = JSON.parse(LS.getItem(cloudAuthKey()) || 'null');
+                return (a && a.login && a.hash) ? a : null;
+            } catch (e) { return null; }
+        }
+        function cloudSaveLocalAuth(a) { try { LS.setItem(cloudAuthKey(), JSON.stringify(a)); } catch (e) {} }
+        function cloudDropLocalAuth() { try { LS.removeItem(cloudAuthKey()); } catch (e) {} }
+        // Есть чем подтвердить права создателя: свой пароль на устройстве или пароль, уже лежащий в облаке
+        function cloudAuthReady() { return !!(cloudLocalAuth() || CLOUD.remoteAuth); }
+        function cloudAuthNorm(l) { return String(l == null ? '' : l).trim().toLowerCase(); }
+        function cloudSalt() {
+            const abc = 'abcdefghijklmnopqrstuvwxyz0123456789';
+            let s = '';
+            try {
+                if (typeof crypto !== 'undefined' && crypto && crypto.getRandomValues) {
+                    const b = new Uint8Array(12); crypto.getRandomValues(b);
+                    for (let i = 0; i < b.length; i++) s += abc[b[i] % abc.length];
+                    if (s.length === 12) return s;
+                }
+            } catch (e) {}
+            s = ''; for (let i = 0; i < 12; i++) s += abc[Math.floor(Math.random() * abc.length)];
+            return s;
+        }
+        // Запасной хэш на случай, если браузер не дал crypto.subtle (страница открыта не по https / file://)
+        function cloudHashWeak(str) {
+            let h1 = 0x811c9dc5, h2 = 0x9e3779b9;
+            for (let r = 0; r < 256; r++) {
+                for (let i = 0; i < str.length; i++) {
+                    const c = (str.charCodeAt(i) + r) & 0xffff;
+                    h1 = (h1 ^ c) >>> 0; h1 = (h1 * 0x01000193) >>> 0;
+                    h2 = (h2 + c + (h1 >>> 13)) >>> 0; h2 = ((h2 << 7) | (h2 >>> 25)) >>> 0;
+                    h1 = (h1 ^ h2) >>> 0;
+                }
+            }
+            return 'w1:' + h1.toString(16).padStart(8, '0') + h2.toString(16).padStart(8, '0');
+        }
+        // Хэш пароля: SHA-256 + соль, 512 раундов. В облако уходит только он.
+        function cloudHashPass(pass, salt) {
+            const s = String(salt == null ? '' : salt);
+            if (typeof crypto !== 'undefined' && crypto && crypto.subtle && typeof TextEncoder !== 'undefined') {
+                const hex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+                const one = str => crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+                let p = one(s + ':' + String(pass));
+                for (let i = 0; i < 511; i++) p = p.then(h => one(hex(h) + s));
+                return p.then(h => 'sha256:' + hex(h));
+            }
+            return Promise.resolve(cloudHashWeak(s + ':' + String(pass)));
+        }
+        function cloudAuthMatch(a, b) {
+            return !!(a && b && a.hash && b.hash && cloudAuthNorm(a.login) === cloudAuthNorm(b.login) && String(a.hash) === String(b.hash));
+        }
+        function cloudAuthValidate(login, pass) {
+            const l = cloudAuthNorm(login), p = String(pass == null ? '' : pass);
+            if (!l) return 'Введите логин комнаты';
+            if (l.length < 3) return 'Логин — минимум 3 символа';
+            if (l.length > 24) return 'Логин — максимум 24 символа';
+            if (!/^[a-z0-9а-яё_\-.@]+$/.test(l)) return 'Логин: буквы, цифры и знаки _ - . @ (без пробелов)';
+            if (p.length < 4) return 'Пароль — минимум 4 символа';
+            if (p.length > 64) return 'Пароль — максимум 64 символа';
+            return '';
+        }
+        function cloudAuthMake(login, pass) {
+            const salt = cloudSalt();
+            return cloudHashPass(pass, salt).then(hash => ({ login: cloudAuthNorm(login), hash: hash, salt: salt, at: Date.now() }));
+        }
+        // Кто я в комнате: сначала сверяем логин/пароль комнаты с сохранёнными на устройстве,
+        // затем — метку устройства создателя (ownerId). Пароля в комнате ещё нет — решаем по метке:
+        // пустая комната свободна (создателем станет тот, кто первым задаст пароль),
+        // комната старой версии с контентом — по метке устройства/локальному флагу создателя.
+        function cloudResolveRole(remote) {
+            if (!CLOUD.connected()) {
+                cloudRole = null; CLOUD.ownerUnknown = false; CLOUD.needAuth = false;
+                CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = '';
+                CLOUD.remotePacks = 0; CLOUD.remoteCards = 0; // b33
+                return;
+            }
+            const auth = (remote && remote.auth && remote.auth.login && remote.auth.hash) ? remote.auth : null;
+            CLOUD.remoteAuth = auth;
+            CLOUD.remoteFilled = !!(remote && remote.v);
+            CLOUD.remoteOwnerId = (remote && remote.ownerId) || '';
+            CLOUD.remotePacks = (remote && Array.isArray(remote.packs)) ? remote.packs.filter(p => p && p.id && !STANDARD_IDS[p.id]).length : 0; // b33
+            CLOUD.remoteCards = (remote && Array.isArray(remote.cards)) ? remote.cards.filter(c => c && c.id && !STANDARD_IDS[c.id]).length : 0; // b33
+            CLOUD.needAuth = !auth;
+            const devOk = !!CLOUD.remoteOwnerId && CLOUD.remoteOwnerId === cloudDeviceId();
+            if (auth) {
+                CLOUD.ownerUnknown = false;
+                cloudRole = (cloudAuthMatch(auth, cloudLocalAuth()) || devOk) ? 'owner' : 'guest';
+            } else if (!CLOUD.remoteFilled) {
+                CLOUD.ownerUnknown = true;
+                cloudRole = 'owner';
+            } else {
+                CLOUD.ownerUnknown = true;
+                cloudRole = (devOk || cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest';
+            }
+        }
+        // Единый запрет для участников: вызывается в начале всех «пишущих» действий Студии
+        function cloudGuard() {
+            if (cloudGuest()) { showToast('⛔ Режим участника: редактировать может только создатель комнаты (вход по логину и паролю)', 'error'); return true; }
+            return false;
+        }
+
+        // Панель «логин и пароль комнаты» в блоке облака
+        function cloudAuthErr(msg) {
+            const e = document.getElementById('cloud-auth-err');
+            if (e) { e.textContent = msg || ''; e.classList.toggle('hidden', !msg); }
+        }
+        function cloudAuthBtnHTML(label, icon, fn, gold) {
+            return '<button type="button" onclick="' + fn + '()" class="px-3 py-2 rounded-xl text-[11px] font-bold transition shrink-0 ' +
+                (gold ? 'bg-amber-600/80 hover:bg-amber-500 border border-amber-500/40 text-white' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200') + '">' + icon + label + '</button>';
+        }
+        function renderCloudAuth() {
+            const box = document.getElementById('cloud-auth');
+            if (!box) return;
+            if (!CLOUD.connected()) { cloudAuthFormMode = ''; box.classList.add('hidden'); box.innerHTML = ''; return; }
+            box.classList.remove('hidden');
+            if (cloudAuthFormMode) return; // форма открыта и в ней печатают — не перерисовываем
+            const auth = CLOUD.remoteAuth;
+            if (auth) {
+                box.innerHTML = (cloudRole === 'owner')
+                    ? '<div class="flex flex-wrap items-center gap-2">' +
+                        '<span class="px-2.5 py-1.5 rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-300 text-[10px] font-bold"><i class="fa-solid fa-crown mr-1"></i>Создатель: ' + cloudEsc(auth.login) + '</span>' +
+                        '<span class="text-[10px] text-slate-500 flex-1 min-w-[180px]">Комната защищена паролем: участники получают ваши паки, но менять их не могут.</span>' +
+                        cloudAuthBtnHTML('Сменить логин/пароль', '<i class="fa-solid fa-key mr-1"></i>', 'cloudAuthOpenChange', false) +
+                      '</div>'
+                    : '<div class="flex flex-wrap items-center gap-2">' +
+                        '<span class="px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-bold"><i class="fa-solid fa-lock mr-1"></i>Комната защищена • создатель: ' + cloudEsc(auth.login) + '</span>' +
+                        '<span class="text-[10px] text-slate-500 flex-1 min-w-[180px]">Вы участник — только просмотр. Права создателя подтверждаются логином и паролем комнаты.</span>' +
+                        cloudAuthBtnHTML('Я создатель — войти', '<i class="fa-solid fa-crown mr-1"></i>', 'cloudAuthOpenLogin', true) +
+                      '</div>';
+                return;
+            }
+            const canSet = (cloudRole === 'owner') || !CLOUD.remoteOwnerId;
+            box.innerHTML = '<div class="flex flex-wrap items-center gap-2">' +
+                '<span class="px-2.5 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 text-[10px] font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i>' + (CLOUD.remoteFilled ? 'Пароль комнаты не задан (комната старой версии)' : 'Пароль комнаты не задан') + '</span>' +
+                '<span class="text-[10px] text-slate-500 flex-1 min-w-[180px]">' + (canSet
+                    ? 'Без логина и пароля комнату может перехватить кто угодно, поэтому публикация отключена. Задайте их — это и есть подтверждение, что вы создатель.'
+                    : 'Комнату создал другой игрок ещё в старой версии игры: логин и пароль задаёт он. Вы участник — только просмотр.') + '</span>' +
+                (canSet ? cloudAuthBtnHTML(CLOUD.remoteFilled ? 'Задать пароль и взять управление' : 'Задать логин и пароль', '<i class="fa-solid fa-key mr-1"></i>', 'cloudAuthOpenSet', true) : '') +
+              '</div>';
+        }
+        function cloudAuthFormHTML(mode) {
+            const title = mode === 'login' ? 'Подтверждение прав создателя' : (mode === 'change' ? 'Сменить логин и пароль комнаты' : 'Логин и пароль комнаты');
+            const sub = mode === 'login'
+                ? 'Введите логин и пароль, которые задал создатель комнаты. В облаке лежит только хэш пароля: не подошли — права создателя не получить.'
+                : (mode === 'change'
+                    ? 'Потребуется текущий пароль комнаты. Новые логин и пароль сразу уйдут в облако — сообщайте их только тем, кому доверяете.'
+                    : 'Придумайте логин и пароль комнаты — они подтверждают, что вы её создатель, и нужны для входа с другого устройства. В облако уходит только хэш пароля. Забыли пароль — восстановить его нельзя, придётся создать новую комнату.');
+            const known = cloudLocalAuth() || CLOUD.remoteAuth || null;
+            const inp = (id, ph, type, val) => '<input type="' + type + '" id="' + id + '" value="' + cloudEsc(val || '') + '" placeholder="' + ph + '" autocomplete="off" spellcheck="false" onkeydown="cloudAuthEnter(event)" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-amber-500">';
+            const eye = id => '<button type="button" data-id="' + id + '" onclick="cloudAuthEye(this)" title="Показать/скрыть пароль" class="shrink-0 w-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-400 transition"><i class="fa-solid fa-eye text-xs"></i></button>';
+            const cell = inner => '<div class="flex items-stretch gap-1.5 min-w-0">' + inner + '</div>';
+            let fields = '';
+            if (mode === 'change') fields += cell(inp('cloud-auth-cur', 'текущий пароль комнаты', 'password', '') + eye('cloud-auth-cur'));
+            fields += cell(inp('cloud-auth-login', 'логин комнаты: буквы, цифры, _ - . @', 'text', mode === 'login' ? '' : (known ? known.login : '')));
+            fields += cell(inp('cloud-auth-pass', mode === 'change' ? 'новый пароль (минимум 4 символа)' : 'пароль комнаты (минимум 4 символа)', 'password', '') + eye('cloud-auth-pass'));
+            if (mode !== 'login') fields += cell(inp('cloud-auth-pass2', 'повторите пароль', 'password', '') + eye('cloud-auth-pass2'));
+            const submit = mode === 'login' ? 'Подтвердить права создателя' : 'Сохранить логин и пароль';
+            return '<div class="rounded-xl border border-amber-500/30 bg-slate-950/70 p-3 space-y-2">' +
+                '<p class="text-[12px] font-bold text-amber-200 flex items-center gap-2"><i class="fa-solid fa-shield-halved"></i>' + title + '</p>' +
+                '<p class="text-[10px] text-slate-500 leading-relaxed">' + sub + '</p>' +
+                '<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">' + fields + '</div>' +
+                '<div class="flex flex-wrap items-center gap-2">' +
+                    '<button type="button" id="cloud-auth-submit" onclick="cloudAuthSubmit()" class="px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600/80 hover:bg-amber-500 border border-amber-500/40 text-white transition"><i class="fa-solid fa-shield-halved mr-1"></i>' + submit + '</button>' +
+                    '<button type="button" onclick="cloudAuthClose()" class="px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 transition">Отмена</button>' +
+                    '<span id="cloud-auth-err" class="hidden text-[11px] font-semibold text-rose-300 flex-1 min-w-[150px]"></span>' +
+                '</div>' +
+              '</div>';
+        }
+        function cloudAuthOpen(mode) {
+            if (!CLOUD.connected()) { showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); return; }
+            if (mode === 'login' && !CLOUD.remoteAuth && !cloudLocalAuth()) mode = 'set'; // пароля ещё нет — задаём
+            if (mode === 'change' && !CLOUD.remoteAuth && !cloudLocalAuth()) mode = 'set';
+            cloudAuthFormMode = mode;
+            const box = document.getElementById('cloud-auth');
+            if (box) { box.classList.remove('hidden'); box.innerHTML = cloudAuthFormHTML(mode); }
+            try {
+                const f = document.getElementById(mode === 'change' ? 'cloud-auth-cur' : 'cloud-auth-login');
+                if (f && f.focus) f.focus();
+                if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'center' }); // форма видна, даже если вызвана из баннера Студии
+            } catch (e) {}
+        }
+        function cloudAuthOpenSet() { cloudAuthOpen('set'); }
+        function cloudAuthOpenLogin() { cloudAuthOpen('login'); }
+        function cloudAuthOpenChange() { cloudAuthOpen('change'); }
+        function cloudAuthClose() { cloudAuthFormMode = ''; renderCloudAuth(); }
+        function cloudAuthEnter(e) { if (e && e.key === 'Enter') { if (e.preventDefault) e.preventDefault(); cloudAuthSubmit(); } }
+        function cloudAuthEye(btn) {
+            const id = btn && (btn.getAttribute ? btn.getAttribute('data-id') : (btn.dataset ? btn.dataset.id : ''));
+            const e = id ? document.getElementById(id) : null;
+            if (!e) return;
+            const show = e.type === 'password';
+            e.type = show ? 'text' : 'password';
+            if (btn) btn.innerHTML = '<i class="fa-solid fa-' + (show ? 'eye-slash' : 'eye') + ' text-xs"></i>';
+        }
+        function cloudAuthBusy(on) {
+            const b = document.getElementById('cloud-auth-submit');
+            if (!b) return;
+            b.disabled = !!on;
+            b.classList.toggle('opacity-50', !!on);
+            b.classList.toggle('cursor-not-allowed', !!on);
+            b.innerHTML = '<i class="fa-solid fa-' + (on ? 'spinner fa-spin' : 'shield-halved') + ' mr-1"></i>' +
+                (on ? 'Проверяем…' : (cloudAuthFormMode === 'login' ? 'Подтвердить права создателя' : 'Сохранить логин и пароль'));
+        }
+        // Подтверждение прав: логин+пароль сверяются со свежими данными комнаты из облака,
+        // поэтому перехватить или «перезаписать» чужой пароль задним числом не получится.
+        function cloudAuthSubmit() {
+            const mode = cloudAuthFormMode;
+            if (!CLOUD.connected() || !mode) { showToast('Сначала подключитесь к комнате', 'error'); return; }
+            const v = id => { const e = document.getElementById(id); return e ? String(e.value == null ? '' : e.value) : ''; };
+            const login = v('cloud-auth-login'), pass = v('cloud-auth-pass'), pass2 = v('cloud-auth-pass2'), cur = v('cloud-auth-cur');
+            if (mode === 'change' && !cur) { cloudAuthErr('Введите текущий пароль комнаты'); return; }
+            const bad = cloudAuthValidate(login, pass);
+            if (bad) { cloudAuthErr(bad); return; }
+            if (mode !== 'login' && pass !== pass2) { cloudAuthErr('Пароли не совпадают'); return; }
+            cloudAuthErr(''); cloudAuthBusy(true);
+            let fetchedRemote = null; // b25: запоминаем содержимое комнаты, чтобы не затереть его публикацией
+            CLOUD.fetch().then(remote => {
+                fetchedRemote = remote;
+                const rAuth = (remote && remote.auth && remote.auth.login && remote.auth.hash) ? remote.auth : null;
+                if (mode === 'login') {
+                    if (!rAuth) throw new Error('В этой комнате пароль ещё не задан');
+                    return cloudHashPass(pass, rAuth.salt || '').then(h => {
+                        if (cloudAuthNorm(login) !== cloudAuthNorm(rAuth.login) || h !== String(rAuth.hash)) throw new Error('Неверный логин или пароль комнаты');
+                        return { login: cloudAuthNorm(rAuth.login), hash: String(rAuth.hash), salt: rAuth.salt || '', at: Date.now() };
+                    });
+                }
+                if (mode === 'set' && rAuth) throw new Error('Пароль в этой комнате уже задан — войдите по нему');
+                const known = rAuth || cloudLocalAuth();
+                const checkCur = (mode === 'change' && known)
+                    ? cloudHashPass(cur, known.salt || '').then(h => { if (h !== String(known.hash)) throw new Error('Текущий пароль указан неверно'); return true; })
+                    : Promise.resolve(true);
+                return checkCur.then(() => cloudAuthMake(login, pass));
+            }).then(a => {
+                if (!a) return;
+                cloudSaveLocalAuth(a);
+                cloudSetOwnerRoom(CLOUD.room);
+                CLOUD.remoteAuth = { login: a.login, hash: a.hash, salt: a.salt, at: a.at };
+                CLOUD.needAuth = false; CLOUD.ownerUnknown = false;
+                cloudRole = 'owner';
+                cloudAuthFormMode = '';
+                // b25: при проверке пароля контент комнаты НЕ сливался — сливаем сейчас,
+                // иначе публикация с этого устройства затрёт чужие паки пустым каталогом
+                if (fetchedRemote && fetchedRemote.v && cloudMerge(fetchedRemote)) { saveState(); }
+                cloudStatus(); refreshVisibleTabs();
+                showToast(mode === 'login'
+                    ? '👑 Права подтверждены: вы создатель комнаты ' + CLOUD.room
+                    : (mode === 'change' ? 'Логин и пароль комнаты обновлены' : '👍 Комната защищена: вы её создатель'), 'success');
+                cloudPushNow(); // закрепляем логин/хэш пароля и метку создателя в облаке
+            }).catch(e => {
+                cloudAuthBusy(false);
+                const msg = String((e && e.message) || e);
+                cloudAuthErr(msg);
+                showToast('⛔ ' + msg, 'error');
+                if (/ещё не задан|уже задан/i.test(msg)) { cloudAuthFormMode = ''; renderCloudAuth(); }
+            });
+        }
+        function cloudAuto() { try { return LS.getItem('nexus_cloud_auto') !== '0'; } catch (e) { return true; } }
+        // ------------------- b33: НАДГРОБИЯ (tombstones) -------------------
+        // Надгробие = «создатель удалил этот пак/карту». ТОЛЬКО надгробие имеет право удалять
+        // контент у игроков: отсутствие пака в каталоге комнаты удалением больше не считается.
+        // (Раньше «нет в каталоге = удалено» + публикация своего каталога целиком означали, что
+        // любое устройство с неполными данными — после сброса прогресса, импорта сейва или входа
+        // с другого браузера — стирало комнату у всех игроков.)
+        const CLOUD_TOMB_TTL = 30 * 24 * 3600 * 1000; // надгробие старше 30 дней устаревает
+        const CLOUD_TOMB_MAX = 200;
+        // Надгробие действительно, если это не стандартный набор (он вшит в игру и не синхронизируется)
+        // и оно ещё не устарело. Устаревшие/мусорные надгробия раньше жили в комнате вечно и
+        // навсегда блокировали возвращение контента.
+        function cloudTombValid(t) {
+            return !!(t && t.id && !STANDARD_IDS[t.id] && t.at && (Date.now() - t.at) < CLOUD_TOMB_TTL);
+        }
+        function cloudTombPrune(list) {
+            const seen = {}, out = [];
+            (Array.isArray(list) ? list : []).forEach(t => {
+                if (!cloudTombValid(t) || seen[t.id]) return;
+                seen[t.id] = 1; out.push({ id: t.id, at: t.at });
+            });
+            out.sort((a, b) => a.at - b.at);
+            return out.slice(-CLOUD_TOMB_MAX);
+        }
+        function cloudTombs() {
+            try { return cloudTombPrune(JSON.parse(LS.getItem('nexus_cloud_tombs') || '[]')); } catch (e) { return []; }
+        }
+        function cloudTombAdd(id) {
+            if (!id || STANDARD_IDS[id]) return; // b33: стандартный набор не синхронизируется — и надгробий на него не пишем
+            const t = cloudTombs();
+            const i = t.findIndex(x => x.id === id);
+            if (i >= 0) t[i].at = Date.now(); else t.push({ id: id, at: Date.now() });
+            try { LS.setItem('nexus_cloud_tombs', JSON.stringify(cloudTombPrune(t))); } catch (e) {}
+        }
+        function cloudCatalog() {
+            // b33: паки/карты кладём КОПИЯМИ — облачный каталог потом облегчается под лимит
+            // (выбрасываются тяжёлые base64-арты), и локальное состояние при этом не портится.
+            return {
+                v: 1, updatedAt: Date.now(), ownerId: cloudDeviceId(), // b23: метка создателя комнаты
+                auth: cloudLocalAuth() || CLOUD.remoteAuth || null, // b24: логин + хэш пароля комнаты
+                packs: state.packs.filter(p => !STANDARD_IDS[p.id]).map(p => Object.assign({}, p)),
+                cards: state.cards.filter(c => !STANDARD_IDS[c.id]).map(c => Object.assign({}, c)),
+                tombs: cloudTombsUnion(),
+                stdMod: cloudStdModUnion(), // b37: курирование стандартного набора создателем
+                mediaBase: mediaBase()     // b38: зеркало артов/музыки — настройка комнаты
+            };
+        }
+        function cloudLimit() { return CLOUD.db ? 4000000 : 900000; }
+        function cloudJsonLen(o) { try { return JSON.stringify(o).length; } catch (e) { return 0; } }
+        // b33: УПАКОВКА ПОД ЛИМИТ. Раньше превышение лимита отменяло публикацию ЦЕЛИКОМ:
+        // флаг «грязно» висел, автоповтор каждые 20 с получал тот же отказ, и комната
+        // переставала обновляться навсегда (одна карта с base64-артом блокировала весь пак).
+        // Теперь сначала выбрасываем самые тяжёлые data-URI арты (в локальном состоянии они
+        // остаются), затем урезаем очень длинные описания — и остальной контент продолжает
+        // синхронизироваться. Пользователю явно сообщаем, что именно не влезло.
+        function cloudFitCatalog(cat, limit) {
+            const res = { cat: cat, dropped: [], trimmed: 0, tooBig: false, size: cloudJsonLen(cat) };
+            if (res.size <= limit) return res;
+            const heavy = [];
+            (cat.cards || []).forEach(c => { if (c && typeof c.image === 'string' && c.image.indexOf('data:') === 0) heavy.push({ o: c, kind: 'карта', name: c.name || c.id, len: c.image.length }); });
+            (cat.packs || []).forEach(p => { if (p && typeof p.image === 'string' && p.image.indexOf('data:') === 0) heavy.push({ o: p, kind: 'пак', name: p.title || p.id, len: p.image.length }); });
+            heavy.sort((a, b) => b.len - a.len);
+            for (let i = 0; i < heavy.length && res.size > limit; i++) {
+                const h = heavy[i];
+                res.size -= h.len; // data-URI — чистый ASCII, в JSON его длина не меняется
+                h.o.image = '';
+                h.o.imgDropped = 1;  // метка: арт не влез в облако (у игрока будет заглушка)
+                res.dropped.push(h.kind + ' «' + h.name + '»');
+            }
+            if (res.size > limit) { // вторая очередь — неадекватно длинные описания
+                const texts = [];
+                (cat.cards || []).concat(cat.packs || []).forEach(o => {
+                    if (o && typeof o.description === 'string' && o.description.length > 600) texts.push(o);
+                });
+                texts.sort((a, b) => b.description.length - a.description.length);
+                for (let i = 0; i < texts.length && res.size > limit; i++) {
+                    const o = texts[i], cut = o.description.length - 600;
+                    o.description = o.description.slice(0, 600) + '…';
+                    res.size -= cut; res.trimmed++;
+                }
+            }
+            if (res.size > limit) { // b46: последнее средство — тяжёлые base64-арты внутри правок стандарта
+                (cat.stdMod || []).forEach(e => {
+                    if (e && e.patch && typeof e.patch.image === 'string' && e.patch.image.indexOf('data:') === 0 && res.size > limit) {
+                        res.size -= e.patch.image.length;
+                        e.patch.image = '';
+                        e.patch.imgDropped = 1;
+                        res.dropped.push('арт стандарта «' + e.id + '»');
+                    }
+                });
+            }
+            res.size = cloudJsonLen(cat); // точная перепроверка
+            res.tooBig = res.size > limit;
+            return res;
+        }
+        // b35: доверие к каталогу комнаты. textdb пишет кто угодно, поэтому «зеркало» участника
+        // (удаление того, чего нет в комнате) включаем, только если пароль комнаты не исчезал:
+        // если в комнате был auth, а в ответе его нет — каталог мог подменить чужой запрос.
+        function cloudRoomAuthSeenSave(remote) {
+            try {
+                if (remote && remote.auth && remote.auth.hash) {
+                    LS.setItem('nexus_cloud_authseen_' + CLOUD.room, JSON.stringify({ login: remote.auth.login, hash: String(remote.auth.hash) }));
+                }
+            } catch (e) {}
+        }
+        function cloudRoomTrust(remote) {
+            if (!remote || !remote.v) return false;
+            if (!Array.isArray(remote.packs) || !Array.isArray(remote.cards)) return false;
+            let seen = null;
+            try { seen = JSON.parse(LS.getItem('nexus_cloud_authseen_' + CLOUD.room) || 'null'); } catch (e) {}
+            if (seen && seen.hash && !(remote.auth && remote.auth.hash)) return false; // пароль комнаты «исчез» — не верим
+            return true;
+        }
+        // b35: то, что у участника убрано как «не входящее в комнату», не исчезает бесследно —
+        // складывается в локальный архив (до 100 паков / 300 карт), чтобы контент можно было вернуть.
+        function cloudGuestArchive() {
+            try {
+                const a = JSON.parse(LS.getItem('nexus_guest_archive') || 'null');
+                return (a && Array.isArray(a.packs) && Array.isArray(a.cards)) ? a : { packs: [], cards: [] };
+            } catch (e) { return { packs: [], cards: [] }; }
+        }
+        function cloudGuestArchiveSave(a) {
+            try { LS.setItem('nexus_guest_archive', JSON.stringify({ packs: (a.packs || []).slice(-100), cards: (a.cards || []).slice(-300) })); } catch (e) {}
+        }
+        // ------------------- b37: КУРИРОВАНИЕ СТАНДАРТНОГО НАБОРА -------------------
+        // Стандартный набор встроен в игру и не возится в каталоге комнаты целиком, НО решения
+        // создателя «убрать/вернуть» стандартный пак или карту обязаны синхронизироваться.
+        // Для этого в комнате живёт список правок stdMod: [{ id, off, at }]; по каждому id
+        // побеждает последняя по времени запись (возврат перезаписывает удаление и наоборот).
+        function cloudStdModPrune(list) {
+            const byId = {};
+            (Array.isArray(list) ? list : []).forEach(e => {
+                if (!e || !e.id || !STANDARD_IDS[e.id] || !e.at) return;
+                const cur = byId[e.id];
+                if (!cur || e.at > cur.at) byId[e.id] = { id: e.id, off: e.off ? 1 : 0, at: e.at, patch: (e.patch && typeof e.patch === 'object') ? e.patch : undefined };
+            });
+            return Object.keys(byId).map(k => byId[k]).sort((a, b) => a.at - b.at).slice(-100);
+        }
+        function cloudStdMod() { try { return cloudStdModPrune(JSON.parse(LS.getItem(STD_MOD_KEY) || '[]')); } catch (e) { return []; } }
+        function cloudStdModSave(list) { try { LS.setItem(STD_MOD_KEY, JSON.stringify(cloudStdModPrune(list))); } catch (e) {} }
+        function cloudStdModRemote() { try { return cloudStdModPrune(JSON.parse(LS.getItem(STD_MOD_REMOTE_KEY) || '[]')); } catch (e) { return []; } }
+        function cloudStdModUnion() { return cloudStdModPrune(cloudStdMod().concat(cloudStdModRemote())); }
+        function cloudStdDisabled() { return cloudStdMod().filter(e => e.off).map(e => e.id); }
+        function cloudStdSetOff(id, off) {
+            if (!id || !STANDARD_IDS[id]) return;
+            const list = cloudStdMod();
+            list.push({ id: id, off: off ? 1 : 0, at: Date.now() });
+            cloudStdModSave(list);
+        }
+        function cloudStdFindPack(id) { return STANDARD_PACKS.find(p => p.id === id) || null; }
+        function cloudStdFindCard(id) { return STANDARD_CARDS.find(c => c.id === id) || null; }
+        function cloudStdCardClone(c) { return { id: c.id, packId: c.packId, name: c.name, description: c.description, rarity: c.rarity, image: c.image }; }
+        function cloudStdDiff(id, item) {
+            const isPack = !!cloudStdFindPack(id);
+            const base = isPack ? cloudStdFindPack(id) : cloudStdFindCard(id);
+            if (!base || !item) return null;
+            const fields = isPack ? STD_PACK_FIELDS : STD_CARD_FIELDS;
+            const patch = {};
+            let any = false;
+            fields.forEach(f => {
+                const b = base[f] === undefined ? null : base[f];
+                const v = item[f] === undefined ? null : item[f];
+                if (JSON.stringify(b) !== JSON.stringify(v)) { patch[f] = v; any = true; }
+            });
+            return any ? patch : {};
+        }
+        // вызывается после каждой правки стандартного пака/карты в Студии
+        function cloudStdTouch(item) {
+            if (!item || !item.id || !STANDARD_IDS[item.id]) return;
+            const patch = cloudStdDiff(item.id, item);
+            if (!patch) return;
+            const list = cloudStdMod();
+            list.push({ id: item.id, off: 0, at: Date.now(), patch: patch });
+            cloudStdModSave(list);
+        }
+        // применить локальные patch-записи к состоянию (идемпотентно)
+        // b173: пересборка стандартной позиции ЦЕЛИКОМ из базы + patch. Раньше patch только
+        // дописывал поля: если создатель убирал таймер/снятие с продажи (поле возвращалось
+        // к базовому значению и исчезало из patch), у участников старое значение залипало
+        // навсегда. Теперь поля из белого списка сначала сбрасываются к базе, затем
+        // применяется patch — отмена правки тоже доезжает до комнаты.
+        function applyStdPatchTo(it, patch) {
+            if (!it || !it.id) return false;
+            const isP = !!cloudStdFindPack(it.id);
+            const base = isP ? cloudStdFindPack(it.id) : cloudStdFindCard(it.id);
+            const fields = isP ? STD_PACK_FIELDS : STD_CARD_FIELDS;
+            let changed = false;
+            if (base) fields.forEach(f => {
+                const b = base[f];
+                const have = it[f];
+                const hv = (have === undefined) ? null : have;
+                if (b === undefined) {
+                    if (have !== undefined) { delete it[f]; changed = true; }
+                } else if (JSON.stringify(b) !== JSON.stringify(hv)) {
+                    it[f] = (b && typeof b === 'object') ? JSON.parse(JSON.stringify(b)) : b;
+                    changed = true;
+                }
+            });
+            if (patch && typeof patch === 'object') Object.keys(patch).forEach(k => {
+                const v = patch[k];
+                if (v === null) { if (it[k] !== undefined) { delete it[k]; changed = true; } }
+                else if (JSON.stringify(it[k]) !== JSON.stringify(v)) { it[k] = v; changed = true; }
+            });
+            return changed;
+        }
+        function applyStdPatches() {
+            const mod = cloudStdMod();
+            let changed = false;
+            mod.forEach(e => {
+                if (!e.patch) return;
+                const it = state.packs.find(p => p.id === e.id) || state.cards.find(c => c.id === e.id);
+                if (!it) return;
+                if (applyStdPatchTo(it, e.patch)) changed = true; // b173
+            });
+            return changed;
+        }
+        // Досев стандартного набора при КАЖДОМ запуске — кроме скрытых куратором позиций
+        function reseedStandard() {
+            const off = {};
+            cloudStdDisabled().forEach(id => { off[id] = 1; });
+            let added = false;
+            STANDARD_PACKS.forEach(p => {
+                if (off[p.id]) return;
+                if (!state.packs.some(x => x.id === p.id)) { state.packs.push(Object.assign({}, p)); added = true; }
+            });
+            STANDARD_CARDS.forEach(c => {
+                if (off[c.id] || off[c.packId]) return;
+                if (!state.cards.some(x => x.id === c.id)) { state.cards.push(cloudStdCardClone(c)); added = true; }
+            });
+            return added;
+        }
+        // Вернуть скрытую позицию стандарта: снятие off + досев + публикация
+        function restoreStandard(id) {
+            if (cloudGuard()) return; // b23
+            if (!id || !STANDARD_IDS[id]) return;
+            cloudStdSetOff(id, 0);
+            reseedStandard();
+            saveState();
+            refreshVisibleTabs();
+            cloudPublishSoon();
+            cloudPushUrgent();
+            showToast('Возвращено в стандартный набор и опубликовано в комнату', 'success');
+        }
+        function cloudRemoteTombsCache() {
+            try { return cloudTombPrune(JSON.parse(LS.getItem('nexus_cloud_remote_tombs') || '[]')); } catch (e) { return []; }
+        }
+        // b32/b33: надгробия в публикуемом каталоге = объединение локальных и виденных в комнате
+        // (отфильтрованное и ограниченное по сроку/количеству) — публикация создателя не может
+        // «забыть» удаления и вернуть удалённые паки участникам.
+        function cloudTombsUnion() {
+            return cloudTombPrune(cloudTombs().concat(cloudRemoteTombsCache()));
+        }
+        function cloudMerge(remote) {
+            // b27: слияние возвращает сводку { add, upd, del }, чтобы показать пользователю,
+            // что именно прилетело из комнаты (в т.ч. удаления создателя).
+            // b33: удаления выполняются ТОЛЬКО по надгробиям. Прежнее правило b32
+            // «чего нет в каталоге комнаты — то удалено» в связке с публикацией своего каталога
+            // целиком означало, что одно устройство с неполными данными (сброс прогресса, импорт
+            // сейва, вход с другого браузера, переполнение localStorage) стирало комнату у всех.
+            const sum = { add: 0, upd: 0, del: 0 };
+            if (!remote || typeof remote !== 'object') return null;
+            let changed = false;
+            const tombs = cloudTombs();
+            const knownTomb = {};
+            tombs.forEach(t => { knownTomb[t.id] = 1; });
+            cloudTombPrune(remote.tombs).forEach(t => {
+                if (knownTomb[t.id]) return;
+                knownTomb[t.id] = 1; tombs.push(t); changed = true;
+            });
+            try { LS.setItem('nexus_cloud_tombs', JSON.stringify(cloudTombPrune(tombs))); } catch (e) {}
+            const killedAt = id => { const t = tombs.find(x => x.id === id); return t ? (t.at || 0) : 0; };
+            // b27: удаляя карту создателем, чистим у пользователя всё, что на неё ссылается
+            const dropCardRefs = id => {
+                if (Object.prototype.hasOwnProperty.call(state.collection, id)) { delete state.collection[id]; changed = true; }
+                if ((state.deck || []).indexOf(id) >= 0) { state.deck = state.deck.filter(d => d !== id); changed = true; }
+            };
+            const dropPack = pid => {
+                state.cards.filter(c => c.packId === pid).forEach(c => dropCardRefs(c.id));
+                const before = state.cards.length;
+                state.cards = state.cards.filter(c => c.packId !== pid);
+                if (state.cards.length !== before) changed = true;
+                const pi = state.packs.findIndex(p => p.id === pid);
+                if (pi >= 0) { state.packs.splice(pi, 1); sum.del++; changed = true; }
+                if (state.albumBonus && state.albumBonus[pid]) { delete state.albumBonus[pid]; changed = true; }
+                if (state.currentAlbumPackId === pid) state.currentAlbumPackId = null;
+            };
+            (Array.isArray(remote.packs) ? remote.packs : []).forEach(rp => {
+                if (!rp || !rp.id || STANDARD_IDS[rp.id]) return;
+                if (killedAt(rp.id) > (rp.updatedAt || 0)) { dropPack(rp.id); return; }
+                const i = state.packs.findIndex(p => p.id === rp.id);
+                if (i < 0) { rp.fromRoom = 1; state.packs.push(rp); sum.add++; changed = true; }
+                else if ((rp.updatedAt || 0) > (state.packs[i].updatedAt || 0)) { rp.fromRoom = 1; state.packs[i] = rp; sum.upd++; changed = true; }
+            });
+            (Array.isArray(remote.cards) ? remote.cards : []).forEach(rc => {
+                if (!rc || !rc.id || STANDARD_IDS[rc.id]) return;
+                if (killedAt(rc.id) > (rc.updatedAt || 0)) {
+                    const ci0 = state.cards.findIndex(c => c.id === rc.id);
+                    if (ci0 >= 0) { dropCardRefs(rc.id); state.cards.splice(ci0, 1); sum.del++; changed = true; }
+                    return;
+                }
+                const i = state.cards.findIndex(c => c.id === rc.id);
+                if (i < 0) { rc.fromRoom = 1; state.cards.push(rc); sum.add++; changed = true; }
+                else if ((rc.updatedAt || 0) > (state.cards[i].updatedAt || 0)) { rc.fromRoom = 1; state.cards[i] = rc; sum.upd++; changed = true; }
+            });
+            // b35: ЗЕРКАЛО КОМНАТЫ У УЧАСТНИКА. Участник не публикует ничего своего, поэтому для
+            // него каталог комнаты — источник истины по ВСЕМУ пользовательскому контенту: чего нет
+            // в комнате, того нет и у него (иначе устройства игроков навсегда расходились бы с
+            // комнатой: «у создателя 1 пак, у игроков 5»). Свои локальные паки, созданные до входа
+            // в комнату, не уничтожаем бесследно — складываем в локальный архив nexus_guest_archive.
+            // На создателя правило не действует: его локальный каталог и есть каталог комнаты.
+            if (cloudGuest() && cloudRoomTrust(remote)) {
+                sum.mirror = 0;
+                const archive = cloudGuestArchive();
+                let archived = false;
+                const inRoomP = {}, inRoomC = {};
+                (remote.packs || []).forEach(rp => { if (rp && rp.id) inRoomP[rp.id] = 1; });
+                (remote.cards || []).forEach(rc => { if (rc && rc.id) inRoomC[rc.id] = 1; });
+                state.packs.slice().forEach(p => {
+                    if (!p || !p.id || STANDARD_IDS[p.id] || inRoomP[p.id]) return;
+                    archive.packs.push(p); archived = true;
+                    dropPack(p.id); sum.mirror++; changed = true;
+                });
+                state.cards.slice().forEach(c => {
+                    if (!c || !c.id || STANDARD_IDS[c.id] || inRoomC[c.id]) return;
+                    archive.cards.push(c); archived = true;
+                    dropCardRefs(c.id);
+                    const ci = state.cards.indexOf(c);
+                    if (ci >= 0) { state.cards.splice(ci, 1); sum.del++; sum.mirror++; changed = true; }
+                });
+                if (archived) cloudGuestArchiveSave(archive);
+            }
+            // b38: зеркало медиа — настройка комнаты, но с приоритетами, чтобы свежая локальная
+            // настройка создателя не затиралась старым пустым значением из комнаты при слиянии:
+            // участник всегда следует комнате; создатель принимает комнатное значение, только если
+            // у него своего нет или своё получено из комнаты (иное он сейчас опубликует сам).
+            if (typeof remote.mediaBase === 'string') {
+                const rb = String(remote.mediaBase).trim().replace(/\/+$/, '');
+                const local = mediaBase();
+                const apply = cloudGuest()
+                    ? (rb !== local && (rb || mediaBaseFromRoom()))
+                    : (rb !== local && (rb || mediaBaseFromRoom()) && (!local || mediaBaseFromRoom()));
+                if (apply) { mediaBaseSet(rb, true); sum.media = 1; changed = true; }
+            }
+            // b37: правки стандартного набора из комнаты (скрыть/вернуть)
+            const remoteMod = cloudStdModPrune(remote.stdMod);
+            try { LS.setItem(STD_MOD_REMOTE_KEY, JSON.stringify(remoteMod)); } catch (e) {}
+            if (remoteMod.length) {
+                const localMod = cloudStdMod();
+                const latest = {};
+                localMod.forEach(e => { latest[e.id] = e; });
+                let modChanged = false;
+                remoteMod.forEach(e => {
+                    const l = latest[e.id];
+                    if (l && l.at >= e.at) return; // у нас уже есть решение свежее
+                    if (e.off) {
+                        if (state.packs.some(p => p.id === e.id)) { dropPack(e.id); sum.del++; modChanged = true; }
+                        else if (state.cards.some(c => c.id === e.id)) {
+                            dropCardRefs(e.id);
+                            const ci = state.cards.findIndex(c => c.id === e.id);
+                            if (ci >= 0) { state.cards.splice(ci, 1); sum.del++; modChanged = true; }
+                        }
+                    } else {
+                        if (state.packs.some(p => p.id === e.id) === false && cloudStdFindPack(e.id)) {
+                            state.packs.push(Object.assign({}, cloudStdFindPack(e.id))); sum.add++; modChanged = true;
+                        } else if (state.cards.some(c => c.id === e.id) === false && cloudStdFindCard(e.id)) {
+                            state.cards.push(cloudStdCardClone(cloudStdFindCard(e.id))); sum.add++; modChanged = true;
+                        }
+                    }
+                    // b46: правка полей стандартного пака/карты (patch поверх базы и локального состояния)
+                    if (e.patch && typeof e.patch === 'object') {
+                        const it = state.packs.find(p => p.id === e.id) || state.cards.find(c => c.id === e.id);
+                        if (it) { applyStdPatchTo(it, e.patch); modChanged = true; } // b173: база + patch целиком
+                    }
+                });
+                cloudStdModSave(localMod.concat(remoteMod));
+                if (modChanged) { reseedStandard(); applyStdPatches(); changed = true; }
+            }
+            // b33: надгробия — единственный источник удалений (создатель удалил → у всех удалено)
+            tombs.forEach(t => {
+                const isPack = state.packs.some(p => p.id === t.id && !STANDARD_IDS[p.id] && (p.updatedAt || 0) < t.at);
+                if (isPack) { dropPack(t.id); return; }
+                const ci = state.cards.findIndex(c => c.id === t.id && !STANDARD_IDS[c.id] && (c.updatedAt || 0) < t.at);
+                if (ci >= 0) { dropCardRefs(t.id); state.cards.splice(ci, 1); sum.del++; changed = true; }
+            });
+            return changed ? sum : null;
+        }
+        function refreshVisibleTabs() {
+            if (document.hidden) return; // b251: фоновая перерисовка DOM = подвисания на слабых устройствах
+            const vis = id => { const el = document.getElementById(id); return el && !el.classList.contains('hidden'); };
+            if (vis('tab-store')) renderStore();
+            if (vis('tab-albums')) renderAlbumsHub();
+            if (vis('tab-studio')) renderStudio();
+        }
+        // b24: экранируем и кавычки — логин комнаты приходит из облака и подставляется в атрибут value
+        function cloudEsc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+        function cloudStatus(extra) {
+            renderCloudAuth(); // b24: чип/форма логина и пароля комнаты
+            const el = document.getElementById('cloud-status');
+            if (!el) return;
+            if (extra) { el.textContent = extra; return; }
+            if (!CLOUD.connected()) { el.innerHTML = 'Главная комната <b class="text-violet-300">' + CLOUD_DEFAULT_ROOM + '</b> подключается автоматически у всех игроков сайта. Сейчас облако отключено — нажмите «Подключить», чтобы получать общие паки, или создайте свою комнату.'; return; }
+            const t = CLOUD.lastSync ? new Date(CLOUD.lastSync).toLocaleTimeString() : '—';
+            const roleTxt = cloudGuest()
+                ? ' • <span class="text-amber-300"><i class="fa-solid fa-lock text-[9px]"></i> вы участник — только просмотр (нужен логин и пароль комнаты)</span>'
+                : (cloudRole === 'owner'
+                    ? ' • <span class="text-violet-300"><i class="fa-solid fa-crown text-[9px]"></i> вы создатель' + (CLOUD.remoteAuth ? ' «' + cloudEsc(CLOUD.remoteAuth.login) + '» — можно редактировать' : ' — задайте логин и пароль комнаты') + '</span>'
+                    : '');
+            // b33: сразу видно, что реально лежит в комнате и не ждут ли правки публикации
+            const cntTxt = CLOUD.lastSync ? ' • в комнате: ' + (CLOUD.remotePacks || 0) + ' паков, ' + (CLOUD.remoteCards || 0) + ' карт' : '';
+            const dirtyTxt = (!cloudGuest() && cloudDirty())
+                ? ' • <span class="text-amber-300"><i class="fa-solid fa-clock text-[9px]"></i> есть неопубликованные изменения</span>'
+                : '';
+            el.innerHTML = 'Комната <b class="text-violet-300">' + cloudEsc(CLOUD.room) + '</b> • ' + (CLOUD.db ? 'своя база Firebase' : 'простое хранилище (без регистрации)') + ' • синхронизация: ' + t + cntTxt + dirtyTxt + roleTxt +
+                (CLOUD.lastErr ? ' • <span class="text-rose-300">ошибка: ' + cloudEsc(CLOUD.lastErr) + '</span>' : ' • <span class="text-violet-300">онлайн</span>');
+            // b23/b24: участнику — публикацию и автопубликацию отключаем
+            const guest = cloudGuest();
+            const pushBtn = document.getElementById('cloud-push-btn');
+            if (pushBtn) {
+                pushBtn.disabled = guest;
+                pushBtn.classList.toggle('opacity-40', guest);
+                pushBtn.classList.toggle('cursor-not-allowed', guest);
+                pushBtn.title = guest ? 'Публиковать может только создатель комнаты' : 'Опубликовать свои паки в облако сейчас';
+            }
+            const autoCb = document.getElementById('cloud-auto');
+            if (autoCb) { autoCb.disabled = guest; autoCb.classList.toggle('opacity-40', guest); }
+        }
+        let cloudPullBusy = false; // b25: не запускаем вторую загрузку, пока первая в пути
+        function cloudPull(manual, done) {
+            if (!CLOUD.connected()) { if (manual) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); if (done) done(); return; }
+            if (cloudPullBusy) { if (done) done(); return; }
+            cloudPullBusy = true;
+            cloudStatus('Загрузка из облака…');
+            CLOUD.fetch().then(remote => {
+                const prevRole = cloudRole;
+                cloudResolveRole(remote); // b23: кто я в комнате — создатель или участник
+                cloudRoomAuthSeenSave(remote); // b35: запоминаем пароль комнаты для проверки доверия
+                // b32/b33: кешируем надгробия комнаты — при публикации объединяются с локальными
+                try { if (remote && Array.isArray(remote.tombs)) LS.setItem('nexus_cloud_remote_tombs', JSON.stringify(cloudTombPrune(remote.tombs))); } catch (e) {}
+                if (remote && remote.v) {
+                    const m = cloudMerge(remote);
+                    if (m) {
+                        saveState(); try { if (nxHealMediaLinks()) { saveState(); cloudPublishSoon(); } } catch (e) {} // b352: вылечили ссылки сразу после слияния
+                        refreshVisibleTabs();
+                        if (m.media) { // b38: приехало новое зеркало — обновляем поле и экран
+                            const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase();
+                        }
+                        // b25: участник ВИДИТ, что изменения создателя прилетели (раньше слияние было молчаливым)
+                        // b27: в т.ч. явно показываем удаления, сделанные создателем комнаты
+                        if (!manual) {
+                            const bits = [];
+                            if (m.del) bits.push(`🗑 удалено создателем: ${m.del}`);
+                            if (m.add) bits.push(`новых: ${m.add}`);
+                            if (m.upd) bits.push(`обновлено: ${m.upd}`);
+                            if (m.mirror) bits.push(`не из комнаты: ${m.mirror} (сохранено в архив)`);
+                            showToast('Обновление системы: ' + (bits.length ? bits.join(', ') : 'изменения применены'), 'success'); // b247: без имени комнаты
+                        }
+                    }
+                }
+                CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
+                cloudOwnerReconcile(remote); // b35: контент создателя доезжает до комнаты даже без правок
+                if (CLOUD.promptAuth) { // b24: только что подключились — при необходимости сразу просим пароль
+                    CLOUD.promptAuth = false;
+                    if (CLOUD.needAuth && cloudRole === 'owner' && !cloudAuthFormMode) cloudAuthOpen('set');
+                }
+                cloudStatus();
+                if (prevRole !== cloudRole) refreshVisibleTabs(); // b23: сменилась роль — перерисовать Студию
+                if (manual) showToast(cloudGuest()
+                    ? 'Облако: данные получены (вы участник — только просмотр)'
+                    : (CLOUD.needAuth ? 'Комната подключена — задайте логин и пароль создателя' : 'Облако: данные получены'), 'success');
+            }).catch(e => {
+                CLOUD.lastErr = String((e && e.message) || e); cloudStatus();
+                if (manual) showToast('Облако недоступно: ' + CLOUD.lastErr, 'error');
+            }).then(() => { cloudPullBusy = false; if (done) done(); });
+        }
+        let cloudPushT = null;
+        // b25: ФЛАГ НЕОПУБЛИКОВАННЫХ ИЗМЕНЕНИЙ. Главный баг доставки: правка сохранялась локально,
+        // публикация стояла в очереди 1.5 с, и если создатель закрывал игру раньше — изменение
+        // НЕ уходило в облако и не отправлялось никогда (при запуске данные только получались).
+        // Теперь «грязный» флаг живёт в localStorage: публикуем при закрытии страницы (sendBeacon),
+        // а если не успели — при следующем запуске и каждые 20 секунд.
+        function cloudDirty() { try { return LS.getItem('nexus_cloud_dirty') === '1'; } catch (e) { return false; } }
+        function cloudDirtySet() { try { LS.setItem('nexus_cloud_dirty', '1'); } catch (e) {} }
+        function cloudDirtyClear() { try { LS.removeItem('nexus_cloud_dirty'); } catch (e) {} }
+        function cloudPublishSoon() {
+            if (!CLOUD.connected() || cloudGuest()) return; // b23: участники не публикуют
+            cloudDirtySet(); // b25: изменение записано, но ещё не в облаке
+            cloudStatus();   // b33: сразу показываем, что есть неопубликованные изменения
+            if (!cloudAuto()) { showToast('⚠️ Автопубликация выключена — нажмите «Опубликовать», чтобы отправить изменения в комнату', 'refund'); return; }
+            clearTimeout(cloudPushT);
+            cloudPushT = setTimeout(() => { cloudPushT = null; cloudPushNow(); }, 1500);
+        }
+        // b27: удаление паков/карточек создателем — критичное изменение:
+        // отправляем в комнату немедленно (без дебаунса 1.5 c), чтобы пользователи
+        // перестали видеть удалённый контент уже на ближайшем цикле синхронизации.
+        function cloudPushUrgent() {
+            if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady()) return;
+            if (!cloudAuto()) return; // автопубликация выключена — ждём кнопку «Опубликовать» (флаг dirty уже выставлен)
+            clearTimeout(cloudPushT); cloudPushT = null;
+            cloudPushNow();
+        }
+        // b25: страница закрывается/прячется — срочно допубликовать изменения синхронным beacon-запросом
+        function cloudFlushPending() {
+            try {
+                if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady()) return;
+                if (!cloudPushT && !cloudDirty()) return;
+                if (!cloudAuto() && !cloudPushT) return; // автопубликация выключена — ждём ручную кнопку
+                // b33: beacon не дожидается ответа, поэтому свериться с комнатой перед ним нельзя.
+                // Шлём аварийно, только если наша картина комнаты свежая и мы её НЕ уменьшаем —
+                // иначе закрытие вкладки с неполными данными стёрло бы комнату у всех игроков.
+                // Не успели — флаг dirty останется, и изменения уйдут при следующем запуске.
+                if (!CLOUD.lastSync || (Date.now() - CLOUD.lastSync) > 2 * 60 * 1000) return;
+                const cat = cloudCatalog();
+                if ((cat.packs.length + cat.cards.length) < ((CLOUD.remotePacks || 0) + (CLOUD.remoteCards || 0))) return;
+                const fit = cloudFitCatalog(cat, cloudLimit());
+                if (fit.tooBig) return;
+                clearTimeout(cloudPushT); cloudPushT = null;
+                if (CLOUD.flush(fit.cat)) cloudDirtyClear(); // beacon принят браузером — считаем доставленным
+            } catch (e) {}
+        }
+        // b35: СВЕРКА СОЗДАТЕЛЯ. Раньше каталог уезжал в комнату только после правки в Студии,
+        // поэтому устройство с готовым контентом и пустой комнатой молча расходилось с игроками.
+        // Теперь после каждого получения данных сравниваем локальный каталог с комнатным:
+        // всё своё, чего в комнате нет, помечаем к публикации (публикация объединяет, а не затирает).
+        function cloudOwnerReconcile(remote) {
+            if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady()) return;
+            const inRoomP = {}, inRoomC = {};
+            ((remote && Array.isArray(remote.packs)) ? remote.packs : []).forEach(x => { if (x && x.id) inRoomP[x.id] = 1; });
+            ((remote && Array.isArray(remote.cards)) ? remote.cards : []).forEach(x => { if (x && x.id) inRoomC[x.id] = 1; });
+            let diff = 0;
+            state.packs.forEach(p => { if (p && p.id && !STANDARD_IDS[p.id] && !inRoomP[p.id]) diff++; });
+            state.cards.forEach(c => { if (c && c.id && !STANDARD_IDS[c.id] && !inRoomC[c.id]) diff++; });
+            // b36: обратный конфликт — в комнате снова лежит то, что мы удалили (надгробие есть
+            // локально). Так бывает, когда другое устройство-создатель перезаписало комнату своим
+            // старым каталогом поверх нашего удаления. Публикуем удаление заново.
+            // b37: локальные правки стандарта, которых ещё нет в комнате, тоже требуют публикации
+            const roomModKeys = {};
+            ((remote && Array.isArray(remote.stdMod)) ? remote.stdMod : []).forEach(e => { if (e && e.id) roomModKeys[e.id + '@' + e.at] = 1; });
+            cloudStdMod().forEach(e => { if (!roomModKeys[e.id + '@' + e.at]) diff++; });
+            const tombsR = cloudTombs();
+            const killedAtR = id => { const t = tombsR.find(x => x.id === id); return t ? (t.at || 0) : 0; };
+            ((remote && Array.isArray(remote.packs)) ? remote.packs : []).forEach(x => {
+                if (x && x.id && !STANDARD_IDS[x.id] && killedAtR(x.id) > (x.updatedAt || 0)) diff++;
+            });
+            ((remote && Array.isArray(remote.cards)) ? remote.cards : []).forEach(x => {
+                if (x && x.id && !STANDARD_IDS[x.id] && killedAtR(x.id) > (x.updatedAt || 0)) diff++;
+            });
+            if (!diff) return;
+            cloudDirtySet();
+            cloudStatus();
+            if (cloudAuto() && !cloudPushT && !cloudPushBusy) {
+                clearTimeout(cloudPushT);
+                cloudPushT = setTimeout(() => { cloudPushT = null; cloudPushNow({ quiet: true }); }, 1500);
+            }
+        }
+        // b25: получили данные из облака — если остались неопубликованные правки, отправляем их следом
+        function cloudAfterPull() {
+            if (!CLOUD.connected() || cloudGuest() || !cloudAuthReady() || !cloudAuto() || !cloudDirty() || cloudPushT) return;
+            if (cloudPushFailAt && (Date.now() - cloudPushFailAt) < 60000) return; // b33: после ошибки — пауза 60 с
+            cloudPushNow({ quiet: true });
+        }
+        let cloudPushBusy = false;    // b33: одна публикация за раз (параллельные перезаписывали друг друга)
+        let cloudPushFailAt = 0;      // b33: когда не получилось в последний раз — для паузы автоповторов
+        let cloudPushErrShown = false; // b33: одну и ту же ошибку не показываем каждые 20 секунд
+        function cloudPushNow(opts) {
+            opts = opts || {};
+            const quiet = !!opts.quiet;
+            const fail = msg => {
+                cloudDirtySet(); cloudPushFailAt = Date.now(); // b25: не получилось — повторим позже
+                CLOUD.lastErr = msg; cloudStatus();
+                if (!quiet || !cloudPushErrShown) { cloudPushErrShown = true; nxOwnerToast('Ошибка публикации: ' + msg, 'error'); }
+            };
+            if (!CLOUD.connected()) { if (!quiet) showToast('Сначала введите код комнаты и нажмите «Подключить»', 'error'); cloudStatus(); return; }
+            if (cloudGuest()) { if (!quiet) showToast('⛔ Публиковать может только создатель комнаты', 'error'); return; }
+            if (!cloudAuthReady()) { // b24: комната без логина и пароля не публикуется
+                if (!quiet) { showToast('⛔ Сначала задайте логин и пароль комнаты — без них публикация отключена', 'error'); cloudAuthOpen('set'); }
+                cloudStatus();
+                return;
+            }
+            if (cloudPushBusy) return;
+            cloudPushBusy = true;
+            cloudStatus('Публикация…');
+            // b33: СНАЧАЛА читаем комнату и сливаем её содержимое со своим состоянием, и только
+            // потом публикуем объединённый каталог. Публикация «вслепую» (как раньше) затирала
+            // комнату локальными данными: сброс прогресса, импорт сейва, второй браузер или
+            // переполнение localStorage на одном устройстве стирали контент у всех игроков.
+            // b36: цикл повторяется, если после нашей записи комната оказалась перезаписана
+            // чужим старым каталогом (textdb не умеет атомарные операции): перечитываем,
+            // сливаем снова (надгробия при этом не теряются) и публикуем ещё раз.
+            const cycle = depth => CLOUD.fetch().then(remote => {
+                const prevRole = cloudRole;
+                cloudResolveRole(remote);
+                try { if (remote && Array.isArray(remote.tombs)) LS.setItem('nexus_cloud_remote_tombs', JSON.stringify(cloudTombPrune(remote.tombs))); } catch (e) {}
+                if (cloudGuest()) throw new Error('публиковать может только создатель комнаты');
+                if (remote && remote.v && cloudMerge(remote)) { saveState(); refreshVisibleTabs(); }
+                if (prevRole !== cloudRole) refreshVisibleTabs();
+                const cat = cloudCatalog();
+                // b33: страховка — всё, что есть в комнате и не удалено надгробием, обязано
+                // остаться в исходящем каталоге. Иначе публикацию отменяем, данные не теряются.
+                const tIds = {};
+                (cat.tombs || []).forEach(t => { tIds[t.id] = 1; });
+                const has = (arr, id) => arr.some(x => x && x.id === id);
+                let lost = 0;
+                ((remote && Array.isArray(remote.packs)) ? remote.packs : []).forEach(p => {
+                    if (!p || !p.id || STANDARD_IDS[p.id] || tIds[p.id] || has(cat.packs, p.id)) return;
+                    lost++;
+                });
+                ((remote && Array.isArray(remote.cards)) ? remote.cards : []).forEach(c => {
+                    if (!c || !c.id || STANDARD_IDS[c.id] || tIds[c.id] || has(cat.cards, c.id)) return;
+                    lost++;
+                });
+                if (lost > 0) throw new Error('отменено: не удалось объединить с комнатой (иначе потерялось бы объектов: ' + lost + ') — нажмите «Опубликовать» ещё раз');
+                const lim = cloudLimit();
+                const fit = cloudFitCatalog(cat, lim);
+                if (fit.tooBig) throw new Error('каталог больше лимита облака (' + Math.round(lim / 1000) + ' КБ) даже без тяжёлых артов: ' + Math.round(fit.size / 1000) + ' КБ — сократите описания паков и карт');
+                return CLOUD.push(fit.cat).then(() => CLOUD.fetch().then(chk => {
+                    // b36: проверка «не затёрли ли нас»: метка комнаты отличается от нашей —
+                    // значит, между записью и чтением успел кто-то ещё; повторяем цикл.
+                    if (chk && chk.v && chk.updatedAt !== fit.cat.updatedAt && depth < 2) return cycle(depth + 1);
+                    cloudDirtyClear(); CLOUD.lastSync = Date.now(); CLOUD.lastErr = '';
+                    cloudPushFailAt = 0; cloudPushErrShown = false;
+                    CLOUD.remotePacks = fit.cat.packs.length; CLOUD.remoteCards = fit.cat.cards.length;
+                    cloudStatus();
+                    if (fit.dropped.length) {
+                        nxOwnerToast('⚠️ Опубликовано, но без тяжёлых base64-артов (не влезли в лимит облака): ' +
+                            fit.dropped.slice(0, 3).join(', ') + (fit.dropped.length > 3 ? ' и ещё ' + (fit.dropped.length - 3) : '') +
+                            ' — вставьте вместо них ссылки на картинки', 'refund');
+                    } else {
+                        showToast((quiet ? '☁️ ' : '') + 'Опубликовано в комнату ' + CLOUD.room + ': ' +
+                            fit.cat.packs.length + ' паков, ' + fit.cat.cards.length + ' карт', 'success');
+                    }
+                }));
+            });
+            cycle(opts.depth || 0)
+                .catch(e => fail(String((e && e.message) || e)))
+                .then(() => { cloudPushBusy = false; });
+        }
+        function cloudSaveDb() {
+            const inp = document.getElementById('cloud-db');
+            let u = String((inp && inp.value) || '').trim().replace(/\/+$/, '');
+            if (!u) {
+                CLOUD.db = ''; try { LS.removeItem('nexus_cloud_db'); } catch (e) {}
+                cloudStatus(); showToast('Простой режим (без регистрации) включён', 'success');
+                if (CLOUD.room) cloudPull(false);
+                return;
+            }
+            if (!/^https?:\/\/.+/i.test(u)) { showToast('Вставьте URL базы вида https://…firebasedatabase.app', 'error'); return; }
+            CLOUD.db = u; try { LS.setItem('nexus_cloud_db', u); } catch (e) {}
+            cloudStatus();
+            showToast('URL базы сохранён', 'success');
+            if (CLOUD.room) cloudPull(false);
+        }
+        function cloudConnect(code) {
+            const inp = document.getElementById('cloud-room');
+            const c = String(code || (inp && inp.value) || '').trim().toLowerCase() || CLOUD_DEFAULT_ROOM; // b26: пустое поле = главная комната
+            CLOUD.room = c; try { LS.setItem('nexus_cloud_room', c); } catch (e) {}
+            cloudOptOutSet(false); // b26: пользователь сам подключается — отказ от главной комнаты снимаем
+            cloudRole = (cloudOwnerRoom() === c) ? 'owner' : 'guest'; // b23: до ответа облака
+            CLOUD.ownerUnknown = false; CLOUD.promptAuth = true; // b24
+            CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = ''; CLOUD.needAuth = false;
+            cloudAuthFormMode = '';
+            cloudStatus();
+            cloudPull(true);
+        }
+        function cloudCreate() {
+            const code = CLOUD.newRoom();
+            cloudOptOutSet(false); // b26
+            cloudDropLocalAuth(); // b24: у новой комнаты ещё нет логина/пароля
+            cloudSetOwnerRoom(code); // b23: этот браузер — создатель комнаты
+            cloudRole = 'owner'; CLOUD.ownerUnknown = true;
+            CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = '';
+            CLOUD.needAuth = true; CLOUD.lastErr = ''; CLOUD.lastSync = 0;
+            cloudAuthFormMode = '';
+            cloudStatus(); refreshVisibleTabs();
+            showToast('Комната ' + code + ' создана. Задайте логин и пароль — они подтверждают, что вы её создатель', 'success');
+            cloudAuthOpen('set'); // b24: без пароля комната не публикуется
+        }
+        function cloudDisconnect() {
+            CLOUD.room = ''; CLOUD.lastErr = ''; try { LS.removeItem('nexus_cloud_room'); } catch (e) {}
+            cloudOptOutSet(true); // b26: отключились сами — главную комнату больше не навязываем
+            cloudRole = null; CLOUD.ownerUnknown = false; // b23: сняли роль — Студия снова доступна
+            CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = ''; // b24
+            CLOUD.needAuth = false; CLOUD.promptAuth = false; cloudAuthFormMode = '';
+            cloudStatus(); refreshVisibleTabs();
+        }
+        function setCloudAuto(v) { try { LS.setItem('nexus_cloud_auto', v ? '1' : '0'); } catch (e) {} }
+        function cloudInit() {
+            // b26: все пользователи автоматически подключаются к главной комнате сайта
+            // (кроме тех, кто нажал «Отключить» — явный отказ запоминается в localStorage)
+            if (!cloudOptOut()) {
+                if (!CLOUD.room || cloudDefaultApplied) { CLOUD.room = CLOUD_DEFAULT_ROOM; CLOUD.promptAuth = true; }
+                cloudDefaultApplied = false;
+                try { if (LS.getItem('nexus_cloud_room') !== CLOUD.room) LS.setItem('nexus_cloud_room', CLOUD.room); } catch (e) {}
+            }
+            const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room || CLOUD_DEFAULT_ROOM; // b26: код главной комнаты всегда подсказан
+            const dbi = document.getElementById('cloud-db'); if (dbi) dbi.value = CLOUD.db;
+            const mbi = document.getElementById('cloud-media-base'); if (mbi) mbi.value = mediaBase(); // b38
+            const cb = document.getElementById('cloud-auto'); if (cb) cb.checked = cloudAuto();
+            if (CLOUD.connected()) cloudRole = (cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest'; // b23
+            cloudStatus();
+            if (CLOUD.connected()) cloudPull(false, cloudAfterPull); // b25: после получения — допубликовать оставшиеся правки
+            // b25: проверяем облако чаще (каждые 20 секунд вместо 60) — обновления прилетают быстрее.
+            // b33: спрятанную вкладку не опрашиваем — данные подтянем сразу, когда пользователь вернётся.
+            setInterval(() => {
+                try { if (document.hidden) return; } catch (e) {}
+                cloudPull(false, cloudAfterPull);
+            }, 20000);
+            // b25: закрывают вкладку/приложение — экстренно публикуем правки создателя;
+            // вернулись на вкладку — сразу тянем свежие данные комнаты
+            try {
+                window.addEventListener('pagehide', cloudFlushPending);
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) cloudFlushPending();
+                    else if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
+                });
+            } catch (e) {}
+            cloudTabSyncInit(); // b33: несколько вкладок одной игры
+        }
+
+        // ------------------- b33: НЕСКОЛЬКО ВКЛАДОК ОДНОВРЕМЕННО -------------------
+        // Раньше две открытые вкладки ничего не знали друг о друге: каждая держала свою копию
+        // state в памяти и при любом действии писала в localStorage «поверх» соседа. В итоге
+        // созданные паки и монеты то появлялись, то пропадали после переключения вкладок,
+        // а публикация в облако уходила из устаревшего состояния. Теперь изменение в одной
+        // вкладке мгновенно подхватывают остальные (событие storage).
+        let cloudTabT = null, cloudTabTries = 0;
+        function tabUserTyping() {
+            try {
+                const a = document.activeElement;
+                if (!a || !a.tagName) return false;
+                const t = a.tagName.toUpperCase();
+                return (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') && !a.disabled;
+            } catch (e) { return false; }
+        }
+        // Перечитать состояние из хранилища (то, что сделала соседняя вкладка) и перерисовать экран
+        function reloadStateFromStorage() {
+            try {
+                const cv = parseInt(LS.getItem('nexus_coins'), 10);
+                if (!isNaN(cv)) state.coins = cv;
+                const p = JSON.parse(LS.getItem('nexus_packs') || 'null');
+                const c = JSON.parse(LS.getItem('nexus_cards') || 'null');
+                if (Array.isArray(p)) state.packs = p;
+                if (Array.isArray(c)) state.cards = c;
+                state.collection = JSON.parse(LS.getItem('nexus_collection') || '{}') || {};
+                state.stats = Object.assign({}, defaultStats, JSON.parse(LS.getItem('nexus_stats') || '{}'));
+                state.stats.oppWins = Object.assign({}, state.stats.oppWins || {});
+                state.daily = Object.assign({ lastClaimDate: null, streak: 0, lastDurakWinDate: null }, JSON.parse(LS.getItem('nexus_daily') || '{}'));
+                state.missions = JSON.parse(LS.getItem('nexus_missions') || 'null') || { date: null, list: [] };
+                state.achievements = JSON.parse(LS.getItem('nexus_achievements') || '{}') || {};
+                state.pity = Object.assign({ packsSinceEpic: 0 }, JSON.parse(LS.getItem('nexus_pity') || '{}'));
+                const d = JSON.parse(LS.getItem('nexus_deck') || '[]'); state.deck = Array.isArray(d) ? d : [];
+                const h = JSON.parse(LS.getItem('nexus_history') || '[]'); state.history = Array.isArray(h) ? h : [];
+                state.albumBonus = JSON.parse(LS.getItem('nexus_album_bonus') || '{}') || {};
+                resolveMediaRefs();
+                updateCoinDisplay();
+                refreshVisibleTabs();
+                cloudStatus();
+            } catch (e) { /* сосед ещё пишет — подхватим на следующем событии */ }
+        }
+        function cloudTabSyncInit() {
+            try {
+                window.addEventListener('storage', ev => {
+                    const k = (ev && ev.key) ? String(ev.key) : '';
+                    if (k.indexOf('nexus_') !== 0) return;
+                    if (k === 'nexus_cloud_room' || k === 'nexus_cloud_db' || k === 'nexus_cloud_off') {
+                        // соседняя вкладка переключила комнату или базу — повторяем за ней
+                        CLOUD.db = String(LS.getItem('nexus_cloud_db') || '').trim().replace(/\/+$/, '');
+                        const r = LS.getItem('nexus_cloud_room');
+                        CLOUD.room = r ? String(r) : (cloudOptOut() ? '' : CLOUD_DEFAULT_ROOM);
+                        const inp = document.getElementById('cloud-room'); if (inp) inp.value = CLOUD.room || CLOUD_DEFAULT_ROOM;
+                        const dbi = document.getElementById('cloud-db'); if (dbi) dbi.value = CLOUD.db;
+                        cloudRole = CLOUD.connected() ? ((cloudOwnerRoom() === CLOUD.room) ? 'owner' : 'guest') : null;
+                        CLOUD.remoteAuth = null; CLOUD.remoteFilled = false; CLOUD.remoteOwnerId = '';
+                        cloudStatus();
+                        if (CLOUD.connected()) cloudPull(false, cloudAfterPull);
+                        refreshVisibleTabs();
+                        return;
+                    }
+                    if (k.indexOf('nexus_cloud_') === 0) { cloudStatus(); return; } // dirty/надгробия/пароль — достаточно статуса
+                    clearTimeout(cloudTabT);
+                    const apply = () => {
+                        // не перерисовываем экран, пока пользователь печатает в форме
+                        if (tabUserTyping() && cloudTabTries++ < 40) { cloudTabT = setTimeout(apply, 500); return; }
+                        cloudTabTries = 0;
+                        reloadStateFromStorage();
+                    };
+                    cloudTabT = setTimeout(apply, 200);
+                });
+            } catch (e) {}
+        }
+
+        // У каких паков раскрыт список карточек в Студии — запоминается между перерисовками
+        let studioOpenPacks = new Set();
+
+        function renderStudio() {
+            syncStudioMusicField(); // b20: общий трек + список своих mp3 у паков
+            // b23: участник комнаты — Студия в режиме «только просмотр»
+            const locked = cloudGuest();
+            const lb = document.getElementById('studio-locked-banner');
+            if (lb) {
+                lb.classList.toggle('hidden', !locked);
+                const rr = document.getElementById('studio-locked-room');
+                if (rr) rr.textContent = CLOUD.room || '';
+            }
+            ['form-create-pack', 'form-create-card'].forEach(fid => {
+                const f = document.getElementById(fid);
+                if (f && f.classList) { f.classList.toggle('opacity-40', locked); f.classList.toggle('pointer-events-none', locked); }
+            });
+            const select = document.getElementById('card-pack-id');
+            if (state.packs.length === 0) {
+                select.innerHTML = `<option value="">Сначала создайте пак</option>`;
+            } else {
+                select.innerHTML = state.packs.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+            }
+            // b132: select паков для массовой загрузки
+            const bsel = document.getElementById('bulk-pack-id');
+            if (bsel) {
+                const cur = bsel.value;
+                bsel.innerHTML = state.packs.length === 0
+                    ? '<option value="">Сначала создайте пак</option>'
+                    : state.packs.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+                if (cur && state.packs.some(p => p.id === cur)) bsel.value = cur;
+            }
+            const bbox = document.getElementById('bulk-box');
+            if (bbox) { bbox.classList.toggle('opacity-40', locked); bbox.classList.toggle('pointer-events-none', locked); }
+            // b160: календарь-таймлайн месяца
+            try { renderSchedCalendar(); } catch (e) {}
+            // b159: состояние авторасписания
+            const asEl = document.getElementById('auto-sched-state');
+            if (asEl) {
+                const sch = state.packs.filter(p => p.schedule).length;
+                const on = state.packs.filter(p => saleModeOf(p) === 'on').length;
+                asEl.innerHTML = sch
+                    ? 'Расписание активно: <b class="text-violet-300">' + sch + '</b> ' + pluralRu(sch, 'пак', 'пака', 'паков') + ' с графиком • сейчас в продаже: <b class="text-violet-300">' + on + '</b> • повтор каждый месяц'
+                    : 'Расписания нет: все паки продаются бессрочно.';
+            }
+
+            // b20: у каждого пака в списке — раскрывающийся редактор ссылки mp3,
+            // а также СВОИ карточки прямо под паком (не нужно искать в общей базе)
+            const packsList = document.getElementById('studio-packs-list');
+            // b37: создатель видит скрытые позиции стандарта и может вернуть их в комнату
+            let stdModHtml = '';
+            if (!locked) {
+                const offIds = cloudStdDisabled();
+                if (offIds.length) {
+                    stdModHtml = '<div class="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3">' +
+                        '<p class="text-[11px] font-bold text-amber-200 mb-2"><i class="fa-solid fa-eye-slash mr-1"></i>Скрыто из стандартного набора (видно всем игрокам комнаты):</p>' +
+                        '<div class="flex flex-wrap gap-2">' +
+                        offIds.map(id => {
+                            const pp = cloudStdFindPack(id), cc = cloudStdFindCard(id);
+                            const title = pp ? pp.title : (cc ? cc.name : id);
+                            return '<button type="button" onclick="restoreStandard(\'' + id + '\')" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-semibold transition"><i class="fa-solid fa-rotate-left mr-1"></i>' + cloudEsc(title) + '</button>';
+                        }).join('') +
+                        '</div></div>';
+                }
+            }
+            packsList.innerHTML = stdModHtml + (state.packs.length === 0 ? `<p class="text-xs text-slate-500">Нет паков</p>` :
+                state.packs.map(p => {
+                    const pCards = state.cards.filter(c => c.packId === p.id);
+                    const pOpen = studioOpenPacks.has(p.id);
+                    // b166: строка пака не «вылезает»: текст сжимается и обрезается многоточием
+                    // (min-w-0 grow shrink basis-56 + truncate), кнопки держатся в одну линию
+                    // (sm:flex-nowrap sm:shrink-0), на мобильном переносятся аккуратно
+                    return `
+                    <div class="bg-slate-950 rounded-xl border border-slate-800 overflow-hidden">
+                        <div class="flex items-center justify-between gap-2 p-2.5">
+                            <div class="flex items-center gap-2.5 min-w-0 grow shrink basis-56">
+                                <img src="${mediaThumb(p.image)}" data-nx-full="${mediaUrl(p.image)}" class="w-7 h-10 object-cover rounded shrink-0" onerror="this.onerror=null;imgErrorChain(this);" loading="lazy" decoding="async">
+                                <div class="truncate">
+                                    <h5 class="font-bold text-white text-[13px] truncate">${p.title}${packIsRetired(p) ? ' <span class="align-middle ml-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300">' + (p.retired ? 'снят с продажи' : 'время продажи вышло') + '</span>' : ''}${saleTimerChip(p, 'sale-inline')}</h5>
+                                    <p class="text-[10px] text-slate-400 truncate">${fmtCoins(p.price)} монет • <span class="inline-block w-2 h-2 rounded-full align-middle border border-black/60" style="background:${(PACK_COLORS[p.color] || PACK_COLORS.silver).swatch}"></span> ${(PACK_COLORS[p.color] || PACK_COLORS.silver).name} • ${(PACK_SHIMMERS[p.shimmer] || PACK_SHIMMERS.holo).name}${p.musicUrl ? ' • <i class="fa-solid fa-music text-fuchsia-400"></i> ' + (p.musicUrl.split('/').pop() || 'трек') : (p.musicOff ? ' • <i class="fa-solid fa-volume-xmark text-slate-600"></i> без музыки' : '')}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1.5 flex-wrap justify-end sm:flex-nowrap sm:shrink-0">
+                                <button onclick="toggleStudioPackCards('${p.id}')" class="h-7 px-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-300 text-[10px] font-bold flex items-center gap-1.5 transition shrink-0" title="Карточки этого пака — показать/скрыть"><i class="fa-solid fa-layer-group text-xs"></i>${pCards.length}<i id="pack-cards-chev-${p.id}" class="fa-solid fa-chevron-down text-[8px]" style="transition:transform .2s;${pOpen ? 'transform:rotate(180deg);' : ''}"></i></button>
+                                ${locked ? `<span class="h-7 px-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-bold flex items-center gap-1" title="Пак создателя комнаты — только просмотр"><i class="fa-solid fa-lock text-[9px]"></i>просмотр</span>` : `<button onclick="togglePackTimerEditor('${p.id}')" class="w-7 h-7 rounded-lg ${p.premiereAt && packInPremiere(p) ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300' : (p.saleUntil || p.schedule) && !packIsRetired(p) ? 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'} border border-slate-700 flex items-center justify-center transition" title="Таймер и премьера пака"><i class="fa-solid fa-clock text-xs"></i></button>
+                                <button onclick="togglePackRetired('${p.id}')" class="w-7 h-7 rounded-lg ${p.retired ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'} border border-slate-700 flex items-center justify-center transition" title="${p.retired ? 'Вернуть пак в продажу' : 'Снять пак с продажи: покупатели сохранят альбом и карты, остальным — добор на бирже'}"><i class="fa-solid ${p.retired ? 'fa-eye' : 'fa-eye-slash'} text-xs"></i></button>
+                                <button onclick="togglePackMusicEditor('${p.id}')" class="w-7 h-7 rounded-lg bg-fuchsia-500/10 hover:bg-fuchsia-500/20 text-fuchsia-400 flex items-center justify-center transition" title="Ссылка на mp3 этого пака"><i class="fa-solid fa-music text-xs"></i></button>
+                                <button onclick="editPack('${p.id}')" class="w-7 h-7 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 flex items-center justify-center transition" title="Редактировать"><i class="fa-solid fa-pen text-xs"></i></button>
+                                <button onclick="deletePack('${p.id}')" class="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="Удалить"><i class="fa-solid fa-trash text-xs"></i></button>`}
+                            </div>
+                        </div>
+                        <div id="pack-cards-${p.id}" class="${pOpen ? '' : 'hidden'} px-3 py-2.5 border-t border-slate-800 bg-slate-900/40">
+                            <p class="text-[10px] text-slate-500 mb-2"><i class="fa-solid fa-layer-group text-violet-400 mr-1"></i>Карточки пака «${p.title}»: ${pCards.length}</p>
+                            ${pCards.length ? `<div class="space-y-2">${pCards.map(studioCardRowHTML).join('')}</div>` : `<p class="text-[11px] text-slate-500">Пока нет карточек — добавьте первую в этот пак.</p>`}
+                            ${locked ? '' : `<button onclick="selectPackForNewCard('${p.id}')" class="mt-2 w-full py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 text-violet-300 text-[11px] font-bold transition"><i class="fa-solid fa-plus mr-1"></i>Добавить карточку в этот пак</button>`}
+                        </div>
+                        <div id="pack-music-editor-${p.id}" class="hidden px-3 py-2.5 border-t border-slate-800 bg-slate-900/60">
+                            <p class="text-[10px] text-slate-500 mb-1.5">Своя ссылка на mp3 для пака «${p.title}». Пусто — пак вскрывается без музыкального трека.</p>
+                            <div class="flex items-center gap-1.5">
+                                <input type="url" id="pack-music-url-${p.id}" value="${String(p.musicUrl || '').replace(/"/g, '&quot;')}" placeholder="https://.../track.mp3" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[11px] text-slate-200 focus:outline-none focus:border-fuchsia-500">
+                                <button onclick="playPackMusicRow('${p.id}')" class="w-8 h-8 shrink-none rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 flex items-center justify-center transition" title="Прослушать 8 секунд"><i class="fa-solid fa-play text-xs"></i></button>
+                                <button onclick="savePackMusic('${p.id}')" class="h-8 px-2.5 shrink-none rounded-lg bg-fuchsia-600/80 hover:bg-fuchsia-500 border border-fuchsia-500/40 text-white text-[10px] font-bold transition" title="Сохранить ссылку"><i class="fa-solid fa-check"></i></button>
+                                <button onclick="clearPackMusic('${p.id}')" class="w-8 h-8 shrink-none rounded-lg bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 text-slate-300 flex items-center justify-center transition" title="Удалить ссылку mp3 этого пака"><i class="fa-solid fa-eraser text-xs"></i></button>
+                            </div>
+                            <label class="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                                <input type="checkbox" id="pack-music-off-${p.id}" ${p.musicOff ? 'checked' : ''} onchange="togglePackMusicOff('${p.id}', this.checked)" class="accent-fuchsia-500 w-3.5 h-3.5">
+                                <span class="text-[10px] text-slate-400">Не играть музыку при вскрытии этого пака</span>
+                            </label>
+                        </div>
+                        <div id="pack-timer-${p.id}" class="hidden px-3 py-2.5 border-t border-slate-800 bg-slate-900/60">
+                            <p class="text-[10px] text-slate-500 mb-1.5"><i class="fa-solid fa-clock text-sky-400 mr-1"></i>Таймер продажи: пак продаётся в магазине заданное время, затем автоматически снимается с продажи у всех игроков. Альбомы и карты покупателей сохраняются.</p>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <button onclick="setPackSaleUntil('${p.id}', 1)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition">1 час</button>
+                                <button onclick="setPackSaleUntil('${p.id}', 24)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition">24 часа</button>
+                                <button onclick="setPackSaleUntil('${p.id}', 168)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition">7 дней</button>
+                                <input id="pack-timer-hours-${p.id}" type="number" min="1" max="8760" placeholder="часов" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 placeholder-slate-600 focus:border-sky-500 focus:outline-none">
+                                <button onclick="setPackSaleUntil('${p.id}', Number((document.getElementById('pack-timer-hours-${p.id}') || {}).value) || 0)" class="px-2.5 py-1.5 rounded-lg bg-sky-600/80 hover:bg-sky-500 text-white text-[10px] font-bold transition">Поставить</button>
+                                <button onclick="setPackSaleUntil('${p.id}', 0)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold transition" title="Убрать таймер"><i class="fa-solid fa-infinity mr-1"></i>Бессрочно</button>
+                            </div>
+                            <div class="mt-2.5 pt-2.5 border-t border-slate-800/70">
+                                <p class="text-[10px] text-slate-500 mb-1.5"><i class="fa-solid fa-calendar-days text-violet-300 mr-1"></i>График продажи: старт, длительность и повтор по сессиям (ежедневно/еженедельно). Вне окна пак не продаётся, до старта висит бирюзовая лента «🕒 до продажи».</p>
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <input type="datetime-local" id="pack-sched-start-${p.id}" value="${p.schedule && p.schedule.start ? schedInputValue(p.schedule.start) : ''}" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 focus:border-violet-500 focus:outline-none">
+                                    <input id="pack-sched-hours-${p.id}" type="number" min="1" max="720" value="${p.schedule ? p.schedule.hours : ''}" placeholder="часов" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 placeholder-slate-600 focus:border-violet-500 focus:outline-none">
+                                    <select id="pack-sched-repeat-${p.id}" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 focus:border-violet-500 focus:outline-none">
+                                        <option value="none"${p.schedule && p.schedule.repeat === 'none' ? ' selected' : ''}>разово</option>
+                                        <option value="day"${p.schedule && p.schedule.repeat === 'day' ? ' selected' : ''}>каждый день</option>
+                                        <option value="week"${p.schedule && p.schedule.repeat === 'week' ? ' selected' : ''}>каждую неделю</option>
+                                        <option value="month"${p.schedule && p.schedule.repeat === 'month' ? ' selected' : ''}>каждый месяц</option>
+                                        <option value="ndays"${p.schedule && p.schedule.repeat === 'ndays' ? ' selected' : ''}>каждые N дней</option>
+                                    </select>
+                                    <input id="pack-sched-period-${p.id}" type="number" min="2" max="90" value="${p.schedule && p.schedule.periodDays ? p.schedule.periodDays : 14}" placeholder="N дней" title="Период повтора в днях (для «каждые N дней»)" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 placeholder-slate-600 focus:border-violet-500 focus:outline-none">
+                                    <input id="pack-sched-disc-${p.id}" type="number" min="0" max="90" value="${p.schedule && p.schedule.discountPct ? p.schedule.discountPct : 0}" placeholder="скидка %" title="Скидка в окне продажи, %" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-rose-200 placeholder-slate-600 focus:border-rose-500 focus:outline-none">
+                                    <input id="pack-sched-dutch-${p.id}" type="number" min="0" max="90" value="${p.schedule && p.schedule.dutchPct ? p.schedule.dutchPct : 0}" placeholder="к концу %" title="b161: голландский аукцион — скидка вырастает к концу окна ещё на столько %" class="w-20 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-amber-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none">
+                                    <input id="pack-sched-limit-${p.id}" type="number" min="0" max="99" value="${p.schedule && p.schedule.limitN ? p.schedule.limitN : 0}" placeholder="лимит" title="b161: максимум паков на игрока за окно, 0 — без лимита" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 placeholder-slate-600 focus:border-violet-500 focus:outline-none">
+                                    <label class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 cursor-pointer" title="b161: раз в сутки случайный час со скидкой −50%"><input id="pack-sched-flash-${p.id}" type="checkbox" ${p.schedule && p.schedule.flash ? 'checked' : ''} class="accent-violet-500 w-3.5 h-3.5">⚡ флеш</label>
+                                    <button onclick="setPackSchedule('${p.id}')" class="px-2.5 py-1.5 rounded-lg bg-violet-600/80 hover:bg-violet-500 text-white text-[10px] font-bold transition"><i class="fa-solid fa-calendar-check mr-1"></i>Поставить график</button>
+                                    <button onclick="setPackSchedule('${p.id}', true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold transition">Убрать</button>
+                                </div>
+                            </div>
+                            <div class="mt-2.5 pt-2.5 border-t border-slate-800/70">
+                                <p class="text-[10px] text-slate-500 mb-1.5"><i class="fa-solid fa-clapperboard text-amber-300 mr-1"></i>Премьера пака: до указанных даты и времени пак виден в магазине как «Скоро» с золотой лентой-отсчётом 🎬, купить его нельзя. Когда отсчёт закончится — стартует продажа без ограничения по времени.</p>
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <input type="datetime-local" id="pack-prem-${p.id}" value="${p.premiereAt ? schedInputValue(p.premiereAt) : ''}" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] font-bold text-slate-200 focus:border-amber-500 focus:outline-none">
+                                    <button onclick="setPackPremiere('${p.id}')" class="px-2.5 py-1.5 rounded-lg bg-amber-600/80 hover:bg-amber-500 text-white text-[10px] font-bold transition"><i class="fa-solid fa-clapperboard mr-1"></i>Поставить премьеру</button>
+                                    <button onclick="setPackPremiere('${p.id}', true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-bold transition">Убрать</button>
+                                </div>
+                            </div>
+                            <p id="pack-timer-state-${p.id}" class="text-[10px] mt-1.5 text-slate-400"></p>
+                        </div>
+                    </div>
+                `;}).join(''));
+
+            // Карточки без пака (остаток старых сохранений): отдельная раскрывающаяся
+            // группа, чтобы их можно было отредактировать или удалить и они не потерялись
+            const orphanCards = state.cards.filter(c => !state.packs.some(p => p.id === c.packId));
+            if (orphanCards.length) {
+                const oOpen = studioOpenPacks.has('__orphan__');
+                packsList.innerHTML += `
+                    <div class="bg-slate-950 rounded-xl border border-amber-500/30 overflow-hidden">
+                        <div class="flex items-center justify-between gap-2 p-2.5">
+                            <div class="flex items-center gap-2.5 min-w-0 truncate">
+                                <i class="fa-solid fa-triangle-exclamation text-amber-400"></i>
+                                <div class="truncate">
+                                    <h5 class="font-bold text-amber-300 text-[13px] truncate">Карточки без пака</h5>
+                                    <p class="text-[10px] text-slate-400">Остались от удалённого пака — отредактируйте или удалите</p>
+                                </div>
+                            </div>
+                            <button onclick="toggleStudioPackCards('__orphan__')" class="h-7 px-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-[10px] font-bold flex items-center gap-1.5 transition shrink-0" title="Показать/скрыть карточки"><i class="fa-solid fa-layer-group text-xs"></i>${orphanCards.length}<i id="pack-cards-chev-__orphan__" class="fa-solid fa-chevron-down text-[8px]" style="transition:transform .2s;${oOpen ? 'transform:rotate(180deg);' : ''}"></i></button>
+                        </div>
+                        <div id="pack-cards-__orphan__" class="${oOpen ? '' : 'hidden'} px-3 py-2.5 border-t border-slate-800 bg-slate-900/40">
+                            <div class="space-y-2">${orphanCards.map(studioCardRowHTML).join('')}</div>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        // Строка одной карточки в списках Студии (внутри пака и в «Карточках по пакам»)
+        function studioCardRowHTML(c) {
+            const st = getCardStats(c);
+            const rarLabel = (typeof RARITY_LABELS_RU !== 'undefined' && RARITY_LABELS_RU[c.rarity]) || c.rarity;
+            return `
+                <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <div class="flex items-center gap-2.5 min-w-0 truncate">
+                        <img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" class="w-7 h-10 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}" loading="lazy" decoding="async">
+                        <div class="truncate">
+                            <h5 class="font-bold text-white text-[13px] truncate">${c.name}</h5>
+                            <p class="text-[10px] text-slate-400">${rarLabel} • <span class="text-amber-400">⚔${st.atk}</span> <span class="text-rose-400">❤${st.hp}</span></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap justify-end">
+                        ${cloudGuest() ? `<span class="h-7 px-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[9px] font-bold flex items-center gap-1" title="Карточка создателя комнаты — только просмотр"><i class="fa-solid fa-lock text-[9px]"></i>просмотр</span>` : `<button onclick="editCard('${c.id}')" class="w-7 h-7 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 text-violet-400 flex items-center justify-center transition" title="Редактировать"><i class="fa-solid fa-pen text-xs"></i></button>
+                        <button onclick="deleteCard('${c.id}')" class="w-7 h-7 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition" title="Удалить"><i class="fa-solid fa-trash text-xs"></i></button>`}
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleStudioPackCards(packId) {
+            const box = document.getElementById('pack-cards-' + packId);
+            if (!box) return;
+            const open = box.classList.contains('hidden');
+            box.classList.toggle('hidden', !open);
+            if (open) studioOpenPacks.add(packId); else studioOpenPacks.delete(packId);
+            const chev = document.getElementById('pack-cards-chev-' + packId);
+            if (chev) chev.style.transform = open ? 'rotate(180deg)' : 'none';
+            try { SoundFX.play('click'); } catch (e) {}
+        }
+
+        // «Добавить карточку в этот пак»: подставляет пак в форму и уводит фокус к ней
+        function selectPackForNewCard(packId) {
+            if (cloudGuard()) return; // b23
+            const sel = document.getElementById('card-pack-id');
+            if (sel) sel.value = packId;
+            showStudioSec('cards'); // b164: сначала открываем вкладку «Карточки», потом скроллим к форме
+            const form = document.getElementById('form-create-card');
+            if (form && form.scrollIntoView) form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const nameInp = document.getElementById('card-name');
+            if (nameInp && nameInp.focus) setTimeout(() => { try { nameInp.focus(); } catch (e) {} }, 400);
+            try { SoundFX.play('click'); } catch (e) {}
+        }
+
+        // ===== b13: внешний вид пака в Студии (цвет фольги + перелив) =====
+        let packFormColor = 'silver';
+        let packFormShimmer = 'holo';
+
+        function renderPackFormPickers() {
+            const cp = document.getElementById('pack-color-picker');
+            if (cp) {
+                cp.innerHTML = Object.keys(PACK_COLORS).map(k => {
+                    const c = PACK_COLORS[k];
+                    const on = k === packFormColor;
+                    return `<button type="button" onclick="pickPackColor('${k}')" title="${c.name}" class="rounded-lg border p-1 transition text-center ${on ? 'border-violet-400 bg-violet-500/10' : 'border-slate-700 bg-slate-950 hover:border-slate-500'}">
+                        <span class="block h-5 rounded-md border border-black/50" style="background:${c.swatch}"></span>
+                        <span class="block text-[9px] leading-tight mt-0.5 font-semibold truncate ${on ? 'text-violet-300' : 'text-slate-400'}">${c.name}</span>
+                    </button>`;
+                }).join('');
+            }
+            const sp = document.getElementById('pack-shimmer-picker');
+            if (sp) {
+                sp.innerHTML = Object.keys(PACK_SHIMMERS).map(k => {
+                    const s = PACK_SHIMMERS[k];
+                    const on = k === packFormShimmer;
+                    const vars = packCssVars({ color: packFormColor, shimmer: k });
+                    return `<button type="button" onclick="pickPackShimmer('${k}')" title="${s.name}" class="rounded-xl border p-1 transition text-center ${on ? 'border-violet-400 bg-violet-500/10 shadow-lg shadow-violet-500/20' : 'border-slate-700 bg-slate-950 hover:border-slate-500'}">
+                        <span class="block h-5 rounded-md border border-black/60 relative overflow-hidden bg-slate-950">
+                            <span class="absolute inset-0" style="${vars}background:var(--pk-foil);"></span>
+                            <!-- b264: затемняющая подложка «фольга в тени»: без неё screen-блики выжигаются на светлой фольге и превью выглядит белым квадратом -->
+                            <span class="absolute inset-0" style="background:linear-gradient(160deg,rgba(6,10,19,.58) 0%,rgba(6,10,19,.74) 60%,rgba(6,10,19,.82) 100%);"></span>
+                            <span class="absolute inset-0" style="${vars}background:var(--pk-holo);background-size:250% 250%;animation:holoMove 7s ease-in-out infinite alternate;mix-blend-mode:screen;filter:saturate(1.15) brightness(.88);opacity:calc(var(--pk-holo-op) * .82);"></span>
+                            <span class="absolute inset-0" style="${vars}background:var(--pk-spark, none);mix-blend-mode:screen;filter:saturate(1.15) brightness(.85);opacity:calc(var(--pk-spark-op) * .75);"></span>
+                            <span class="absolute inset-0" style="${vars}opacity:.3;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.14) 48%,rgba(255,255,255,.03) 58%,transparent 72%);mix-blend-mode:screen;"></span>
+                        </span>
+                        <span class="block text-[9px] leading-tight mt-0.5 font-semibold truncate ${on ? 'text-violet-300' : 'text-slate-400'}"><i class="fa-solid ${s.icon} mr-0.5"></i>${s.name}</span>
+                    </button>`;
+                }).join('');
+            }
+            renderPackStylePreview();
+        }
+
+        function pickPackColor(k) {
+            if (!PACK_COLORS[k]) return;
+            packFormColor = k;
+            SoundFX.play('click');
+            renderPackFormPickers();
+        }
+
+        function pickPackShimmer(k) {
+            if (!PACK_SHIMMERS[k]) return;
+            packFormShimmer = k;
+            SoundFX.play('click');
+            renderPackFormPickers();
+        }
+
+        // мини-пак в форме: тот же мокап, что в карусели магазина
+        function renderPackStylePreview() {
+            const box = document.getElementById('pack-style-preview');
+            if (!box) return;
+            const t = document.getElementById('pack-title');
+            const im = document.getElementById('pack-image');
+            const title = String((t && t.value || '').trim() || 'Ваш пак').replace(/</g, '&lt;');
+            const image = String((im && im.value || '').trim());
+            const p = { color: packFormColor, shimmer: packFormShimmer };
+            box.innerHTML = `
+                <div class="pack3d-face pack3d-front booster" style="position:absolute;inset:0;${packCssVars(p)}">
+                    <div class="booster-foil"></div>
+                    <div class="booster-wrinkle fs1"></div>
+                    <div class="booster-crimp booster-crimp-top"></div>
+                    <div class="booster-crimp booster-crimp-bottom"></div>
+                    <div class="booster-window">
+                        <img src="${mediaThumbMid(image)}" data-nx-full="${mediaUrl(image)}" alt="" class="w-full h-full object-cover" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">
+                        <div class="booster-label">${title}</div>
+                    </div>
+                    <div class="booster-round"></div>
+                    <div class="booster-edge"></div>
+                    <div class="booster-holo"></div>
+                    <div class="booster-sparkles"></div>
+                    <div class="booster-gloss"></div>
+                </div>`;
+            requestAnimationFrame(() => { try { fitPackLabels(box); } catch (e) {} });
+            const nm = document.getElementById('pack-style-name');
+            if (nm) nm.innerText = `${PACK_COLORS[packFormColor].name} • ${PACK_SHIMMERS[packFormShimmer].name}`;
+        }
+
+        function handleSavePack(e) {
+            e.preventDefault();
+            if (cloudGuard()) return; // b23: участники не создают/не правят паки
+            const editId = document.getElementById('edit-pack-id').value;
+            const title = document.getElementById('pack-title').value;
+            const description = document.getElementById('pack-desc').value;
+            const image = document.getElementById('pack-image').value;
+            const price = parseInt(document.getElementById('pack-price').value);
+            const color = PACK_COLORS[packFormColor] ? packFormColor : 'silver';
+            const shimmer = PACK_SHIMMERS[packFormShimmer] ? packFormShimmer : 'holo';
+            // b19: музыка вскрытия — своя ссылка на mp3 + флаг «играть»
+            const musicEl = document.getElementById('pack-music');
+            const musicUseEl = document.getElementById('pack-music-use');
+            const musicUrl = musicEl ? String(musicEl.value || '').trim() : '';
+            const musicOn = musicUseEl ? !!musicUseEl.checked : true;
+            // b165: премьера — будущие дата/время старта продажи; пустое или прошедшее время игнорируется
+            const premEl = document.getElementById('pack-premiere');
+            const premTsRaw = premEl && premEl.value ? new Date(premEl.value).getTime() : 0;
+            const premTs = isFinite(premTsRaw) && premTsRaw > Date.now() ? premTsRaw : 0;
+
+            if (editId) {
+                const pack = state.packs.find(p => p.id === editId);
+                if (pack) {
+                    pack.title = title;
+                    pack.description = description;
+                    pack.image = image;
+                    pack.price = price;
+                    pack.color = color;
+                    pack.shimmer = shimmer;
+                    pack.musicUrl = musicUrl;   // b19
+                    pack.musicOff = !musicOn;   // b19
+                    if (premTs) pack.premiereAt = premTs; else delete pack.premiereAt; // b165
+                    pack.updatedAt = Date.now();
+                    cloudStdTouch(pack); // b46: правка стандартного пака уезжает в комнату
+                    showToast('Бустер пак обновлен!' + (premTs ? ' 🎬 Премьера: ' + new Date(premTs).toLocaleString('ru-RU') : ''), 'success');
+                }
+            } else {
+                const newPack = {
+                    id: 'pack-' + Date.now(),
+                    title,
+                    description,
+                    image,
+                    price,
+                    color,
+                    shimmer,
+                    musicUrl,          // b19: свой трек вскрытия
+                    musicOff: !musicOn, // b19: галочка «играть» снята
+                    updatedAt: Date.now()
+                };
+                if (premTs) newPack.premiereAt = premTs; // b165: до премьеры пак виден как «Скоро»
+                state.packs.push(newPack);
+                showToast('Бустер пак успешно создан!' + (premTs ? ' 🎬 Премьера: ' + new Date(premTs).toLocaleString('ru-RU') + ' — до неё пак виден как «Скоро»' : ''), 'success');
+            }
+            saveState();
+            cloudPublishSoon();
+            SHOP_LIST = shopPacks();      // b165: премьера меняет вид витрины сразу
+            saleSigSeen = saleStateSig();
+            resetPackForm();
+            renderStudio();
+            try { refreshVisibleTabs(); } catch (e) {} // b165
+        }
+
+        // b148: таймер продажи пака
+        function togglePackTimerEditor(id) {
+            const el = document.getElementById('pack-timer-' + id);
+            if (el) el.classList.toggle('hidden');
+            renderPackTimerState(id);
+        }
+        function renderPackTimerState(id) {
+            const el = document.getElementById('pack-timer-state-' + id);
+            const p = state.packs.find(x => x.id === id);
+            if (!el || !p) return;
+            // b165: строка премьеры — поверх состояния таймера/графика
+            const premLine = packInPremiere(p)
+                ? '🎬 Премьера через <b class="text-amber-300">' + saleClockStr(p.premiereAt - Date.now()) + '</b> • ' + new Date(p.premiereAt).toLocaleString('ru-RU') + ' — до неё пак виден как «Скоро», купить нельзя.<br>'
+                : '';
+            const w = packScheduleWindow(p);
+            if (w) {
+                const rep = p.schedule.repeat === 'day' ? ' • повтор каждый день' : p.schedule.repeat === 'week' ? ' • повтор каждую неделю' : p.schedule.repeat === 'month' ? ' • повтор каждый месяц' : ' • разовая сессия';
+                const win = new Date(w.start).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + ' — ' + new Date(w.end).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                if (w.done) el.innerHTML = premLine + '⏹ График завершён: окно продажи закрыто, пак снят с продажи.';
+                else if (Date.now() < w.start) el.innerHTML = premLine + '🕒 Продажа откроется через <b class="text-violet-300">' + saleClockStr(w.start - Date.now()) + '</b> • окно ' + win + rep;
+                else el.innerHTML = premLine + '✅ Идёт продажа по графику: осталось <b class="text-rose-300">' + saleClockStr(w.end - Date.now()) + '</b> • окно ' + win + rep;
+                const st0 = (state.packStats || {})[id];
+                if (st0) el.innerHTML += ' • 📊 вскрытий: <b class="text-slate-200">' + st0.opens + '</b> • выручка: <b class="text-amber-300">' + fmtCoins(st0.revenue) + '</b>';
+                return;
+            }
+            if (!p.saleUntil) { el.innerHTML = premLine + (premLine ? 'После премьеры пак продаётся бессрочно.' : 'Таймер и график не установлены: пак продаётся бессрочно.'); return; }
+            const rem = saleRemainStr(p);
+            el.innerHTML = premLine + (rem
+                ? 'Продажа до: <b class="text-slate-200">' + new Date(p.saleUntil).toLocaleString('ru-RU') + '</b> • осталось <b class="text-sky-300">' + rem + '</b>'
+                : '⏳ Время продажи истекло — пак снят с продажи автоматически.');
+        }
+        // b159: авторасписание всех паков: месячная ротация окон, повтор каждый месяц
+        function autoScheduleAllPacks() {
+            if (cloudGuard()) return;
+            const k = state.packs.length;
+            if (!k) { showToast('Паков пока нет — создайте первый в Студии', 'error'); return; }
+            const g = id => document.getElementById(id);
+            const timeV = String((g('auto-sched-time') || {}).value || '10:00');
+            const tm = timeV.split(':');
+            const hh = Number(tm[0]) || 0, mi = Number(tm[1]) || 0;
+            const daysV = Number((g('auto-sched-days') || {}).value) || 0;
+            const cycle = Number((g('auto-sched-cycle') || {}).value) || 28;
+            const shuffle = !!((g('auto-sched-shuffle') || {}).checked);
+            const disc = Math.max(0, Math.min(90, Number((g('auto-sched-disc') || {}).value) || 0));
+            const dutch = Math.max(0, Math.min(90, Number((g('auto-sched-dutch') || {}).value) || 0)); // b161: голландский аукцион
+            const limitN = Math.max(0, Number((g('auto-sched-limit') || {}).value) || 0);               // b161: лимит в руки за окно
+            const flash = !!((g('auto-sched-flash') || {}).checked);                                     // b161: флеш-сейлы
+            const weekend = !!((g('auto-sched-weekend') || {}).checked);                                 // b161: только выходные
+            const schedExtra = { discountPct: disc, dutchPct: dutch, limitN: limitN, flash: flash };
+            const order = state.packs.map((p, i) => i);
+            if (shuffle) for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = order[i]; order[i] = order[j]; order[j] = t; }
+            const slot = daysV > 0 ? Math.min(daysV, cycle) : Math.max(1, Math.floor(cycle / k));
+            const nowD = new Date();
+            order.forEach((packIdx, pos) => {
+                const p = state.packs[packIdx];
+                if (weekend) {
+                    // b161: окно сб 00:00 → пн 00:00; у каждого пака свои выходные, полный оборот за k недель
+                    const sat = new Date(nowD);
+                    const add = (6 - sat.getDay() + 7) % 7;
+                    sat.setDate(sat.getDate() + add);
+                    sat.setHours(0, 0, 0, 0);
+                    p.schedule = Object.assign({ start: sat.getTime() + pos * 7 * 86400000, hours: 48, repeat: 'ndays', periodDays: 7 * k }, schedExtra);
+                } else {
+                    let start, repeat = 'ndays', periodDays = cycle;
+                    if (cycle === 28) {
+                        const day = ((pos * slot) % 28) + 1;
+                        start = new Date(nowD.getFullYear(), nowD.getMonth(), day, hh, mi, 0).getTime();
+                        repeat = 'month';
+                    } else {
+                        start = new Date(nowD.getFullYear(), nowD.getMonth(), nowD.getDate() + pos * slot, hh, mi, 0).getTime();
+                    }
+                    p.schedule = Object.assign({ start: start, hours: slot * 24, repeat: repeat, periodDays: periodDays }, schedExtra);
+                }
+                delete p.saleUntil;
+                p.retired = false;
+                p.updatedAt = Date.now();
+            });
+            saveState();
+            cloudPublishSoon();
+            SHOP_LIST = shopPacks();
+            saleSigSeen = saleStateSig();
+            renderStudio();
+            refreshVisibleTabs();
+            showToast('📅 Расписание создано: ' + k + ' ' + pluralRu(k, 'пак', 'пака', 'паков') + ' • ' + (weekend ? 'каждый пак на своих выходных (сб–вс)' : 'окно ' + slot + ' ' + pluralRu(slot, 'день', 'дня', 'дней') + ' • цикл ' + (cycle === 28 ? 'каждый месяц' : cycle + ' ' + pluralRu(cycle, 'день', 'дня', 'дней'))) + (disc ? ' • скидка -' + disc + '%' : '') + (dutch ? ' • снижение к концу +' + dutch + '%' : '') + (flash ? ' • ⚡ флеш-сейлы' : '') + (limitN ? ' • лимит ' + limitN + '/руки' : ''), 'success');
+        }
+        const SCHED_COLORS = ['#34d399', '#38bdf8', '#f472b6', '#fbbf24', '#a78bfa', '#fb7185', '#4ade80', '#22d3ee', '#f97316', '#e879f9'];
+        // b160: календарь-таймлайн месяца: какие паки продаются в каждый день
+        function renderSchedCalendar() {
+            const cal = document.getElementById('auto-sched-calendar');
+            const leg = document.getElementById('auto-sched-legend');
+            if (!cal) return;
+            const nowD = new Date();
+            const y = nowD.getFullYear(), m = nowD.getMonth();
+            const dim = new Date(y, m + 1, 0).getDate();
+            const schedPacks = state.packs.map((p, i) => ({ p: p, i: i })).filter(x => x.p.schedule);
+            if (!schedPacks.length) {
+                cal.innerHTML = '<p class="col-span-7 text-[10px] text-slate-500 py-2">Календарь появится после создания расписания.</p>';
+                if (leg) leg.innerHTML = '';
+                return;
+            }
+            const today = nowD.getDate();
+            let cells = '';
+            for (let d = 1; d <= dim; d++) {
+                const t = new Date(y, m, d, 12, 0, 0).getTime();
+                const on = schedPacks.filter(x => { const w = packScheduleWindow(x.p, t); return w && t >= w.start && t < w.end; });
+                // b161: число вскрытий в этот день — подсветка ячейки
+                let dayOpens = 0;
+                try {
+                    const dk = y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    schedPacks.forEach(x => { const st = (state.packStats || {})[x.p.id]; if (st && st.days) dayOpens += st.days[dk] || 0; });
+                } catch (e) { }
+                cells += '<div class="sched-cell' + (d === today ? ' sched-today' : '') + '"' + (dayOpens > 0 ? ' style="background:rgba(167,139,250,' + Math.min(.4, .1 + dayOpens * .06).toFixed(2) + ')"' : '') + ' title="' + d + ': ' + (on.length ? on.map(x => x.p.title).join(', ') : 'никто не продаётся') + (dayOpens > 0 ? ' • вскрытий: ' + dayOpens : '') + '">'
+                    + '<span class="sched-day">' + d + '</span>'
+                    + '<span class="sched-dots">' + on.slice(0, 3).map(x => '<i style="background:' + SCHED_COLORS[x.i % SCHED_COLORS.length] + '"></i>').join('') + '</span>'
+                    + '</div>';
+            }
+            cal.innerHTML = cells;
+            if (leg) leg.innerHTML = schedPacks.map(x => '<span class="inline-flex items-center gap-1 text-[9px] text-slate-400"><i class="w-2 h-2 rounded-full inline-block shrink-0" style="background:' + SCHED_COLORS[x.i % SCHED_COLORS.length] + '"></i><span class="truncate max-w-[110px]">' + cloudEsc(x.p.title) + '</span></span>').join('');
+        }
+        function clearAllSchedules() {
+            if (cloudGuard()) return;
+            if (!state.packs.some(p => p.schedule)) { showToast('Расписаний нет', 'info'); return; }
+            state.packs.forEach(p => { delete p.schedule; });
+            saveState();
+            cloudPublishSoon();
+            SHOP_LIST = shopPacks();
+            saleSigSeen = saleStateSig();
+            renderStudio();
+            refreshVisibleTabs();
+            showToast('🧹 Расписание убрано со всех паков — снова продаются бессрочно', 'success');
+        }
+        // b158: график продажи пака по времени с повтором по сессиям
+        function schedInputValue(ts) {
+            const d = new Date(ts);
+            const p2 = n => String(n).padStart(2, '0');
+            return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()) + 'T' + p2(d.getHours()) + ':' + p2(d.getMinutes());
+        }
+        function setPackSchedule(id, remove) {
+            if (cloudGuard()) return;
+            const p = state.packs.find(x => x.id === id);
+            if (!p) return;
+            if (remove) {
+                delete p.schedule;
+            } else {
+                const sv = (document.getElementById('pack-sched-start-' + id) || {}).value;
+                const hv = Number((document.getElementById('pack-sched-hours-' + id) || {}).value) || 0;
+                const rv = ((document.getElementById('pack-sched-repeat-' + id) || {}).value) || 'none';
+                if (!sv) { showToast('Укажите дату и время старта продажи', 'error'); return; }
+                if (hv < 1) { showToast('Длительность окна — минимум 1 час', 'error'); return; }
+                const t = new Date(sv).getTime();
+                if (!isFinite(t)) { showToast('Не удалось разобрать время', 'error'); return; }
+                const pv = Number((document.getElementById('pack-sched-period-' + id) || {}).value) || 14;
+                const dv = Math.max(0, Math.min(90, Number((document.getElementById('pack-sched-disc-' + id) || {}).value) || 0));
+                // b161: голландский аукцион, лимит в руки, флеш-сейлы
+                const duv = Math.max(0, Math.min(90, Number((document.getElementById('pack-sched-dutch-' + id) || {}).value) || 0));
+                const lv = Math.max(0, Number((document.getElementById('pack-sched-limit-' + id) || {}).value) || 0);
+                const fv = !!((document.getElementById('pack-sched-flash-' + id) || {}).checked);
+                p.schedule = { start: t, hours: Math.min(hv, 720), repeat: rv, periodDays: Math.min(90, Math.max(2, pv)), discountPct: dv, dutchPct: duv, limitN: lv, flash: fv };
+                delete p.saleUntil; // график заменяет разовый таймер
+                p.retired = false;
+            }
+            p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: график стандартного пака уезжает в комнату
+            saveState();
+            cloudPublishSoon();
+            SHOP_LIST = shopPacks();
+            saleSigSeen = saleStateSig();
+            renderStudio();
+            refreshVisibleTabs();
+            renderPackTimerState(id);
+            showToast(remove ? '📅 График продажи убран' : '📅 График продажи установлен: ' + (p.schedule ? (p.schedule.repeat === 'day' ? 'повтор каждый день' : p.schedule.repeat === 'week' ? 'повтор каждую неделю' : p.schedule.repeat === 'month' ? 'повтор каждый месяц' : 'разовая сессия') : ''), 'success');
+        }
+        function setPackSaleUntil(id, hours) {
+            if (cloudGuard()) return;
+            const p = state.packs.find(x => x.id === id);
+            if (!p) return;
+            hours = Number(hours) || 0;
+            if (hours > 0) {
+                p.saleUntil = Date.now() + Math.min(hours, 8760) * 3600000;
+                p.retired = false; // таймер заменяет ручное снятие
+            } else {
+                delete p.saleUntil;
+            }
+            p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: таймер стандартного пака уезжает в комнату
+            saveState();
+            cloudPublishSoon();
+            SHOP_LIST = shopPacks();
+            saleSigSeen = saleStateSig();
+            renderStudio();
+            refreshVisibleTabs();
+            renderPackTimerState(id);
+            showToast(hours > 0
+                ? '⏳ Пак будет продаваться ' + hours + ' ч, затем снимется с продажи сам'
+                : '♾ Таймер убран: пак продаётся бессрочно', 'success');
+        }
+        // b165: премьера пака — до даты/времени виден как «Скоро» с отсчётом, купить нельзя;
+        // когда отсчёт закончится — стартует продажа без ограничения по времени
+        function setPackPremiere(id, remove) {
+            if (cloudGuard()) return;
+            const p = state.packs.find(x => x.id === id);
+            if (!p) return;
+            if (remove) {
+                delete p.premiereAt;
+            } else {
+                const sv = (document.getElementById('pack-prem-' + id) || {}).value;
+                if (!sv) { showToast('Укажите дату и время премьеры', 'error'); return; }
+                const t = new Date(sv).getTime();
+                if (!isFinite(t)) { showToast('Не удалось разобрать время', 'error'); return; }
+                if (t <= Date.now()) { showToast('🎬 Премьера должна быть в будущем', 'error'); return; }
+                p.premiereAt = t;
+                p.retired = false; // премьерный пак всегда виден в витрине — как «Скоро»
+            }
+            p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: премьера стандартного пака уезжает в комнату
+            saveState();
+            cloudPublishSoon();
+            SHOP_LIST = shopPacks();
+            saleSigSeen = saleStateSig();
+            renderStudio();
+            refreshVisibleTabs();
+            renderPackTimerState(id);
+            showToast(remove
+                ? '🎬 Премьера убрана: пак продаётся сразу'
+                : '🎬 Премьера назначена на ' + new Date(p.premiereAt).toLocaleString('ru-RU') + ' — до неё пак виден как «Скоро»', 'success');
+        }
+        // b147: снятие пака с продажи / возврат
+        function togglePackRetired(id) {
+            if (cloudGuard()) return;
+            const p = state.packs.find(x => x.id === id);
+            if (!p) return;
+            p.retired = !p.retired;
+            p.updatedAt = Date.now();
+            cloudStdTouch(p); // b173: снятие/возврат стандартного пака уезжает в комнату
+            saveState();
+            cloudPublishSoon();
+            if (p.retired) cloudPushUrgent(); // b173: скрытие критично — отправляем без дебаунса
+            SHOP_LIST = shopPacks();
+            renderStudio();
+            refreshVisibleTabs();
+            showToast(p.retired
+                ? '🚫 Пак снят с продажи. У покупателей останутся альбом и карты, недостающие карты можно докупить на бирже'
+                : '✅ Пак возвращён в продажу', 'success');
+        }
+        function editPack(packId) {
+            if (cloudGuard()) return; // b23
+            const pack = state.packs.find(p => p.id === packId);
+            if (!pack) return;
+            document.getElementById('edit-pack-id').value = pack.id;
+            document.getElementById('pack-title').value = pack.title;
+            document.getElementById('pack-desc').value = pack.description;
+            document.getElementById('pack-image').value = pack.image;
+            try { nxEmbedLampRefresh('pack-image'); } catch (e) {}
+            document.getElementById('pack-price').value = pack.price;
+            const premIn = document.getElementById('pack-premiere'); // b165
+            if (premIn) premIn.value = pack.premiereAt ? schedInputValue(pack.premiereAt) : '';
+            packFormColor = PACK_COLORS[pack.color] ? pack.color : 'silver';
+            packFormShimmer = PACK_SHIMMERS[pack.shimmer] ? pack.shimmer : 'holo';
+            const mIn = document.getElementById('pack-music');      // b19
+            if (mIn) mIn.value = pack.musicUrl || '';
+            const mUse = document.getElementById('pack-music-use'); // b19
+            if (mUse) mUse.checked = !pack.musicOff;
+            updatePackMusicHint(); // b20: сразу видно, какой трек у пака
+            renderPackFormPickers();
+            document.getElementById('pack-form-title').innerHTML = `<i class="fa-solid fa-box-open text-violet-400"></i><span>Редактировать Пак</span>`;
+            document.getElementById('pack-submit-btn').innerText = 'Сохранить изменения';
+            document.getElementById('pack-cancel-btn').classList.remove('hidden');
+            showStudioSec('packs'); // b164: список теперь в «Каталоге» — переключаем на вкладку с формой
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetPackForm() {
+            document.getElementById('form-create-pack').reset();
+            document.getElementById('edit-pack-id').value = '';
+            document.getElementById('pack-form-title').innerHTML = `<i class="fa-solid fa-box text-violet-400"></i><span>Новый Бустер Пак</span>`;
+            document.getElementById('pack-submit-btn').innerText = 'Создать Бустер Пак';
+            document.getElementById('pack-cancel-btn').classList.add('hidden');
+            packFormColor = 'silver';
+            packFormShimmer = 'holo';
+            const mIn = document.getElementById('pack-music');       // b19
+            if (mIn) mIn.value = '';
+            const mUse = document.getElementById('pack-music-use');  // b19
+            if (mUse) mUse.checked = true;
+            const premIn = document.getElementById('pack-premiere'); // b165
+            if (premIn) premIn.value = '';
+            updatePackMusicHint(); // b20
+            renderPackFormPickers();
+        }
+
+        // ============ b132: МАССОВОЕ СОЗДАНИЕ КАРТОЧЕК ПО ССЫЛКАМ НА КАРТИНКИ ============
+        const BULK_RAR_ALIASES = {
+            common: 'common', rare: 'rare', epic: 'epic', legendary: 'legendary',
+            'обычная': 'common', 'редкая': 'rare', 'эпическая': 'epic', 'легендарная': 'legendary',
+            'обыч': 'common', 'редк': 'rare', 'эпик': 'epic', 'легендарка': 'legendary'
+        };
+        function bulkBase() {
+            const el = document.getElementById('bulk-base-url');
+            let b = String((el && el.value) || '').trim();
+            if (b && !/\/$/.test(b)) b += '/';
+            return b;
+        }
+        // b132: имя из файла: 0001_doktor.png -> doktor (номер и расширение убираются)
+        function bulkNameFromFile(fname) {
+            let n = String(fname || '');
+            try { n = decodeURIComponent(n); } catch (e) {}
+            n = n.split('?')[0]
+                .replace(/\.[a-z0-9]{2,5}$/i, '')
+                .replace(/^\d+[-_ ]+/, '')
+                .replace(/[-_]+/g, ' ')
+                .trim();
+            return n;
+        }
+        const BULK_IMG_RE = /\.(png|jpe?g|webp|gif|avif|bmp|svg)(\?|#|$)/i;
+        function parseBulkCardLines(text, base) {
+            const b = String(base == null ? '' : base).trim();
+            let baseU = b ? (/\/$/.test(b) ? b : b + '/') : '';
+            const out = [];
+            String(text || '').split(/\r?\n/).forEach(line => {
+                const t = line.trim();
+                if (!t) return;
+                const parts = t.split('|').map(p => p.trim());
+                const ref = parts[0] || '';
+                let url = '';
+                if (/^https?:\/\//i.test(ref)) {
+                    // b132: ссылка без расширения картинки = папка для следующих строк
+                    if (BULK_IMG_RE.test(ref)) url = ref;
+                    else { baseU = /\/$/.test(ref) ? ref : ref + '/'; return; }
+                } else if (baseU && ref) {
+                    url = baseU + ref.replace(/^\/+/, '');
+                }
+                if (!url) return;
+                let name = parts[1] || '';
+                if (!name) name = bulkNameFromFile(url.split('/').pop());
+                if (!name) name = 'Карта ' + (out.length + 1);
+                const rarity = BULK_RAR_ALIASES[(parts[2] || '').toLowerCase()] || 'common';
+                out.push({ url, name: String(name).slice(0, 60), rarity });
+            });
+            return out;
+        }
+        // b132: читаем листинг папки (archive.org и подобные) — собираем имена картинок.
+        // Ссылки в листинге бывают относительные И абсолютные (/download/item/file.png) — учитываем оба вида
+        function parseFolderListing(html, base) {
+            const b = String(base || '').trim();
+            const baseU = b ? (/\/$/.test(b) ? b.slice(0, -1) : b) + '/' : '';
+            let basePath = '';
+            try { basePath = new URL(baseU).pathname; } catch (e) { basePath = ''; }
+            const files = [];
+            const re = /href="([^"]+)"/g;
+            let m;
+            while ((m = re.exec(String(html || '')))) {
+                const href = m[1];
+                if (!href || href.charAt(0) === '#') continue;
+                let rel = '';
+                if (basePath && href.indexOf(basePath) >= 0) {
+                    rel = href.slice(href.indexOf(basePath) + basePath.length);
+                } else if (!/^(https?:)?\/\//i.test(href) && href.charAt(0) !== '/') {
+                    rel = href; // относительная ссылка листинга
+                } else {
+                    continue; // чужие абсолютные ссылки (навигация сайта)
+                }
+                let f = rel.split('?')[0].split('#')[0];
+                try { f = decodeURIComponent(f); } catch (e) {}
+                if (!f || f.indexOf('/') >= 0) continue;      // только файлы в корне папки
+                if (!BULK_IMG_RE.test(f)) continue;           // только картинки
+                if (/_thumb\./i.test(f)) continue;           // миниатюры архива не нужны
+                if (files.indexOf(f) < 0) files.push(f);
+            }
+            files.sort();
+            return files;
+        }
+        async function fetchBulkFolderFiles(base) {
+            const b = String(base || '').trim().replace(/\/+$/, '');
+            // 1) надёжный путь: metadata-API archive.org (JSON со списком файлов, CORS открыт)
+            const mm = b.match(/archive\.org\/(?:download|details|metadata)\/([^\/?#]+)/i);
+            if (mm) {
+                try {
+                    const r = await fetch('https://archive.org/metadata/' + encodeURIComponent(mm[1]), { mode: 'cors' });
+                    if (r.ok) {
+                        const j = await r.json();
+                        const files = ((j && j.files) || [])
+                            .map(x => (x && x.name) ? String(x.name) : '')
+                            .filter(n => n && n.indexOf('/') < 0 && BULK_IMG_RE.test(n) && !/_thumb\./i.test(n));
+                        files.sort();
+                        if (files.length) return files;
+                    }
+                } catch (e) {}
+            }
+            // 2) запасной путь: читаем и парсим саму страницу папки
+            const res = await fetch(b + '/', { mode: 'cors' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const files = parseFolderListing(await res.text(), b);
+            if (!files.length) throw new Error('empty');
+            return files;
+        }
+        async function bulkFetchFolder() {
+            const b = bulkBase();
+            if (!b) { showToast('Сначала укажите ссылку на папку', 'error'); return; }
+            const btn = document.getElementById('bulk-fetch-btn');
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-50'); }
+            try {
+                const files = await fetchBulkFolderFiles(b);
+                const ta = document.getElementById('bulk-card-urls');
+                if (ta) ta.value = files.join('\n');
+                bulkCountUpdate();
+                showToast('📂 Найдено картинок в папке: ' + files.length, 'success');
+            } catch (e) {
+                showToast('Не смог прочитать папку из браузера — вставьте имена файлов вручную', 'error');
+            } finally {
+                if (btn) { btn.disabled = false; btn.classList.remove('opacity-50'); }
+            }
+        }
+        function bulkCountUpdate() {
+            const el = document.getElementById('bulk-count-label');
+            const ta = document.getElementById('bulk-card-urls');
+            if (!el || !ta) return;
+            const n = parseBulkCardLines(ta.value, bulkBase()).length;
+            el.innerHTML = 'Карточек к созданию: <b class="' + (n ? 'text-violet-300' : 'text-slate-400') + '">' + n + '</b>';
+        }
+        async function bulkCreateCards() {
+            if (cloudGuard()) return; // b23: участники комнаты не создают карточки
+            const sel = document.getElementById('bulk-pack-id');
+            const cardSel = document.getElementById('card-pack-id');
+            const packId = (sel && sel.value) ? sel.value : (cardSel ? cardSel.value : '');
+            if (!packId) { showToast('Сначала выберите пак, в который добавить карточки', 'error'); return; }
+            const ta = document.getElementById('bulk-card-urls');
+            let items = parseBulkCardLines(ta ? ta.value : '', bulkBase());
+            // b132: список пуст, но папка указана — берём все картинки папки сами
+            if (!items.length && bulkBase()) {
+                try {
+                    const files = await fetchBulkFolderFiles(bulkBase());
+                    items = parseBulkCardLines(files.join('\n'), bulkBase());
+                } catch (e) {}
+            }
+            if (!items.length) { showToast('Не нашёл картинки: нужны ссылки на файлы (.png/.jpg…) или имена файлов при указанной папке', 'error'); return; }
+            const now = Date.now();
+            items.forEach((it, i) => {
+                state.cards.push({
+                    id: 'card-' + now + '-' + i + '-' + Math.floor(Math.random() * 1e4),
+                    packId,
+                    name: it.name,
+                    description: '',
+                    rarity: it.rarity,
+                    image: it.url,
+                    layout: { namePos: 'bottom', descPos: 'hide', align: 'center', shine: 'auto' },
+                    aura: 'none',
+                    updatedAt: now
+                });
+            });
+            state.stats.cardsCreated += items.length;
+            saveState();
+            checkAchievements();
+            cloudPublishSoon();
+            try { preloadImages(items.map(x => x.url)); } catch (e) {} // b130: картинки готовы сразу
+            if (ta) ta.value = '';
+            bulkCountUpdate();
+            showToast('✅ Создано карточек: ' + items.length, 'success');
+            renderStudio();
+        }
+
+        function handleSaveCard(e) {
+            e.preventDefault();
+            if (cloudGuard()) return; // b23: участники не создают/не правят карточки
+            const editId = document.getElementById('edit-card-id').value;
+            const packId = document.getElementById('card-pack-id').value;
+            const name = document.getElementById('card-name').value;
+            const description = document.getElementById('card-desc').value;
+            const rarity = document.getElementById('card-rarity').value;
+            const image = document.getElementById('card-image').value;
+            const atk = parseInt(document.getElementById('card-atk').value);
+            const hp = parseInt(document.getElementById('card-hp').value);
+            const layout = readCardLayoutForm();
+            const auraEl = document.getElementById('card-aura');
+            const aura = auraEl ? auraEl.value : 'none';
+            const musicInp = document.getElementById('card-music');
+            const musicUrl = musicInp ? String(musicInp.value || '').trim() : '';
+
+            if (editId) {
+                const card = state.cards.find(c => c.id === editId);
+                if (card) {
+                    card.packId = packId;
+                    card.name = name;
+                    card.description = description;
+                    card.rarity = rarity;
+                    card.image = image;
+                    card.layout = layout;
+                    card.aura = aura;
+                    card.updatedAt = Date.now();
+                    if (musicUrl) card.musicUrl = musicUrl; else delete card.musicUrl;
+                    if (atk > 0) card.atk = atk; else delete card.atk;
+                    if (hp > 0) card.hp = hp; else delete card.hp;
+                    cloudStdTouch(card); // b46: правка стандартной карты уезжает в комнату
+                    showToast('Карточка обновлена!', 'success');
+                }
+            } else {
+                const newCard = {
+                    id: 'card-' + Date.now(),
+                    packId,
+                    name,
+                    description,
+                    rarity,
+                    image,
+                    layout,
+                    aura,
+                    updatedAt: Date.now()
+                };
+                if (musicUrl) newCard.musicUrl = musicUrl;
+                if (atk > 0) newCard.atk = atk;
+                if (hp > 0) newCard.hp = hp;
+                state.cards.push(newCard);
+                state.stats.cardsCreated++;
+                showToast('Карточка успешно создана!', 'success');
+            }
+            saveState();
+            checkAchievements();
+            cloudPublishSoon();
+            resetCardForm();
+            renderStudio();
+        }
+
+        function editCard(cardId) {
+            if (cloudGuard()) return; // b23
+            const card = state.cards.find(c => c.id === cardId);
+            if (!card) return;
+            document.getElementById('edit-card-id').value = card.id;
+            document.getElementById('card-pack-id').value = card.packId;
+            document.getElementById('card-name').value = card.name;
+            document.getElementById('card-desc').value = card.description || '';
+            document.getElementById('card-rarity').value = card.rarity;
+            document.getElementById('card-image').value = card.image;
+            try { nxEmbedLampRefresh('card-image'); } catch (e) {}
+            document.getElementById('card-atk').value = card.atk || '';
+            document.getElementById('card-hp').value = card.hp || '';
+            const musicEdit = document.getElementById('card-music');
+            if (musicEdit) musicEdit.value = card.musicUrl || '';
+            const L0 = cardLayoutOf(card);
+            document.getElementById('card-name-pos').value = L0.namePos;
+            document.getElementById('card-desc-pos').value = L0.descPos;
+            document.getElementById('card-align').value = L0.align;
+            document.getElementById('card-shine').value = L0.shine;
+            const auraSel = document.getElementById('card-aura');
+            if (auraSel) auraSel.value = cardAuraOf(card);
+            renderCardPreview();
+            document.getElementById('card-form-title').innerHTML = `<i class="fa-solid fa-id-card-clip text-violet-400"></i><span>Редактировать Карточку</span>`;
+            document.getElementById('card-submit-btn').innerText = 'Сохранить изменения';
+            document.getElementById('card-cancel-btn').classList.remove('hidden');
+            showStudioSec('cards'); // b164: форма карточки во вкладке «Карточки» — переключаем из «Каталога»
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetCardForm() {
+            document.getElementById('form-create-card').reset();
+            document.getElementById('edit-card-id').value = '';
+            document.getElementById('card-form-title').innerHTML = `<i class="fa-solid fa-id-card text-violet-400"></i><span>Новая Карточка</span>`;
+            document.getElementById('card-submit-btn').innerText = 'Создать Карточку';
+            document.getElementById('card-cancel-btn').classList.add('hidden');
+            renderCardPreview();
+        }
+
+        // прослушивание mp3 карточки из формы Студии (8 секунд)
+        function previewCardMusic() {
+            const inp = document.getElementById('card-music');
+            const url = inp ? String(inp.value || '').trim() : '';
+            if (!url) { showToast('Вставьте ссылку на mp3-файл', 'error'); return; }
+            CardMusic.play(url);
+            setTimeout(() => { try { if (CardMusic.url === url) CardMusic.stop(); } catch (e) {} }, 8000);
+            showToast('\u{1F3B5} Слушаем трек… 8 секунд', 'success');
+        }
+        function stopCardMusicPreview() { CardMusic.stop(); }
+        function clearCardMusicField() {
+            const inp = document.getElementById('card-music');
+            if (inp) inp.value = '';
+            CardMusic.stop();
+        }
+
+        // читает настройки композиции/эффекта из формы карточки
+        function readCardLayoutForm() {            const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), align: g('card-align'), shine: g('card-shine') };
+        }
+
+        // живой предпросмотр карты в форме Студии
+        function renderCardPreview() {
+            const box = document.getElementById('card-preview');
+            if (!box) return;
+            const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+            const name = String(gv('card-name') || '').trim() || 'Имя персонажа';
+            const desc = String(gv('card-desc') || '').trim() || 'Описание карты';
+            const rarity = gv('card-rarity') || 'common';
+            const image = String(gv('card-image') || '').trim();
+            const atk = parseInt(gv('card-atk'));
+            const hp = parseInt(gv('card-hp'));
+            const fake = {
+                name: name, description: desc, rarity: rarity, image: image,
+                atk: atk > 0 ? atk : undefined, hp: hp > 0 ? hp : undefined,
+                layout: readCardLayoutForm(),
+                aura: gv('card-aura') || 'none'
+            };
+            const L = cardLayoutOf(fake);
+            const st = getCardStats(fake);
+            const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const badge = `<div class="w-full flex justify-between items-start gap-1">
+                    <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1.5 py-0.5 rounded">#preview</span>
+                    <span class="text-[8px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900/80 border border-slate-700" style="color:${RAR_COLORS[rarity] || '#e2e8f0'}">${RARITY_LABELS_RU[rarity] || rarity}</span>
+                </div>`;
+            const nameHtml = `<h4 class="w-full font-bold text-white text-sm truncate drop-shadow-md ${L.text}">${esc(name)}</h4>`;
+            const descHtml = `<p class="w-full text-[10px] text-slate-300 line-clamp-2 drop-shadow ${L.text}">${esc(desc)}</p>`;
+            const statsHtml = `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
+                    <span class="text-[9px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${st.atk}</span>
+                    <span class="text-[9px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${st.hp}</span>
+                </div>`;
+            const z = cardTextZones(L, badge, nameHtml, descHtml, statsHtml);
+            box.className = `relative z-10 w-full card-aspect rounded-xl overflow-hidden border-2 shadow-xl flex flex-col justify-between p-2.5 ${getRarityClass(rarity)} ${cardHoloClass(fake)}`;
+            box.innerHTML = `${image ? `<img src="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)" class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">` : ''}
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
+                ${z.top}${z.bottom}${cardShineOverlay(fake, 25)}`;
+            applyCardAura(document.getElementById('card-preview-aura'), fake, 'aura-preview');
+        }
+
+        function deletePack(packId) {
+            if (cloudGuard()) return; // b23
+            state.cards.filter(c => c.packId === packId).forEach(c => cloudTombAdd(c.id));
+            cloudTombAdd(packId);
+            if (STANDARD_IDS[packId]) cloudStdSetOff(packId, 1); // b37: скрытие стандарта синхронизируется
+            state.packs = state.packs.filter(p => p.id !== packId);
+            state.cards = state.cards.filter(c => c.packId !== packId);
+            saveState();
+            cloudPublishSoon();
+            cloudPushUrgent(); // b27: удаление должно дойти до пользователей немедленно
+            renderStudio();
+            showToast('Пак и связанные карты удалены', 'success');
+        }
+
+        function deleteCard(cardId) {
+            if (cloudGuard()) return; // b23
+            cloudTombAdd(cardId);
+            if (STANDARD_IDS[cardId]) cloudStdSetOff(cardId, 1); // b37
+            state.cards = state.cards.filter(c => c.id !== cardId);
+            delete state.collection[cardId];
+            state.deck = (state.deck || []).filter(id => id !== cardId);
+            saveState();
+            cloudPublishSoon();
+            cloudPushUrgent(); // b27: удаление должно дойти до пользователей немедленно
+            renderStudio();
+            showToast('Карточка удалена', 'success');
+        }
+
+        // b62: единый репортёр ошибок. На локальных файлах (file://) браузеры маскируют
+        // текст исключения в «Script error.», поэтому добавляем номер строки и стек в консоль,
+        // а одинаковые ошибки не складываем стопкой тостов, а считаем повторы (×N).
+        // b63: «чёрный ящик»: последние 12 событий перед ошибкой (вкладки, повороты,
+        // вскрытия) + контекст (ориентация, размеры, открытые модалки) пишутся в
+        // localStorage. Тап по надписи сборки внизу экрана — показать/скопировать
+        // диагностику, чтобы прислать разработчику точный контекст сбоя.
+        const NX_TRAIL = [];
+        function nxTrail(tag) {
+            try {
+                NX_TRAIL.push(Math.round((Date.now() % 86400000) / 1000) + 's ' + tag);
+                if (NX_TRAIL.length > 12) NX_TRAIL.shift();
+            } catch (e) {}
+        }
+        function nxDiag(msg) {
+            const rec = {
+                build: '02.10-b122',
+                at: new Date().toISOString(),
+                msg: String(msg || ''),
+                vw: window.innerWidth, vh: window.innerHeight,
+                orient: (screen.orientation && screen.orientation.type) || (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'),
+                tab: (['store', 'albums', 'battle', 'rewards', 'market', 'studio'].find(t => { const el = document.getElementById('tab-' + t); return el && !el.classList.contains('hidden'); }) || '?'),
+                modals: ['modal-unboxing', 'modal-inspect', 'modal-export', 'modal-reset', 'modal-pack3d', 'modal-daily', 'modal-qr'].filter(id => { const m = document.getElementById(id); return m && !m.classList.contains('hidden'); }),
+                trail: NX_TRAIL.slice(),
+                // b65: строка:колонка внутри файла игры, если браузер их отдал
+                loc: (window._nxLastMeta && window._nxLastMeta.line) ? (window._nxLastMeta.line + ':' + window._nxLastMeta.col) : undefined,
+                // b64: даже когда браузер маскирует текст ошибки, объект ошибки иногда
+                // доступен — его стек точно указывает на место сбоя
+                stack: window._nxLastStack || undefined
+            };
+            try {
+                const log = JSON.parse(localStorage.getItem('nexus_errlog') || '[]');
+                log.push(rec);
+                while (log.length > 5) log.shift();
+                localStorage.setItem('nexus_errlog', JSON.stringify(log));
+            } catch (e) {}
+            try { nxBadgeMark(); } catch (e) {}
+            return rec;
+        }
+        // b65: тихий индикатор: если за сессию были ошибки — надпись сборки розовеет.
+        // Ничего не всплывает; тап по надписи = диагностика.
+        function nxBadgeMark() {
+            // b119: индикатор ошибок — в Студии, рядом с номером сборки
+            const e = document.getElementById('studio-build-err');
+            if (e) e.classList.remove('hidden');
+        }
+        function nxShowDiag() {
+            try {
+                const log = localStorage.getItem('nexus_errlog') || '[]';
+                const txt = 'Диагностика сборка 02.10-b122:\n' + (log === '[]' ? 'ошибок не зафиксировано' : log);
+                try { navigator.clipboard && navigator.clipboard.writeText(txt); } catch (e) {}
+                alert(txt);
+            } catch (e) {}
+        }
+        // b65: всплывающие уведомления об ошибках УБРАНЫ — они только пугали и
+        // заслоняли экран. Любая пойманная ошибка теперь молча пишется в «чёрный ящик»
+        // (localStorage nexus_errlog + консоль), а надпись сборки внизу подсвечивается,
+        // если за сессию были ошибки: тап по ней покажет диагностику.
+        function nxErrorToast(text) {
+            try { nxDiag(text); } catch (e) {}
+            try { console.error('NX ERROR:', text); } catch (e) {}
+        }
+        window.addEventListener('error', function(ev) {
+            try {
+                // игнорируем ошибки загрузки ресурсов (img/audio): у них нет message,
+                // а свои цепочки fallback-ов уже обрабатывают их локально
+                if (ev.target && ev.target !== window && (ev.target.src || ev.target.href)) return;
+                // b65: сигнатура ВНЕШНЕГО скрипта: браузер маскирует чужие исключения в
+                // «Script error.» без строки и без объекта ошибки (скрипт-«гость» оболочки,
+                // в которой открыт файл, реагирует на поворот экрана). Такие события игре
+                // не принадлежат — только считаем их счётчиком, журнал не засоряем.
+                const masked = (ev.message === 'Script error.' && !ev.lineno && !ev.error);
+                if (masked) {
+                    try {
+                        const n = parseInt(localStorage.getItem('nexus_ext_masked') || '0', 10) + 1;
+                        localStorage.setItem('nexus_ext_masked', String(n));
+                        // b66: запоминаем адрес внешнего скрипта, если браузер его отдаёт
+                        if (ev.filename && !localStorage.getItem('nexus_ext_src')) {
+                            localStorage.setItem('nexus_ext_src', String(ev.filename));
+                        }
+                    } catch (e) {}
+                    return;
+                }
+                let detail = String(ev.message || 'неизвестная');
+                if (ev.lineno) detail += ' (строка ' + ev.lineno + (ev.colno ? ':' + ev.colno : '') + ')';
+                if (ev.error && ev.error.stack) { try { console.error('NX ERROR STACK:', ev.error.stack); } catch (e) {} }
+                window._nxLastStack = (ev.error && ev.error.stack) || undefined; // b64: для чёрного ящика
+                window._nxLastMeta = { file: String(ev.filename || ''), line: ev.lineno || 0, col: ev.colno || 0 }; // b65
+                nxErrorToast(detail);
+            } catch (e) {}
+        }, true);
+        window.addEventListener('unhandledrejection', function(ev) {
+            try {
+                const r = ev.reason;
+                window._nxLastStack = (r && r.stack) || undefined; // b64
+                nxErrorToast(String((r && r.message) || r || 'неизвестная (promise)'));
+            } catch (e) {}
+        });
+        // b65: тап по надписи сборки внизу экрана = показать «чёрный ящик» (журнал
+        // ошибок с ориентацией экрана, вкладкой и открытыми модалками на момент сбоя).
+        // Всплывающих тостов об ошибках больше нет вовсе.
+        (function () {
+            const b = document.getElementById('studio-build');
+            if (!b) return;
+            b.addEventListener('click', function () {
+                let txt = '';
+                try {
+                    const log = JSON.parse(localStorage.getItem('nexus_errlog') || '[]');
+                    let ext = 0, extSrc = '';
+                    try { ext = parseInt(localStorage.getItem('nexus_ext_masked') || '0', 10) || 0; } catch (e) {}
+                    try { extSrc = localStorage.getItem('nexus_ext_src') || ''; } catch (e) {}
+                    const extLine = ext
+                        ? '\nВнешних событий чужого скрипта (поворот): ' + ext + ' — игрой игнорируются.' + (extSrc ? '\nИх источник: ' + extSrc : '')
+                        : '';
+                    if (!log.length) {
+                        txt = 'Сборка 02.10-b122. Журнал ошибок пуст.' + extLine;
+                    } else {
+                        txt = 'Сборка 02.10-b122. Последние ошибки (' + log.length + '):\n' + log.map(r =>
+                            '• ' + String(r.at || '').slice(11, 19) +
+                            ' [' + (r.orient || '?') + ', ' + (r.vw || '?') + 'x' + (r.vh || '?') + ']' +
+                            (r.tab ? ' вкладка:' + r.tab : '') +
+                            (r.modals && r.modals.length ? ' модалки:' + r.modals.join(',') : '') +
+                            (r.trail && r.trail.length ? '\n   было: ' + r.trail.slice(-3).join(' → ') : '') +
+                            '\n   ' + (r.msg || '') +
+                            (r.loc && String(r.msg || '').indexOf('(строка') < 0 ? ' (строка ' + r.loc + ')' : '') +
+                            (r.stack ? '\n   стек: ' + String(r.stack).split('\n').slice(0, 3).join(' | ') : '')
+                        ).join('\n') + extLine;
+                    }
+                } catch (e) { txt = 'Журнал недоступен: ' + String(e && e.message || e); }
+                try { alert(txt); } catch (e) {}
+            });
+        })();
+
+        window.onload = function() {
+          // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
+          // игра продолжит работу и покажет ПОДРОБНОСТЬ (со стеком в консоли), а не молчаливый «Script error.»
+          try {
+            // b66: при смене сборки старый журнал очищается — записи прошлых версий
+            // не путают; счётчик внешних событий живёт одну сессию
+            try {
+                if (localStorage.getItem('nexus_errlog_build') !== '02.10-b122') {
+                    localStorage.removeItem('nexus_errlog');
+                    localStorage.removeItem('nexus_ext_src');
+                    localStorage.setItem('nexus_errlog_build', '02.10-b122');
+                }
+                localStorage.setItem('nexus_ext_masked', '0'); // счётчик за эту сессию
+            } catch (e) {}
+            initHiddenTab(); // скрытый раздел: прячем кнопки навигации и вешаем жест на «Награды»
+            // b47: шахта — офлайн-добыча за прошлый период и запуск тика
+            try {
+                const off = minerOffline();
+                if (off) setTimeout(() => showToast('⛏ Шахта поработала без вас (' + minerDur(off.sec) + '): +' + fmtCoins(off.gain) + ' монет', 'refund'), 1000);
+            } catch (e) {}
+            minerStart();
+            try { minerCatRender(); } catch (e) {} // b178: котик-шахтёр сразу спит в панели прокачки
+            state.stats.minerLvl = Math.max(state.stats.minerLvl || 0, miner.lvl); // b61
+            updateCoinDisplay();
+            updateSoundIcon();
+            // Tailwind прекомпилирован в assets/tailwind.css — window.tailwind
+            // больше не существует, и это нормально. Проверяем саму таблицу стилей.
+            if (!document.getElementById('nx-tw-css')) {
+                setTimeout(() => showToast('⚠️ Не загрузились стили (assets/tailwind.css). Проверьте подключение и обновите страницу', 'error'), 300);
+            }
+            ensureDailyMissions();
+            renderStore();
+            renderPackFormPickers();
+            updateDailyDot();
+            updateCountdowns();
+            setInterval(updateCountdowns, 30000);
+
+            // Пересчитать достижения (например, после импорта старого сохранения)
+            checkAchievements();
+            // Выплатить бонусы за альбомы, собранные до этого момента (один раз)
+            checkAlbumRewards();
+            // b130: мгновенные картинки — постеры приоритетно, остальной арт-кэш в фоне
+            // b180: постоянный кэш — сначала подменяем <img> из IndexedDB, preload догоняет остальное
+            startImageCache();
+            setTimeout(() => { try { injectPosterPreloads(); } catch (e) {} }, 400);
+            startImagePreload();
+
+            // Показать попап ежедневной награды, если она доступна
+            if (canClaimDaily()) {
+                setTimeout(openDailyModal, 700);
+            }
+            // Облачная синхронизация общего каталога паков
+            cloudInit();
+            // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
+            // b183: уходим со страницы — срочно отправляем банк (jpFlush), вернулись — полная синхронизация
+            try {
+                jpSyncNow(); setInterval(jpSyncNow, 60000);
+                document.addEventListener('visibilitychange', () => { if (document.hidden) jpFlush(); else jpSyncNow(); });
+                window.addEventListener('pagehide', jpFlush);
+            } catch (e) {}
+            // b148: тик таймеров продажи паков — countdown и автоснятие по истечении
+            try { saleTick(); setInterval(saleTick, 1000); } catch (e) {} // b149: секундный обратный отсчёт
+            // b91/b127: имя игрока для джекпота — поле в шапке рядом с балансом
+            try { const inp = document.getElementById('player-name-input'); if (inp) inp.value = getPlayerName(); } catch (e) {}
+            // b287: имени нет — поле пульсирует сразу, тост-напоминание чуть позже старта
+            try {
+                nameNeedUI();
+                if (!getPlayerName()) setTimeout(nameRemindToast, 2500);
+            } catch (e) {}
+          } catch (e) {
+            try { console.error('window.onload', e); } catch (e2) {}
+            try { nxErrorToast(String((e && e.message) || e) + ' (при запуске)'); } catch (e2) {}
+          }
+        };
