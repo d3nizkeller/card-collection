@@ -179,6 +179,8 @@ function qrxLooksLikeCode(s) {
     const t = String(s == null ? '' : s).trim();
     if (!t) return false;
     if (t.indexOf(QRX_DIRECT) === 0 || t.indexOf(QRX_RELAY) === 0) return true;
+    if (/[?&]prof=[A-Za-z0-9-]{4,12}/i.test(t)) return true;  // b365: QR профиля синхронизации
+    if (/^NXPROF:[A-Za-z0-9]{4,12}$/i.test(t)) return true;   // b365: голый код профиля
     return t.charAt(0) === '{';
 }
 let qrxTgHandler = null;
@@ -290,6 +292,18 @@ async function qrxHandleCode(raw) {
     const s = String(raw || '').trim();
     const st = document.getElementById('qr-scan-status');
     if (!s) { showToast('Пустой код переноса', 'error'); return; }
+    // b365: QR синхронизации профиля (ссылка ?prof=КОД или NXPROF:КОД) —
+    // привязываем устройство к профилю вместо переноса прогресса
+    try {
+        const pc = (typeof profQrFromText === 'function') ? profQrFromText(s) : '';
+        if (pc) {
+            try { qrxStopScan(); } catch (e) {}
+            try { closeQrModal(); } catch (e) {}
+            try { profSetCode(pc); } catch (e) {}
+            try { showToast('Устройство привязано к профилю ' + pc + ' через QR — синхронизирую баланс и прогресс…', 'success'); } catch (e) {}
+            return;
+        }
+    } catch (e) {}
     try {
         if (s.indexOf(QRX_RELAY) === 0) {
             if (st) st.innerHTML = '<i class="fa-solid fa-cloud-arrow-down text-violet-300 mr-1"></i>Получаем прогресс из транзитного облака…';
