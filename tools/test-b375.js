@@ -174,6 +174,7 @@ const syncLoop = (page, force) => page.evaluate(async f => {
   console.log('=== 5) скриншот Студии с нумерацией ===');
   await A.page.evaluate(PACK => {
     try { closeDailyModal(); } catch (e) {}
+    try { closeNameModal(); } catch (e) {} // b376: чистый кадр без модалки имени
     try { studioUnlocked = true; } catch (e) {} // b133: гейт пароля комнаты — в тесте открываем напрямую
     switchTab('studio');
     showStudioSec('catalog'); // список паков с их карточками — в секции «Каталог»
@@ -190,6 +191,31 @@ const syncLoop = (page, force) => page.evaluate(async f => {
   await A.page.waitForTimeout(300);
   await A.page.screenshot({ path: 'tools/shots/b375-card-numbers.png' });
   console.log('  снимок: tools/shots/b375-card-numbers.png');
+
+  console.log('=== 5b) b376: стрелки кнопок перемещения отрисованы (inline-SVG), disabled-состояние видно ===');
+  const iconChk = await A.page.evaluate(PACK => {
+    const box = document.getElementById('pack-cards-' + PACK);
+    const btns = Array.prototype.slice.call(box.querySelectorAll('button')).filter(b => (b.getAttribute('onclick') || '').indexOf('moveCardInPack') >= 0);
+    const info = btns.map(b => {
+      const svg = b.querySelector('svg');
+      const p = svg && svg.querySelector('path');
+      const r = svg ? svg.getBoundingClientRect() : null;
+      const cs = getComputedStyle(b);
+      return {
+        dir: (b.getAttribute('onclick') || '').indexOf(', 1)') >= 0 ? 'down' : 'up',
+        svg: !!svg, path: !!(p && (p.getAttribute('d') || '').length > 50),
+        w: r ? Math.round(r.width) : 0, h: r ? Math.round(r.height) : 0,
+        op: cs.opacity, pe: cs.pointerEvents
+      };
+    });
+    return { n: btns.length, info: info, hasFaDown: box.innerHTML.indexOf('fa-arrow-down') >= 0 };
+  }, PACK);
+  ok(iconChk.n === 12, 'кнопок перемещения 12 (6 карт × ↑/↓): ' + iconChk.n);
+  ok(iconChk.info.every(i => i.svg && i.path && i.w >= 6 && i.h >= 8), 'каждая стрелка — видимый inline-SVG, не пустой кружок: ' + iconChk.info.map(i => i.w + '×' + i.h).join(' '));
+  const i0 = iconChk.info[0], i1 = iconChk.info[1], iL = iconChk.info[iconChk.n - 1], iL1 = iconChk.info[iconChk.n - 2];
+  ok(i0.dir === 'up' && i0.op === '0.3' && i0.pe === 'none' && i1.dir === 'down' && i1.op === '1', 'первая карта: ↑ неактивна и это ВИДНО (opacity .3 + pointer-events none), ↓ активна');
+  ok(iL.dir === 'down' && iL.op === '0.3' && iL.pe === 'none' && iL1.dir === 'up' && iL1.op === '1', 'последняя карта: ↓ неактивна и это видно, ↑ активна');
+  ok(!iconChk.hasFaDown, 'fa-arrow-down в рядах не используется (глифа нет в сабсете fa.css/woff2)');
 
   const allErrs = A.errs.concat(B.errs);
   ok(allErrs.length === 0, 'без ошибок страницы' + (allErrs.length ? ': ' + allErrs.slice(0, 3).join(' | ') : ''));
