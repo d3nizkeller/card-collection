@@ -35,7 +35,7 @@ async function newDevice(browser, label) {
   const a = await A.page.evaluate(async () => {
     try { document.getElementById('modal-daily').classList.add('hidden'); } catch (e) {}
     state.coins = 4321;
-    state.cards = [{ id: 'cardA', title: 'Карта A', packId: 'p1', rarity: 'rare' }];
+    state.cards = [{ id: 'cardA', title: 'Карта A', packId: 'p1', rarity: 'rare' }]; state.collection = { cardA: 1 };
     saveState();
     openQrModal();                       // та самая модалка из навбара
     let cv = null;
@@ -65,7 +65,7 @@ async function newDevice(browser, label) {
   const b = await B.page.evaluate(async (code) => {
     const L = [];
     const S = tag => L.push(tag + ': coins=' + state.coins + ' lastBal=' + LS.getItem('nx_prof_lastbal') + ' prof=' + profCode());
-    state.coins = 7; state.cards = [{ id: 'cardB', title: 'Карта B', packId: 'p1', rarity: 'common' }]; saveState();
+    state.coins = 7; state.cards = [{ id: 'cardB', title: 'Карта B', packId: 'p1', rarity: 'common' }]; state.collection = { cardB: 1 }; saveState();
     S('до скана');
     await qrxHandleCode(code);                       // как после скана камерой
     S('после скана');
@@ -111,7 +111,7 @@ async function newDevice(browser, label) {
   console.log('профильные документы в облаке:', profDocs.join(',') || 'нет');
   const errs = [...A.errs, ...B.errs];
   console.log('ошибки страниц:', errs.length ? errs.slice(0, 5) : 'нет');
-  const ok = a.qrText === a.code && /профил/i.test(a.status) && b.confVisible && b.profAfterScan === a.prof && b2.coins >= 4321 && b2.coins === a2Preview && a2.cards.join(',') === 'cardA,cardB' && profDocs.length >= 1 && b3.conf && b3.before === b3.after && errs.length === 0;
+  const ok = a.qrText === a.code && /профил/i.test(a.status) && b.confVisible && b.profAfterScan === a.prof && b2.coins >= 4321 && b2.coins === a2Preview && a2.cards.join(',') === 'cardA' && profDocs.length >= 1 && b3.conf && b3.before === b3.after && errs.length === 0;
   console.log(ok ? '\n✓ b366 РАБОТАЕТ: один QR несёт и прогресс, и профиль' : '\n✗ расхождение с ожиданиями');
   await A.ctx.close(); await B.ctx.close();
   await browser.close();

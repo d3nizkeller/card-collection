@@ -50,7 +50,7 @@ const syncWait = page => page.evaluate(async () => {
 
   console.log('=== устройства A и B связываются кодом TEST01 ===');
   const a1 = await snap(A.page, async () => {
-    state.coins = 1000; state.cards = [{ id: 'c1', title: 'Карта A', packId: 'p1', rarity: 'common' }];
+    state.coins = 1000; state.cards = [{ id: 'c1', title: 'Карта A', packId: 'p1', rarity: 'common' }]; state.collection = { c1: 1 };
     saveState();
     profSetCode('TEST01', true);
   });
@@ -60,7 +60,7 @@ const syncWait = page => page.evaluate(async () => {
   console.log('A после пуша: баланс A =', a1b.coins, '| lastBal =', a1b.lastBal, '| документ профиля:', docAfterA ? (JSON.parse(docAfterA).state.coins + ' монет, карт: ' + JSON.parse(docAfterA).state.cards.length) : 'НЕТ');
 
   const b1 = await snap(B.page, async () => {
-    state.coins = 50; state.cards = [{ id: 'c2', title: 'Карта B', packId: 'p1', rarity: 'rare' }];
+    state.coins = 50; state.cards = [{ id: 'c2', title: 'Карта B', packId: 'p1', rarity: 'rare' }]; state.collection = { c2: 1 };
     saveState();
     profSetCode('TEST01', true);
     for (let i = 0; i < 15; i++) { const r = await profSyncOnce(true); if (r) break; await new Promise(res => setTimeout(res, 400)); }
@@ -104,16 +104,35 @@ const syncWait = page => page.evaluate(async () => {
     return card ? card.textContent.replace(/\s+/g, ' ').slice(0, 260) : 'НЕТ КАРТОЧКИ';
   });
   console.log('карточка панели:', panel);
+  console.log('\n=== b370: продажа повторок и вскрытые паки не воскрешают ===');
+  await snap(A.page, async () => { state.collection = { x: 3, c1: 1 }; state.cards = [{ id: 'x', name: 'X', packId: 'p1', rarity: 'common' }, { id: 'c1', title: 'Карта A', packId: 'p1', rarity: 'common' }]; state.packs = [{ id: 'pack1', title: 'Пак 1' }]; saveState(); });
+  await syncWait(A.page);
+  await snap(B.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); } });
+  const bBefore = await snap(B.page, () => ({ col: state.collection.x, packs: state.packs.map(p => p.id) }));
+  await snap(B.page, async () => { state.collection.x = 2; saveState(); });   // B «продал» одну копию
+  await syncWait(B.page);
+  await snap(A.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); } });
+  const aAfterSale = await snap(A.page, () => state.collection.x);
+  await snap(A.page, async () => { state.packs = []; saveState(); });          // A «вскрыл» пак
+  await syncWait(A.page);
+  await snap(B.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); } });
+  const bAfterOpen = await snap(B.page, () => state.packs.map(p => p.id));
+  console.log('   B получил от A: collection.x =', bBefore.col, '(3) | паки:', bBefore.packs.join(','));
+  console.log('   B продал копию -> у A x =', aAfterSale, '(ожидаем 2: продажа не воскресла)');
+  console.log('   A вскрыл пак -> у B паки =', JSON.stringify(bAfterOpen), '(ожидаем []: пак не вернулся)');
+
   console.log('\n=== b367: клоббер — чужой пуш по несвежей читке не съедает взнос ===');
   const keyC = 'nexus-tcg-prof-c-test01';
+  const aDid = await snap(A.page, () => nxDeviceId());
   const docBefore = JSON.parse(STORE.get(keyC));
-  const bDid = docBefore.by;
-  const bMov = (docBefore.mov || {})[bDid];
-  STORE.set(keyC, JSON.stringify({ v: 2, ts: Date.now() + 5, by: bDid, code: docBefore.code, base: 0, mov: { [bDid]: bMov }, state: docBefore.state, minerLvl: docBefore.minerLvl, book: docBefore.book }));
-  console.log('   doc испорчен: остался только взнос B (' + bMov + '), взнос A стёрт');
+  const keep = {}; Object.keys(docBefore.mov || {}).forEach(k => { if (k !== aDid) keep[k] = docBefore.mov[k]; });
+  const keptSum = Object.values(keep).reduce((a, b) => a + b, 0);
+  STORE.set(keyC, JSON.stringify({ v: 3, ts: Date.now() + 5, by: docBefore.by, code: docBefore.code, base: docBefore.base || 0, mov: keep, base_col: docBefore.base_col || {}, colmov: docBefore.colmov || {}, ptomb: docBefore.ptomb || [], state: docBefore.state, minerLvl: docBefore.minerLvl, book: docBefore.book }));
+  console.log('   doc испорчен: взнос A стёрт, остались чужие (' + JSON.stringify(keep) + ')');
   const aHeal = await snap(A.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); } return state.coins; });
   const docHeal = JSON.parse(STORE.get(keyC));
   console.log('   A после синка =', aHeal, '(ожидаем', a4 + ') | mov в доке:', JSON.stringify(docHeal.mov));
+  const movRestored = Object.keys(docHeal.mov || {}).length === Object.keys(docBefore.mov || {}).length;
 
   console.log('\n=== b368: интерфейс НЕ мигает при пустой синхронизации ===');
   const flick = await A.page.evaluate(async () => {
@@ -128,36 +147,25 @@ const syncWait = page => page.evaluate(async () => {
     return out;
   });
   console.log('   2 пустых синка: перерисовок вкладок =', flick.idle.refr, '| обновлений счётчика =', flick.idle.coinUpd, '(ожидаем 0 и 0)');
-  const flick2 = await A.page.evaluate(async (key) => {
-    let refr = 0, coinUpd = 0;
-    const oR = window.refreshVisibleTabs, oC = window.updateCoinDisplay;
-    window.refreshVisibleTabs = function () { refr++; return oR.apply(this, arguments); };
-    window.updateCoinDisplay = function () { coinUpd++; return oC.apply(this, arguments); };
-    // меняем ТОЛЬКО баланс в доке
-    return new Promise(res => {
-      fetch('https://textdb.dev/api/data/' + key).then(r => r.json()).then(doc => {
-        // правим взнос ДРУГОГО устройства (леджер — источник истины, поле coins витринное)
-        const me = nxDeviceId();
-        const other = Object.keys(doc.mov || {}).find(k => k !== me);
-        if (other) doc.mov[other] += 100;
-        doc.state.coins += 100;
-        return fetch('https://textdb.dev/api/data/' + key, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(doc) });
-      }).then(async () => {
-        for (let i = 0; i < 3; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); }
-        const coinsOnly = { refr, coinUpd, coins: state.coins };
-        refr = 0; coinUpd = 0;
-        // теперь добавляем карту в док
-        const doc2 = await (await fetch('https://textdb.dev/api/data/' + key)).json();
-        doc2.state.cards = (doc2.state.cards || []).concat([{ id: 'cardZ', title: 'Z', packId: 'p1', rarity: 'epic' }]);
-        doc2.ts = Date.now() + 3;
-        await fetch('https://textdb.dev/api/data/' + key, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(doc2) });
-        for (let i = 0; i < 3; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); }
-        res({ coinsOnly, struct: { refr, coinUpd, hasCardZ: state.cards.some(c => c.id === 'cardZ') } });
-      });
-    });
-  }, 'nexus-tcg-prof-c-test01');
-  console.log('   баланс +100 в доке: перерисовок =', flick2.coinsOnly.refr, '(ожидаем 0) | счётчик обновлён =', flick2.coinsOnly.coinUpd, '(>=1) | баланс =', flick2.coinsOnly.coins);
-  console.log('   новая карта в доке: перерисовок =', flick2.struct.refr, '(ожидаем >=1) | карта приехала =', flick2.struct.hasCardZ);
+  const flick2 = await (async () => {
+    const arm = () => A.page.evaluate(() => { window.__refr = 0; window.__cupd = 0; const oR = window.refreshVisibleTabs, oC = window.updateCoinDisplay; window.refreshVisibleTabs = function () { window.__refr++; return oR.apply(this, arguments); }; window.updateCoinDisplay = function () { window.__cupd++; return oC.apply(this, arguments); }; return state.coins; });
+    // только баланс: B зарабатывает +100 своими руками (леджер, не хирургия дока)
+    const c0 = await arm();
+    await snap(B.page, async () => { state.coins += 100; saveState(); });
+    await syncWait(B.page);
+    await snap(A.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); } });
+    const coinsOnly = await A.page.evaluate(() => ({ refr: window.__refr, cupd: window.__cupd, coins: state.coins }));
+    coinsOnly.base = c0;
+    // структурно: B добавляет карту Z в коллекцию
+    await A.page.evaluate(() => { window.__refr = 0; window.__cupd = 0; });
+    await snap(B.page, async () => { state.collection.z = 1; state.cards.push({ id: 'z', name: 'Z', packId: 'p1', rarity: 'epic' }); saveState(); });
+    await syncWait(B.page);
+    await snap(A.page, async () => { for (let i = 0; i < 15; i++) { if (await profSyncOnce(false)) break; await new Promise(r => setTimeout(r, 300)); } });
+    const struct = await A.page.evaluate(() => ({ refr: window.__refr, cupd: window.__cupd, hasZ: state.cards.some(c => c.id === 'z') }));
+    return { coinsOnly, struct };
+  })();
+  console.log('   B заработал +100: перерисовок =', flick2.coinsOnly.refr, '(ожидаем 0) | счётчик обновлён =', flick2.coinsOnly.cupd, '(>=1) | баланс A =', flick2.coinsOnly.coins);
+  console.log('   B добавил карту Z: перерисовок =', flick2.struct.refr, '(ожидаем >=1) | карта приехала =', flick2.struct.hasZ);
   const errsAB = [...A.errs, ...B.errs];
   await A.ctx.close(); await B.ctx.close();
   await browser.close(); // 4 тяжёлые страницы в одном браузере роняют песочницу — дальше отдельный
@@ -185,7 +193,7 @@ const syncWait = page => page.evaluate(async () => {
   try { await browser2.close(); } catch (e) {}
 
   console.log('\nошибки страниц:', errs.length ? errs.slice(0, 6) : 'нет');
-  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && c1 === 15 && d1 === 15 && /синхронизированы: код TEST01/.test(panel) && aHeal === a4 && Object.keys(docHeal.mov || {}).length === 2 && e1.ipauto === false && e1.key === '' && flick.idle.refr === 0 && flick.idle.coinUpd === 0 && flick2.coinsOnly.refr === 0 && flick2.coinsOnly.coinUpd >= 1 && flick2.struct.refr >= 1 && flick2.struct.hasCardZ;
+  const ok = b1.coins === 1050 && a2.coins === 1050 && b2 === 1250 && a4 === 1000 && c1 === 15 && d1 === 15 && /синхронизированы: код TEST01/.test(panel) && aHeal === a4 && movRestored && e1.ipauto === false && e1.key === '' && bBefore.col === 3 && aAfterSale === 2 && bAfterOpen.length === 0 && flick.idle.refr === 0 && flick.idle.coinUpd === 0 && flick2.coinsOnly.refr === 0 && flick2.coinsOnly.cupd >= 1 && flick2.struct.refr >= 1 && flick2.struct.hasZ;
   console.log(ok ? '\n✓ b364+b367: код, дельты, union, IP-авто по желанию, метка в панели, леджер переживает клоббер, авто-IP выкл по умолчанию' : '\n✗ где-то расхождение с ожиданиями');
   process.exit(ok ? 0 : 1);
 })();

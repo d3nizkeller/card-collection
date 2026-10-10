@@ -5047,35 +5047,76 @@ function nxToggle3d() {
             return out;
         }
         function profMaxStr(a, b) { return String(a || '') >= String(b || '') ? (a || b || '') : (b || ''); }
-        function profMergeState(L, R) { // L — локальный слепок, R — общий из облака (или null)
-            if (!R) return L;
+        function profMapNum(m) { const o = {}; if (m && typeof m === 'object') for (const k in m) { const v = Math.floor(Number(m[k])); if (isFinite(v) && v !== 0) o[k] = v; } return o; }
+        function profMapDiff(cur, prev) { // b370: мои изменения коллекции с момента снимка: {id: дельта}
+            const d = {};
+            const c = profMapNum(cur), p = profMapNum(prev || {});
+            for (const k in c) { const v = c[k] - (p[k] || 0); if (v) d[k] = v; }
+            for (const k in p) { if (!(k in c) && p[k]) d[k] = -p[k]; }
+            return d;
+        }
+        function profMapAdd(base, delta) { const o = Object.assign({}, base); for (const k in delta) { const v = (o[k] || 0) + delta[k]; if (v) o[k] = v; else delete o[k]; } return o; }
+        function profMapSumAll(base, movs) { // b370: база + Σ взносов устройств, clamp ≥ 0
+            const o = {};
+            const add = m => { for (const k in m) o[k] = (o[k] || 0) + m[k]; };
+            add(profMapNum(base));
+            for (const d in movs) add(profMapNum(movs[d]));
+            for (const k in o) if (o[k] <= 0) delete o[k];
+            return o;
+        }
+        function profCapList(arr, cap) { const a = Array.isArray(arr) ? arr.slice() : []; return a.length > cap ? a.slice(a.length - cap) : a; }
+        function profMergeState(L, R, doc, did) { // L — локальный слепок, R — состояние из облака (или null), doc — весь документ профиля
             const out = {};
+            // b370: коллекция — леджер взносов устройств (продажи и траты больше не
+            // воскрешаются max/union с другого устройства); паки — union минус
+            // tombstone (вскрытый/проданный пак не возвращается); карты — выводятся
+            // из слитой коллекции, поэтому «повторки» всегда согласованы с продажами.
+            const colsnap = JSON.parse(LS.getItem('nx_prof_colsnap') || 'null');
+            const myColDelta = colsnap ? profMapDiff(L.collection, colsnap) : {};
+            const myColMov = profMapAdd(profMapNum(JSON.parse(LS.getItem('nx_prof_colmov') || '{}')), myColDelta);
+            const packsnap = JSON.parse(LS.getItem('nx_prof_packsnap') || 'null');
+            const curPackIds = (L.packs || []).map(p => p && p.id);
+            const myRemoved = packsnap ? packsnap.filter(id => curPackIds.indexOf(id) < 0) : [];
+            const myTomb = profCapList((JSON.parse(LS.getItem('nx_prof_ptomb') || '[]') || []).concat(myRemoved), 2000);
+            let base_col = {}, colmov = {}, ptomb = myTomb;
+            if (doc) {
+                base_col = profMapNum(doc.base_col || (doc.state && doc.state.collection) || {}); // миграция v2
+                colmov = Object.assign({}, doc.colmov || {});
+                ptomb = profCapList((doc.ptomb || []).concat(myTomb), 2000);
+            } else {
+                base_col = profMapNum(L.collection);
+            }
+            colmov[did] = myColMov;
+            const mergedCol = profMapSumAll(base_col, colmov);
+            const tombSet = {}; ptomb.forEach(id => { tombSet[id] = 1; });
             const pm = {};
-            (R.packs || []).forEach(p => { if (p && p.id) pm[p.id] = p; });
-            (L.packs || []).forEach(p => { if (p && p.id) pm[p.id] = p; });
-            out.packs = Object.keys(pm).map(k => pm[k]);
+            ((R && R.packs) || []).forEach(p => { if (p && p.id && !tombSet[p.id]) pm[p.id] = p; });
+            (L.packs || []).forEach(p => { if (p && p.id && !tombSet[p.id]) pm[p.id] = p; });
             const cm = {};
-            (R.cards || []).forEach(c => { if (c && c.id) cm[c.id] = c; });
+            ((R && R.cards) || []).forEach(c => { if (c && c.id) cm[c.id] = c; });
             (L.cards || []).forEach(c => { if (c && c.id) cm[c.id] = c; });
-            out.cards = Object.keys(cm).map(k => cm[k]);
-            out.collection = profMaxMap(R.collection, L.collection);
-            out.stats = profMaxMap(R.stats, L.stats);
-            out.achievements = profMaxMap(R.achievements, L.achievements);
-            out.pity = profMaxMap(R.pity, L.pity);
-            out.albumBonus = profMaxMap(R.albumBonus, L.albumBonus);
-            out.packStats = profMaxMap(R.packStats, L.packStats);
-            out.windowBuys = profMaxMap(R.windowBuys, L.windowBuys);
+            out.packs = Object.keys(pm).map(k => pm[k]);
+            out.cards = Object.keys(cm).filter(id => mergedCol[id] > 0).map(id => cm[id]);
+            out.collection = mergedCol;
+            out.__pub = { myColMov: myColMov, ptomb: ptomb, base_col: base_col, colmov: colmov, myDeltaEmpty: (Object.keys(myColDelta).length === 0 && myRemoved.length === 0) };
+            // числовые счётчики в игре только растут — максимум безопасен
+            out.stats = profMaxMap(R && R.stats, L.stats);
+            out.achievements = profMaxMap(R && R.achievements, L.achievements);
+            out.pity = profMaxMap(R && R.pity, L.pity);
+            out.albumBonus = profMaxMap(R && R.albumBonus, L.albumBonus);
+            out.packStats = profMaxMap(R && R.packStats, L.packStats);
+            out.windowBuys = profMaxMap(R && R.windowBuys, L.windowBuys);
             out.daily = {
-                lastClaimDate: profMaxStr(R.daily && R.daily.lastClaimDate, L.daily && L.daily.lastClaimDate) || null,
-                streak: Math.max(profNum(R.daily && R.daily.streak), profNum(L.daily && L.daily.streak)),
-                lastDurakWinDate: profMaxStr(R.daily && R.daily.lastDurakWinDate, L.daily && L.daily.lastDurakWinDate) || null
+                lastClaimDate: profMaxStr(R && R.daily && R.daily.lastClaimDate, L.daily && L.daily.lastClaimDate) || null,
+                streak: Math.max(profNum(R && R.daily && R.daily.streak), profNum(L.daily && L.daily.streak)),
+                lastDurakWinDate: profMaxStr(R && R.daily && R.daily.lastDurakWinDate, L.daily && L.daily.lastDurakWinDate) || null
             };
-            const md = String(R.missions && R.missions.date || ''), ld = String(L.missions && L.missions.date || '');
-            out.missions = (md > ld) ? R.missions : (ld > md ? L.missions : (L.missions && (L.missions.list || []).length >= ((R.missions && R.missions.list) || []).length ? L.missions : R.missions));
+            const md = String((R && R.missions && R.missions.date) || ''), ld = String((L.missions && L.missions.date) || '');
+            out.missions = (md > ld) ? R.missions : (ld > md ? L.missions : ((L.missions && (L.missions.list || []).length >= ((R && R.missions && R.missions.list) || []).length) ? L.missions : R.missions));
             const dk = {};
-            (R.deck || []).forEach(id => { dk[id] = 1; });
+            ((R && R.deck) || []).forEach(id => { dk[id] = 1; });
             (L.deck || []).forEach(id => { dk[id] = 1; });
-            out.deck = Object.keys(dk).filter(id => cm[id]);
+            out.deck = Object.keys(dk).filter(id => cm[id] && mergedCol[id] > 0);
             return out;
         }
         function profSnap() { // слепок прогресса для облака (без тяжёлых артов: image-ссылки и так внутри паков/карт)
@@ -5095,17 +5136,20 @@ function nxToggle3d() {
                 windowBuys: state.windowBuys || {}
             };
         }
+        function profJsonK(m) { // b370: детерминированный JSON с сортировкой ключей: иначе отпечаток «мигает» от порядка ключей
+            try { const o = m || {}; return JSON.stringify(Object.keys(o).sort().reduce((a, k) => { a[k] = o[k]; return a; }, {})); } catch (e) { return '{}'; }
+        }
         function profSig() { // b368: отпечаток состояния: изменилось ли что-то реально
             try {
                 return [
                     Math.floor(state.coins) || 0,
-                    (state.packs || []).map(p => p && p.id).join('.'),
-                    (state.cards || []).map(c => c && c.id).join('.'),
-                    JSON.stringify(state.collection || {}),
-                    JSON.stringify(state.albumBonus || {}),
-                    JSON.stringify(state.packStats || {}),
-                    JSON.stringify(state.achievements || {}),
-                    (state.deck || []).join('.'),
+                    (state.packs || []).map(p => p && p.id).slice().sort().join('.'), // b370: порядок после union не важен
+                    (state.cards || []).map(c => c && c.id).slice().sort().join('.'),
+                    profJsonK(state.collection),
+                    profJsonK(state.albumBonus),
+                    profJsonK(state.packStats),
+                    profJsonK(state.achievements),
+                    (state.deck || []).slice().sort().join('.'),
                     (state.missions && state.missions.date) || '',
                     (state.daily && state.daily.lastClaimDate) || '',
                     (state.stats && state.stats.packsOpened) || 0
@@ -5166,15 +5210,18 @@ function nxToggle3d() {
                 keepalive: !!keepalive
             }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
         }
-        function profBuildDoc(key, remote, mergedFields, mergedCoins, base, mov) {
+        function profBuildDoc(key, remote, mergedFields, mergedCoins, base, mov, pub) {
             const did = nxDeviceId();
             const book = Object.assign({}, (remote && remote.book) || {});
             book[did] = { at: Date.now(), bal: mergedCoins, dev: nxDeviceLabel(), ip: nxPublicIp(), n: getPlayerName() };
             return {
-                v: 2, ts: Date.now(), by: did, code: profCode(),
+                v: 3, ts: Date.now(), by: did, code: profCode(),
                 base: Math.max(0, Math.floor(base) || 0), // b367: общая база (миграция доков v1)
                 mov: mov || {},                          // b367: леджер накопительных взносов устройств
-                state: Object.assign({}, mergedFields, { coins: mergedCoins }),
+                base_col: (pub && pub.base_col) || {},   // b370: база коллекции (миграция доков v2)
+                colmov: (pub && pub.colmov) || {},       // b370: леджер взносов коллекции по устройствам
+                ptomb: (pub && pub.ptomb) || [],         // b370: tombstone вскрытых/проданных паков
+                state: Object.assign((function () { const sf = Object.assign({}, mergedFields); delete sf.__pub; return sf; })(), { coins: mergedCoins }),
                 minerLvl: Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)),
                 book: book
             };
@@ -5199,7 +5246,8 @@ function nxToggle3d() {
                 profLastRemote = remote;
                 const rState = remote && remote.state ? remote.state : null;
                 const myDelta = myDelta0; // b366: дельта зафиксирована до await
-                const mergedFields = profMergeState(profSnap(), rState);
+                const mergedFields = profMergeState(profSnap(), rState, remote, did);
+                const pub = mergedFields.__pub || {}; // b370: что публиковать по леджеру коллекции
                 // b367: ЛЕДЖЕР взносов: coins = base + Σ mov[did]. Устройство
                 // перезаписывает только СВОЙ mov (накопительно из LS), поэтому чужой
                 // пуш по несвежей читке не съедает вашу дельту — потеря
@@ -5229,7 +5277,7 @@ function nxToggle3d() {
                 // расчётом (кто-то запушил по несвежей читке и стёр его) — пушим
                 // восстановление, иначе чужая следующая синхронизация сядет на ноль
                 const movLost = !!remote && remoteMyMov !== myC;
-                const needPush = !!force || !remote || myDelta !== 0 || unionGrew || bookStale || movLost;
+                const needPush = !!force || !remote || myDelta !== 0 || unionGrew || bookStale || movLost || !pub.myDeltaEmpty; // b370: + дельты коллекции/паков
                 // прикладываем общее состояние к себе (чужие карты/паки/баланс приезжают сюда).
                 // ВАЖНО: базой «моих изменений» становится именно слитое значение, иначе
                 // подтянутый прирост на следующем круге уехал бы в облако второй раз,
@@ -5241,15 +5289,24 @@ function nxToggle3d() {
                     // не удался — базу НЕ трогаем: дельта повторится следующим кругом.
                     profApply(Object.assign({}, mergedFields, { coins: mergedCoins }), Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)));
                     if (myDelta0 === 0) { try { LS.setItem('nx_prof_lastbal', String(mergedCoins)); } catch (e) {} }
+                    if (myDelta0 === 0 && pub.myDeltaEmpty) { // b370: своих изменений не было — снимки продвигаем
+                        try { LS.setItem('nx_prof_colsnap', JSON.stringify(state.collection)); LS.setItem('nx_prof_packsnap', JSON.stringify((state.packs || []).map(p => p && p.id))); } catch (e) {}
+                    }
                 }
                 profLastTs = Date.now();
                 if (!needPush) { profUI(); return true; }
-                const doc = profBuildDoc(key, remote, mergedFields, mergedCoins, base, mov);
+                const doc = profBuildDoc(key, remote, mergedFields, mergedCoins, base, mov, pub);
                 return profPushDoc(key, doc).then(() => {
                     // b367: база = ПРИМЕНЁННЫЙ баланс: всё, что устройство держит
                     // на руках после синка, учтено в mov; следующая дельта считается
                     // от него (иначе подтянутое чужое поедет в облако как «своё»)
                     try { LS.setItem('nx_prof_lastbal', String(mergedCoins)); LS.setItem('nx_prof_movc', String(myC)); } catch (e) {}
+                    try { // b370: опубликованные взносы коллекции и tombstone паков + снимки «на конец круга»
+                        LS.setItem('nx_prof_colmov', JSON.stringify(pub.myColMov));
+                        LS.setItem('nx_prof_ptomb', JSON.stringify(pub.ptomb));
+                        LS.setItem('nx_prof_colsnap', JSON.stringify(state.collection));
+                        LS.setItem('nx_prof_packsnap', JSON.stringify((state.packs || []).map(p => p && p.id)));
+                    } catch (e) {}
                     profLastRemote = doc;
                     // защита от перезаписи: читаем ещё раз, если между пушем и чтением
                     // кто-то вписался — повторяем цикл слияния (максимум один раз)
@@ -5266,7 +5323,7 @@ function nxToggle3d() {
                             const f2 = profMergeState(profSnap(), r2);
                             const c2 = Math.max(0, base2 + Object.keys(mov2).reduce((s, k) => s + mov2[k], 0));
                             profApply(Object.assign({}, f2, { coins: c2 }), Math.max(profMinerLvl(), profNum(chk && chk.minerLvl)));
-                            const doc2 = profBuildDoc(key, chk, f2, c2, base2, mov2);
+                            const doc2 = profBuildDoc(key, chk, f2, c2, base2, mov2, pub);
                             return profPushDoc(key, doc2).then(() => { try { LS.setItem('nx_prof_lastbal', String(Math.max(0, Math.floor(state.coins) || 0))); LS.setItem('nx_prof_movc', String(myC2)); } catch (e) {} });
                         }
                         return true;
@@ -5294,9 +5351,10 @@ function nxToggle3d() {
                 const base = r ? ((typeof r.base === 'number' && isFinite(r.base)) ? Math.max(0, Math.floor(r.base)) : Math.max(0, profNum(r.coins) - sumMov)) : 0;
                 const myC = profNum(LS.getItem('nx_prof_movc')) + myDelta;
                 mov[nxDeviceId()] = myC;
-                const fields = profMergeState(profSnap(), r && r.state ? r.state : null);
+                const fields = profMergeState(profSnap(), r && r.state ? r.state : null, r, nxDeviceId());
+                const pubF = fields.__pub || {}; // b370
                 const coins = Math.max(0, base + Object.keys(mov).reduce((s, k) => s + mov[k], 0));
-                profPushDoc(key, profBuildDoc(key, r, fields, coins, base, mov), true);
+                profPushDoc(key, profBuildDoc(key, r, fields, coins, base, mov, pubF), true);
             } catch (e) {}
         }
         function profGenCode() {
