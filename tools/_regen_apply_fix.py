@@ -70,11 +70,14 @@ PUSH_NEW = """        const finalize = () => { nxProgress(0.65, 'Собираю 
             }).catch(() => pushReal());
         };"""
 
+# b362 (qrxB64 через массив+join) ОТМЕНЁН: замер в браузере показал, что
+# склейка bin += String.fromCharCode(...) в V8 не квадратична (rope-конкатенация),
+# а вариант с join вышел МЕДЛЕННЕЕ (2 МБ: 206 мс против 124 мс). Правка не нужна.
+
 APP_EDITS = []   # b355–b358 уже в HEAD
+# b357-dedup и b361 уже в HEAD — в списке остаётся только то, чего там ещё нет
 QR_EDITS = [
-    ('b357-dedup', TRIPLE_OLD, TRIPLE_NEW),
-    ('b361-sha-helpers', SHA_OLD, SHA_NEW),
-    ('b361-noop-skip', PUSH_OLD, PUSH_NEW),
+    # b357-dedup, b361-sha-helpers и b361-noop-skip уже в HEAD — список пуст
 ]
 
 for lbl, o, n in APP_EDITS + QR_EDITS:
