@@ -5398,17 +5398,21 @@ function nxToggle3d() {
             const c = profCode();
             return c ? 'код ' + c : 'не создан — баланс только этого устройства';
         }
-        function profUI() {
-            const st = document.getElementById('nx-prof-status');
+        function profUI() { // b372: статус профиля живёт в модалке QR (доступна всем игрокам), не в Студии
+            const st = document.getElementById('qr-prof-row');
             if (st) {
                 const book = (profLastRemote && profLastRemote.book) ? Object.keys(profLastRemote.book).length : 0;
                 st.innerHTML =
-                    '<span class="text-[10px] text-slate-400">Профиль: <b class="text-slate-200">' + cloudEsc(profLabel()) + '</b></span>' +
-                    '<span class="text-[10px] text-slate-500">устройств в профиле: <b class="text-slate-300">' + book + '</b></span>' +
+                    '<span class="text-[10px] text-slate-400">Профиль: <b class="text-emerald-300">' + cloudEsc(profLabel()) + '</b></span>' +
+                    '<span class="text-[10px] text-slate-500">устройств: <b class="text-slate-300">' + book + '</b></span>' +
                     '<span class="text-[10px] text-slate-500">синхронизация: <b class="text-slate-300">' + (profLastTs ? statsAgo(profLastTs) : 'ещё не была') + '</b></span>';
             }
-            const cc = document.getElementById('nx-prof-code-btn');
-            if (cc) cc.innerHTML = profCode() ? '<i class="fa-solid fa-key mr-1"></i>Сменить код' : '<i class="fa-solid fa-key mr-1"></i>Создать код';
+        }
+        function profSyncNowBtn() { // b372: кнопка в модалке QR
+            profSyncOnce(true).then(ok => {
+                try { showToast(ok ? 'Синхронизация выполнена' : 'Синхронизация недоступна: нет кода профиля или сети', ok ? 'success' : 'info'); } catch (e) {}
+                profUI();
+            });
         }
         function profInit() {
             try {
@@ -5430,56 +5434,6 @@ function nxToggle3d() {
         function profLink() {
             try { return location.origin + location.pathname + '?prof=' + (profCode() || ''); }
             catch (e) { return '?prof=' + (profCode() || ''); }
-        }
-        function profQrDraw(cv, text) { // тот же рендер, что qrxRender, но на свой canvas
-            const qr = qrcode(0, 'L'); // уровень L: меньше модулей, камере проще
-            qr.addData(text, 'Byte');
-            qr.make();
-            const n = qr.getModuleCount(), qz = 4, m = 8;
-            cv.width = cv.height = (n + qz * 2) * m;
-            const ctx = cv.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
-            ctx.fillStyle = '#0b1220';
-            for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect((c + qz) * m, (r + qz) * m, m, m);
-        }
-        function profQrShow() {
-            let c = profCode();
-            if (!c) { c = profGenCode(); profSetCode(c, true); } // нет кода — создаём сразу
-            let mo = document.getElementById('nx-prof-qr-modal');
-            if (!mo) {
-                mo = document.createElement('div');
-                mo.id = 'nx-prof-qr-modal';
-                mo.className = 'fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto';
-                mo.innerHTML = '<div class="relative w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-4 text-center space-y-3">' +
-                    '<button type="button" onclick="profQrClose()" class="absolute top-3 right-3 text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>' +
-                    '<h3 class="text-sm font-bold text-white"><i class="fa-solid fa-qrcode text-emerald-400 mr-1"></i>QR-код вашего профиля</h3>' +
-                    '<p class="text-[11px] text-slate-400 leading-snug">Отсканируйте на втором устройстве обычной камерой телефона (ссылка откроется и устройство само привяжется) или в сайте кнопкой «Сканировать QR».</p>' +
-                    '<div class="mx-auto w-fit bg-white rounded-2xl p-3 shadow-lg shadow-emerald-500/10"><canvas id="nx-prof-qr-canvas" class="block w-[220px] h-[220px] sm:w-[260px] sm:h-[260px]"></canvas></div>' +
-                    '<p class="text-xs font-mono text-emerald-300" id="nx-prof-qr-code"></p>' +
-                    '<div class="flex flex-wrap justify-center gap-1.5">' +
-                        '<button type="button" onclick="profCopyLink()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold rounded-xl transition"><i class="fa-solid fa-link mr-1"></i>Копировать ссылку</button>' +
-                        '<button type="button" onclick="profQrScan()" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold rounded-xl transition"><i class="fa-solid fa-camera mr-1"></i>Сканировать другой QR</button>' +
-                    '</div>' +
-                '</div>';
-                document.body.appendChild(mo);
-            }
-            mo.classList.remove('hidden');
-            try {
-                profQrDraw(document.getElementById('nx-prof-qr-canvas'), profLink());
-                const ce = document.getElementById('nx-prof-qr-code');
-                if (ce) ce.textContent = 'Код профиля: ' + c;
-                profUI();
-            } catch (e) { try { showToast('Не удалось нарисовать QR: ' + String((e && e.message) || e), 'error'); } catch (e2) {} }
-        }
-        function profQrClose() { const mo = document.getElementById('nx-prof-qr-modal'); if (mo) mo.classList.add('hidden'); }
-        function profQrScan() { // открыть существующий камера-сканер (из переноса прогресса)
-            profQrClose();
-            const m = document.getElementById('modal-qr');
-            if (!m) { try { showToast('Сканер QR недоступен в этой сборке', 'error'); } catch (e) {} return; }
-            m.classList.remove('hidden');
-            try { qrGoScan(); } catch (e) { try { showToast('Камера недоступна: ' + String((e && e.message) || e), 'error'); } catch (e2) {} }
-            const st = document.getElementById('qr-scan-status');
-            if (st) st.innerHTML = '<i class="fa-solid fa-qrcode text-emerald-300 mr-1"></i>Наведите камеру на QR-код профиля с экрана другого устройства (кнопка «QR-код» в блоке синхронизации)…';
         }
         function profQrFromText(raw) { // распознать код профиля из отсканированного текста; '' — не профиль
             const s = String(raw || '').trim();

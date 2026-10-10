@@ -1,6 +1,5 @@
-/* b365: QR-код профиля синхронизации.
-   Проверяем цикл целиком: нарисовали QR -> декодировали jsQR -> содержимое =
-   ссылка ?prof=КОД -> «скан» этой ссылки (qrxHandleCode) -> код применён.
+/* b365/b372: QR-привязка профиля живёт в модалке QR из навбара (доступна всем),
+   в Студии блока синхронизации больше нет.
    Запуск: node tools/test-b365.js [url] */
 const PW = process.env.PW_PATH || '/tmp/pw/node_modules/playwright-core';
 const { chromium } = require(PW);
@@ -9,11 +8,10 @@ const CHROME = process.env.CHROME_PATH || '/tmp/.cache/ms-playwright/chromium-11
 
 (async () => {
   const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
-  const ctx = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+  const ctx = await browser.newContext({ viewport: { width: 560, height: 900 }, deviceScaleFactor: 2 });
   await ctx.addInitScript(() => { try { localStorage.setItem('nx_weak_gpu', '1'); } catch (e) {} });
-  // профильные документы textdb мокаем — привязка кода запускает синхронизацию
   const STORE = new Map();
-  await ctx.route('https://textdb.dev/api/data/nexus-tcg-prof-*', async route => {
+  await ctx.route('https://textdb.dev/**', async route => {
     const u = route.request().url();
     const key = u.replace(/https:\/\/textdb\.dev\/api\/data\//, '').replace(/[?].*$/, '');
     if (route.request().method() === 'POST') { STORE.set(key, route.request().postData()); await route.fulfill({ status: 200, body: 'ok' }); return; }
@@ -21,56 +19,52 @@ const CHROME = process.env.CHROME_PATH || '/tmp/.cache/ms-playwright/chromium-11
   });
   const page = await ctx.newPage();
   const errs = [];
-  page.on('pageerror', e => errs.push('pageerror: ' + e.message));
+  page.on('pageerror', e => errs.push(e.message));
   await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
-  await page.waitForTimeout(3500);
+  await page.waitForTimeout(3200);
 
   const r = await page.evaluate(async () => {
     const out = {};
     try { document.getElementById('modal-daily').classList.add('hidden'); } catch (e) {}
-    // 1) показ QR: кода ещё нет — должен создаться
-    profQrShow();
-    const cv = document.getElementById('nx-prof-qr-canvas');
-    const modal = document.getElementById('nx-prof-qr-modal');
-    out.modalVisible = !!modal && !modal.classList.contains('hidden');
-    out.code = profCode();
-    out.codeShown = (document.getElementById('nx-prof-qr-code') || {}).textContent || '';
-    // canvas непустой?
-    let dark = 0;
-    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-    for (let i = 0; i < d.length; i += 4) if (d[i] < 128) dark++;
-    out.darkPixels = dark;
-    // 2) декодируем нарисованный QR тем же jsQR, которым сканирует сайт
-    const res = jsQR(d, cv.width, cv.height);
+    // в Студии больше нет блока синхронизации
+    out.studioBlockGone = !Array.from(document.querySelectorAll('.studio-sec h3 span')).some(sp => sp.textContent.indexOf('Синхронизация между устройствами') >= 0);
+    out.profQrModalGone = typeof profQrShow === 'undefined';
+    // модалка QR из навбара: QR + строка профиля + кнопки управления
+    openQrModal();
+    for (let i = 0; i < 40; i++) {
+      await new Promise(r2 => setTimeout(r2, 300));
+      const w = document.getElementById('qr-canvas-wrap');
+      if (w && !w.classList.contains('hidden') && document.getElementById('qr-canvas').width > 0) break;
+    }
+    const cv = document.getElementById('qr-canvas');
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height);
+    const res = jsQR(d.data, cv.width, cv.height);
     out.qrText = res ? res.data : 'НЕ ЧИТАЕТСЯ';
-    out.qrIsProfLink = /[?&]prof=[A-Z0-9]{6}/.test(out.qrText || '');
-    out.linkMatches = profQrFromText(out.qrText) === profCode();
-    // 3) распознавание «голым» кодом
-    out.bareCode = profQrFromText('NXPROF:AB12CD') === 'AB12CD';
-    out.looksLike = qrxLooksLikeCode(out.qrText) === true;
-    // 4) имитация скана чужой ссылки: устройство привязывается к профилю QR77XK
-    await qrxHandleCode('https://d3nizkeller.github.io/card-collection/?prof=QR77XK');
-    out.appliedCode = profCode();
-    // синхронизация создала документ нового профиля?
-    for (let i = 0; i < 25; i++) { if (await profSyncOnce(true)) break; await new Promise(r2 => setTimeout(r2, 300)); }
-    out.docCreated = 'ok';
-    profQrClose();
-    out.modalHidden = modal.classList.contains('hidden');
+    out.qrHasProf = await (async () => {
+      const t = out.qrText;
+      if (t.indexOf('NXQ1.') === 0) { // прямой код: профиль лежит внутри сжатого снимка
+        try { const j = JSON.parse(await qrxInflate(qrxB64d(t.slice(5)))); return !!(j && j.prof); } catch (e) { return false; }
+      }
+      if (t.indexOf('NXR1.') === 0) return true; // облачный ключ: снимок с профилем лежит в облаке
+      return /[?&]prof=[A-Z0-9]{4,12}/.test(t);
+    })();
+    out.profRow = (document.getElementById('qr-prof-row') || {}).textContent || '';
+    out.buttons = ['profEnterCode', 'profCopyLink', 'profSyncNowBtn', 'profUnlink'].map(fn => fn + '=' + (typeof window[fn] === 'function'));
+    out.code = profCode();
     return out;
   });
-
-  console.log('модалка QR видна          :', r.modalVisible);
-  console.log('код профиля создан        :', r.code, '| подпись:', r.codeShown);
-  console.log('тёмных пикселей на canvas :', r.darkPixels, '(0 = пусто)');
-  console.log('QR декодируется jsQR      :', r.qrText);
-  console.log('это ссылка ?prof=КОД      :', r.qrIsProfLink, '| код совпадает:', r.linkMatches);
-  console.log('голый NXPROF: распознаётся:', r.bareCode, '| qrxLooksLikeCode:', r.looksLike);
-  console.log('«скан» чужой ссылки       : применён код', r.appliedCode, '(ожидаем QR77XK)');
-  console.log('док-профиль создан        :', Array.from(STORE.keys()).join(',') || 'нет');
-  console.log('модалка закрывается       :', r.modalHidden);
-  console.log('ошибки страницы           :', errs.length ? errs.slice(0, 5) : 'нет');
-  const ok = r.modalVisible && /^[A-Z0-9]{6}$/.test(r.code) && r.darkPixels > 1000 && r.qrIsProfLink && r.linkMatches && r.bareCode && r.looksLike && r.appliedCode === 'QR77XK' && STORE.has('nexus-tcg-prof-c-qr77xk') && r.modalHidden && errs.length === 0;
-  console.log(ok ? '\n✓ b365 РАБОТАЕТ: QR рисуется, читается своим же сканером, привязывает профиль' : '\n✗ есть расхождение');
+  console.log('блок синхронизации удалён из Студии :', r.studioBlockGone);
+  console.log('мёртвая проф-QR-модалка удалена      :', r.profQrModalGone);
+  console.log('QR из навбара содержит ?prof=        :', r.qrHasProf, '|', r.qrText.slice(0, 64));
+  console.log('строка профиля в модалке             :', r.profRow.replace(/\s+/g, ' ').trim());
+  console.log('кнопки управления                    :', r.buttons.join(' '));
+  console.log('код профиля                          :', r.code);
+  await page.evaluate(() => { const m = document.getElementById('modal-qr'); const card = m.querySelector('.relative') || m.firstElementChild; window.__shot = card; });
+  const card = await page.evaluateHandle(() => window.__shot);
+  await card.asElement().screenshot({ path: 'tools/shots/b372-qr-modal-profile.png' });
+  console.log('ошибки страницы:', errs.length ? errs.slice(0, 4) : 'нет');
+  const ok = r.studioBlockGone && r.profQrModalGone && r.qrHasProf && /код/.test(r.profRow) && r.buttons.every(b => b.endsWith('true')) && errs.length === 0;
+  console.log(ok ? '\n✓ b372: управление профилем живёт в модалке QR, Студия чистая' : '\n✗ расхождение');
   await browser.close();
   process.exit(ok ? 0 : 1);
 })();

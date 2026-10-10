@@ -174,7 +174,7 @@ async function qrxBuild() {
     } catch (e) {
         if (wrap) wrap.classList.add('hidden');
         if (status) status.innerHTML = '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Не удалось собрать код: ' + String((e && e.message) || e) + '. Ниже можно скопировать прогресс текстом.</span>';
-    } finally { qrxBuilding = false; }
+    } finally { qrxBuilding = false; try { profUI(); } catch (e) {} } // b372: модалка QR показывает актуальный профиль
 }
 // ---- b280: нативный сканер Telegram (для мини-приложения) ----
 (function () {

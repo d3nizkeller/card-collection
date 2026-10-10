@@ -2824,23 +2824,6 @@ min-height:56vh}
             </div>
             <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-rotate text-emerald-400"></i>
-                    <span>Синхронизация между устройствами — один пользователь, один баланс</span>
-                </h3>
-                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info mr-1 text-emerald-400"></i>Устройства одного пользователя делят общий баланс и прогресс. На основном устройстве создайте код и введите его на остальных (или пришлите ссылку ?prof=…). Синхронизация по IP удалена (b371): у каждого игрока свой баланс, как раньше. Общий баланс и прогресс — только у устройств, привязанных кодом профиля или QR-кодом. Баланс сливается по правилу «последнее состояние + изменения остальных устройств», коллекция, паки и альбомы объединяются, счётчики берутся максимумом.</p>
-                <div id="nx-prof-status" class="flex flex-wrap items-center gap-2"></div>
-                <div class="flex flex-wrap items-center gap-1.5">
-                    <button type="button" id="nx-prof-code-btn" onclick="profCreateCode()" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-key mr-1"></i>Создать код</button>
-                    <button type="button" onclick="profEnterCode()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-keyboard mr-1"></i>Ввести код</button>
-                    <button type="button" onclick="profCopyLink()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-link mr-1"></i>Ссылка на устройство</button>
-                    <button type="button" onclick="profQrShow()" title="Показать QR-код профиля: второе устройство привяжется сканированием" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition"><i class="fa-solid fa-qrcode mr-1"></i>QR-код</button>
-                    <button type="button" onclick="profQrScan()" title="Сканировать QR профиля с экрана другого устройства" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-camera mr-1"></i>Сканировать QR</button>
-                    <button type="button" onclick="profSyncOnce(true)" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Синхронизировать сейчас</button>
-                    <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>
-                </div>
-            </div>
-            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
-                <h3 class="text-sm font-bold text-white flex items-center gap-2">
                     <i class="fa-solid fa-users text-sky-400"></i>
                     <span>Пользователи — у кого какой баланс</span>
                     <button type="button" id="nx-groupip-btn" onclick="nxToggleGroupIp()" title="Группировать записи реестра по IP: устройства с одним IP показываем как одного пользователя со списком устройств" class="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold transition mr-1.5"></button><span class="ml-auto"><button type="button" id="nx-online-btn" onclick="nxToggleOnlineOnly()" class="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-[10px] font-bold transition" title="Показать только тех, кто сейчас на сайте (зелёная метка = онлайн)"><i class="fa-solid fa-circle mr-1" style="font-size:7px;vertical-align:2px;"></i>Кто онлайн: 0</button></span>
@@ -2937,6 +2920,13 @@ min-height:56vh}
                 <div id="qr-canvas-wrap" class="mx-auto w-fit bg-white rounded-2xl p-3 shadow-lg shadow-violet-500/10 hidden"><canvas id="qr-canvas" class="block w-[240px] h-[240px] sm:w-[280px] sm:h-[280px]"></canvas></div>
                 <p id="qr-show-status" class="text-xs text-slate-400">Готовим код…</p>
                 <div id="qr-self-chips" class="flex flex-wrap justify-center gap-1.5"></div>
+                <div id="qr-prof-row" class="flex flex-wrap items-center justify-center gap-1.5"></div>
+                <div class="flex flex-wrap justify-center gap-1.5">
+                    <button type="button" onclick="profEnterCode()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-keyboard mr-1"></i>Ввести код</button>
+                    <button type="button" onclick="profCopyLink()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-link mr-1"></i>Ссылка на устройство</button>
+                    <button type="button" onclick="profSyncNowBtn()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Синхронизировать</button>
+                    <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>
+                </div>
                 <button onclick="qrGoScan()" class="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm rounded-xl transition shadow-lg shadow-violet-600/20"><i class="fa-solid fa-camera mr-2"></i>Отсканировать код</button>
                 <div class="flex justify-center gap-2">
                     <button onclick="qrxCopy()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-xl transition border border-slate-700"><i class="fa-solid fa-copy mr-1.5"></i>Скопировать код</button>
@@ -8954,17 +8944,21 @@ function nxToggle3d() {
             const c = profCode();
             return c ? 'код ' + c : 'не создан — баланс только этого устройства';
         }
-        function profUI() {
-            const st = document.getElementById('nx-prof-status');
+        function profUI() { // b372: статус профиля живёт в модалке QR (доступна всем игрокам), не в Студии
+            const st = document.getElementById('qr-prof-row');
             if (st) {
                 const book = (profLastRemote && profLastRemote.book) ? Object.keys(profLastRemote.book).length : 0;
                 st.innerHTML =
-                    '<span class="text-[10px] text-slate-400">Профиль: <b class="text-slate-200">' + cloudEsc(profLabel()) + '</b></span>' +
-                    '<span class="text-[10px] text-slate-500">устройств в профиле: <b class="text-slate-300">' + book + '</b></span>' +
+                    '<span class="text-[10px] text-slate-400">Профиль: <b class="text-emerald-300">' + cloudEsc(profLabel()) + '</b></span>' +
+                    '<span class="text-[10px] text-slate-500">устройств: <b class="text-slate-300">' + book + '</b></span>' +
                     '<span class="text-[10px] text-slate-500">синхронизация: <b class="text-slate-300">' + (profLastTs ? statsAgo(profLastTs) : 'ещё не была') + '</b></span>';
             }
-            const cc = document.getElementById('nx-prof-code-btn');
-            if (cc) cc.innerHTML = profCode() ? '<i class="fa-solid fa-key mr-1"></i>Сменить код' : '<i class="fa-solid fa-key mr-1"></i>Создать код';
+        }
+        function profSyncNowBtn() { // b372: кнопка в модалке QR
+            profSyncOnce(true).then(ok => {
+                try { showToast(ok ? 'Синхронизация выполнена' : 'Синхронизация недоступна: нет кода профиля или сети', ok ? 'success' : 'info'); } catch (e) {}
+                profUI();
+            });
         }
         function profInit() {
             try {
@@ -8986,56 +8980,6 @@ function nxToggle3d() {
         function profLink() {
             try { return location.origin + location.pathname + '?prof=' + (profCode() || ''); }
             catch (e) { return '?prof=' + (profCode() || ''); }
-        }
-        function profQrDraw(cv, text) { // тот же рендер, что qrxRender, но на свой canvas
-            const qr = qrcode(0, 'L'); // уровень L: меньше модулей, камере проще
-            qr.addData(text, 'Byte');
-            qr.make();
-            const n = qr.getModuleCount(), qz = 4, m = 8;
-            cv.width = cv.height = (n + qz * 2) * m;
-            const ctx = cv.getContext('2d');
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height);
-            ctx.fillStyle = '#0b1220';
-            for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) ctx.fillRect((c + qz) * m, (r + qz) * m, m, m);
-        }
-        function profQrShow() {
-            let c = profCode();
-            if (!c) { c = profGenCode(); profSetCode(c, true); } // нет кода — создаём сразу
-            let mo = document.getElementById('nx-prof-qr-modal');
-            if (!mo) {
-                mo = document.createElement('div');
-                mo.id = 'nx-prof-qr-modal';
-                mo.className = 'fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4 overflow-y-auto';
-                mo.innerHTML = '<div class="relative w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-4 text-center space-y-3">' +
-                    '<button type="button" onclick="profQrClose()" class="absolute top-3 right-3 text-slate-400 hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>' +
-                    '<h3 class="text-sm font-bold text-white"><i class="fa-solid fa-qrcode text-emerald-400 mr-1"></i>QR-код вашего профиля</h3>' +
-                    '<p class="text-[11px] text-slate-400 leading-snug">Отсканируйте на втором устройстве обычной камерой телефона (ссылка откроется и устройство само привяжется) или в сайте кнопкой «Сканировать QR».</p>' +
-                    '<div class="mx-auto w-fit bg-white rounded-2xl p-3 shadow-lg shadow-emerald-500/10"><canvas id="nx-prof-qr-canvas" class="block w-[220px] h-[220px] sm:w-[260px] sm:h-[260px]"></canvas></div>' +
-                    '<p class="text-xs font-mono text-emerald-300" id="nx-prof-qr-code"></p>' +
-                    '<div class="flex flex-wrap justify-center gap-1.5">' +
-                        '<button type="button" onclick="profCopyLink()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[11px] font-bold rounded-xl transition"><i class="fa-solid fa-link mr-1"></i>Копировать ссылку</button>' +
-                        '<button type="button" onclick="profQrScan()" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white text-[11px] font-bold rounded-xl transition"><i class="fa-solid fa-camera mr-1"></i>Сканировать другой QR</button>' +
-                    '</div>' +
-                '</div>';
-                document.body.appendChild(mo);
-            }
-            mo.classList.remove('hidden');
-            try {
-                profQrDraw(document.getElementById('nx-prof-qr-canvas'), profLink());
-                const ce = document.getElementById('nx-prof-qr-code');
-                if (ce) ce.textContent = 'Код профиля: ' + c;
-                profUI();
-            } catch (e) { try { showToast('Не удалось нарисовать QR: ' + String((e && e.message) || e), 'error'); } catch (e2) {} }
-        }
-        function profQrClose() { const mo = document.getElementById('nx-prof-qr-modal'); if (mo) mo.classList.add('hidden'); }
-        function profQrScan() { // открыть существующий камера-сканер (из переноса прогресса)
-            profQrClose();
-            const m = document.getElementById('modal-qr');
-            if (!m) { try { showToast('Сканер QR недоступен в этой сборке', 'error'); } catch (e) {} return; }
-            m.classList.remove('hidden');
-            try { qrGoScan(); } catch (e) { try { showToast('Камера недоступна: ' + String((e && e.message) || e), 'error'); } catch (e2) {} }
-            const st = document.getElementById('qr-scan-status');
-            if (st) st.innerHTML = '<i class="fa-solid fa-qrcode text-emerald-300 mr-1"></i>Наведите камеру на QR-код профиля с экрана другого устройства (кнопка «QR-код» в блоке синхронизации)…';
         }
         function profQrFromText(raw) { // распознать код профиля из отсканированного текста; '' — не профиль
             const s = String(raw || '').trim();
@@ -19681,7 +19625,7 @@ async function qrxBuild() {
     } catch (e) {
         if (wrap) wrap.classList.add('hidden');
         if (status) status.innerHTML = '<span class="text-rose-400"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Не удалось собрать код: ' + String((e && e.message) || e) + '. Ниже можно скопировать прогресс текстом.</span>';
-    } finally { qrxBuilding = false; }
+    } finally { qrxBuilding = false; try { profUI(); } catch (e) {} } // b372: модалка QR показывает актуальный профиль
 }
 // ---- b280: нативный сканер Telegram (для мини-приложения) ----
 (function () {
