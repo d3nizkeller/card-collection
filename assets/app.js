@@ -4000,19 +4000,26 @@ function nxToggle3d() {
             showToast('⛏ Кирка ' + miner.lvl + ' уровня: теперь ' + fmtCoins(minerRate()) + ' монет/сек', 'success');
             try { minerCatCelebrate(miner.lvl); } catch (e) {} // b178: котик мяукает и танцует за повышение уровня
         }
+        function nxSetTxt(el, s) { if (el && el.textContent !== s) el.textContent = s; } // b373: запись текста только при изменении
         function renderMiner() {
-            const b = document.getElementById('miner-balance'); if (b) b.textContent = fmtCoins(state.coins);
-            const r = document.getElementById('miner-rate'); if (r) r.textContent = fmtCoins(minerRate()) + '/сек';
-            const l = document.getElementById('miner-lvl'); if (l) l.textContent = 'ур. ' + miner.lvl;
-            const m = document.getElementById('miner-mined'); if (m) m.textContent = fmtCoins(miner.mined);
+            // b373: панель шахты перерисовывалась ЦЕЛИКОМ каждую секунду: innerText, innerHTML
+            // кнопки и className подписей перезаписывались даже когда значения не менялись —
+            // из-за этого интерфейс «мигал». Теперь узел трогается только если значение изменилось.
+            nxSetTxt(document.getElementById('miner-balance'), fmtCoins(state.coins));
+            nxSetTxt(document.getElementById('miner-rate'), fmtCoins(minerRate()) + '/сек');
+            nxSetTxt(document.getElementById('miner-lvl'), 'ур. ' + miner.lvl);
+            nxSetTxt(document.getElementById('miner-mined'), fmtCoins(miner.mined));
             const c = minerCost();
-            const nx = document.getElementById('miner-next'); if (nx) nx.textContent = fmtCoins(Math.max(0, c - state.coins));
-            const bar = document.getElementById('miner-prog'); if (bar) bar.style.width = Math.min(100, (state.coins / c) * 100).toFixed(1) + '%';
-            const pl = document.getElementById('miner-prog-label'); if (pl) pl.textContent = fmtCoins(Math.min(state.coins, c)) + ' / ' + fmtCoins(c);
+            nxSetTxt(document.getElementById('miner-next'), fmtCoins(Math.max(0, c - state.coins)));
+            const bar = document.getElementById('miner-prog');
+            const bw = Math.min(100, (state.coins / c) * 100).toFixed(1) + '%';
+            if (bar && bar.style.width !== bw) bar.style.width = bw;
+            nxSetTxt(document.getElementById('miner-prog-label'), fmtCoins(Math.min(state.coins, c)) + ' / ' + fmtCoins(c));
             minerCatSettle(true); // b178: спит, пока не накопил на уровень (танец тиком не сбивается)
             const btn = document.getElementById('miner-btn');
             if (btn) {
-                btn.innerHTML = '<i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — ' + fmtCoins(c);
+                const html = '<i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — ' + fmtCoins(c);
+                if (btn.innerHTML !== html) btn.innerHTML = html; // b373: иконка не пересоздаётся каждую секунду
                 btn.disabled = state.coins < c;
                 btn.classList.toggle('opacity-40', state.coins < c);
                 btn.classList.toggle('cursor-not-allowed', state.coins < c);
@@ -4056,14 +4063,19 @@ function nxToggle3d() {
             'Мяу! Ещё монеток и потанцуем!'
         ];
         let minerCatMode = 'sleep';      // sleep | ready | dance
+        let minerCatDrawnMode = null; // b373: в каком состоянии котик уже нарисован
         let minerCatTimer = null, minerCatConfT = null, minerCatWakeT = null, minerCatPetT = null; // b179: отдельные ручки
         const MINER_CAT_DANCE_MS = 3600;
 
         function minerCatBox() { return document.getElementById('miner-cat-box'); }
 
         // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
-        function minerCatRender() {
+        function minerCatRender(force) {
             const box = minerCatBox(); if (!box) return;
+            // b373: классы сцены, мордочка и подпись зависят только от minerCatMode —
+            // если режим не сменился, DOM не трогаем (раньше котик «перерисовывался» 2 раза в секунду)
+            if (!force && minerCatDrawnMode === minerCatMode) return;
+            minerCatDrawnMode = minerCatMode;
             const stage = document.getElementById('miner-cat-stage');
             const bubble = document.getElementById('kc-bubble');
             const st = document.getElementById('miner-cat-state');
@@ -10326,9 +10338,12 @@ function nxToggle3d() {
             return String(n);
         }
         function updateCoinDisplay() {
-            document.getElementById('coin-balance').innerText = fmtCoins(state.coins);
+            // b373: счётчик монет перезаписывался каждую секунду даже без изменений
+            const s = fmtCoins(state.coins);
+            const cb = document.getElementById('coin-balance');
+            if (cb && cb.innerText !== s) cb.innerText = s;
             const sc = document.getElementById('store-stat-coins');
-            if (sc) sc.textContent = fmtCoins(state.coins);
+            if (sc && sc.textContent !== s) sc.textContent = s;
             renderMiner(); // b47: баланс виден и в шахте
         }
 

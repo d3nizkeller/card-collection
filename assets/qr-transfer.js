@@ -454,11 +454,15 @@ function nxStatus(msg, kind) { // b342-solo: видимая статус-стр�
             b.setAttribute('style', 'display:none;margin-top:6px;padding:6px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;color:#cbd5e1;font-size:11px;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word');
             anchor.parentNode.insertBefore(b, anchor.nextSibling);
         }
-        if (!msg) { b.style.display = 'none'; b.textContent = ''; return; }
+        if (!msg) { b.style.display = 'none'; b.textContent = ''; b.__nxSig = null; return; }
+        // b373: одна и та же строка статуса перезаписывалась каждую минуту (авто-кэш) — мигание
+        var sig2 = (kind || '') + '|' + msg;
+        if (b.style.display === 'block' && b.__nxSig === sig2) return;
+        b.__nxSig = sig2;
         b.style.display = 'block';
         b.style.borderColor = kind === 'err' ? '#7f1d1d' : (kind === 'ok' ? '#14532d' : '#334155');
         b.style.color = kind === 'err' ? '#fca5a5' : (kind === 'ok' ? '#86efac' : '#cbd5e1');
-        b.textContent = msg;
+        if (b.textContent !== msg) b.textContent = msg;
         try { console.log('[status] ' + msg); } catch (e) {}
     } catch (e) {}
 }
@@ -487,13 +491,28 @@ function nxProgress(pct, label, kind) { // b342-solo: видимая ШКАЛА 
                 '<div id="nx-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#a21caf,#6366f1,#22c55e);transition:width .35s ease;border-radius:5px"></div></div>';
             if (row.parentNode) row.parentNode.insertBefore(wrap, row.nextSibling);
         }
-        try { wrap.style.display = 'block'; } catch (e) {}
+        try { if (wrap.style.display !== 'block') wrap.style.display = 'block'; } catch (e) {}
+        // b373: шкалу перезаписывали на каждый img.onload (5–7 раз в секунду) — панель мигала.
+        // Запоминаем сигнатуру прошлой записи и одинаковые значения пропускаем.
+        var sig = Math.round((pct || 0) * 1000) + '|' + (label == null ? '' : label) + '|' + (kind || '');
+        if (wrap.__nxSig === sig) return;
+        // b373: промежуточные значения — не чаще 4 раз в секунду (финальные пишем сразу),
+        // иначе во время скана картинок шкала «стробит» и тянет за собой всю панель
+        var fin = kind === 'ok' || kind === 'err' || (pct || 0) >= 1;
+        var now = Date.now();
+        if (!fin && wrap.__nxAt && now - wrap.__nxAt < 250) return;
+        wrap.__nxAt = now;
+        wrap.__nxSig = sig;
         var bar = document.getElementById('nx-progress-bar');
         var lab = document.getElementById('nx-progress-label');
-        if (lab && label != null) lab.textContent = label;
+        if (lab && label != null && lab.textContent !== label) lab.textContent = label;
         if (bar) {
-            bar.style.width = Math.max(0, Math.min(100, Math.round((pct || 0) * 100))) + '%';
-            bar.style.background = kind === 'err' ? '#ef4444' : (kind === 'ok' ? '#22c55e' : 'linear-gradient(90deg,#a21caf,#6366f1,#22c55e)');
+            var w = Math.max(0, Math.min(100, Math.round((pct || 0) * 100))) + '%';
+            if (bar.style.width !== w) bar.style.width = w;
+            if (wrap.__nxKind !== (kind || '')) {
+                wrap.__nxKind = kind || '';
+                bar.style.background = kind === 'err' ? '#ef4444' : (kind === 'ok' ? '#22c55e' : 'linear-gradient(90deg,#a21caf,#6366f1,#22c55e)');
+            }
         }
         if (label) { try { console.log('[progress ' + Math.round((pct || 0) * 100) + '%] ' + label); } catch (e) {} }
     } catch (e) {}

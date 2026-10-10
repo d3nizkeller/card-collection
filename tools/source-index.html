@@ -7546,19 +7546,26 @@ function nxToggle3d() {
             showToast('⛏ Кирка ' + miner.lvl + ' уровня: теперь ' + fmtCoins(minerRate()) + ' монет/сек', 'success');
             try { minerCatCelebrate(miner.lvl); } catch (e) {} // b178: котик мяукает и танцует за повышение уровня
         }
+        function nxSetTxt(el, s) { if (el && el.textContent !== s) el.textContent = s; } // b373: запись текста только при изменении
         function renderMiner() {
-            const b = document.getElementById('miner-balance'); if (b) b.textContent = fmtCoins(state.coins);
-            const r = document.getElementById('miner-rate'); if (r) r.textContent = fmtCoins(minerRate()) + '/сек';
-            const l = document.getElementById('miner-lvl'); if (l) l.textContent = 'ур. ' + miner.lvl;
-            const m = document.getElementById('miner-mined'); if (m) m.textContent = fmtCoins(miner.mined);
+            // b373: панель шахты перерисовывалась ЦЕЛИКОМ каждую секунду: innerText, innerHTML
+            // кнопки и className подписей перезаписывались даже когда значения не менялись —
+            // из-за этого интерфейс «мигал». Теперь узел трогается только если значение изменилось.
+            nxSetTxt(document.getElementById('miner-balance'), fmtCoins(state.coins));
+            nxSetTxt(document.getElementById('miner-rate'), fmtCoins(minerRate()) + '/сек');
+            nxSetTxt(document.getElementById('miner-lvl'), 'ур. ' + miner.lvl);
+            nxSetTxt(document.getElementById('miner-mined'), fmtCoins(miner.mined));
             const c = minerCost();
-            const nx = document.getElementById('miner-next'); if (nx) nx.textContent = fmtCoins(Math.max(0, c - state.coins));
-            const bar = document.getElementById('miner-prog'); if (bar) bar.style.width = Math.min(100, (state.coins / c) * 100).toFixed(1) + '%';
-            const pl = document.getElementById('miner-prog-label'); if (pl) pl.textContent = fmtCoins(Math.min(state.coins, c)) + ' / ' + fmtCoins(c);
+            nxSetTxt(document.getElementById('miner-next'), fmtCoins(Math.max(0, c - state.coins)));
+            const bar = document.getElementById('miner-prog');
+            const bw = Math.min(100, (state.coins / c) * 100).toFixed(1) + '%';
+            if (bar && bar.style.width !== bw) bar.style.width = bw;
+            nxSetTxt(document.getElementById('miner-prog-label'), fmtCoins(Math.min(state.coins, c)) + ' / ' + fmtCoins(c));
             minerCatSettle(true); // b178: спит, пока не накопил на уровень (танец тиком не сбивается)
             const btn = document.getElementById('miner-btn');
             if (btn) {
-                btn.innerHTML = '<i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — ' + fmtCoins(c);
+                const html = '<i class="fa-solid fa-arrow-up mr-1"></i>Улучшить кирку — ' + fmtCoins(c);
+                if (btn.innerHTML !== html) btn.innerHTML = html; // b373: иконка не пересоздаётся каждую секунду
                 btn.disabled = state.coins < c;
                 btn.classList.toggle('opacity-40', state.coins < c);
                 btn.classList.toggle('cursor-not-allowed', state.coins < c);
@@ -7602,14 +7609,19 @@ function nxToggle3d() {
             'Мяу! Ещё монеток и потанцуем!'
         ];
         let minerCatMode = 'sleep';      // sleep | ready | dance
+        let minerCatDrawnMode = null; // b373: в каком состоянии котик уже нарисован
         let minerCatTimer = null, minerCatConfT = null, minerCatWakeT = null, minerCatPetT = null; // b179: отдельные ручки
         const MINER_CAT_DANCE_MS = 3600;
 
         function minerCatBox() { return document.getElementById('miner-cat-box'); }
 
         // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
-        function minerCatRender() {
+        function minerCatRender(force) {
             const box = minerCatBox(); if (!box) return;
+            // b373: классы сцены, мордочка и подпись зависят только от minerCatMode —
+            // если режим не сменился, DOM не трогаем (раньше котик «перерисовывался» 2 раза в секунду)
+            if (!force && minerCatDrawnMode === minerCatMode) return;
+            minerCatDrawnMode = minerCatMode;
             const stage = document.getElementById('miner-cat-stage');
             const bubble = document.getElementById('kc-bubble');
             const st = document.getElementById('miner-cat-state');
@@ -13872,9 +13884,12 @@ function nxToggle3d() {
             return String(n);
         }
         function updateCoinDisplay() {
-            document.getElementById('coin-balance').innerText = fmtCoins(state.coins);
+            // b373: счётчик монет перезаписывался каждую секунду даже без изменений
+            const s = fmtCoins(state.coins);
+            const cb = document.getElementById('coin-balance');
+            if (cb && cb.innerText !== s) cb.innerText = s;
             const sc = document.getElementById('store-stat-coins');
-            if (sc) sc.textContent = fmtCoins(state.coins);
+            if (sc && sc.textContent !== s) sc.textContent = s;
             renderMiner(); // b47: баланс виден и в шахте
         }
 
@@ -19905,11 +19920,15 @@ function nxStatus(msg, kind) { // b342-solo: видимая статус-стр�
             b.setAttribute('style', 'display:none;margin-top:6px;padding:6px 10px;border-radius:8px;background:#0b1220;border:1px solid #334155;color:#cbd5e1;font-size:11px;font-family:ui-monospace,monospace;white-space:pre-wrap;word-break:break-word');
             anchor.parentNode.insertBefore(b, anchor.nextSibling);
         }
-        if (!msg) { b.style.display = 'none'; b.textContent = ''; return; }
+        if (!msg) { b.style.display = 'none'; b.textContent = ''; b.__nxSig = null; return; }
+        // b373: одна и та же строка статуса перезаписывалась каждую минуту (авто-кэш) — мигание
+        var sig2 = (kind || '') + '|' + msg;
+        if (b.style.display === 'block' && b.__nxSig === sig2) return;
+        b.__nxSig = sig2;
         b.style.display = 'block';
         b.style.borderColor = kind === 'err' ? '#7f1d1d' : (kind === 'ok' ? '#14532d' : '#334155');
         b.style.color = kind === 'err' ? '#fca5a5' : (kind === 'ok' ? '#86efac' : '#cbd5e1');
-        b.textContent = msg;
+        if (b.textContent !== msg) b.textContent = msg;
         try { console.log('[status] ' + msg); } catch (e) {}
     } catch (e) {}
 }
@@ -19938,13 +19957,28 @@ function nxProgress(pct, label, kind) { // b342-solo: видимая ШКАЛА 
                 '<div id="nx-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#a21caf,#6366f1,#22c55e);transition:width .35s ease;border-radius:5px"></div></div>';
             if (row.parentNode) row.parentNode.insertBefore(wrap, row.nextSibling);
         }
-        try { wrap.style.display = 'block'; } catch (e) {}
+        try { if (wrap.style.display !== 'block') wrap.style.display = 'block'; } catch (e) {}
+        // b373: шкалу перезаписывали на каждый img.onload (5–7 раз в секунду) — панель мигала.
+        // Запоминаем сигнатуру прошлой записи и одинаковые значения пропускаем.
+        var sig = Math.round((pct || 0) * 1000) + '|' + (label == null ? '' : label) + '|' + (kind || '');
+        if (wrap.__nxSig === sig) return;
+        // b373: промежуточные значения — не чаще 4 раз в секунду (финальные пишем сразу),
+        // иначе во время скана картинок шкала «стробит» и тянет за собой всю панель
+        var fin = kind === 'ok' || kind === 'err' || (pct || 0) >= 1;
+        var now = Date.now();
+        if (!fin && wrap.__nxAt && now - wrap.__nxAt < 250) return;
+        wrap.__nxAt = now;
+        wrap.__nxSig = sig;
         var bar = document.getElementById('nx-progress-bar');
         var lab = document.getElementById('nx-progress-label');
-        if (lab && label != null) lab.textContent = label;
+        if (lab && label != null && lab.textContent !== label) lab.textContent = label;
         if (bar) {
-            bar.style.width = Math.max(0, Math.min(100, Math.round((pct || 0) * 100))) + '%';
-            bar.style.background = kind === 'err' ? '#ef4444' : (kind === 'ok' ? '#22c55e' : 'linear-gradient(90deg,#a21caf,#6366f1,#22c55e)');
+            var w = Math.max(0, Math.min(100, Math.round((pct || 0) * 100))) + '%';
+            if (bar.style.width !== w) bar.style.width = w;
+            if (wrap.__nxKind !== (kind || '')) {
+                wrap.__nxKind = kind || '';
+                bar.style.background = kind === 'err' ? '#ef4444' : (kind === 'ok' ? '#22c55e' : 'linear-gradient(90deg,#a21caf,#6366f1,#22c55e)');
+            }
         }
         if (label) { try { console.log('[progress ' + Math.round((pct || 0) * 100) + '%] ' + label); } catch (e) {} }
     } catch (e) {}
