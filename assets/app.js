@@ -26,6 +26,21 @@
 
         const defaultCards = [];
 
+        // b355: «чёрный ящик» событий объявлен ДО первого использования: раньше
+        // const NX_TRAIL лежал в конце файла, nxTrail() падал в ReferenceError (TDZ),
+        // ошибка проглатывалась try/catch — и диагностика крашей всегда была пустой.
+        var NX_TRAIL = [];
+
+        // b355: «чёрный ящик» событий объявлен ДО первого использования: раньше
+        // const NX_TRAIL лежал в конце файла, nxTrail() падал в ReferenceError (TDZ),
+        // ошибка проглатывалась try/catch — и диагностика крашей всегда была пустой.
+        var NX_TRAIL = [];
+
+        // b355: «чёрный ящик» событий объявлен ДО первого использования: раньше
+        // const NX_TRAIL лежал в конце файла, nxTrail() падал в ReferenceError (TDZ),
+        // ошибка проглатывалась try/catch — и диагностика крашей всегда была пустой.
+        var NX_TRAIL = [];
+
         // ============ ЗВУК (Web Audio API, синтез) ============
         const SoundFX = {
             ctx: null,
@@ -729,8 +744,58 @@ function nxToggle3d() {
                 if (m !== 'slots' && slots.renderer) { cancelAnimationFrame(slots.animId); slots.animId = 0; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; slots.fallback = false; }
                 if (m !== 'grid' && grid3d.renderer) { cancelAnimationFrame(grid3d.animId); grid3d.animId = 0; nx3dDrop(grid3d.renderer); grid3d.renderer = null; grid3d.ready = false; }
                 if (m !== 'wheel' && wheel.renderer) { cancelAnimationFrame(wheel.animId); wheel.animId = 0; nx3dDrop(wheel.renderer); wheel.renderer = null; wheel.ready = false; wheel.fallback = false; }
+                // b356: «Линии» раньше НЕ освобождались — их 3D-контекст и rAF-цикл
+                // продолжали крутиться на скрытом экране до конца сессии (замер:
+                // 8 кадров/с вхолостую после ухода в «Магазин»). Теперь поле уходит в
+                // плоский режим, а при возврате linesTry3D() поднимет 3D заново.
+                if (m !== 'lines' && lines3d.renderer) {
+                    cancelAnimationFrame(lines3d.animId); lines3d.animId = 0;
+                    nx3dDrop(lines3d.renderer); lines3d.renderer = null;
+                    lines3d.reels = []; lines3d.pending = null;
+                    lines.mode3d = false; lines.no3d = false;
+                    try {
+                        const box = document.getElementById('lines-3d-box'), board = document.getElementById('lines-board');
+                        if (box) box.classList.add('hidden');
+                        if (board) board.classList.remove('hidden');
+                    } catch (e) {}
+                }
+                // b356: арена — 3D-сцена боя (небо, звёзды, угли, меши карт) жила,
+                // пока игрок крутил слоты/колесо. Освобождаем; при возврате в арену
+                // battle3dInit() поднимется заново (см. setBattleMode).
+                if (m !== 'arena' && battle3d) { try { battle3dDispose(); } catch (e) {} }
             } catch (e) {}
         }
+        // ============ b357: ПАУЗА 3D В ФОНЕ ============
+        // Вкладка спрятана — ни один 3D-цикл не должен жечь CPU/GPU/батарею:
+        // на мобильном именно фоновые кадры добивают память, и браузер убивает вкладку.
+        // Каждый цикл в первом же кадре видит флаг и «отпускает» сам себя (не планируя
+        // следующий кадр), поэтому второй цикл при возврате не заводится: мы просто
+        // дёргаем ту же функцию ещё раз.
+        let nx3dFrozen = false;
+        const NX3D_LOOPS = [];
+        function nx3dRegLoop(tag, tick, holder, idKey, tKey) { NX3D_LOOPS.push({ tag: tag, tick: tick, holder: holder, idKey: idKey, tKey: tKey }); }
+        function nx3dPauseAll() { nx3dFrozen = true; }
+        function nx3dResumeAll() {
+            nx3dFrozen = false;
+            if (document.hidden) return;
+            for (let i = 0; i < NX3D_LOOPS.length; i++) {
+                const L = NX3D_LOOPS[i];
+                try {
+                    const h = L.holder ? L.holder() : null;
+                    if (!h || h[L.idKey]) continue; // живой цикл уже есть — не дублируем
+                    if (L.tKey) h[L.tKey] = performance.now(); // dt без скачка после паузы
+                    L.tick();
+                } catch (e) {}
+            }
+        }
+        nx3dRegLoop('slots', function () { try { if (slots.__loop) slots.__loop(); } catch (e) {} }, () => (slots && slots.renderer) ? slots : null, 'animId', 'lastT');
+        nx3dRegLoop('grid', function () { try { if (grid3d.__loop) grid3d.__loop(); } catch (e) {} }, () => (grid3d && grid3d.renderer) ? grid3d : null, 'animId', 'lastT');
+        nx3dRegLoop('wheel', function () { try { if (wheel.__loop) wheel.__loop(); } catch (e) {} }, () => (wheel && wheel.renderer) ? wheel : null, 'animId', 'lastT');
+        nx3dRegLoop('lines', function () { try { lines3dTick(); } catch (e) {} }, () => (lines3d && lines3d.renderer) ? lines3d : null, 'animId', null);
+        nx3dRegLoop('battle', function () { try { battle3dTick(); } catch (e) {} }, () => (battle3d && battle3d.renderer) ? battle3d : null, 'raf', null);
+        nx3dRegLoop('durak', function () { try { durak3dTick(); } catch (e) {} }, () => (durak3d && durak3d.renderer) ? durak3d : null, 'raf', null);
+        nx3dRegLoop('pack3d', function () { try { animatePack3D(); } catch (e) {} }, () => pack3d, 'animId', null);
+        document.addEventListener('visibilitychange', () => { try { if (document.hidden) { nxTrail('bg-pause'); nx3dPauseAll(); } else { nxTrail('fg-resume'); nx3dResumeAll(); } } catch (e) {} });
         window.addEventListener('resize', () => { nxTrail('resize ' + window.innerWidth + 'x' + window.innerHeight); clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 200); });
         window.addEventListener('orientationchange', () => { nxTrail('orientchange'); clearTimeout(window._nx3dT); window._nx3dT = setTimeout(nx3dRunResizers, 350); });
         function nx3dFitZ(camera, halfW, halfH, desktopZ) {
@@ -1807,6 +1872,7 @@ function nxToggle3d() {
 
         function animatePack3D() {
             if (!pack3d) return;
+            if (nx3dFrozen) { pack3d.animId = 0; return; } // b357: фоновое вскрытие не крутим
             pack3d.animId = requestAnimationFrame(animatePack3D);
             // b62: кадр 3D-анимации в try/catch: потеря WebGL-контекста или сбой GPU
             // не должны ронять исключение в цикл rAF (раньше — стопка тостов «Script error.»)
@@ -2137,7 +2203,10 @@ function nxToggle3d() {
         const IMG_CACHE_MAX_BYTES = 120 * 1024 * 1024; // LRU-лимит постоянного кэша ~120 МБ
         const IMG_CACHE_MAX_BLOB = 8 * 1024 * 1024;    // одиночные файлы крупнее 8 МБ не храним
         const IMG_OBJ = new Map();   // url -> blob:URL (память сессии, для мгновенной подмены)
-        const IMG_OBJ_MAX = 40;      // b306: было 100 — на слабых WebView это лишний расход памяти; сколько blob:URL держим в памяти одновременноо
+        // b355: 40 blob:URL по 8 МБ — это до 320 МБ живой памяти только под кэш
+        // картинок; на телефоне именно это добивало вкладку. Держим меньше, а на
+        // устройствах с малой памятью — совсем мало (диск IndexedDB никуда не девается).
+        const IMG_OBJ_MAX = (function () { try { if (typeof nxLowRam === 'function' && nxLowRam()) return 10; } catch (e) {} return 18; })();      // b306: было 100 — на слабых WebView это лишний расход памяти; сколько blob:URL держим в памяти одновременноо
         const IMG_FAIL = new Set();  // URL, не отдавшие копию (CORS/сеть) — не мучаем повторно
         let imgSaving = new Set();   // прямо сейчас сохраняем
         let imgDbPromise = null;
@@ -3815,6 +3884,15 @@ function nxToggle3d() {
             if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
             if (m === 'mines') { renderMinesUI(); } // b79
             if (m === 'lines') { linesEnsure(); renderLinesUI(); } // b103
+            // b356: вернулись в арену после другой игры — 3D-сцену боя нужно поднять
+            // заново (её освободил nx3dReleaseHidden), иначе бой останется плоским
+            if (m === 'arena' && battle && !battle3d) { try { battle3dInit(); renderArena(); } catch (e) {} }
+            // b356: вернулись в арену после другой игры — 3D-сцену боя нужно поднять
+            // заново (её освободил nx3dReleaseHidden), иначе бой останется плоским
+            if (m === 'arena' && battle && !battle3d) { try { battle3dInit(); renderArena(); } catch (e) {} }
+            // b356: вернулись в арену после другой игры — 3D-сцену боя нужно поднять
+            // заново (её освободил nx3dReleaseHidden), иначе бой останется плоским
+            if (m === 'arena' && battle && !battle3d) { try { battle3dInit(); renderArena(); } catch (e) {} }
             if (m === 'durak') {
                 // b236: сразу открываем игровое поле, а не лобби
                 renderDurakUI();
@@ -5782,6 +5860,7 @@ function nxToggle3d() {
             }
             slots.lastT = performance.now();
             const loop = () => {
+                if (nx3dFrozen) { slots.animId = 0; return; } // b357: в фоне кадры не крутим
                 slots.animId = requestAnimationFrame(loop);
                 try { // b62: кадр защищён — см. nx3dLoopBail
                 const now = performance.now();
@@ -5838,6 +5917,7 @@ function nxToggle3d() {
                 renderer.render(scene, camera);
                 } catch (e) { nx3dLoopBail('slots', e, () => { cancelAnimationFrame(slots.animId); slots.animId = 0; slots.fallback = true; nx3dDrop(slots.renderer); slots.renderer = null; slots.ready = false; }); }
             };
+            slots.__loop = loop; // b357: цикл доступен для возврата из фона
             loop();
         }
         function slotsTheta(i) { const N = slots.symbols.length || 1; return (i + 0.5) / N * Math.PI * 2; }
@@ -6232,6 +6312,7 @@ function nxToggle3d() {
             }
             grid3d.lastT = performance.now();
             const loop = () => {
+                if (nx3dFrozen) { grid3d.animId = 0; return; } // b357
                 grid3d.animId = requestAnimationFrame(loop);
                 try { // b62: кадр защищён — см. nx3dLoopBail
                 const now = performance.now();
@@ -7382,6 +7463,7 @@ function nxToggle3d() {
 
         function battle3dTick() {
             if (!battle3d) return;
+            if (nx3dFrozen) { battle3d.raf = 0; return; } // b357
             battle3d.raf = requestAnimationFrame(battle3dTick);
             try { // b62: кадр защищён — см. nx3dLoopBail
             const now = performance.now();
@@ -7873,7 +7955,10 @@ function nxToggle3d() {
         const lines = { cells: new Array(LINES_CELLS).fill(null), win: {}, winLines: [], spinning: false, bet: 100, built: false, pool: null, auto: false, autoT: null };
         function linesEnsure() {
             const board = document.getElementById('lines-board');
-            if (!board || lines.built) return;
+            // b356: поле уже построено — но 3D-контекст мог быть освобождён при уходе
+            // на другую игру (nx3dReleaseHidden), поэтому пробуем поднять 3D снова
+            if (!board) return;
+            if (lines.built) { if (!lines.mode3d && !lines.no3d) { try { linesTry3D(); } catch (e) {} } return; }
             let html = '';
             for (let i = 0; i < LINES_CELLS; i++) html += '<div id="lines-tile-' + i + '" class="lines-tile relative aspect-[2/3] rounded-lg border-2 border-slate-700 bg-slate-800/70 flex flex-col items-center justify-center p-1 overflow-hidden"><i class="fa-solid fa-question text-slate-600 text-sm"></i></div>';
             board.innerHTML = html;
@@ -8304,6 +8389,7 @@ function nxToggle3d() {
             lines3d.pending = { final: final, bet: bet };
         }
         function lines3dTick() {
+            if (nx3dFrozen) { lines3d.animId = 0; return; } // b357
             lines3d.animId = requestAnimationFrame(lines3dTick);
             try { // b109: кадр под предохранителем
                 const now = performance.now();
@@ -8535,6 +8621,7 @@ function nxToggle3d() {
             }
             wheel.lastT = performance.now();
             const loop = () => {
+                if (nx3dFrozen) { wheel.animId = 0; return; } // b357
                 wheel.animId = requestAnimationFrame(loop);
                 try { // b74: кадр под предохранителем — см. nx3dLoopBail
                     const now = performance.now();
@@ -9543,6 +9630,7 @@ function nxToggle3d() {
 
         function durak3dTick() {
             if (!durak3d) return;
+            if (nx3dFrozen) { durak3d.raf = 0; return; } // b357
             durak3d.raf = requestAnimationFrame(durak3dTick);
             try { // b62: кадр защищён — см. nx3dLoopBail
             const now = performance.now();
@@ -9785,6 +9873,9 @@ function nxToggle3d() {
             // b250: ушли с вкладки «Игры» — автостарт автоматов выключается сразу,
             // спины не крутятся и не тратят монеты/CPU на других вкладках
             if (tabId !== 'battle') stopAllGameAutos('переход на другую вкладку');
+            // b356: 3D-контексты нужны только во вкладке игр — уходим отдаём их
+            // браузеру (иначе скрытая игра держит контекст и крутит кадры до конца сессии)
+            if (tabId !== 'battle') { try { nx3dReleaseHidden('__all__'); } catch (e) {} }
             // b133: Студия — только по паролю комнаты облака
             if (tabId === 'studio' && studioGateNeeded()) { openStudioPassModal(); return; }
             // скрытый раздел недоступен, пока не открыт жестом
@@ -9812,7 +9903,17 @@ function nxToggle3d() {
 
             if (tabId === 'store') renderStore();
             if (tabId === 'albums') renderAlbumsHub();
-            if (tabId === 'battle') renderBattleTab();
+            if (tabId === 'battle') {
+                renderBattleTab();
+                // b356: вернулись во вкладку игр — поднимаем 3D текущей игры заново
+                try {
+                    if (battleMode === 'slots') slotsEnsure();
+                    else if (battleMode === 'grid') gridEnsure();
+                    else if (battleMode === 'wheel') wheelEnsure();
+                    else if (battleMode === 'lines') linesEnsure();
+                    else if (battleMode === 'arena' && battle && !battle3d) battle3dInit();
+                } catch (e) {}
+            }
             if (tabId === 'market') {
                 let sub = 'buy';
                 try { sub = LS.getItem('nexus_market_subtab') === 'sell' ? 'sell' : 'buy'; } catch (e) {}
@@ -14214,7 +14315,6 @@ function nxToggle3d() {
         // вскрытия) + контекст (ориентация, размеры, открытые модалки) пишутся в
         // localStorage. Тап по надписи сборки внизу экрана — показать/скопировать
         // диагностику, чтобы прислать разработчику точный контекст сбоя.
-        const NX_TRAIL = [];
         function nxTrail(tag) {
             try {
                 NX_TRAIL.push(Math.round((Date.now() % 86400000) / 1000) + 's ' + tag);

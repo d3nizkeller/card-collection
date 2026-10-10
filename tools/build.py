@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob6'          # меняется при изменении структуры — сбрасывает кэш SW
+BUILD_TAG = 'nxmob7'          # меняется при изменении структуры — сбрасывает кэш SW
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -84,16 +84,16 @@ BLOCKS = {
     'three':     (123, 132,   'script', 'three.js r128'),
     'fa':        (133, 144,   'style',  'Font Awesome 6.4.0'),
     'app_css':   (146, 1087,  'style',  'основной CSS игры'),
-    'app_js':    (3612, 17951, 'script', 'код игры'),
-    'stories':   (17952, 18693, 'script', 'нарезчик сторис 9:16'),
-    'qrcode':    (18694, 18698, 'script', 'qrcode.js'),
-    'qr_xfer':   (18699, 20241, 'script', 'перенос прогресса по QR'),
+    'app_js':    (3612, 18051, 'script', 'код игры'),   # b355-b358: границы пересчитаны после правок монолита
+    'stories':   (18052, 18793, 'script', 'нарезчик сторис 9:16'),
+    'qrcode':    (18794, 18798, 'script', 'qrcode.js'),
+    'qr_xfer':   (18799, 20448, 'script', 'перенос прогресса по QR'),  # b359-b360
 }
 
 HEAD_END = 1088       # </head>
 GOOGLE_FONTS = 145    # <link href="https://fonts.googleapis.com/...">
 BODY_OPEN = 1089
-BODY_CLOSE = 20242
+BODY_CLOSE = 20449
 
 
 def inner(lines, key):

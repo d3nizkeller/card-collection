@@ -642,11 +642,15 @@ function nxGhApi(path, opts) {
         return r.json();
     });
 }
+function nxBytesToB64(u8) { // b359: base64 через массив кусков и один join.
+    // Было: bin += String.fromCharCode(...) в цикле — на файле в несколько МБ это
+    // квадратичная склейка строк (сотни МБ мусора и блокировка главного потока).
+    const CH = 0x8000, parts = [];
+    for (let i = 0; i < u8.length; i += CH) parts.push(String.fromCharCode.apply(null, u8.subarray(i, i + CH)));
+    return btoa(parts.join(''));
+}
 function nxB64(str) { // base64 для огромных строк — кусками, без переполнения стека
-    const bytes = new TextEncoder().encode(str);
-    let bin = ''; const CH = 0x8000;
-    for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH));
-    return btoa(bin);
+    return nxBytesToB64(new TextEncoder().encode(str));
 }
 function nxGhPush(repo, content, ok, fail) {
     // b332: если ветка уехала вперёд (422 not a fast forward) — перечитываем head
@@ -692,6 +696,33 @@ function nxPushEmbedded(auto) {
         nxProgress(0.15, 'Читаю исходник и список артов…');
         const pairs = [];
         nxAllMediaUrls().forEach(raw => { let eff = raw; try { eff = mediaUrl(raw); } catch (e) {} pairs.push({ raw: raw, eff: eff }); });
+        // b360: вшивание ВСЕЙ коллекции делает из index.html строку в сотни мегабайт
+        // (замер: только 8 артов = 9.7 МБ строки, на 82 арта было бы ~190 МБ), а потом
+        // тащит её одним запросом в GitHub. На телефоне это гарантированная смерть
+        // вкладки, поэтому считаем объём заранее и не начинаем, если он безумный.
+        const MAX_EMBED_MB = 40;
+        imgCacheSizeOf(pairs.map(p => p.eff)).then(mb => {
+            if (mb > MAX_EMBED_MB) {
+                err('Вшивать так много нельзя: арты в кэше занимают ' + mb.toFixed(0) + ' МБ — index.html вырос бы до ~' + Math.round(mb * 1.37) + ' МБ, и вкладка упадёт ещё на сборке (лимит ' + MAX_EMBED_MB + ' МБ). Используйте «Отправить в media/» — картинки уйдут файлами, а сайт останется лёгким.');
+                return;
+            }
+            nxEmbedRun(repo, src, pairs, auto, btn, say, err);
+        }).catch(() => nxEmbedRun(repo, src, pairs, auto, btn, say, err));
+    }).catch(e => err('Не удалось собрать файл: ' + e.message));
+}
+function imgCacheSizeOf(urls) { // b360: суммарный вес артов в кэше — БЕЗ загрузки их в память
+    return new Promise(function (res) {
+        var total = 0, i = 0;
+        var step = function () {
+            if (i >= urls.length) { res(total / 1048576); return; }
+            var u = urls[i++];
+            imgCacheGetBlob(u).then(function (b) { if (b && b.size) total += b.size; step(); }, function () { step(); });
+        };
+        step();
+    });
+}
+function nxEmbedRun(repo, src, pairs, auto, btn, say, err) {
+    {
         let out = src, pending = pairs.length, replaced = 0; const extras = []; // b340
         const finalize = () => { nxProgress(0.65, 'Собираю файл с артами…'); out = nxInjectExtras(out, extras); // b340
             if (!replaced && !extras.length) { err('Вшивать нечего: кэш пуст. Нажмите «Вшить всё» или дождитесь авто-кэша — и повторите'); return; }
@@ -710,7 +741,7 @@ function nxPushEmbedded(auto) {
                 fr.readAsDataURL(blob);
             }, () => apply(p.raw, null));
         });
-    }).catch(e => err('Не удалось собрать файл: ' + e.message));
+    }
 }
 try {
     const gi = document.getElementById('nx-gh-token'); if (gi) gi.value = nxGhToken();
@@ -768,7 +799,7 @@ function nxGhRepoName() {
         (function () { try { return String(LS.getItem('nx_gh_repo') || '').trim(); } catch (e) { return ''; } })() ||
         'd3nizkeller/card-collection';
 }
-function nxCollectPendingMedia() { // какие картинки лежат в кэше, но ещё не отправлены
+function nxPendingMediaList() { // b359: только СПИСОК (имя + ссылка), ничего не грузим в память
     var set = nxMediaPushedSet(), pairs = [];
     try {
         nxAllMediaUrls().forEach(function (raw) {
@@ -779,17 +810,32 @@ function nxCollectPendingMedia() { // какие картинки лежат в 
             pairs.push({ name: n, url: eff });
         });
     } catch (e) {}
+    return pairs;
+}
+function nxCollectPendingMedia(limit) { // какие картинки лежат в кэше, но ещё не отправлены
+    // b359: раньше сюда брали ВСЕ блобы сразу (замер: 82 арта = 156 МБ в памяти
+    // вкладки, и это в момент, когда игрок ещё и 3D крутит) — мобильный браузер
+    // просто убивал страницу. Теперь берём не больше limit штук за подход.
+    var pairs = nxPendingMediaList();
+    if (limit) pairs = pairs.slice(0, limit);
     var out = [], i = 0;
     return new Promise(function (res) {
         var step = function () {
             if (i >= pairs.length) { res(out); return; }
             var p = pairs[i++];
             try {
-                imgCacheGetBlob(p.url).then(function (b) { if (b && b.size) out.push({ name: p.name, blob: b }); step(); }, function () { step(); });
+                imgCacheGetBlob(p.url).then(function (b) { if (b && b.size) out.push({ name: p.name, blob: b, url: p.url }); step(); }, function () { step(); });
             } catch (e) { step(); }
         };
         step();
     });
+}
+function nxPushCap(manual) { // b359: сколько файлов отправляем за один подход
+    try { if (typeof nxLowRam === 'function' && nxLowRam()) return manual ? 8 : 3; } catch (e) {}
+    return manual ? 20 : 6;
+}
+function nxYield() { // b359: отдаём главный поток браузеру между файлами — игра не подвисает
+    return new Promise(function (res) { setTimeout(res, 0); });
 }
 function nxMaybeAutoMediaPush(force) { // дебаунс + троттлинг: не чаще раза в 10 минут
     try {
@@ -801,11 +847,15 @@ function nxMaybeAutoMediaPush(force) { // дебаунс + троттлинг: �
     } catch (e) {}
 }
 function nxGhPushMedia(repo, items, ok, fail) { // один коммит: все новые файлы в media/
+    // b359: файлы кодируются и уходят ПО ОДНОМУ. Раньше blobOf() вызывался для
+    // каждого файла внутри общей цепочки, а все блобы лежали в памяти до конца
+    // коммита: 82 арта = 156 МБ + base64 поверх них. Теперь в памяти живёт один файл.
     function blobOf(it) {
-        return it.blob.arrayBuffer().then(function (ab) {
-            var u = new Uint8Array(ab), bin = '';
-            for (var i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
-            return btoa(bin);
+        return (it.blob
+            ? Promise.resolve(it.blob)
+            : imgCacheGetBlob(it.url).then(function (b) { if (!b || !b.size) throw new Error('нет в кэше: ' + it.name); return b; })
+        ).then(function (b) {
+            return b.arrayBuffer().then(function (ab) { return nxBytesToB64(new Uint8Array(ab)); });
         }).then(function (b64) {
             return nxGhApi('/repos/' + repo + '/git/blobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ content: b64, encoding: 'base64' }) }).then(function (bl) { return bl.sha; });
         });
@@ -816,15 +866,21 @@ function nxGhPushMedia(repo, items, ok, fail) { // один коммит: все
             return nxGhApi('/repos/' + repo + '/git/ref/heads/' + branch).then(function (ref) {
                 var head = ref.object.sha;
                 return nxGhApi('/repos/' + repo + '/git/commits/' + head).then(function (cm) {
-                    var chain = Promise.resolve([]);
+                    var chain = Promise.resolve([]), doneCnt = 0;
                     items.forEach(function (it) {
                         chain = chain.then(function (acc) {
-                            return blobOf(it).then(function (sh) { acc.push({ path: 'media/' + it.name, mode: '100644', type: 'blob', sha: sh }); return acc; });
+                            return blobOf(it).then(function (sh) {
+                                acc.push({ path: 'media/' + it.name, mode: '100644', type: 'blob', sha: sh });
+                                it.blob = null; // b359: файл отправлен — блоб больше не держим
+                                doneCnt++;
+                                try { nxProgress(0.15 + 0.7 * (doneCnt / items.length), 'Отправляю ' + doneCnt + '/' + items.length + ': ' + it.name); } catch (e) {}
+                                return nxYield();
+                            }).then(function () { return acc; });
                         });
                     });
                     return chain.then(function (entries) {
                         return nxGhApi('/repos/' + repo + '/git/trees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base_tree: cm.tree.sha, tree: entries }) }).then(function (tr) {
-                            return nxGhApi('/repos/' + repo + '/git/commits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'авто: картинки из кэша игры -> media/ (' + items.length + ')', parents: [head], tree: tr.sha }) }).then(function (nc) {
+                            return nxGhApi('/repos/' + repo + '/git/commits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'авто: картинки из кэша игры -> media/ (' + entries.length + ')', parents: [head], tree: tr.sha }) }).then(function (nc) {
                                 return nxGhApi('/repos/' + repo + '/git/refs/heads/' + branch, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sha: nc.sha }) });
                             });
                         });
@@ -839,39 +895,52 @@ function nxGhPushMedia(repo, items, ok, fail) { // один коммит: все
     attempt(1);
 }
 function nxAutoMediaPushRun(manual, done) {
+    // b359: защита от параллельных запусков СТАВИТСЯ СРАЗУ. Раньше NX_MEDIA_PUSHING
+    // включался только после сбора картинок, поэтому несколько триггеров подряд
+    // (каждый новый арт в кэше зовёт nxMaybeAutoMediaPush) запускали по 2-3 сбора
+    // одновременно — память удваивалась ровно в момент игры.
     if (NX_MEDIA_PUSHING) { if (done) done(0); return; }
+    NX_MEDIA_PUSHING = true;
+    var finish = function (sent) {
+        NX_MEDIA_PUSHING = false;
+        NX_MEDIA_LAST = Date.now(); // b359: троттлинг считаем и после ошибки:
+                                    // раньше неудача не обновляла NX_MEDIA_LAST,
+                                    // и авто-отправка долбила каждые 5 минут до краша вкладки
+        if (done) { try { done(sent || 0); } catch (e) {} }
+    };
     if (!nxGhToken()) {
         if (manual) { try { nxOwnerToast('Сначала сохраните токен GitHub в поле ниже — без него сайт не может отправить файлы', 'error'); } catch (e) {} var ti = document.getElementById('nx-gh-token'); if (ti) { ti.focus(); ti.scrollIntoView({ block: 'center' }); } }
-        return;
+        finish(0); return;
     }
     var repo = nxGhRepoName();
     var btn = document.getElementById('nx-push-media-btn'); if (manual && btn) btn.disabled = true;
+    var unblock = function () { if (manual && btn) btn.disabled = false; };
+    var cap = nxPushCap(manual);
     nxStatus((manual ? '' : 'Автоотправка: ') + 'смотрю, какие картинки уже в кэше…');
-    nxCollectPendingMedia().then(function (items) {
+    var pendingAll = [];
+    try { pendingAll = nxPendingMediaList(); } catch (e) {}
+    nxCollectPendingMedia(cap).then(function (items) {
         if (!items.length) {
             if (manual) { nxStatus('Отправлять нечего: новых картинок в кэше нет. Нажмите «Шаг 1. Скачать все картинки»', 'err'); try { nxOwnerToast('В кэше нет новых картинок для отправки', 'error'); } catch (e) {} }
             else nxStatus('');
-            if (manual && btn) btn.disabled = false;
-            if (done) done(0);
-            return;
+            unblock(); finish(0); return;
         }
-        NX_MEDIA_PUSHING = true;
-        nxProgress(0.15, 'Отправляю ' + items.length + ' картинок в media/ репозитория…');
+        var rest = Math.max(0, pendingAll.length - items.length);
+        nxProgress(0.15, 'Отправляю ' + items.length + ' картинок в media/ репозитория' + (rest ? ' (осталось в очереди: ' + rest + ')' : '') + '…');
         nxGhPushMedia(repo, items, function () {
-            NX_MEDIA_PUSHING = false; NX_MEDIA_LAST = Date.now();
             var s = nxMediaPushedSet(); items.forEach(function (it) { s.add(it.name); }); nxMediaSavePushed(s);
-            nxProgress(1, 'Готово: ' + items.length + ' картинок ушло в media/. GitHub Pages обновится за 1–2 минуты', 'ok');
+            nxProgress(1, 'Готово: ' + items.length + ' картинок ушло в media/' + (rest ? ', в очереди ещё ' + rest : '') + '. GitHub Pages обновится за 1–2 минуты', 'ok');
             nxStatus('Отправлено в ' + repo + '/media/: ' + items.map(function (x) { return x.name; }).join(', '), 'ok');
-            try { nxOwnerToast('Картинки отправлены на GitHub (' + items.length + ' шт. в media/)', 'success'); } catch (e) {}
-            if (manual && btn) btn.disabled = false;
-            if (done) done(items.length);
+            try { nxOwnerToast('Картинки отправлены на GitHub (' + items.length + ' шт. в media/)' + (rest ? ' — остальные дойдут следующими заходами' : ''), 'success'); } catch (e) {}
+            unblock(); finish(items.length);
+            // b359: остаток очереди — следующим заходом, не сейчас (память и канал)
+            if (rest > 0) { try { nxMaybeAutoMediaPush(false); } catch (e) {} }
         }, function (msg) {
-            NX_MEDIA_PUSHING = false;
             nxProgress(0, ''); nxStatus('Ошибка отправки на GitHub: ' + msg, 'err');
-            if (manual) { try { nxOwnerToast('Ошибка отправки: ' + msg, 'error'); } catch (e) {} if (btn) btn.disabled = false; }
-            if (done) done(0);
+            if (manual) { try { nxOwnerToast('Ошибка отправки: ' + msg, 'error'); } catch (e) {} }
+            unblock(); finish(0);
         });
-    }, function () { NX_MEDIA_PUSHING = false; if (manual && btn) btn.disabled = false; if (done) done(0); });
+    }, function () { unblock(); finish(0); });
 }
 function nxPushMediaNow() { nxAutoMediaPushRun(true); }
 // ---- b344: прямая загрузка файла с устройства в media/ репозитория ----
@@ -1365,14 +1434,49 @@ window.addEventListener('unhandledrejection', ev => {
 (function () {
     try {
         const bye = LS.getItem('nx_bye');
-        const beat = parseInt(LS.getItem('nx_beat') || '0', 10);
+        const beatRaw = String(LS.getItem('nx_beat') || '0');
+        const beat = parseInt(beatRaw, 10) || 0;
+        const beatSnap = beatRaw.indexOf('|') > 0 ? beatRaw.slice(beatRaw.indexOf('|')) : '';
         LS.setItem('nx_bye', '');
         if (!bye && beat && Date.now() - beat < 180000) {
-            nxCrashLog('подозрение на аварийное завершение прошлой сессии (белый экран/OOM)');
+            nxCrashLog('подозрение на аварийное завершение прошлой сессии (белый экран/OOM). Последний пульс' + (beatSnap ? ' ' + beatSnap : '') + ', возраст ' + Math.round((Date.now() - beat) / 1000) + ' с');
+            // b358: два аварийных завершения подряд — устройство 3D не тянет,
+            // сами переводим игры в плоский режим (в Студии 3D можно вернуть)
+            try {
+                const hc = (parseInt(LS.getItem('nx_hard_crash') || '0', 10) || 0) + 1;
+                LS.setItem('nx_hard_crash', String(hc));
+                if (hc >= 2 && !nxForce3d()) {
+                    LS.setItem('nx_weak_gpu', '1');
+                    setTimeout(() => { try { showToast('Прошлые сессии обрывались браузером (нехватка памяти) — 3D отключено, игры в плоском режиме. Вернуть 3D можно в Студии', 'error'); } catch (e) {} }, 3200);
+                }
+            } catch (e) {}
             setTimeout(() => { try { nxOwnerToast('Прошлая сессия оборвалась аварийно. Если это повторяется: Настройки → «Диагностика» → пришлите код создателю', 'error'); } catch (e) {} }, 2500);
         }
-        setInterval(() => { try { LS.setItem('nx_beat', String(Date.now())); } catch (e) {} }, 5000);
-        const byeFn = () => { try { LS.setItem('nx_bye', '1'); } catch (e) {} };
+        // b358: в «пульс» пишем не только время, но и слепок состояния (heap,
+        // число живых 3D-контекстов, размер кэша картинок). Когда вкладку убивает
+        // браузер, JS не успевает записать ничего — зато последний пульс за 0–5 с до
+        // смерти остаётся, и в журнале аварий видно, что именно её добило.
+        setInterval(() => {
+            try {
+                var snap = '';
+                try {
+                    var pm = (window.performance && performance.memory) ? performance.memory : null;
+                    var heapMB = pm ? Math.round(pm.usedJSHeapSize / 1048576) : -1;
+                    var live3d = 0;
+                    try {
+                        live3d = (typeof slots !== 'undefined' && slots.renderer ? 1 : 0)
+                            + (typeof grid3d !== 'undefined' && grid3d.renderer ? 1 : 0)
+                            + (typeof wheel !== 'undefined' && wheel.renderer ? 1 : 0)
+                            + (typeof lines3d !== 'undefined' && lines3d.renderer ? 1 : 0)
+                            + (typeof battle3d !== 'undefined' && battle3d ? 1 : 0);
+                    } catch (e) {}
+                    var imgN = -1; try { imgN = (typeof IMG_OBJ !== 'undefined' && IMG_OBJ.size != null) ? IMG_OBJ.size : -1; } catch (e) {}
+                    snap = '|heap:' + heapMB + 'MB|3d:' + live3d + '|img:' + imgN;
+                } catch (e) {}
+                LS.setItem('nx_beat', String(Date.now()) + snap);
+            } catch (e) {}
+        }, 5000);
+        const byeFn = () => { try { LS.setItem('nx_bye', '1'); LS.setItem('nx_hard_crash', '0'); } catch (e) {} };
         window.addEventListener('pagehide', byeFn);
         window.addEventListener('beforeunload', byeFn);
     } catch (e) {}
@@ -1391,6 +1495,9 @@ setInterval(() => {
         if (mb < lim) return; // b318: WebView Telegram живёт в меньшем лимите
         try { IMG_OBJ.forEach(ou => { try { URL.revokeObjectURL(ou); } catch (e) {} }); IMG_OBJ.clear(); } catch (e) {}
         try { imgQueue.length = 0; } catch (e) {}
+        try { nx3dPauseAll(); } catch (e) {} // b357: сначала остановить кадры, потом отдавать контексты
+        try { nx3dPauseAll(); } catch (e) {} // b357: сначала остановить кадры, потом отдавать контексты
+        try { nx3dPauseAll(); } catch (e) {} // b357: сначала остановить кадры, потом отдавать контексты
         try { nx3dReleaseHidden('__all__'); } catch (e) {}
         try { if (battleMode !== 'arena' && typeof battle3d !== 'undefined' && battle3d) battle3dDispose(); } catch (e) {}
         try { if (battleMode !== 'durak' && typeof durak3dDispose === 'function') durak3dDispose(); } catch (e) {}
