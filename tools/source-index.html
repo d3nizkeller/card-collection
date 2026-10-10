@@ -8621,6 +8621,12 @@ function nxToggle3d() {
             for (const k in o) if (o[k] <= 0) delete o[k];
             return o;
         }
+        function profMapExcess(cur, have) { // b374: чего в cur больше, чем в have (clamp ≥ 0) — вклад устройства при первой привязке
+            const d = {};
+            const c = profMapNum(cur), h = profMapNum(have || {});
+            for (const k in c) { const v = c[k] - (h[k] || 0); if (v > 0) d[k] = v; }
+            return d;
+        }
         function profCapList(arr, cap) { const a = Array.isArray(arr) ? arr.slice() : []; return a.length > cap ? a.slice(a.length - cap) : a; }
         function profMergeState(L, R, doc, did) { // L — локальный слепок, R — состояние из облака (или null), doc — весь документ профиля
             const out = {};
@@ -8628,13 +8634,15 @@ function nxToggle3d() {
             // воскрешаются max/union с другого устройства); паки — union минус
             // tombstone (вскрытый/проданный пак не возвращается); карты — выводятся
             // из слитой коллекции, поэтому «повторки» всегда согласованы с продажами.
-            const colsnap = JSON.parse(LS.getItem('nx_prof_colsnap') || 'null');
-            const myColDelta = colsnap ? profMapDiff(L.collection, colsnap) : {};
-            const myColMov = profMapAdd(profMapNum(JSON.parse(LS.getItem('nx_prof_colmov') || '{}')), myColDelta);
-            const packsnap = JSON.parse(LS.getItem('nx_prof_packsnap') || 'null');
+            // b374: леджер коллекции принадлежит конкретному коду профиля: после
+            // смены кода старые снимки/взносы/tombstone не используются — иначе
+            // чужая база дала бы отрицательные дельты и стёрла карты нового профиля.
+            const chainOk = (LS.getItem('nx_prof_colcode') || '') === profCode();
+            const colsnap = chainOk ? JSON.parse(LS.getItem('nx_prof_colsnap') || 'null') : null;
+            const packsnap = chainOk ? JSON.parse(LS.getItem('nx_prof_packsnap') || 'null') : null;
             const curPackIds = (L.packs || []).map(p => p && p.id);
             const myRemoved = packsnap ? packsnap.filter(id => curPackIds.indexOf(id) < 0) : [];
-            const myTomb = profCapList((JSON.parse(LS.getItem('nx_prof_ptomb') || '[]') || []).concat(myRemoved), 2000);
+            const myTomb = profCapList(((chainOk ? (JSON.parse(LS.getItem('nx_prof_ptomb') || '[]') || []) : [])).concat(myRemoved), 2000);
             let base_col = {}, colmov = {}, ptomb = myTomb;
             if (doc) {
                 base_col = profMapNum(doc.base_col || (doc.state && doc.state.collection) || {}); // миграция v2
@@ -8642,7 +8650,21 @@ function nxToggle3d() {
                 ptomb = profCapList((doc.ptomb || []).concat(myTomb), 2000);
             } else {
                 base_col = profMapNum(L.collection);
+                colmov = {}; // b374: документа нет — вся коллекция уходит в базу, старые взносы из LS не плюсуем (иначе копии задвоятся)
             }
+            // b374: при ПЕРВОМ синке устройства (снимка nx_prof_colsnap нет) вклад
+            // раньше считался нулевым, а слитая коллекция — чисто облачной: свои
+            // карты, не попавшие в леджер, затирались и пропадали («куда пропали
+            // карточки?»). Теперь вклад без снимка = излишек локальной коллекции
+            // над общим леджером (clamp ≥ 0): свои карты выживают, общие не двоятся.
+            let myColDelta = {};
+            if (colsnap) myColDelta = profMapDiff(L.collection, colsnap);
+            else if (doc) {
+                const others = {};
+                for (const k in colmov) if (k !== did) others[k] = colmov[k];
+                myColDelta = profMapExcess(L.collection, profMapSumAll(base_col, others));
+            }
+            const myColMov = doc ? profMapAdd(profMapNum(chainOk ? JSON.parse(LS.getItem('nx_prof_colmov') || '{}') : {}), myColDelta) : {};
             colmov[did] = myColMov;
             const mergedCol = profMapSumAll(base_col, colmov);
             const tombSet = {}; ptomb.forEach(id => { tombSet[id] = 1; });
@@ -8847,7 +8869,7 @@ function nxToggle3d() {
                     profApply(Object.assign({}, mergedFields, { coins: mergedCoins }), Math.max(profMinerLvl(), profNum(remote && remote.minerLvl)));
                     if (myDelta0 === 0) { try { LS.setItem('nx_prof_lastbal', String(mergedCoins)); } catch (e) {} }
                     if (myDelta0 === 0 && pub.myDeltaEmpty) { // b370: своих изменений не было — снимки продвигаем
-                        try { LS.setItem('nx_prof_colsnap', JSON.stringify(state.collection)); LS.setItem('nx_prof_packsnap', JSON.stringify((state.packs || []).map(p => p && p.id))); } catch (e) {}
+                        try { LS.setItem('nx_prof_colsnap', JSON.stringify(state.collection)); LS.setItem('nx_prof_packsnap', JSON.stringify((state.packs || []).map(p => p && p.id))); LS.setItem('nx_prof_colcode', profCode()); } catch (e) {} // b374: снимки принадлежат текущему коду профиля
                     }
                 }
                 profLastTs = Date.now();
@@ -8863,6 +8885,7 @@ function nxToggle3d() {
                         LS.setItem('nx_prof_ptomb', JSON.stringify(pub.ptomb));
                         LS.setItem('nx_prof_colsnap', JSON.stringify(state.collection));
                         LS.setItem('nx_prof_packsnap', JSON.stringify((state.packs || []).map(p => p && p.id)));
+                        LS.setItem('nx_prof_colcode', profCode()); // b374: цепочка снимков привязана к этому коду профиля
                     } catch (e) {}
                     profLastRemote = doc;
                     // защита от перезаписи: читаем ещё раз, если между пушем и чтением
@@ -8877,11 +8900,18 @@ function nxToggle3d() {
                             const base2 = (typeof chk.base === 'number' && isFinite(chk.base)) ? Math.max(0, Math.floor(chk.base)) : Math.max(0, profNum(chk.coins) - sum2);
                             const myC2 = myC + (Math.max(0, Math.floor(state.coins) || 0) - myCoins0);
                             mov2[did] = myC2;
-                            const f2 = profMergeState(profSnap(), r2);
+                            const f2 = profMergeState(profSnap(), r2, chk, did); // b374: раньше сливалось без документа и id устройства — леджер коллекции строился «от локального», свой вклад двоился, чужой терялся
                             const c2 = Math.max(0, base2 + Object.keys(mov2).reduce((s, k) => s + mov2[k], 0));
                             profApply(Object.assign({}, f2, { coins: c2 }), Math.max(profMinerLvl(), profNum(chk && chk.minerLvl)));
-                            const doc2 = profBuildDoc(key, chk, f2, c2, base2, mov2, pub);
-                            return profPushDoc(key, doc2).then(() => { try { LS.setItem('nx_prof_lastbal', String(Math.max(0, Math.floor(state.coins) || 0))); LS.setItem('nx_prof_movc', String(myC2)); } catch (e) {} });
+                            const pub2 = f2.__pub || pub; // b374: публикуем свежий леджер после перепроверки
+                            const doc2 = profBuildDoc(key, chk, f2, c2, base2, mov2, pub2);
+                            return profPushDoc(key, doc2).then(() => {
+                                try {
+                                    LS.setItem('nx_prof_lastbal', String(Math.max(0, Math.floor(state.coins) || 0))); LS.setItem('nx_prof_movc', String(myC2));
+                                    LS.setItem('nx_prof_colmov', JSON.stringify(pub2.myColMov)); LS.setItem('nx_prof_ptomb', JSON.stringify(pub2.ptomb)); // b374
+                                    LS.setItem('nx_prof_colsnap', JSON.stringify(state.collection)); LS.setItem('nx_prof_packsnap', JSON.stringify((state.packs || []).map(p => p && p.id))); // b374: снимки «на конец спортивного круга»
+                                } catch (e) {}
+                            });
                         }
                         return true;
                     });
