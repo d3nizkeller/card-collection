@@ -1,0 +1,13 @@
+{
+  "name": "card-collection-build",
+  "private": true,
+  "description": "Инструменты сборки мобильно-оптимизированной версии. Самой игре node не нужен — assets/tailwind.css уже собран и лежит в репозитории.",
+  "scripts": {
+    "build": "python3 tools/build.py",
+    "tw": "python3 tools/build.py --tw"
+  },
+  "devDependencies": {
+    "postcss": "^8.4.0",
+    "tailwindcss": "3.4.17"
+  }
+}
