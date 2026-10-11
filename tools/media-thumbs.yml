@@ -1,0 +1,94 @@
+# ВАЖНО: это файл GitHub Action, но лежит он в tools/, а не в .github/workflows/.
+# Причина: коммит делался токеном со scope `repo`, а добавление файлов в
+# .github/workflows/ требует scope `workflow` (GitHub отвечает 404/403).
+# Как включить: перенести файл в .github/workflows/media-thumbs.yml
+#   - через веб-интерфейс GitHub (Add file -> New file, вставить содержимое), или
+#   - локально: git mv tools/media-thumbs.yml .github/workflows/media-thumbs.yml
+#     и запушить токеном со scope `workflow`.
+# Без этого шага новые арты (автоотправка b343) снова приедут без миниатюр.
+name: media-thumbs
+
+# Зачем: автоотправка артов (b343/b341) коммитит в media/ ТОЛЬКО мастера
+# 1.6–4.3 МБ. Без миниатюр nxThumbFor() достраивает путь «по соглашению»
+# (media/t/<имя>.webp), сервер отвечает 404, imgErrorChain откатывается на
+# data-nx-full — и карта в сетке грузится мастером. На телефоне это
+# «картинки не загружаются»: 59 карт «Евровидения» = ~125 МБ трафика
+# и ~460 МБ распакованных битмапов, WebView убивает страницу.
+#
+# tools/thumbs_for_media.py описывает этот экшен в своей шапке, но самого
+# файла воркфлоу в репозитории не было — поэтому миниатюры и не догонялись.
+# Теперь на каждый пуш в media/ недостающие миниатюры создаются, а карты
+# NX_EMBED_THUMB / NX_EMBED_THUMB_MID в assets/app.js приводятся в соответствие.
+#
+# Коммит делается через GITHUB_TOKEN, поэтому сам себя экшен не перезапускает.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'media/**'
+      - 'tools/thumbs_for_media.py'
+      - 'tools/sync_thumb_maps.py'
+      - '.github/workflows/media-thumbs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: media-thumbs
+  cancel-in-progress: false
+
+jobs:
+  thumbs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Зависимости
+        run: python -m pip install --upgrade pip pillow
+
+      - name: Догенерация миниатюр (media/t 256px, media/t2 512px)
+        run: python tools/thumbs_for_media.py
+
+      - name: Карты NX_EMBED_THUMB в assets/app.js в синхроне?
+        id: sync
+        run: |
+          if python tools/sync_thumb_maps.py --check; then
+            echo "need=0" >> "$GITHUB_OUTPUT"
+          else
+            echo "need=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Версию кэша поднимаем ТОЛЬКО когда реально изменился assets/app.js:
+      # иначе каждый добавленный трек mp3 сбрасывал бы кэш всем игрокам.
+      - name: Обновить карты и поднять ?v=
+        if: steps.sync.outputs.need == '1'
+        run: python tools/sync_thumb_maps.py --bump-version
+
+      - name: Контроль синтаксиса
+        if: steps.sync.outputs.need == '1'
+        run: |
+          node --check assets/app.js
+          node --check sw.js
+
+      - name: Коммит
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add media/t media/t2 assets/app.js index.html sw.js tools/build.py
+          if git diff --cached --quiet; then
+            echo "миниатюры и карты уже полные — коммитить нечего"
+            exit 0
+          fi
+          git commit -m "chore(media): догенерация миниатюр + синхронизация NX_EMBED_THUMB (без миниатюр карта грузилась мастером 1.6-4.3 МБ и на телефоне не прогружалась)"
+          git push
