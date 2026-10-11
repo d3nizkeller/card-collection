@@ -4306,6 +4306,21 @@ function nxToggle3d() {
                 : 'до «' + MINER_CAVE_NAMES[t + 1] + '»: ' + Math.max(0, MINER_CAVE_NEXT_LVL[t] - (miner.lvl || 1)) + ' улучш.';
         }
 
+        // b384: каваи-мордочки (референс владельца): одно состояние = одна готовая
+        // морда (глаза + брови + рот). Сон — закрытые дуги, бодрствует — большие
+        // глянцевые глаза с бликами, работа — прищур с бровями и оскал, танец —
+        // счастливые дуги и смех, поглаживание — удивлённое «мяу» (класс petting).
+        function minerCatFaceSync() {
+            const stage = document.getElementById('miner-cat-stage');
+            const pet = !!(stage && stage.classList.contains('petting'));
+            const m = minerCatMode;
+            const f = pet ? 'meow' : (m === 'sleep' ? 'sleep' : (m === 'dance' ? 'dance' : (m === 'work' ? 'work' : 'ready')));
+            const all = ['sleep', 'ready', 'work', 'dance', 'meow'];
+            for (let i = 0; i < all.length; i++) {
+                const e = document.getElementById('kc-face-' + all[i]);
+                if (e) e.style.display = (all[i] === f) ? '' : 'none';
+            }
+        }
         // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
         function minerCatRender(force) {
             const box = minerCatBox(); if (!box) return;
@@ -4338,6 +4353,7 @@ function nxToggle3d() {
             setD('kc-tail-up2', mode !== 'sleep');
             setD('kc-pick', mode !== 'sleep'); // b380: кирка есть, пока не спит
             setD('kc-chips', mode === 'work'); // b380: щепа летит только во время работы
+            try { minerCatFaceSync(); } catch (e) {} // b384: каваи-мордочка по режиму
             if (st) {
                 st.textContent = mode === 'dance' ? '🎉 танцует и мяукает!' : (mode === 'ready' ? '👀 не спит — качай кирку!' : (mode === 'work' ? '⛏ копает руду!' : '💤 спит')); // b380
                 st.className = 'text-[10px] font-black ' + (mode === 'dance' ? 'text-violet-300' : (mode === 'ready' ? 'text-amber-300' : (mode === 'work' ? 'text-emerald-300' : 'text-sky-300'))); // b380
@@ -4447,8 +4463,9 @@ function nxToggle3d() {
         function catHop() {
             const stage = document.getElementById('miner-cat-stage'); if (!stage) return;
             stage.classList.add('petting');
+            try { minerCatFaceSync(); } catch (e) {} // b384: морда «мяу» на время поглаживания
             if (minerCatPetT) clearTimeout(minerCatPetT);
-            minerCatPetT = setTimeout(() => { minerCatPetT = null; const s2 = document.getElementById('miner-cat-stage'); if (s2) s2.classList.remove('petting'); }, 620);
+            minerCatPetT = setTimeout(() => { minerCatPetT = null; const s2 = document.getElementById('miner-cat-stage'); if (s2) s2.classList.remove('petting'); try { minerCatFaceSync(); } catch (e) {} }, 620); // b384
         }
         // b179: маленький салют из сердечек (тот же контейнер, что и конфетти, но тише и розовее)
         function catHearts() {

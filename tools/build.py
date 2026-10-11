@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob29'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob30'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -233,6 +233,18 @@ PROFWORK_JS = [
     ('tier скалы и берлоги по уровню кирки',
      "        function minerCatBox() { return document.getElementById('miner-cat-box'); }",
      "        function minerCatBox() { return document.getElementById('miner-cat-box'); }\n        // b383: пещера прокачивается вместе с киркой: 6 биомов (фон + крепь + скала)\n        const MINER_CAVE_NAMES = ['Глиняная нора', 'Крепь и фонарь', 'Рудный штрек', 'Кристальный грот', 'Золотая жила', 'Алмазное сердце'];\n        const MINER_CAVE_RANGE = ['ур. 1-2', 'ур. 3-4', 'ур. 5-9', 'ур. 10-19', 'ур. 20-34', 'ур. 35+'];\n        const MINER_CAVE_NEXT_LVL = [3, 5, 10, 20, 35, 0];\n        function minerSceneTier() { const l = miner.lvl || 1; return l >= 35 ? 5 : (l >= 20 ? 4 : (l >= 10 ? 3 : (l >= 5 ? 2 : (l >= 3 ? 1 : 0)))); }\n        let minerDrawnTier = null;\n        function minerSceneRender(force) {\n            const t = minerSceneTier();\n            if (!force && minerDrawnTier === t) return;\n            minerDrawnTier = t;\n            const stage = document.getElementById('miner-cat-stage');\n            if (stage) stage.setAttribute('data-tier', String(t));\n            const box = minerCatBox();\n            if (box) box.setAttribute('data-tier', String(t));\n            for (let i = 0; i < 6; i++) {\n                const on = (i === t) ? '' : 'none';\n                const bg = document.getElementById('kc-bg-' + i), r = document.getElementById('kc-rock-' + i), d = document.getElementById('kc-den-' + i);\n                if (bg) bg.style.display = on;\n                if (r) r.style.display = on;\n                if (d) d.style.display = on;\n            }\n            const nm = document.getElementById('kc-cave-name'), nx = document.getElementById('kc-cave-next');\n            if (nm) nm.textContent = '🕳 ' + MINER_CAVE_NAMES[t] + ' · ' + MINER_CAVE_RANGE[t];\n            if (nx) nx.textContent = (t >= 5) ? 'пещера обустроена полностью ✨'\n                : 'до «' + MINER_CAVE_NAMES[t + 1] + '»: ' + Math.max(0, MINER_CAVE_NEXT_LVL[t] - (miner.lvl || 1)) + ' улучш.';\n        }"),
+    ('b384: функция синхронизации мордочек',
+     "        // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)",
+     "        // b384: каваи-мордочки: одно состояние = одна готовая морда (глаза+брови+рот)\n        function minerCatFaceSync() {\n            const stage = document.getElementById('miner-cat-stage');\n            const pet = !!(stage && stage.classList.contains('petting'));\n            const m = minerCatMode;\n            const f = pet ? 'meow' : (m === 'sleep' ? 'sleep' : (m === 'dance' ? 'dance' : (m === 'work' ? 'work' : 'ready')));\n            const all = ['sleep', 'ready', 'work', 'dance', 'meow'];\n            for (let i = 0; i < all.length; i++) {\n                const e = document.getElementById('kc-face-' + all[i]);\n                if (e) e.style.display = (all[i] === f) ? '' : 'none';\n            }\n        }\n        // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)"),
+    ('b384: мордочка по режиму',
+     "            setD('kc-chips', mode === 'work'); // b380: щепа летит только во время работы",
+     "            setD('kc-chips', mode === 'work'); // b380: щепа летит только во время работы\n            try { minerCatFaceSync(); } catch (e) {} // b384: каваи-мордочка по режиму"),
+    ('b384: морда мяу при поглаживании',
+     "            stage.classList.add('petting');",
+     "            stage.classList.add('petting');\n            try { minerCatFaceSync(); } catch (e) {} // b384: морда «мяу» на время поглаживания"),
+    ('b384: возврат морды после поглаживания',
+     "if (s2) s2.classList.remove('petting'); }, 620);",
+     "if (s2) s2.classList.remove('petting'); try { minerCatFaceSync(); } catch (e) {} }, 620); // b384"),
 ]
 
 HEAD_END = 1088       # </head>
@@ -1306,6 +1318,13 @@ html, body {
 #miner-cat-box[data-tier="3"]{box-shadow:inset 0 0 34px rgba(34,211,238,.07)}
 #miner-cat-box[data-tier="4"]{box-shadow:inset 0 0 34px rgba(251,191,36,.09)}
 #miner-cat-box[data-tier="5"]{box-shadow:inset 0 0 40px rgba(224,242,254,.09)}
+
+/* ===== b384: каваи-котик — оси анимаций под новую геометрию ===== */
+#kc-head{transform-origin:60px 60px}
+#kc-ear-l{transform-origin:42px 34px}
+#kc-ear-r{transform-origin:78px 34px}
+#kc-tail-up{transform-origin:42px 98px}
+#kc-paw-r{transform-origin:68px 90px}
 '''
 
 SW_JS = '''/* nx-media-sw v2 (%s): cache-first для media/ и assets/, network-first для HTML.
