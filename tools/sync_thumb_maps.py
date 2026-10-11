@@ -33,6 +33,11 @@
 ------
     python3 tools/sync_thumb_maps.py            # переписать assets/app.js
     python3 tools/sync_thumb_maps.py --check    # не писать; код 1, если разошлось
+    python3 tools/sync_thumb_maps.py --report   # read-only: warning-аннотации для
+                                                # мастеров, оставшихся БЕЗ
+                                                # миниатюры (битый/нечитаемый
+                                                # файл): карта молча ушла бы
+                                                # на мастер 1.6-4.3 МБ
     python3 tools/sync_thumb_maps.py --bump-version  # дополнительно поднять
                                                 # ?v=nxmobNN в index.html,
                                                 # VERSION в sw.js и BUILD_TAG
@@ -53,7 +58,8 @@ INDEX_HTML = os.path.join(ROOT, 'index.html')
 SW_JS = os.path.join(ROOT, 'sw.js')
 BUILD_PY = os.path.join(ROOT, 'tools', 'build.py')
 
-EXT = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp')
+EXT = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp',
+     '.jfif', '.tif', '.tiff')  # b382: единый список с build.py/thumbs_for_media.py
 
 SMALL_DECL = 'const NX_EMBED_THUMB = '
 MID_DECL = 'const NX_EMBED_THUMB_MID = '
@@ -153,15 +159,41 @@ def write(p, data):
         fh.write(data)
 
 
+def report_missing(small, mid):
+    """Warning-аннотации для мастеров, у которых нет миниатюры вовсе.
+
+    Такой мастер не попадает ни в одну карту, nxThumbFor() достроит путь
+    «по соглашению», сервер ответит 404, и карта молча уйдёт на мастер
+    1.6-4.3 МБ — тот самый рецидив «картинки не загружаются». В CI это
+    должно быть видно, а не тихо.
+    """
+    ms = masters()
+    bad = [f for f in ms if f not in small]
+    for f in bad:
+        print('::warning file=media/%s,title=мастер без миниатюры::'
+              'media/t/%s.webp не создана (файл не читается PIL?). Карта будет '
+              'грузиться мастером.' % (f, os.path.splitext(f)[0]))
+    no_mid = [f for f in ms if f in small and f not in mid]
+    print('мастеров: %d | без мелкой миниатюры: %d | без средней: %d'
+          % (len(ms), len(bad), len(no_mid)))
+    return bad
+
+
 def main(argv):
     check = '--check' in argv
     bump = '--bump-version' in argv
+    report = '--report' in argv
 
     if not os.path.isfile(APP_JS):
         print('нет assets/app.js — нечего синхронизировать')
         return 0
 
     small, mid = build_maps()
+    if report:
+        report_missing(small, mid)
+        # голый --report — только диагностика, ничего не пишем
+        if not check and not bump:
+            return 0
     raw = read(APP_JS)
     text = raw.decode('utf-8')
     for marker in ('/*NX_EMBED_THUMB_START*/', '/*NX_EMBED_THUMB_END*/'):

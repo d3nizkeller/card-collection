@@ -2114,11 +2114,55 @@ function nxToggle3d() {
                 return full.slice(0, j + 7) + conv.slice(6);
             } catch (e) { return ''; }
         }
+        // b382: МЕМОРИЗАЦИЯ ОТСУТСТВУЮЩИХ МИНИАТЮР. Арт мог быть залит минуту
+        // назад: CI ещё не догнал миниатюру, сервер отвечает 404, а карта на
+        // телефоне стоит пустой, пока цепочка ошибок дойдёт до мастера. Чтобы
+        // не долбить 404 при каждом ререндере и не жечь preload-слоты, факт
+        // «миниатюры на сервере нет» запоминается на 5 минут: всё это время
+        // карта сразу ставит мастер, а после деплоя миниатюры мемория истекает
+        // и карта сама возвращается на лёгкий путь.
+        // Запоминаем ТОЛЬКО подтверждённый 404 (HEAD-проб): на рваной сети
+        // ошибка загрузки не должна помечать хорошую миниатюру плохой.
+        const NX_THUMB_404 = new Map();            // 'media/t/…webp' -> ts
+        const NX_THUMB_404_TTL = 5 * 60 * 1000;
+        const NX_THUMB_404_PROBED = new Set();
+        function nxThumb404Key(u) {
+            try {
+                const s = String(u || '');
+                const i = s.indexOf('/media/');
+                return i >= 0 ? s.slice(i + 1) : s;
+            } catch (e) { return String(u || ''); }
+        }
+        function nxThumb404Hit(u) {
+            try {
+                const k = nxThumb404Key(u);
+                const ts = NX_THUMB_404.get(k);
+                if (!ts) return false;
+                if (Date.now() - ts > NX_THUMB_404_TTL) { NX_THUMB_404.delete(k); return false; }
+                return true;
+            } catch (e) { return false; }
+        }
+        function nxThumb404Probe(u) {
+            // один HEAD на ключ за сессию; 404 -> запомнить, всё остальное -> нет
+            try {
+                const k = nxThumb404Key(u);
+                if (NX_THUMB_404_PROBED.has(k)) return;
+                NX_THUMB_404_PROBED.add(k);
+                fetch(u, { method: 'HEAD', cache: 'no-store' }).then(r => {
+                    if (r && r.status === 404) NX_THUMB_404.set(k, Date.now());
+                }, () => {});
+            } catch (e) {}
+        }
         function mediaThumb(u) {                       // 256px
-            return nxThumbFor(u, 'small') || mediaUrl(u);
+            const t = nxThumbFor(u, 'small');
+            return (t && !nxThumb404Hit(t)) ? t : mediaUrl(u);
         }
         function mediaThumbMid(u) {                    // 512px, иначе мелкая, иначе мастер
-            return nxThumbFor(u, 'mid') || nxThumbFor(u, 'small') || mediaUrl(u);
+            const a = nxThumbFor(u, 'mid');
+            if (a && !nxThumb404Hit(a)) return a;
+            const b = nxThumbFor(u, 'small');
+            if (b && !nxThumb404Hit(b)) return b;
+            return mediaUrl(u);
         }
 
         function mediaBase() { try { return String(LS.getItem('nexus_media_base') || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; } }
@@ -2585,6 +2629,7 @@ function nxToggle3d() {
                 // полный арт: карта не должна оставаться заглушкой
                 if (!el.__nxThumbTried && /\/media\/t2?\//.test(u)) {
                     el.__nxThumbTried = 1;
+                    nxThumb404Probe(u); // b382: подтверждённый 404 запомнится, ретраи не пойдут
                     const full = el.getAttribute && el.getAttribute('data-nx-full');
                     if (full && full !== u) { el.onerror = null; el.style.display = ''; el.src = full; return true; }
                 }

@@ -30,6 +30,10 @@ on:
       - 'tools/thumbs_for_media.py'
       - 'tools/sync_thumb_maps.py'
       - '.github/workflows/media-thumbs.yml'
+  # b382: страховка на случай, если пуш с артами не дёрнул экшен (пустой
+  # коммит, сбой раннера, лимиты) — раз в сутки сверяем media/ с картами.
+  schedule:
+    - cron: '17 4 * * *'
   workflow_dispatch:
 
 permissions:
@@ -59,6 +63,12 @@ jobs:
 
       - name: Догенерация миниатюр (media/t 256px, media/t2 512px)
         run: python tools/thumbs_for_media.py
+
+      # b382: если мастер не читается PIL (битый файл, экзотический формат),
+      # миниатюры не будет и карта молча уйдёт на мастер 1.6-4.3 МБ.
+      # Здесь это становится видимым: warning-аннотация в проверках коммита.
+      - name: "Отчёт: мастера без миниатюр"
+        run: python tools/sync_thumb_maps.py --report
 
       - name: Карты NX_EMBED_THUMB в assets/app.js в синхроне?
         id: sync

@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob25'          # b381: догенерированы миниатюры «Евровидения» (58 карт) и обновлены NX_EMBED_THUMB* в assets/app.js — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob26'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -365,7 +365,7 @@ def all_media_images():
     out = []
     for f in sorted(os.listdir(MEDIA)):
         p = os.path.join(MEDIA, f)
-        if os.path.isfile(p) and f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+        if os.path.isfile(p) and f.lower().endswith('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.jfif', '.tif', '.tiff'):  # b382: тот же список, что в thumbs_for_media.py
             out.append(f)
     return out
 

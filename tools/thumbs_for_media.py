@@ -27,7 +27,8 @@ THUMB_W, THUMB_Q = 256, 72        # как в tools/build.py
 MID_W, MID_Q = 512, 78            # как в tools/build.py
 MID_MIN_SRC = 640                 # как в tools/build.py
 
-EXT = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp')
+EXT = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp',
+     '.jfif', '.tif', '.tiff')   # b382: единый список с build.py/sync_thumb_maps.py
 
 
 def masters():
