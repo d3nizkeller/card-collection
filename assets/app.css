@@ -939,6 +939,30 @@
             #hdr-nav>button{padding-left:10px;padding-right:10px;font-size:12.5px}
         }
 
+/* ===== b380: КОТИК РАБОТАЕТ КИРКОЙ; скала и берлога прокачиваются ===== */
+#miner-cat-stage{height:132px}
+#miner-cat-stage svg{width:152px;height:155px}
+@media (max-width:639px){#miner-cat-stage{height:112px}#miner-cat-stage svg{width:128px;height:130px}}
+#kc-pick{transform-origin:68px 100px}
+.working #kc-pick{animation:catSwing .95s cubic-bezier(.45,.05,.55,.95) infinite}
+@keyframes catSwing{0%,100%{transform:rotate(-24deg)}42%{transform:rotate(13deg)}52%{transform:rotate(11deg)}70%{transform:rotate(-6deg)}}
+.working #kc-body{animation:catLean .95s ease-in-out infinite}
+@keyframes catLean{0%,100%{transform:rotate(0) translateX(0)}42%,52%{transform:rotate(3.5deg) translateX(2.5px)}}
+.working #kc-head{animation:catHeadWork .95s ease-in-out infinite}
+@keyframes catHeadWork{0%,100%{transform:rotate(0)}42%,52%{transform:rotate(-3deg) translate(1.5px,1px)}}
+#kc-chips{display:none}
+.working #kc-chips{display:block}
+#kc-chips path{opacity:0}
+.working #kc-chips path{animation:catChip .95s ease-out infinite}
+.working #kc-chips path:nth-child(2){animation-delay:.05s}
+.working #kc-chips path:nth-child(3){animation-delay:.1s}
+@keyframes catChip{0%,46%{opacity:0;transform:translate(0,0) scale(.7)}54%{opacity:1}100%{opacity:0;transform:translate(var(--cx,6px),var(--cy,-10px)) scale(1.05)}}
+#kc-rock-3 ellipse{animation:rockGlow 2.6s ease-in-out infinite}
+@keyframes rockGlow{0%,100%{opacity:.22}50%{opacity:.4}}
+.working #kc-lamp-glow{animation:lampFlick 1.7s ease-in-out infinite}
+@keyframes lampFlick{0%,100%{opacity:1}45%{opacity:.72}60%{opacity:.92}}
+@media (prefers-reduced-motion:reduce){.working #kc-pick,.working #kc-body,.working #kc-head,.working #kc-chips path,#kc-rock-3 ellipse,.working #kc-lamp-glow{animation:none}}
+
 /* ============================================================
    Дополнения мобильной сборки (tools/build.py)
    ============================================================ */

@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob23'          # b379: меняем — app.js/qr-transfer.js изменились, клиенты обязаны перечитать их из cache-first кэша SW
+BUILD_TAG = 'nxmob24'          # b380: изменились app.js/app.css/разметка сцены котика — клиенты перечитывают из cache-first кэша SW
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -164,6 +164,75 @@ PROFKILL_QR = [
     ('qrxApplyProf не привязывает устройство',
      "function qrxApplyProf(o) { // b366: в коде переноса может лежать код профиля — привязываем устройство сразу\n    try {",
      "function qrxApplyProf(o) { // b379: синхронизация профилей удалена\n    return;\n    try {"),
+]
+
+# --------------------------------------------------------------------------- #
+# b380: котик-шахтёр РАБОТАЕТ киркой; скала и берлога прокачиваются.
+# Новый режим сцены 'work' (кирка поднята и бьёт по скале, щепа летит) вместо
+# прежнего вечного сна, пока копилка не набрана. Внешний вид скалы и берлоги
+# имеет 4 tier-а по уровню кирки: 1-4 / 5-9 / 10-19 / 20+ (крепь, фонари,
+# рельсы, гирлянда; на скале: трещины -> руда -> кристаллы -> золотые жилы).
+# --------------------------------------------------------------------------- #
+SCENE_SVG_INSERT = '<!-- b380: берлога и скала за котиком. 4 tier-а внешнего вида: чем выше кирка,\n     тем богаче крепь, фонари, рельсы и жилы на скале. Переключает JS по\n     miner.lvl (0-4 / 5-9 / 10-19 / 20+), лишние группы display:none. -->\n<path d="M4 120Q2 36 60 26Q118 36 116 120Z" fill="#0b1220"/><path d="M10 118Q8 44 60 34Q112 44 110 118Z" fill="#111827" opacity=".85"/><rect x="0" y="112" width="120" height="10" fill="#1c1917"/><ellipse cx="46" cy="114" rx="36" ry="7" fill="#f59e0b" opacity=".08"/>\n<g fill="#292524"><circle cx="10" cy="117" r="2.2"/><circle cx="24" cy="119" r="1.6"/><circle cx="46" cy="118" r="2"/><circle cx="70" cy="119" r="1.5"/><circle cx="112" cy="118" r="2.1"/></g>\n<g id="kc-den-0"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#6b4a2f" stroke-width="7" opacity=".85"/><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#57534e" stroke-width="2.4" stroke-dasharray="3 6" opacity=".75"/><rect x="14" y="52" width="4" height="64" rx="2" fill="#78350f" transform="rotate(-4 16 84)"/><rect x="101" y="56" width="4" height="60" rx="2" fill="#78350f" transform="rotate(5 103 86)"/></g>\n<g id="kc-den-1" style="display:none"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#7c5a3a" stroke-width="8" opacity=".9"/><rect x="11" y="46" width="6" height="70" rx="2" fill="#92400e"/><rect x="103" y="46" width="6" height="70" rx="2" fill="#92400e"/><rect x="7" y="41" width="106" height="6" rx="3" fill="#92400e"/><circle cx="14" cy="56" r="6.5" fill="url(#kc-lamp-grad)"/><rect x="12.4" y="52" width="3.2" height="6" rx="1.4" fill="#0f172a"/><circle cx="14" cy="56" r="2.2" fill="#fde68a"/></g>\n<g id="kc-den-2" style="display:none"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#8a6540" stroke-width="8" opacity=".92"/><rect x="11" y="46" width="6" height="70" rx="2" fill="#a16207"/><rect x="103" y="46" width="6" height="70" rx="2" fill="#a16207"/><rect x="7" y="41" width="106" height="6" rx="3" fill="#a16207"/><rect x="9" y="43" width="102" height="1.6" fill="#fbbf24" opacity=".35"/><circle cx="14" cy="56" r="6.5" fill="url(#kc-lamp-grad)"/><circle cx="14" cy="56" r="2.2" fill="#fde68a"/><circle cx="106" cy="56" r="6.5" fill="url(#kc-lamp-grad)"/><circle cx="106" cy="56" r="2.2" fill="#fde68a"/><g fill="#3f3f46"><rect x="18" y="115" width="3" height="5"/><rect x="34" y="115" width="3" height="5"/><rect x="50" y="115" width="3" height="5"/><rect x="66" y="115" width="3" height="5"/></g><rect x="0" y="113.4" width="76" height="1.8" fill="#64748b"/></g>\n<g id="kc-den-3" style="display:none"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#9a744a" stroke-width="9" opacity=".95"/><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#fbbf24" stroke-width="1.6" opacity=".5"/><rect x="11" y="46" width="6" height="70" rx="2" fill="#b45309"/><rect x="103" y="46" width="6" height="70" rx="2" fill="#b45309"/><rect x="7" y="41" width="106" height="6" rx="3" fill="#b45309"/><rect x="9" y="43" width="102" height="2" fill="#fbbf24" opacity=".75"/><g><circle cx="24" cy="47" r="1.5" fill="#fde68a"/><circle cx="40" cy="45.4" r="1.5" fill="#fca5a5"/><circle cx="56" cy="44.6" r="1.5" fill="#a7f3d0"/><circle cx="72" cy="45.2" r="1.5" fill="#93c5fd"/><circle cx="88" cy="46.6" r="1.5" fill="#fde68a"/></g><circle cx="14" cy="56" r="7.5" fill="url(#kc-lamp-grad)"/><circle cx="14" cy="56" r="2.4" fill="#fffbeb"/><circle cx="106" cy="56" r="7.5" fill="url(#kc-lamp-grad)"/><circle cx="106" cy="56" r="2.4" fill="#fffbeb"/><path d="M20 96l3.4-8 3.4 8-3.4 2.6Z" fill="#22d3ee" opacity=".8"/><path d="M96 100l3-7 3 7-3 2.4Z" fill="#a78bfa" opacity=".8"/><g fill="#3f3f46"><rect x="18" y="115" width="3" height="5"/><rect x="34" y="115" width="3" height="5"/><rect x="50" y="115" width="3" height="5"/><rect x="66" y="115" width="3" height="5"/></g><rect x="0" y="113.4" width="76" height="1.8" fill="#94a3b8"/></g>\n<g id="kc-rock-0"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#475569" stroke="#0f172a" stroke-width="2"/><path d="M84 86Q88 73 97 69" fill="none" stroke="#94a3b8" stroke-width="2" opacity=".5"/><path d="M92 80l4 8-3 7M104 76l-3 9 4 8" fill="none" stroke="#1e293b" stroke-width="1.6" stroke-linecap="round"/></g>\n<g id="kc-rock-1" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#4b5563" stroke="#0f172a" stroke-width="2"/><path d="M84 86Q88 73 97 69" fill="none" stroke="#94a3b8" stroke-width="2" opacity=".5"/><circle cx="90" cy="88" r="2.2" fill="#b45309"/><circle cx="102" cy="80" r="1.9" fill="#92400e"/><circle cx="108" cy="96" r="2.4" fill="#b45309"/><circle cx="95" cy="103" r="1.8" fill="#78350f"/><circle cx="86" cy="99" r="1.6" fill="#92400e"/></g>\n<g id="kc-rock-2" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#52525b" stroke="#0f172a" stroke-width="2"/><path d="M84 86Q88 73 97 69" fill="none" stroke="#a1a1aa" stroke-width="2" opacity=".6"/><circle cx="90" cy="90" r="2.2" fill="#b45309"/><circle cx="108" cy="98" r="2.4" fill="#b45309"/><path d="M96 88l3.6-8.6 3.6 8.6-3.6 2.8Z" fill="#22d3ee" opacity=".9"/><path d="M86 102l2.8-6.6 2.8 6.6-2.8 2.2Z" fill="#67e8f9" opacity=".85"/><path d="M104 78l1.2-3 1.2 3-1.2 1Z" fill="#e0f2fe"/><path d="M99 106l1.2-3 1.2 3-1.2 1Z" fill="#e0f2fe"/></g>\n<g id="kc-rock-3" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#57534e" stroke="#0f172a" stroke-width="2"/><ellipse cx="98" cy="92" rx="24" ry="26" fill="url(#kc-lamp-grad)" opacity=".28"/><path d="M82 96q8-6 12 0t12-2" fill="none" stroke="#fbbf24" stroke-width="2.6" stroke-linecap="round"/><path d="M86 108q7-5 11 0t10-1" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round"/><path d="M96 86l3.6-8.6 3.6 8.6-3.6 2.8Z" fill="#22d3ee"/><circle cx="88" cy="84" r="2.4" fill="#f472b6"/><circle cx="108" cy="88" r="2" fill="#a78bfa"/><circle cx="103" cy="104" r="2.2" fill="#fbbf24"/><path d="M92 74l1.4-3.4 1.4 3.4-1.4 1.2Z" fill="#fffbeb"/> </g>'
+
+SCENE_PICK_INSERT = '<g id="kc-pick"><path d="M68 100L96 64" stroke="#92400e" stroke-width="4" stroke-linecap="round"/><path d="M84 56Q98 51 106 66" fill="none" stroke="#0f172a" stroke-width="8.6" stroke-linecap="round"/><path d="M84 56Q98 51 106 66" fill="none" stroke="#94a3b8" stroke-width="5.4" stroke-linecap="round"/><path d="M86 57.5Q96 54 102.5 63" fill="none" stroke="#e2e8f0" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><circle cx="70" cy="97" r="4.8" fill="#0f172a"/><circle cx="70" cy="97" r="3.5" fill="#f59e0b"/></g>'
+
+SCENE_CHIPS_INSERT = '<g id="kc-chips" aria-hidden="true"><path d="M98 84l3-2.2 1.2 3-3 1.2Z" fill="#94a3b8" style="--cx:7px;--cy:-11px"/><path d="M101 90l2.6-1.6 1 2.6-2.6 1Z" fill="#64748b" style="--cx:10px;--cy:-4px"/><path d="M96 92l2.4-2 .8 2.8-2.6 1Z" fill="#fbbf24" style="--cx:4px;--cy:-14px"/></g>'
+
+MARKUP_SCENE = [
+    ('сцена: берлога и скала за котиком + группа kc-cat',
+     '<ellipse cx="60" cy="115" rx="35" ry="5" fill="#000" opacity=".35"/>',
+     SCENE_SVG_INSERT + '<g id="kc-cat" transform="translate(-14,0)">' +
+     '<ellipse cx="60" cy="115" rx="35" ry="5" fill="#000" opacity=".35"/>'),
+    ('сцена: кирка в лапе (поверх лап, до головы)',
+     '<g id="kc-head">',
+     SCENE_PICK_INSERT + '<g id="kc-head">'),
+    ('сцена: щепа от ударов (поверх котика)',
+     '<circle cx="75.5" cy="63.5" r="3.4" fill="#fb7185" opacity=".3"/>',
+     '<circle cx="75.5" cy="63.5" r="3.4" fill="#fb7185" opacity=".3"/>' +
+     '</g>' + SCENE_CHIPS_INSERT),
+    ('сцена: подпись под котиком про работу киркой',
+     'Спит в темноте, пока копилка не набрана.',
+     'Машет киркой, пока копилка не набрана.'),
+    ('сцена: подсказка про прокачку скалы и берлоги',
+     'Тап = погладить: подскок и сердечки.',
+     'Тап = погладить: подскок и сердечки. Скала и берлога хорошеют с уровнем кирки!'),
+]
+
+PROFWORK_JS = [
+    ('режим work: котик копает, пока копилка не набрана',
+     "            const next = state.coins >= minerCost() ? 'ready' : 'sleep';",
+     "            const next = state.coins >= minerCost() ? 'ready' : (miner.lvl > 0 ? 'work' : 'sleep'); // b380"),
+    ('render: класс working на сцене и коробке',
+     "                stage.classList.toggle('meowing', mode === 'ready');",
+     "                stage.classList.toggle('meowing', mode === 'ready');\n                stage.classList.toggle('working', mode === 'work'); // b380"),
+    ('render: класс working на коробке',
+     "            box.classList.toggle('meowing', mode === 'ready');",
+     "            box.classList.toggle('meowing', mode === 'ready');\n            box.classList.toggle('working', mode === 'work'); // b380"),
+    ('render: улыбка и у работающего котика',
+     "            setD('kc-mouth-smile', mode === 'ready');  // b179: бодрствует = довольная улыбка",
+     "            setD('kc-mouth-smile', mode === 'ready' || mode === 'work');  // b179+b380"),
+    ('render: кирка и щепа по режиму',
+     "            setD('kc-tail-up2', mode !== 'sleep');",
+     "            setD('kc-tail-up2', mode !== 'sleep');\n            setD('kc-pick', mode !== 'sleep'); // b380: кирка есть, пока не спит\n            setD('kc-chips', mode === 'work'); // b380: щепа летит только во время работы"),
+    ('render: бейдж состояния про копку',
+     "                st.textContent = mode === 'dance' ? '🎉 танцует и мяукает!' : (mode === 'ready' ? '👀 не спит — качай кирку!' : '💤 спит');",
+     "                st.textContent = mode === 'dance' ? '🎉 танцует и мяукает!' : (mode === 'ready' ? '👀 не спит — качай кирку!' : (mode === 'work' ? '⛏ копает руду!' : '💤 спит')); // b380"),
+    ('render: цвет бейджа для работы',
+     "                st.className = 'text-[10px] font-black ' + (mode === 'dance' ? 'text-violet-300' : (mode === 'ready' ? 'text-amber-300' : 'text-sky-300'));",
+     "                st.className = 'text-[10px] font-black ' + (mode === 'dance' ? 'text-violet-300' : (mode === 'ready' ? 'text-amber-300' : (mode === 'work' ? 'text-emerald-300' : 'text-sky-300'))); // b380"),
+    ('render: перерисовать tier скалы/берлоги',
+     "            if (bubble && !bubble.dataset.locked) {",
+     "            try { minerSceneRender(); } catch (e) {} // b380\n            if (bubble && !bubble.dataset.locked) {"),
+    ('реплики работающего котика',
+     "        const arr = mode === 'dance' ? CAT_DANCE_PHRASES : (mode === 'ready' ? CAT_READY_PHRASES : CAT_SLEEP_PHRASES);",
+     "        const arr = mode === 'dance' ? CAT_DANCE_PHRASES : (mode === 'ready' ? CAT_READY_PHRASES : (mode === 'work' ? CAT_WORK_PHRASES : CAT_SLEEP_PHRASES)); // b380"),
+    ('словарь реплик работы',
+     "        let minerCatMode = 'sleep';      // sleep | ready | dance",
+     "        const CAT_WORK_PHRASES = [\n            '⛏ Тук-тук! Руда сыпется — монетки капают…',\n            'Котик машет киркой: {R} монет/сек уже твои 🐾',\n            '⛏ Копает-копает… каска не сползла? Мяу.',\n            'Удар! Ещё удар! Скала трещит по швам.',\n            '⛏ Работает за монетки и за погладить.',\n            'Кирка {L} уровня в деле: щепа летит! ✨'\n        ];\n        let minerCatMode = 'sleep';      // sleep | ready | work | dance"),
+    ('tier скалы и берлоги по уровню кирки',
+     "        function minerCatBox() { return document.getElementById('miner-cat-box'); }",
+     "        function minerCatBox() { return document.getElementById('miner-cat-box'); }\n        // b380: внешний вид скалы и берлоги прокачивается вместе с киркой\n        function minerSceneTier() { const l = miner.lvl || 1; return l >= 20 ? 3 : (l >= 10 ? 2 : (l >= 5 ? 1 : 0)); }\n        let minerDrawnTier = null;\n        function minerSceneRender(force) {\n            const t = minerSceneTier();\n            if (!force && minerDrawnTier === t) return;\n            minerDrawnTier = t;\n            const stage = document.getElementById('miner-cat-stage');\n            if (stage) stage.setAttribute('data-tier', String(t));\n            for (let i = 0; i < 4; i++) {\n                const r = document.getElementById('kc-rock-' + i), d = document.getElementById('kc-den-' + i);\n                if (r) r.style.display = (i === t) ? '' : 'none';\n                if (d) d.style.display = (i === t) ? '' : 'none';\n            }\n        }"),
 ]
 
 HEAD_END = 1088       # </head>
@@ -1076,6 +1145,30 @@ TG_HARDENING = '''
 
 APP_CSS_EXTRA = '''
 
+/* ===== b380: КОТИК РАБОТАЕТ КИРКОЙ; скала и берлога прокачиваются ===== */
+#miner-cat-stage{height:132px}
+#miner-cat-stage svg{width:152px;height:155px}
+@media (max-width:639px){#miner-cat-stage{height:112px}#miner-cat-stage svg{width:128px;height:130px}}
+#kc-pick{transform-origin:68px 100px}
+.working #kc-pick{animation:catSwing .95s cubic-bezier(.45,.05,.55,.95) infinite}
+@keyframes catSwing{0%,100%{transform:rotate(-24deg)}42%{transform:rotate(13deg)}52%{transform:rotate(11deg)}70%{transform:rotate(-6deg)}}
+.working #kc-body{animation:catLean .95s ease-in-out infinite}
+@keyframes catLean{0%,100%{transform:rotate(0) translateX(0)}42%,52%{transform:rotate(3.5deg) translateX(2.5px)}}
+.working #kc-head{animation:catHeadWork .95s ease-in-out infinite}
+@keyframes catHeadWork{0%,100%{transform:rotate(0)}42%,52%{transform:rotate(-3deg) translate(1.5px,1px)}}
+#kc-chips{display:none}
+.working #kc-chips{display:block}
+#kc-chips path{opacity:0}
+.working #kc-chips path{animation:catChip .95s ease-out infinite}
+.working #kc-chips path:nth-child(2){animation-delay:.05s}
+.working #kc-chips path:nth-child(3){animation-delay:.1s}
+@keyframes catChip{0%,46%{opacity:0;transform:translate(0,0) scale(.7)}54%{opacity:1}100%{opacity:0;transform:translate(var(--cx,6px),var(--cy,-10px)) scale(1.05)}}
+#kc-rock-3 ellipse{animation:rockGlow 2.6s ease-in-out infinite}
+@keyframes rockGlow{0%,100%{opacity:.22}50%{opacity:.4}}
+.working #kc-lamp-glow{animation:lampFlick 1.7s ease-in-out infinite}
+@keyframes lampFlick{0%,100%{opacity:1}45%{opacity:.72}60%{opacity:.92}}
+@media (prefers-reduced-motion:reduce){.working #kc-pick,.working #kc-body,.working #kc-head,.working #kc-chips path,#kc-rock-3 ellipse,.working #kc-lamp-glow{animation:none}}
+
 /* ============================================================
    Дополнения мобильной сборки (tools/build.py)
    ============================================================ */
@@ -1398,6 +1491,9 @@ def main():
     say('правки b379 (синхронизация профилей удалена):')
     for _lbl, _o, _n in PROFKILL_JS:
         js, _ = patch_once(js, _o, _n, 'b379: ' + _lbl)
+    say('правки b380 (котик работает киркой, скала и берлога прокачиваются):')
+    for _lbl, _o, _n in PROFWORK_JS:
+        js, _ = patch_once(js, _o, _n, 'b380: ' + _lbl)
     js, _ = patch_once(js, BLOBTOUCH_OLD, BLOBTOUCH_NEW,
                        'b377: не отзываем blob:URL, который ещё на живой <img>')
     js, _ = patch_once(js, BLOBSAVE_OLD, BLOBSAVE_NEW,
@@ -1448,6 +1544,12 @@ def main():
     # b378: блок профиля-синхронизации из модалки QR. В текущем монолите его
     # может уже не быть (убран) — тогда просто пропускаем; но если генератор
     # снова принесёт его, сборка уберёт блок сама.
+    for _lbl, _a, _b in MARKUP_SCENE:
+        _n2 = body_text.count(_a)
+        if _n2 != 1:
+            raise AssertionError('сцена котика «%s»: якорь встретился %d раз' % (_lbl, _n2))
+        body_text = body_text.replace(_a, _b, 1)
+        say('  · разметка: %s' % _lbl)
     _n = body_text.count(MARKUP_PROF_BLOCK_OLD)
     if _n > 1:
         raise AssertionError('разметка: блок профиля QR встретился %d раза' % _n)

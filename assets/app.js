@@ -4217,12 +4217,35 @@ function nxToggle3d() {
             '*мурчит и трётся о кирку* 💛',
             'Мяу! Ещё монеток и потанцуем!'
         ];
-        let minerCatMode = 'sleep';      // sleep | ready | dance
+        const CAT_WORK_PHRASES = [
+            '⛏ Тук-тук! Руда сыпется — монетки капают…',
+            'Котик машет киркой: {R} монет/сек уже твои 🐾',
+            '⛏ Копает-копает… каска не сползла? Мяу.',
+            'Удар! Ещё удар! Скала трещит по швам.',
+            '⛏ Работает за монетки и за погладить.',
+            'Кирка {L} уровня в деле: щепа летит! ✨'
+        ];
+        let minerCatMode = 'sleep';      // sleep | ready | work | dance
         let minerCatDrawnMode = null; // b373: в каком состоянии котик уже нарисован
         let minerCatTimer = null, minerCatConfT = null, minerCatWakeT = null, minerCatPetT = null; // b179: отдельные ручки
         const MINER_CAT_DANCE_MS = 3600;
 
         function minerCatBox() { return document.getElementById('miner-cat-box'); }
+        // b380: внешний вид скалы и берлоги прокачивается вместе с киркой
+        function minerSceneTier() { const l = miner.lvl || 1; return l >= 20 ? 3 : (l >= 10 ? 2 : (l >= 5 ? 1 : 0)); }
+        let minerDrawnTier = null;
+        function minerSceneRender(force) {
+            const t = minerSceneTier();
+            if (!force && minerDrawnTier === t) return;
+            minerDrawnTier = t;
+            const stage = document.getElementById('miner-cat-stage');
+            if (stage) stage.setAttribute('data-tier', String(t));
+            for (let i = 0; i < 4; i++) {
+                const r = document.getElementById('kc-rock-' + i), d = document.getElementById('kc-den-' + i);
+                if (r) r.style.display = (i === t) ? '' : 'none';
+                if (d) d.style.display = (i === t) ? '' : 'none';
+            }
+        }
 
         // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
         function minerCatRender(force) {
@@ -4239,23 +4262,28 @@ function nxToggle3d() {
                 stage.classList.toggle('sleeping', mode === 'sleep');
                 stage.classList.toggle('dancing', mode === 'dance');
                 stage.classList.toggle('meowing', mode === 'ready');
+                stage.classList.toggle('working', mode === 'work'); // b380
             }
             box.classList.toggle('dancing', mode === 'dance');
             box.classList.toggle('meowing', mode === 'ready');
+            box.classList.toggle('working', mode === 'work'); // b380
             const setD = (id, on) => { const e = document.getElementById(id); if (e) e.style.display = on ? '' : 'none'; };
             setD('kc-eyes-closed', mode === 'sleep');
             setD('kc-eyes-open', mode !== 'sleep');
             setD('kc-mouth-open', mode === 'dance');   // b179: открытая пасть — только когда мяукает/танцует
-            setD('kc-mouth-smile', mode === 'ready');  // b179: бодрствует = довольная улыбка
+            setD('kc-mouth-smile', mode === 'ready' || mode === 'work');  // b179+b380
             setD('kc-mouth-sleep', mode === 'sleep');
             setD('kc-tail-sleep', mode === 'sleep');
             setD('kc-tail-sleep2', mode === 'sleep');
             setD('kc-tail-up', mode !== 'sleep');
             setD('kc-tail-up2', mode !== 'sleep');
+            setD('kc-pick', mode !== 'sleep'); // b380: кирка есть, пока не спит
+            setD('kc-chips', mode === 'work'); // b380: щепа летит только во время работы
             if (st) {
-                st.textContent = mode === 'dance' ? '🎉 танцует и мяукает!' : (mode === 'ready' ? '👀 не спит — качай кирку!' : '💤 спит');
-                st.className = 'text-[10px] font-black ' + (mode === 'dance' ? 'text-violet-300' : (mode === 'ready' ? 'text-amber-300' : 'text-sky-300'));
+                st.textContent = mode === 'dance' ? '🎉 танцует и мяукает!' : (mode === 'ready' ? '👀 не спит — качай кирку!' : (mode === 'work' ? '⛏ копает руду!' : '💤 спит')); // b380
+                st.className = 'text-[10px] font-black ' + (mode === 'dance' ? 'text-violet-300' : (mode === 'ready' ? 'text-amber-300' : (mode === 'work' ? 'text-emerald-300' : 'text-sky-300'))); // b380
             }
+            try { minerSceneRender(); } catch (e) {} // b380
             if (bubble && !bubble.dataset.locked) {
                 // b179: реплика выбирается ОДИН раз на состояние. Раньше renderMiner тикал
                 // каждую секунду и текст менялся секунду за секундой — сонный котик выглядел
@@ -4269,7 +4297,7 @@ function nxToggle3d() {
         // b179: текущая реплика котика — одна на эпизод состояния (сон/бодрствование), без мельтешения
         let minerCatSaidMode = null, minerCatSaidText = '';
         function catSayFor(mode) {
-            const arr = mode === 'dance' ? CAT_DANCE_PHRASES : (mode === 'ready' ? CAT_READY_PHRASES : CAT_SLEEP_PHRASES);
+            const arr = mode === 'dance' ? CAT_DANCE_PHRASES : (mode === 'ready' ? CAT_READY_PHRASES : (mode === 'work' ? CAT_WORK_PHRASES : CAT_SLEEP_PHRASES)); // b380
             return catFill(arr[mode === 'sleep' ? catSleepIdx() : (Math.random() * arr.length) | 0]);
         }
         function catFill(s) {
@@ -4311,7 +4339,7 @@ function nxToggle3d() {
         function minerCatSettle(fromTick) {
             if (fromTick && minerCatMode === 'dance') return;
             const prev = minerCatMode;
-            const next = state.coins >= minerCost() ? 'ready' : 'sleep';
+            const next = state.coins >= minerCost() ? 'ready' : (miner.lvl > 0 ? 'work' : 'sleep'); // b380
             minerCatMode = next;
             if (next !== prev) { // b179: смена эмоции только на переходе — сон спокойный, без ежесекундной болтовни
                 minerCatSaidMode = null; // следующая перерисовка возьмёт свежую реплику

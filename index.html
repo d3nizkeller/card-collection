@@ -21,23 +21,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='h' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%2334d399'/><stop offset='.35' stop-color='%2322d3ee'/><stop offset='.68' stop-color='%23818cf8'/><stop offset='1' stop-color='%23fbbf24'/></linearGradient><radialGradient id='s' cx='.5' cy='.38' r='.85'><stop offset='0' stop-color='%23fffbeb'/><stop offset='.55' stop-color='%23fcd34d'/><stop offset='1' stop-color='%23f59e0b'/></radialGradient></defs><g transform='rotate(-10 32 32)'><rect x='15' y='6' width='34' height='52' rx='6' fill='%230b1220' stroke='url(%23h)' stroke-width='4'/><path d='M18 41 L46 14 L46 25 L18 52 Z' fill='url(%23h)' opacity='.35'/><path d='M32 20l2.82 7.12 7.64.48-5.89 4.88 1.9 7.42-6.47-4.1-6.47 4.1 1.9-7.42-5.89-4.88 7.64-.48z' fill='url(%23s)'/></g></svg>">
-    <!-- Мобильная сборка nxmob23: тяжёлые библиотеки вынесены в assets/ и кешируются -->
+    <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob23" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob23">
+    <script src="assets/three.min.js?v=nxmob24" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob24">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob23">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob24">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob23">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob24">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -532,7 +532,19 @@
                                             <stop offset="100%" stop-color="#fbbf24" stop-opacity="0"/>
                                         </radialGradient>
                                     </defs>
-                                    <ellipse cx="60" cy="115" rx="35" ry="5" fill="#000" opacity=".35"/>
+                                    <!-- b380: берлога и скала за котиком. 4 tier-а внешнего вида: чем выше кирка,
+     тем богаче крепь, фонари, рельсы и жилы на скале. Переключает JS по
+     miner.lvl (0-4 / 5-9 / 10-19 / 20+), лишние группы display:none. -->
+<path d="M4 120Q2 36 60 26Q118 36 116 120Z" fill="#0b1220"/><path d="M10 118Q8 44 60 34Q112 44 110 118Z" fill="#111827" opacity=".85"/><rect x="0" y="112" width="120" height="10" fill="#1c1917"/><ellipse cx="46" cy="114" rx="36" ry="7" fill="#f59e0b" opacity=".08"/>
+<g fill="#292524"><circle cx="10" cy="117" r="2.2"/><circle cx="24" cy="119" r="1.6"/><circle cx="46" cy="118" r="2"/><circle cx="70" cy="119" r="1.5"/><circle cx="112" cy="118" r="2.1"/></g>
+<g id="kc-den-0"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#6b4a2f" stroke-width="7" opacity=".85"/><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#57534e" stroke-width="2.4" stroke-dasharray="3 6" opacity=".75"/><rect x="14" y="52" width="4" height="64" rx="2" fill="#78350f" transform="rotate(-4 16 84)"/><rect x="101" y="56" width="4" height="60" rx="2" fill="#78350f" transform="rotate(5 103 86)"/></g>
+<g id="kc-den-1" style="display:none"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#7c5a3a" stroke-width="8" opacity=".9"/><rect x="11" y="46" width="6" height="70" rx="2" fill="#92400e"/><rect x="103" y="46" width="6" height="70" rx="2" fill="#92400e"/><rect x="7" y="41" width="106" height="6" rx="3" fill="#92400e"/><circle cx="14" cy="56" r="6.5" fill="url(#kc-lamp-grad)"/><rect x="12.4" y="52" width="3.2" height="6" rx="1.4" fill="#0f172a"/><circle cx="14" cy="56" r="2.2" fill="#fde68a"/></g>
+<g id="kc-den-2" style="display:none"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#8a6540" stroke-width="8" opacity=".92"/><rect x="11" y="46" width="6" height="70" rx="2" fill="#a16207"/><rect x="103" y="46" width="6" height="70" rx="2" fill="#a16207"/><rect x="7" y="41" width="106" height="6" rx="3" fill="#a16207"/><rect x="9" y="43" width="102" height="1.6" fill="#fbbf24" opacity=".35"/><circle cx="14" cy="56" r="6.5" fill="url(#kc-lamp-grad)"/><circle cx="14" cy="56" r="2.2" fill="#fde68a"/><circle cx="106" cy="56" r="6.5" fill="url(#kc-lamp-grad)"/><circle cx="106" cy="56" r="2.2" fill="#fde68a"/><g fill="#3f3f46"><rect x="18" y="115" width="3" height="5"/><rect x="34" y="115" width="3" height="5"/><rect x="50" y="115" width="3" height="5"/><rect x="66" y="115" width="3" height="5"/></g><rect x="0" y="113.4" width="76" height="1.8" fill="#64748b"/></g>
+<g id="kc-den-3" style="display:none"><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#9a744a" stroke-width="9" opacity=".95"/><path d="M6 118Q4 40 60 30Q116 40 114 118" fill="none" stroke="#fbbf24" stroke-width="1.6" opacity=".5"/><rect x="11" y="46" width="6" height="70" rx="2" fill="#b45309"/><rect x="103" y="46" width="6" height="70" rx="2" fill="#b45309"/><rect x="7" y="41" width="106" height="6" rx="3" fill="#b45309"/><rect x="9" y="43" width="102" height="2" fill="#fbbf24" opacity=".75"/><g><circle cx="24" cy="47" r="1.5" fill="#fde68a"/><circle cx="40" cy="45.4" r="1.5" fill="#fca5a5"/><circle cx="56" cy="44.6" r="1.5" fill="#a7f3d0"/><circle cx="72" cy="45.2" r="1.5" fill="#93c5fd"/><circle cx="88" cy="46.6" r="1.5" fill="#fde68a"/></g><circle cx="14" cy="56" r="7.5" fill="url(#kc-lamp-grad)"/><circle cx="14" cy="56" r="2.4" fill="#fffbeb"/><circle cx="106" cy="56" r="7.5" fill="url(#kc-lamp-grad)"/><circle cx="106" cy="56" r="2.4" fill="#fffbeb"/><path d="M20 96l3.4-8 3.4 8-3.4 2.6Z" fill="#22d3ee" opacity=".8"/><path d="M96 100l3-7 3 7-3 2.4Z" fill="#a78bfa" opacity=".8"/><g fill="#3f3f46"><rect x="18" y="115" width="3" height="5"/><rect x="34" y="115" width="3" height="5"/><rect x="50" y="115" width="3" height="5"/><rect x="66" y="115" width="3" height="5"/></g><rect x="0" y="113.4" width="76" height="1.8" fill="#94a3b8"/></g>
+<g id="kc-rock-0"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#475569" stroke="#0f172a" stroke-width="2"/><path d="M84 86Q88 73 97 69" fill="none" stroke="#94a3b8" stroke-width="2" opacity=".5"/><path d="M92 80l4 8-3 7M104 76l-3 9 4 8" fill="none" stroke="#1e293b" stroke-width="1.6" stroke-linecap="round"/></g>
+<g id="kc-rock-1" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#4b5563" stroke="#0f172a" stroke-width="2"/><path d="M84 86Q88 73 97 69" fill="none" stroke="#94a3b8" stroke-width="2" opacity=".5"/><circle cx="90" cy="88" r="2.2" fill="#b45309"/><circle cx="102" cy="80" r="1.9" fill="#92400e"/><circle cx="108" cy="96" r="2.4" fill="#b45309"/><circle cx="95" cy="103" r="1.8" fill="#78350f"/><circle cx="86" cy="99" r="1.6" fill="#92400e"/></g>
+<g id="kc-rock-2" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#52525b" stroke="#0f172a" stroke-width="2"/><path d="M84 86Q88 73 97 69" fill="none" stroke="#a1a1aa" stroke-width="2" opacity=".6"/><circle cx="90" cy="90" r="2.2" fill="#b45309"/><circle cx="108" cy="98" r="2.4" fill="#b45309"/><path d="M96 88l3.6-8.6 3.6 8.6-3.6 2.8Z" fill="#22d3ee" opacity=".9"/><path d="M86 102l2.8-6.6 2.8 6.6-2.8 2.2Z" fill="#67e8f9" opacity=".85"/><path d="M104 78l1.2-3 1.2 3-1.2 1Z" fill="#e0f2fe"/><path d="M99 106l1.2-3 1.2 3-1.2 1Z" fill="#e0f2fe"/></g>
+<g id="kc-rock-3" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#57534e" stroke="#0f172a" stroke-width="2"/><ellipse cx="98" cy="92" rx="24" ry="26" fill="url(#kc-lamp-grad)" opacity=".28"/><path d="M82 96q8-6 12 0t12-2" fill="none" stroke="#fbbf24" stroke-width="2.6" stroke-linecap="round"/><path d="M86 108q7-5 11 0t10-1" fill="none" stroke="#f59e0b" stroke-width="2.2" stroke-linecap="round"/><path d="M96 86l3.6-8.6 3.6 8.6-3.6 2.8Z" fill="#22d3ee"/><circle cx="88" cy="84" r="2.4" fill="#f472b6"/><circle cx="108" cy="88" r="2" fill="#a78bfa"/><circle cx="103" cy="104" r="2.2" fill="#fbbf24"/><path d="M92 74l1.4-3.4 1.4 3.4-1.4 1.2Z" fill="#fffbeb"/> </g><g id="kc-cat" transform="translate(-14,0)"><ellipse cx="60" cy="115" rx="35" ry="5" fill="#000" opacity=".35"/>
                                     <g id="kc-tail-sleep" fill="none" stroke-linecap="round"><path d="M84 106q19 6 26-7" stroke="#0f172a" stroke-width="13"/><path d="M84 106q19 6 26-7" stroke="#f59e0b" stroke-width="9"/></g>
                                     <g id="kc-tail-up" fill="none" stroke-linecap="round"><path d="M86 100q19-5 20-26" stroke="#0f172a" stroke-width="13"/><path d="M86 100q19-5 20-26" stroke="#f59e0b" stroke-width="9"/></g>
                                     <g id="kc-body">
@@ -547,7 +559,7 @@
                                     </g>
                                     <g id="kc-paw-l"><rect x="44" y="93" width="9" height="17" rx="4.5" fill="#0f172a"/><rect x="45.4" y="94.4" width="6.2" height="14" rx="3.1" fill="#f59e0b"/></g>
                                     <g id="kc-paw-r"><rect x="64" y="93" width="9" height="17" rx="4.5" fill="#0f172a"/><rect x="65.4" y="94.4" width="6.2" height="14" rx="3.1" fill="#f59e0b"/></g>
-                                    <g id="kc-head">
+                                    <g id="kc-pick"><path d="M68 100L96 64" stroke="#92400e" stroke-width="4" stroke-linecap="round"/><path d="M84 56Q98 51 106 66" fill="none" stroke="#0f172a" stroke-width="8.6" stroke-linecap="round"/><path d="M84 56Q98 51 106 66" fill="none" stroke="#94a3b8" stroke-width="5.4" stroke-linecap="round"/><path d="M86 57.5Q96 54 102.5 63" fill="none" stroke="#e2e8f0" stroke-width="1.6" stroke-linecap="round" opacity=".7"/><circle cx="70" cy="97" r="4.8" fill="#0f172a"/><circle cx="70" cy="97" r="3.5" fill="#f59e0b"/></g><g id="kc-head">
                                         <g id="kc-ear-l"><path d="M41 52 37.5 29.5 57 44.5Z" fill="#0f172a"/><path d="M42.6 50.5 40.2 34.5 54.2 45.4Z" fill="#f59e0b"/><path d="M43.8 48.5 42.4 39 51 45.4Z" fill="#fda4af"/></g>
                                         <g id="kc-ear-r"><path d="M79 52 82.5 29.5 63 44.5Z" fill="#0f172a"/><path d="M77.4 50.5 79.8 34.5 65.8 45.4Z" fill="#f59e0b"/><path d="M76.2 48.5 77.6 39 69 45.4Z" fill="#fda4af"/></g>
                                         <circle cx="60" cy="54" r="24.6" fill="#0f172a"/>
@@ -575,12 +587,12 @@
                                         <g id="kc-mouth-open"><ellipse cx="60" cy="69" rx="4.8" ry="4.3" fill="#7f1d1d"/><path d="M56.4 71.2q3.6 3 7.2 0Z" fill="#fb7185"/></g>
                                         <g stroke="#e2e8f0" stroke-width="1.3" stroke-linecap="round" opacity=".6"><path d="M47 64 30 61M47 67 30 67.5M47 70 31 74M73 64 90 61M73 67 90 67.5M73 70 89 74"/></g>
                                         <circle cx="44.5" cy="63.5" r="3.4" fill="#fb7185" opacity=".3"/>
-                                        <circle cx="75.5" cy="63.5" r="3.4" fill="#fb7185" opacity=".3"/>
+                                        <circle cx="75.5" cy="63.5" r="3.4" fill="#fb7185" opacity=".3"/></g><g id="kc-chips" aria-hidden="true"><path d="M98 84l3-2.2 1.2 3-3 1.2Z" fill="#94a3b8" style="--cx:7px;--cy:-11px"/><path d="M101 90l2.6-1.6 1 2.6-2.6 1Z" fill="#64748b" style="--cx:10px;--cy:-4px"/><path d="M96 92l2.4-2 .8 2.8-2.6 1Z" fill="#fbbf24" style="--cx:4px;--cy:-14px"/></g>
                                     </g>
                                 </svg>
                             </div>
                             <p id="kc-bubble">Котик спит и видит руду… 💤</p>
-                            <p class="text-[9px] text-slate-600 text-center mt-1.5">Спит в темноте, пока копилка не набрана. Накопил — <b class="text-amber-300">просыпается, моргает и улыбается</b>. Прокачал кирку — <b class="text-amber-400">мяукает и танцует</b>! Тап = погладить: подскок и сердечки.</p>
+                            <p class="text-[9px] text-slate-600 text-center mt-1.5">Машет киркой, пока копилка не набрана. Накопил — <b class="text-amber-300">просыпается, моргает и улыбается</b>. Прокачал кирку — <b class="text-amber-400">мяукает и танцует</b>! Тап = погладить: подскок и сердечки. Скала и берлога хорошеют с уровнем кирки!</p>
                         </div>
                     </div>
 <div class="rules-card">
@@ -2564,10 +2576,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob23"></script>
-    <script src="assets/stories.js?v=nxmob23"></script>
-    <script src="assets/qrcode.min.js?v=nxmob23"></script>
-    <script src="assets/qr-transfer.js?v=nxmob23"></script>
+    <script src="assets/app.js?v=nxmob24"></script>
+    <script src="assets/stories.js?v=nxmob24"></script>
+    <script src="assets/qrcode.min.js?v=nxmob24"></script>
+    <script src="assets/qr-transfer.js?v=nxmob24"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
