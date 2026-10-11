@@ -1024,3 +1024,23 @@ input, textarea, select, [contenteditable="true"] {
 html, body {
     overscroll-behavior: none;
 }
+
+/* ===== b383: 6 биомов пещеры + подпись прокачки ===== */
+#kc-cave-bar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 4px;padding:3px 8px;border-radius:8px;border:1px solid rgba(51,65,85,.7);background:rgba(15,23,42,.6);transition:background .35s,border-color .35s}
+#kc-cave-name{font-size:9px;font-weight:900;letter-spacing:.02em;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#kc-cave-next{font-size:9px;font-weight:700;color:#94a3b8;white-space:nowrap}
+#miner-cat-box[data-tier="0"] #kc-cave-bar{background:rgba(87,63,29,.22);border-color:rgba(120,83,45,.5)}
+#miner-cat-box[data-tier="1"] #kc-cave-bar{background:rgba(146,64,14,.2);border-color:rgba(180,83,9,.5)}
+#miner-cat-box[data-tier="2"] #kc-cave-bar{background:rgba(71,85,105,.2);border-color:rgba(100,116,139,.55)}
+#miner-cat-box[data-tier="3"] #kc-cave-bar{background:rgba(8,145,178,.16);border-color:rgba(34,211,238,.5)}
+#miner-cat-box[data-tier="3"] #kc-cave-name{color:#a5f3fc}
+#miner-cat-box[data-tier="3"] #kc-cave-next{color:#67e8f9}
+#miner-cat-box[data-tier="4"] #kc-cave-bar{background:rgba(180,83,9,.22);border-color:rgba(251,191,36,.55)}
+#miner-cat-box[data-tier="4"] #kc-cave-name{color:#fde68a}
+#miner-cat-box[data-tier="4"] #kc-cave-next{color:#fbbf24}
+#miner-cat-box[data-tier="5"] #kc-cave-bar{background:linear-gradient(90deg,rgba(124,58,237,.25),rgba(249,115,22,.22));border-color:rgba(224,242,254,.5)}
+#miner-cat-box[data-tier="5"] #kc-cave-name{color:#fffbeb}
+#miner-cat-box[data-tier="5"] #kc-cave-next{color:#e0f2fe}
+#miner-cat-box[data-tier="3"]{box-shadow:inset 0 0 34px rgba(34,211,238,.07)}
+#miner-cat-box[data-tier="4"]{box-shadow:inset 0 0 34px rgba(251,191,36,.09)}
+#miner-cat-box[data-tier="5"]{box-shadow:inset 0 0 40px rgba(224,242,254,.09)}

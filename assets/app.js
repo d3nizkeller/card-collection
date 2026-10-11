@@ -4276,8 +4276,14 @@ function nxToggle3d() {
         const MINER_CAT_DANCE_MS = 3600;
 
         function minerCatBox() { return document.getElementById('miner-cat-box'); }
-        // b380: внешний вид скалы и берлоги прокачивается вместе с киркой
-        function minerSceneTier() { const l = miner.lvl || 1; return l >= 20 ? 3 : (l >= 10 ? 2 : (l >= 5 ? 1 : 0)); }
+        // b383: пещера прокачивается вместе с киркой: 6 биомов. Меняется не только
+        // крепь и скала (b380), а ВЕСЬ фон: порода, пол, свет, реквизит — плюс
+        // подпись с названием пещеры и прогрессом до следующей, чтобы каждое
+        // улучшение было видно сразу. Границы: 1-2 / 3-4 / 5-9 / 10-19 / 20-34 / 35+.
+        const MINER_CAVE_NAMES = ['Глиняная нора', 'Крепь и фонарь', 'Рудный штрек', 'Кристальный грот', 'Золотая жила', 'Алмазное сердце'];
+        const MINER_CAVE_RANGE = ['ур. 1-2', 'ур. 3-4', 'ур. 5-9', 'ур. 10-19', 'ур. 20-34', 'ур. 35+'];
+        const MINER_CAVE_NEXT_LVL = [3, 5, 10, 20, 35, 0];
+        function minerSceneTier() { const l = miner.lvl || 1; return l >= 35 ? 5 : (l >= 20 ? 4 : (l >= 10 ? 3 : (l >= 5 ? 2 : (l >= 3 ? 1 : 0)))); }
         let minerDrawnTier = null;
         function minerSceneRender(force) {
             const t = minerSceneTier();
@@ -4285,11 +4291,19 @@ function nxToggle3d() {
             minerDrawnTier = t;
             const stage = document.getElementById('miner-cat-stage');
             if (stage) stage.setAttribute('data-tier', String(t));
-            for (let i = 0; i < 4; i++) {
-                const r = document.getElementById('kc-rock-' + i), d = document.getElementById('kc-den-' + i);
-                if (r) r.style.display = (i === t) ? '' : 'none';
-                if (d) d.style.display = (i === t) ? '' : 'none';
+            const box = minerCatBox();
+            if (box) box.setAttribute('data-tier', String(t));
+            for (let i = 0; i < 6; i++) {
+                const on = (i === t) ? '' : 'none';
+                const bg = document.getElementById('kc-bg-' + i), r = document.getElementById('kc-rock-' + i), d = document.getElementById('kc-den-' + i);
+                if (bg) bg.style.display = on;
+                if (r) r.style.display = on;
+                if (d) d.style.display = on;
             }
+            const nm = document.getElementById('kc-cave-name'), nx = document.getElementById('kc-cave-next');
+            if (nm) nm.textContent = '🕳 ' + MINER_CAVE_NAMES[t] + ' · ' + MINER_CAVE_RANGE[t];
+            if (nx) nx.textContent = (t >= 5) ? 'пещера обустроена полностью ✨'
+                : 'до «' + MINER_CAVE_NAMES[t + 1] + '»: ' + Math.max(0, MINER_CAVE_NEXT_LVL[t] - (miner.lvl || 1)) + ' улучш.';
         }
 
         // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
