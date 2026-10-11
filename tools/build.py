@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob30'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob31'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -1319,12 +1319,13 @@ html, body {
 #miner-cat-box[data-tier="4"]{box-shadow:inset 0 0 34px rgba(251,191,36,.09)}
 #miner-cat-box[data-tier="5"]{box-shadow:inset 0 0 40px rgba(224,242,254,.09)}
 
-/* ===== b384: каваи-котик — оси анимаций под новую геометрию ===== */
-#kc-head{transform-origin:60px 60px}
-#kc-ear-l{transform-origin:42px 34px}
-#kc-ear-r{transform-origin:78px 34px}
-#kc-tail-up{transform-origin:42px 98px}
+/* ===== b385: оси анимаций котика точно по геометрии (голова/хвост/кирка не «отлетают») ===== */
+#kc-head{transform-origin:60px 78px}
+#kc-ear-l{transform-origin:41px 38px}
+#kc-ear-r{transform-origin:79px 38px}
+#kc-tail-up{transform-origin:46px 99px}
 #kc-paw-r{transform-origin:68px 90px}
+#kc-pick{transform-origin:67px 94px}
 '''
 
 SW_JS = '''/* nx-media-sw v2 (%s): cache-first для media/ и assets/, network-first для HTML.
