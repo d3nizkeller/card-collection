@@ -90,6 +90,25 @@ BLOCKS = {
     'qr_xfer':   (19611, 21358, 'script', 'перенос прогресса по QR'),  # b359-b360
 }
 
+# --------------------------------------------------------------------------- #
+# b378: блок управления профилем-синхронизацией убран из модалки QR по просьбе
+# владельца («Профиль: код … / устройств: … / синхронизация: …» + кнопки
+# «Ввести код», «Ссылка на устройство», «Синхронизировать», «Отвязать»).
+# Функционально ничего не теряется: ручной ввод кода живёт в #qr-paste-details,
+# привязка по ссылке ?prof=CODE срабатывает при открытии (profInit),
+# фоновая автосинхронизация профиля (b364/b365) не тронута. profUI() сама
+# проверяет наличие #qr-prof-row и без него просто ничего не рисует.
+# --------------------------------------------------------------------------- #
+MARKUP_PROF_BLOCK_OLD = '\r\n'.join([
+    '                <div id="qr-prof-row" class="flex flex-wrap items-center justify-center gap-1.5"></div>',
+    '                <div class="flex flex-wrap justify-center gap-1.5">',
+    '                    <button type="button" onclick="profEnterCode()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-keyboard mr-1"></i>Ввести код</button>',
+    '                    <button type="button" onclick="profCopyLink()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-link mr-1"></i>Ссылка на устройство</button>',
+    '                    <button type="button" onclick="profSyncNowBtn()" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-[10px] font-bold transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Синхронизировать</button>',
+    '                    <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>',
+    '                </div>',
+])
+
 HEAD_END = 1088       # </head>
 GOOGLE_FONTS = 145    # <link href="https://fonts.googleapis.com/...">
 BODY_OPEN = 1089
@@ -1363,6 +1382,15 @@ def main():
         if c:
             body_text = body_text.replace(bad, good)
             say('  · разметка: %s -> %s (%d)' % (bad, good, c))
+    # b378: блок профиля-синхронизации из модалки QR. В текущем монолите его
+    # может уже не быть (убран) — тогда просто пропускаем; но если генератор
+    # снова принесёт его, сборка уберёт блок сама.
+    _n = body_text.count(MARKUP_PROF_BLOCK_OLD)
+    if _n > 1:
+        raise AssertionError('разметка: блок профиля QR встретился %d раза' % _n)
+    if _n == 1:
+        body_text = body_text.replace(MARKUP_PROF_BLOCK_OLD, '')
+        say('  · разметка: убран блок «Профиль/Ввести код/Ссылка/Синхронизировать/Отвязать» из модалки QR')
     body_text, bl, bd = add_img_attrs(body_text)
     say('  · разметка: <img> добавлено loading="lazy" %d, decoding="async" %d' % (bl, bd))
 
