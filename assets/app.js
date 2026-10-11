@@ -4276,14 +4276,15 @@ function nxToggle3d() {
         const MINER_CAT_DANCE_MS = 3600;
 
         function minerCatBox() { return document.getElementById('miner-cat-box'); }
-        // b383: пещера прокачивается вместе с киркой: 6 биомов. Меняется не только
-        // крепь и скала (b380), а ВЕСЬ фон: порода, пол, свет, реквизит — плюс
-        // подпись с названием пещеры и прогрессом до следующей, чтобы каждое
-        // улучшение было видно сразу. Границы: 1-2 / 3-4 / 5-9 / 10-19 / 20-34 / 35+.
-        const MINER_CAVE_NAMES = ['Глиняная нора', 'Крепь и фонарь', 'Рудный штрек', 'Кристальный грот', 'Золотая жила', 'Алмазное сердце'];
-        const MINER_CAVE_RANGE = ['ур. 1-2', 'ур. 3-4', 'ур. 5-9', 'ур. 10-19', 'ур. 20-34', 'ур. 35+'];
-        const MINER_CAVE_NEXT_LVL = [3, 5, 10, 20, 35, 0];
-        function minerSceneTier() { const l = miner.lvl || 1; return l >= 35 ? 5 : (l >= 20 ? 4 : (l >= 10 ? 3 : (l >= 5 ? 2 : (l >= 3 ? 1 : 0)))); }
+        // b386: прокачка пещеры до 1000 уровня: 10 биомов вместо 6. Экономика НЕ
+        // тронута (цена ×1.22 как была) — расширена только визуальная прогрессия:
+        // после 35-го пещера больше не «обустроена полностью», а уходит вглубь:
+        // Лавовая кузня, Мифриловый зал, Сокровищница дракона и Звёздная жила,
+        // а на 1000-м уровне бейдж показывает корону шахт.
+        const MINER_CAVE_NAMES = ['Глиняная нора', 'Крепь и фонарь', 'Рудный штрек', 'Кристальный грот', 'Золотая жила', 'Алмазное сердце', 'Лавовая кузня', 'Мифриловый зал', 'Сокровищница дракона', 'Звёздная жила'];
+        const MINER_CAVE_RANGE = ['ур. 1-2', 'ур. 3-4', 'ур. 5-9', 'ур. 10-19', 'ур. 20-34', 'ур. 35-59', 'ур. 60-99', 'ур. 100-249', 'ур. 250-499', 'ур. 500-1000'];
+        const MINER_CAVE_NEXT_LVL = [3, 5, 10, 20, 35, 60, 100, 250, 500, 1000];
+        function minerSceneTier() { const l = miner.lvl || 1; return l >= 500 ? 9 : (l >= 250 ? 8 : (l >= 100 ? 7 : (l >= 60 ? 6 : (l >= 35 ? 5 : (l >= 20 ? 4 : (l >= 10 ? 3 : (l >= 5 ? 2 : (l >= 3 ? 1 : 0)))))))); }
         let minerDrawnTier = null;
         function minerSceneRender(force) {
             const t = minerSceneTier();
@@ -4293,7 +4294,7 @@ function nxToggle3d() {
             if (stage) stage.setAttribute('data-tier', String(t));
             const box = minerCatBox();
             if (box) box.setAttribute('data-tier', String(t));
-            for (let i = 0; i < 6; i++) {
+            for (let i = 0; i < 10; i++) {
                 const on = (i === t) ? '' : 'none';
                 const bg = document.getElementById('kc-bg-' + i), r = document.getElementById('kc-rock-' + i), d = document.getElementById('kc-den-' + i);
                 if (bg) bg.style.display = on;
@@ -4302,25 +4303,14 @@ function nxToggle3d() {
             }
             const nm = document.getElementById('kc-cave-name'), nx = document.getElementById('kc-cave-next');
             if (nm) nm.textContent = '🕳 ' + MINER_CAVE_NAMES[t] + ' · ' + MINER_CAVE_RANGE[t];
-            if (nx) nx.textContent = (t >= 5) ? 'пещера обустроена полностью ✨'
-                : 'до «' + MINER_CAVE_NAMES[t + 1] + '»: ' + Math.max(0, MINER_CAVE_NEXT_LVL[t] - (miner.lvl || 1)) + ' улучш.';
-        }
-
-        // b384: каваи-мордочки (референс владельца): одно состояние = одна готовая
-        // морда (глаза + брови + рот). Сон — закрытые дуги, бодрствует — большие
-        // глянцевые глаза с бликами, работа — прищур с бровями и оскал, танец —
-        // счастливые дуги и смех, поглаживание — удивлённое «мяу» (класс petting).
-        function minerCatFaceSync() {
-            const stage = document.getElementById('miner-cat-stage');
-            const pet = !!(stage && stage.classList.contains('petting'));
-            const m = minerCatMode;
-            const f = pet ? 'meow' : (m === 'sleep' ? 'sleep' : (m === 'dance' ? 'dance' : (m === 'work' ? 'work' : 'ready')));
-            const all = ['sleep', 'ready', 'work', 'dance', 'meow'];
-            for (let i = 0; i < all.length; i++) {
-                const e = document.getElementById('kc-face-' + all[i]);
-                if (e) e.style.display = (all[i] === f) ? '' : 'none';
+            if (nx) {
+                const l = miner.lvl || 1;
+                if (l >= 1000) nx.textContent = '👑 уровень 1000: корона шахт!';
+                else if (t >= 9) nx.textContent = 'до короны шахт (ур. 1000): ' + (1000 - l) + ' улучш.';
+                else nx.textContent = 'до «' + MINER_CAVE_NAMES[t + 1] + '»: ' + Math.max(0, MINER_CAVE_NEXT_LVL[t] - l) + ' улучш.';
             }
         }
+
         // перерисовка состояния: классы, подпись, бейдж состояния, мордочка (глаза/рот/хвост)
         function minerCatRender(force) {
             const box = minerCatBox(); if (!box) return;

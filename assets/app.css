@@ -1052,3 +1052,21 @@ html, body {
 #kc-tail-up{transform-origin:46px 99px}
 #kc-paw-r{transform-origin:68px 90px}
 #kc-pick{transform-origin:67px 94px}
+
+/* ===== b386: биомы 6-9 (прокачка пещеры до 1000 уровня) ===== */
+#miner-cat-box[data-tier="6"] #kc-cave-bar{background:rgba(124,45,18,.28);border-color:rgba(249,115,22,.55)}
+#miner-cat-box[data-tier="6"] #kc-cave-name{color:#fdba74}
+#miner-cat-box[data-tier="6"] #kc-cave-next{color:#fb923c}
+#miner-cat-box[data-tier="7"] #kc-cave-bar{background:rgba(14,116,144,.22);border-color:rgba(125,211,252,.55)}
+#miner-cat-box[data-tier="7"] #kc-cave-name{color:#cffafe}
+#miner-cat-box[data-tier="7"] #kc-cave-next{color:#7dd3fc}
+#miner-cat-box[data-tier="8"] #kc-cave-bar{background:rgba(127,29,29,.3);border-color:rgba(252,211,77,.6)}
+#miner-cat-box[data-tier="8"] #kc-cave-name{color:#fde68a}
+#miner-cat-box[data-tier="8"] #kc-cave-next{color:#fcd34d}
+#miner-cat-box[data-tier="9"] #kc-cave-bar{background:linear-gradient(90deg,rgba(49,46,129,.4),rgba(14,165,233,.28));border-color:rgba(224,231,255,.6)}
+#miner-cat-box[data-tier="9"] #kc-cave-name{color:#e0e7ff}
+#miner-cat-box[data-tier="9"] #kc-cave-next{color:#a5b4fc}
+#miner-cat-box[data-tier="6"]{box-shadow:inset 0 0 34px rgba(249,115,22,.1)}
+#miner-cat-box[data-tier="7"]{box-shadow:inset 0 0 34px rgba(125,211,252,.09)}
+#miner-cat-box[data-tier="8"]{box-shadow:inset 0 0 36px rgba(252,211,77,.1)}
+#miner-cat-box[data-tier="9"]{box-shadow:inset 0 0 42px rgba(165,180,252,.12)}
