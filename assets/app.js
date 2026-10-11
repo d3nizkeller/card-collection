@@ -5196,7 +5196,7 @@ function nxToggle3d() {
             for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
             return h.toString(36);
         }
-        function profCode() { try { return String(LS.getItem('nx_prof_code') || '').toUpperCase(); } catch (e) { return ''; } }
+        function profCode() { return ''; } // b379: синхронизация профилей удалена
         // b371: синхронизация по IP удалена по решению владельца: у каждого игрока
         // свой баланс, как раньше. Общий баланс и прогресс — только у устройств,
         // привязанных кодом профиля (вручную или QR-кодом).
@@ -5425,6 +5425,7 @@ function nxToggle3d() {
             };
         }
         function profSyncOnce(force) {
+            return Promise.resolve(false); // b379: синхронизация профилей удалена
             const key = profDocKey();
             profUI();
             if (!key) return Promise.resolve(false);
@@ -5541,8 +5542,9 @@ function nxToggle3d() {
             }).catch(() => { profUI(); return false; })
               .then(v => { profBusy = false; return v === 'held' ? false : v; });
         }
-        function profSyncSoon() { clearTimeout(profT); profT = setTimeout(() => { profSyncOnce(false); }, 1500); }
-        function profFlush() { // аварийная отправка при скрытии вкладки: моя дельта не должна потеряться
+        function profSyncSoon() {} // b379: синхронизация профилей удалена
+        function profFlush() { // b379: синхронизация профилей удалена
+            return;
             try {
                 const key = profDocKey();
                 if (!key) return;
@@ -5572,6 +5574,7 @@ function nxToggle3d() {
             return c;
         }
         function profSetCode(code, silent) {
+            return ''; // b379: синхронизация профилей удалена — привязка невозможна
             code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
             try {
                 if (code) LS.setItem('nx_prof_code', code); else LS.setItem('nx_prof_code', '');
@@ -5625,6 +5628,7 @@ function nxToggle3d() {
             });
         }
         function profInit() {
+            return; // b379: синхронизация профилей удалена — код из ссылки не читаем, таймеры не ставим
             try {
                 const m = String(location.search || '').match(/[?&]prof=([a-zA-Z0-9-]{4,12})/);
                 if (m) { profSetCode(m[1].toUpperCase(), true); try { showToast('Открыта ссылка профиля ' + m[1].toUpperCase() + ' — привязываю устройство…', 'success'); } catch (e) {} }
@@ -5645,7 +5649,8 @@ function nxToggle3d() {
             try { return location.origin + location.pathname + '?prof=' + (profCode() || ''); }
             catch (e) { return '?prof=' + (profCode() || ''); }
         }
-        function profQrFromText(raw) { // распознать код профиля из отсканированного текста; '' — не профиль
+        function profQrFromText(raw) { // b379: синхронизация профилей удалена
+            return '';
             const s = String(raw || '').trim();
             let m = s.match(/[?&]prof=([A-Za-z0-9-]{4,12})/);
             if (!m) m = s.match(/^NXPROF:([A-Za-z0-9]{4,12})$/i);

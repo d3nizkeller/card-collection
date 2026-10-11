@@ -147,7 +147,7 @@ async function qrxBuild() {
         // b366: в тот же QR зашиваем код профиля синхронизации: устройство,
         // отсканировавшее этот код, не только получит прогресс, но и привяжется
         // к профилю — баланс и прогресс станут общими (правила b364).
-        try { let pc = profCode(); if (!pc) { pc = profGenCode(); profSetCode(pc, true); } snap.prof = pc; } catch (e) {}
+        // b379: синхронизация профилей удалена — QR несёт только снимок прогресса
         const json = JSON.stringify(snap);
         qrxFillChips('qr-self-chips', qrxSelfSummary(snap));
         let code = '';
@@ -198,8 +198,6 @@ function qrxLooksLikeCode(s) {
     const t = String(s == null ? '' : s).trim();
     if (!t) return false;
     if (t.indexOf(QRX_DIRECT) === 0 || t.indexOf(QRX_RELAY) === 0) return true;
-    if (/[?&]prof=[A-Za-z0-9-]{4,12}/i.test(t)) return true;  // b365: QR профиля синхронизации
-    if (/^NXPROF:[A-Za-z0-9]{4,12}$/i.test(t)) return true;   // b365: голый код профиля
     return t.charAt(0) === '{';
 }
 let qrxTgHandler = null;
@@ -307,7 +305,8 @@ function qrxStopScan() {
     const video = document.getElementById('qr-video'); if (video) video.srcObject = null;
 }
 // ---- разбор полученного кода ----
-function qrxApplyProf(o) { // b366: в коде переноса может лежать код профиля — привязываем устройство сразу
+function qrxApplyProf(o) { // b379: синхронизация профилей удалена
+    return;
     try {
         const pc = (o && typeof o.prof === 'string') ? o.prof.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) : '';
         if (pc && pc !== profCode()) {

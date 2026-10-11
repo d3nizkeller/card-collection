@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob22'          # b377: меняем — иначе устройства ещё 7 дней сидят на старом app.js из cache-first кэша SW
+BUILD_TAG = 'nxmob23'          # b379: меняем — app.js/qr-transfer.js изменились, клиенты обязаны перечитать их из cache-first кэша SW
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -108,6 +108,63 @@ MARKUP_PROF_BLOCK_OLD = '\r\n'.join([
     '                    <button type="button" onclick="profUnlink()" class="px-2.5 py-1.5 rounded-lg bg-slate-950 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-800/60 text-slate-400 hover:text-rose-300 text-[10px] font-bold transition"><i class="fa-solid fa-link-slash mr-1"></i>Отвязать</button>',
     '                </div>',
 ])
+
+# --------------------------------------------------------------------------- #
+# b379: СИНХРОНИЗАЦИЯ ПРОФИЛЕЙ УДАЛЕНА ЦЕЛИКОМ (решение владельца).
+#
+# Было (b364-b375): устройства одного пользователя привязывались кодом профиля
+# (вручную, ссылкой ?prof=CODE или QR), общий баланс/коллекция/прогресс
+# ездили через облачный документ textdb nexus-tcg-prof-<code> и сливались
+# правилами profMergeState.
+#
+# Стало: подсистема выключена в точках входа, целиком и необратимо для игрока:
+#   · profCode()      всегда ''  — устройство считается непривязанным;
+#   · profSetCode()   не привязывает;
+#   · profInit()      не читает ?prof=, не ставит таймеры и слушатели;
+#   · profSyncOnce()  не ходит в сеть и не сливает состояния;
+#   · profSyncSoon()/profFlush() не планируют отправку;
+#   · profQrFromText() не распознаёт коды профиля;
+#   · QR-перенос больше не несёт код профиля и не привязывает устройство.
+# Точки входа выбраны так, что весь остальной код подсистемы становится
+# недостижимым, а комнатное облако (каталог, биржа, джекпот) и разовый
+# QR-перенос прогресса работают как раньше. Уже привязанные устройства просто
+# становятся самостоятельными: их баланс остаётся последним слитым.
+# --------------------------------------------------------------------------- #
+PROFKILL_JS = [
+    ('profCode всегда пустой',
+     "        function profCode() { try { return String(LS.getItem('nx_prof_code') || '').toUpperCase(); } catch (e) { return ''; } }",
+     "        function profCode() { return ''; } // b379: синхронизация профилей удалена"),
+    ('profSyncOnce не ходит в сеть и не сливает',
+     "        function profSyncOnce(force) {\n            const key = profDocKey();",
+     "        function profSyncOnce(force) {\n            return Promise.resolve(false); // b379: синхронизация профилей удалена\n            const key = profDocKey();"),
+    ('profSyncSoon не планирует отправку',
+     "        function profSyncSoon() { clearTimeout(profT); profT = setTimeout(() => { profSyncOnce(false); }, 1500); }",
+     "        function profSyncSoon() {} // b379: синхронизация профилей удалена"),
+    ('profFlush не отправляет',
+     "        function profFlush() { // аварийная отправка при скрытии вкладки: моя дельта не должна потеряться\n            try {",
+     "        function profFlush() { // b379: синхронизация профилей удалена\n            return;\n            try {"),
+    ('profInit не стартует подсистему',
+     "        function profInit() {\n            try {\n                const m = String(location.search || '').match(/[?&]prof=([a-zA-Z0-9-]{4,12})/);",
+     "        function profInit() {\n            return; // b379: синхронизация профилей удалена — код из ссылки не читаем, таймеры не ставим\n            try {\n                const m = String(location.search || '').match(/[?&]prof=([a-zA-Z0-9-]{4,12})/);"),
+    ('profSetCode не привязывает устройство',
+     "        function profSetCode(code, silent) {\n            code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);",
+     "        function profSetCode(code, silent) {\n            return ''; // b379: синхронизация профилей удалена — привязка невозможна\n            code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);"),
+    ('profQrFromText не распознаёт коды профиля',
+     "        function profQrFromText(raw) { // распознать код профиля из отсканированного текста; '' — не профиль\n            const s = String(raw || '').trim();",
+     "        function profQrFromText(raw) { // b379: синхронизация профилей удалена\n            return '';\n            const s = String(raw || '').trim();"),
+]
+
+PROFKILL_QR = [
+    ('QR больше не несёт код профиля',
+     "        try { let pc = profCode(); if (!pc) { pc = profGenCode(); profSetCode(pc, true); } snap.prof = pc; } catch (e) {}",
+     "        // b379: синхронизация профилей удалена — QR несёт только снимок прогресса"),
+    ('вставленный текст ?prof=/NXPROF: не считается кодом переноса',
+     "    if (/[?&]prof=[A-Za-z0-9-]{4,12}/i.test(t)) return true;  // b365: QR профиля синхронизации\n    if (/^NXPROF:[A-Za-z0-9]{4,12}$/i.test(t)) return true;   // b365: голый код профиля\n",
+     ""),
+    ('qrxApplyProf не привязывает устройство',
+     "function qrxApplyProf(o) { // b366: в коде переноса может лежать код профиля — привязываем устройство сразу\n    try {",
+     "function qrxApplyProf(o) { // b379: синхронизация профилей удалена\n    return;\n    try {"),
+]
 
 HEAD_END = 1088       # </head>
 GOOGLE_FONTS = 145    # <link href="https://fonts.googleapis.com/...">
@@ -1283,6 +1340,8 @@ def main():
                                'проверка артов: 3 потока вместо 73 сразу')
     qrxfer_js, _n = patch_once(qrxfer_js, CHECKARTS_START_OLD, CHECKARTS_START_NEW,
                                'проверка артов: автозапуск только у владельца')
+    for _lbl, _o, _n in PROFKILL_QR:
+        qrxfer_js, _n2 = patch_once(qrxfer_js, _o, _n, 'b379: ' + _lbl)
 
     w('three.min.js', three_js)
     w('qrcode.min.js', qrcode_js)
@@ -1335,6 +1394,10 @@ def main():
                        'const raw = el.__nxOrig || u;',
                        THUMB_ERROR_FALLBACK + '                const raw = el.__nxOrig || u;',
                        'фолбэк миниатюра -> полный арт в imgErrorChain')
+    # b379: синхронизация профилей удалена целиком
+    say('правки b379 (синхронизация профилей удалена):')
+    for _lbl, _o, _n in PROFKILL_JS:
+        js, _ = patch_once(js, _o, _n, 'b379: ' + _lbl)
     js, _ = patch_once(js, BLOBTOUCH_OLD, BLOBTOUCH_NEW,
                        'b377: не отзываем blob:URL, который ещё на живой <img>')
     js, _ = patch_once(js, BLOBSAVE_OLD, BLOBSAVE_NEW,
