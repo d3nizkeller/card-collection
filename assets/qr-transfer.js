@@ -648,12 +648,19 @@ function nxCheckArts(silent) { // b342-solo: проверить, что все �
             nxUpdateCounts();
             try { nxCheckLinks(silent); } catch (e) {}
         };
-        keys.forEach(function (k) {
+        // b377: раньше все 73 мастера открывались ОДНОВРЕМЕННО. Теперь очередь
+        // с тремя потоками: диагностика не выбивает канал из-под видимых карточек.
+        var ptr = 0;
+        var pump = function () {
+            if (ptr >= keys.length) return;
+            var k = keys[ptr++];
             var im = new Image();
-            im.onload = function () { ok++; fin(); };
-            im.onerror = function () { bad.push(k); fin(); };
+            im.decoding = 'async';
+            im.onload = function () { ok++; fin(); pump(); };
+            im.onerror = function () { bad.push(k); fin(); pump(); };
             im.src = NX_EMBED_MEDIA[k];
-        });
+        };
+        for (var q = 0; q < 3; q++) pump();
     } catch (e) {}
 }
 function nxBuildProgressUI() { // кнопка «Проверить картинки» рядом с остальными
@@ -1462,15 +1469,41 @@ function nxAutoCacheOnce() {
     // Ретраим даже «мёртвые» ссылки: когда хост оживёт, арты подтянутся сами.
     if (nxAutoRunning || !navigator.onLine || document.hidden) return;
     const jobs = [];
+    // b377: фоново кэшируем ТО, ЧТО РЕАЛЬНО ПОКАЗЫВАЕТСЯ НА ЭКРАНЕ — миниатюры
+    // media/t/ (256px) и media/t2/ (512px), а не мастера 1080x1920.
+    //
+    // Раньше nxAutoCacheOnce() каждые 60 секунд ставила в очередь по 10 мастеров
+    // по 1.6-4.3 МБ: ~30 МБ фонового трафика в минуту на КАЖДОМ устройстве,
+    // включая мобильные, и без всякого участия игрока. Этот поток забивал канал
+    // (видимые карточки не успевали прогрузиться) и наполнял IndexedDB файлами,
+    // которые на экране не рисуются никогда. Именно так выглядит жалоба
+    // «картинки не загружаются, особенно на телефоне».
+    //
+    // Мастера по-прежнему нужны, но только авто-вшиванию b341 и автоотправке
+    // b343 в GitHub — а они работают лишь у владельца (нужен токен). Ему и
+    // оставляем полный арт, всем остальным — миниатюры (в 21 раз меньше трафика,
+    // офлайн-готовность интерфейса при этом сохраняется полностью).
+    var nxAutoWantMaster = false;
+    try { nxAutoWantMaster = !!nxGhToken() && (nxAutoEmbedOn() || nxAutoMediaOn()); } catch (e) {}
     try {
         nxAllMediaUrls().forEach(raw => {
             let eff = raw; try { eff = mediaUrl(raw); } catch (e) {}
-            if (eff && eff.indexOf('http') === 0) jobs.push(eff);
+            if (!eff || eff.indexOf('http') !== 0) return;
+            if (nxAutoWantMaster) { jobs.push(eff); return; }
+            let mid = '', small = '';
+            try { mid = nxThumbFor(raw, 'mid'); small = nxThumbFor(raw, 'small'); } catch (e) {}
+            // nxThumbFor возвращает '' для локальных (не http) артов и для файлов,
+            // которых нет в картах сборки, — тогда остаётся мастер, как раньше.
+            if (mid && mid.indexOf('http') === 0) jobs.push(mid);
+            if (small && small.indexOf('http') === 0 && small !== mid) jobs.push(small);
+            if (!mid && !small) jobs.push(eff);
         });
     } catch (e) { return; }
     if (!jobs.length) return;
     nxAutoRunning = true;
-    const CAP = 10; // за подход не больше 10 файлов — не забиваем канал
+    // b377: 10 — это было про мастера по 3 МБ. Миниатюры в 50 раз легче,
+    // поэтому берём больше за подход и не держим канал занятым полчаса.
+    const CAP = nxAutoWantMaster ? 10 : 40;
     let i = 0, done = 0, fresh = 0;
     const step = () => {
         if (i >= jobs.length || done >= CAP) {
@@ -1511,7 +1544,18 @@ const NX_BUILD = 'b323-2026-10-07';
 try { nx3dBtnInit(); } catch (e) {}
 try { nxAutoEmbedUI(); } catch (e) {}
 try { nxBuildProgressUI(); } catch (e) {}
-setTimeout(function () { try { nxCheckArts(true); } catch (e) {} }, 9000);
+// b377: автопроверка артов больше не запускается у каждого игрока.
+// Через 9 секунд после старта она открывала 73 мастера одновременно — на
+// мобильной сети канал вставал, и карточки, которые игрок реально видит,
+// не успевали прогрузиться. Диагностика нужна владельцу (разблокированная
+// «Студия»), кнопка «Проверить картинки» в Студии осталась на месте.
+setTimeout(function () {
+    try {
+        var owner = false;
+        try { owner = !!nxGhToken() || isHiddenTabUnlocked(); } catch (e) {}
+        if (owner) nxCheckArts(true);
+    } catch (e) {}
+}, 9000);
 setTimeout(function () { try { nxUpdateCounts(); } catch (e) {} }, 3000);
 function nxCrashLog(msg) {
     try {

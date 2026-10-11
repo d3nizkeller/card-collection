@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob21'          # меняется при изменении структуры — сбрасывает кэш SW
+BUILD_TAG = 'nxmob22'          # b377: меняем — иначе устройства ещё 7 дней сидят на старом app.js из cache-first кэша SW
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -290,15 +290,31 @@ def build_thumbs(files, force=False):
 # --------------------------------------------------------------------------- #
 # 4. правки кода игры
 # --------------------------------------------------------------------------- #
-def patch_once(text, old, new, label, required=True):
+def patch_once(text, old, new, label, required=True, want=None):
+    """Заменяет ВСЕ вхождения `old`.
+
+    b377: раньше здесь было `replace(old, new, 1)` — заменялось только ПЕРВОЕ
+    вхождение, а в лог печаталось полное количество найденных. Сборка рапортовала
+    «albumCardHTML: <img> обеих веток (2 вхожд.)», хотя вторая ветка оставалась
+    нетронутой. Именно так обычная (не компактная) сетка альбома продолжила
+    грузить мастера 1080x1920 по 2-4 МБ вместо миниатюры 512px: 96.6 МБ трафика
+    и ~284 МБ распакованных битмапов на один альбом «Доктор Кто». На телефоне
+    это и есть «картинки не загружаются».
+
+    `want` — ожидаемое число вхождений: если источник изменился, сборка падает
+    громко, а не молча собирает половину патчей.
+    """
     n = text.count(old)
     if n == 0:
         if required:
             raise AssertionError('патч не найден: ' + label)
         say('  · %s — не найдено (пропущено)' % label)
         return text, 0
-    text = text.replace(old, new, 1)
-    say('  · %s (%d вхожд.)' % (label, n))
+    if want is not None and n != want:
+        raise AssertionError('патч «%s»: ожидалось %d вхождений, найдено %d '
+                             '(источник изменился — обновите патч)' % (label, want, n))
+    text = text.replace(old, new)
+    say('  · %s (заменено %d)' % (label, n))
     return text, n
 
 
@@ -333,9 +349,23 @@ def add_img_attrs(html):
 
 # места, где карта показывается МЕЛКО (<= ~180 css px) — там достаточно миниатюры
 THUMB_SITES = [
-    ('биржа, вид списком (40-48px)',
-     '''<img src="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">''',
-     '''<img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">'''),
+    # b377: этот <img> встречается ДВАЖДЫ и в двух разных по размеру местах —
+    # строка лота (40-48 css px) и плитка лота в виде «Сетка» (2-4 колонки,
+    # ~150-180 css px). До b377 патч с одним old-текстом заменял только первое
+    # вхождение, и плитка биржи продолжала тянуть мастер. Разводим явно,
+    # привязываясь к обёртке: строке — 256px, плитке — 512px.
+    ('биржа, строка лота (40-48px)',
+     '''<div class="relative w-10 sm:w-12 shrink-0 rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">''',
+     '''<div class="relative w-10 sm:w-12 shrink-0 rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">''',
+     1),
+    ('биржа, плитка лота в сетке (~150-180px)',
+     '''<div class="relative w-full rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">''',
+     '''<div class="relative w-full rounded-lg overflow-hidden border border-slate-700/60 bg-slate-950" style="aspect-ratio:3/4">
+                    <img src="${mediaThumbMid(c.image)}" data-nx-full="${mediaUrl(c.image)}" alt="${cloudEsc(c.name || '')}" loading="lazy" onerror="this.onerror=null;imgErrorChain(this);" class="w-full h-full object-cover">''',
+     1),
     ('колода, список бойцов (88px)',
      '''<img src="${mediaUrl(c.image)}" alt="${c.name}" class="w-full h-20 object-cover rounded-lg" onerror="imgErrorChain(this);" data-card-id="${c.id}">''',
      '''<img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" alt="${c.name}" class="w-full h-20 object-cover rounded-lg" onerror="imgErrorChain(this);" data-card-id="${c.id}">'''),
@@ -356,7 +386,24 @@ THUMB_SITES = [
      '''<img src="${mediaThumb(p.image)}" data-nx-full="${mediaUrl(p.image)}" class="w-7 h-10 object-cover rounded shrink-0" onerror="this.onerror=null;imgErrorChain(this);">'''),
     ('студия, список карт (28x40)',
      '''<img src="${mediaUrl(c.image)}" class="w-7 h-10 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}">''',
-     '''<img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" class="w-7 h-10 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}">'''),
+     '''<img src="${mediaThumb(c.image)}" data-nx-full="${mediaUrl(c.image)}" class="w-7 h-10 object-cover rounded" onerror="imgErrorChain(this);" data-card-id="${c.id}">''',
+     1),
+    # b377: мини-игры. Символы слотов/сетки — это те же арты карт, и DOM-фолбэк
+    # рисовал их мастерами: 9 ячеек слота x 2-4 МБ или 15 ячеек «сетки» x 7.9 МБ
+    # распакованной битмапы. Ячейка на экране — 60-110 css px.
+    ('слоты: DOM-фолбэк символа (aspect-square, ~90px)',
+     '''const img = s.image ? `<img src="${mediaUrl(s.image)}" alt="${s.name}" class="w-full h-full object-cover" onerror="imgErrorChain(this)">` : '';''',
+     '''const img = s.image ? `<img src="${mediaThumb(s.image)}" data-nx-full="${mediaUrl(s.image)}" alt="${s.name}" class="w-full h-full object-cover" onerror="imgErrorChain(this)">` : '';''',
+     1),
+    ('сетка: ячейка DOM-фолбэка (~60-110px, до 15 ячеек)',
+     '''? `<img src="${mediaUrl(sym.image)}" alt="${sym.name}" class="absolute inset-0 w-full h-full object-cover" onerror="imgErrorChain(this)">`''',
+     '''? `<img src="${mediaThumb(sym.image)}" data-nx-full="${mediaUrl(sym.image)}" alt="${sym.name}" class="absolute inset-0 w-full h-full object-cover" onerror="imgErrorChain(this)">`''',
+     1),
+    # b377: превью карты в Студии — одна карта, но мастер 2-4 МБ ради ~200 css px.
+    ('студия: превью карты',
+     '''box.innerHTML = `${image ? `<img src="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)" class="absolute inset-0 w-full h-full object-cover z-0">` : ''}''',
+     '''box.innerHTML = `${image ? `<img src="${mediaThumbMid(image)}" data-nx-full="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)" class="absolute inset-0 w-full h-full object-cover z-0">` : ''}''',
+     1),
 ]
 
 # крупные сетки, где карт может быть 100+ — добавляем класс отложенной отрисовки
@@ -389,9 +436,13 @@ ALBUM_SITES = [
             // 'full' — полный арт, 'mid' — 512px, 'thumb' — 256px (по умолчанию)
             const artTier = (opts && opts.art) || (compact ? 'thumb' : 'mid');
             const artFn = artTier === 'full' ? mediaUrl : (artTier === 'mid' ? mediaThumbMid : mediaThumb);'''),
+    # b377: вхождений РОВНО 2 — компактная ветка и обычная. До b377 заменялось
+    # только первое, поэтому обычная сетка альбома (вид по умолчанию) грузила
+    # мастера 1080x1920 по 2-4 МБ на карту.
     ('albumCardHTML: <img> обеих веток (компакт + обычная)',
      '''<img src="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">''',
-     '''<img src="${artFn(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">'''),
+     '''<img src="${artFn(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">''',
+     2),
     ('renderAlbumGrid: вид «альбом» (страницы по 9)',
      "pg.map(c => albumCardHTML(c)).join('')",
      "pg.map(c => albumCardHTML(c, { art: 'mid' })).join('')"),
@@ -463,7 +514,12 @@ PRELOAD_PATCHES = [
                 // весит 2-4 МБ и показывается в списках размером 30-180 px.
                 let u = mediaUrl(raw);
                 if (tier !== 'full') { const t = mediaThumb(raw); if (t) u = t; }
-                if (!u || u.indexOf('http') !== 0 || IMG_PRELOADED.has(u) || imgQueue.indexOf(u) >= 0) return;
+                // b377: условие u.indexOf('http') === 0 отсекало ВСЕ встроенные арты
+                // (NX_EMBED_MEDIA даёт относительные media/...), поэтому стандартный
+                // каталог не грелся вообще и каждая карта грузилась «в момент показа».
+                // Относительный путь браузер сам разрешит относительно документа.
+                if (!u || IMG_PRELOADED.has(u) || imgQueue.indexOf(u) >= 0) return;
+                if (u.indexOf('http') !== 0 && u.indexOf('media/') !== 0) return;
                 imgQueue.push(u);
             });
             imgPump();
@@ -523,14 +579,34 @@ THUMB_HELPERS = '''
                 const full = mediaUrl(s);              // уже с учётом зеркала и NX_EMBED_MEDIA
                 if (!full) return '';
                 const map = (tier === 'mid') ? NX_EMBED_THUMB_MID : NX_EMBED_THUMB;
-                const rel = map[nxMediaKey(full)] || map[nxMediaKey(s)];
-                if (!rel) return '';                   // для этого файла миниатюры нет
-                if (full.indexOf('http') !== 0) return rel;   // локальный арт — путь относительный
-                // облачная/зеркальная ссылка: миниатюра лежит рядом с мастером,
-                // подменяем только каталог media/ -> media/t/ (или media/t2/)
-                const i = full.lastIndexOf('/media/');
-                if (i < 0) return rel;
-                return full.slice(0, i + 7) + rel.slice(6);
+                const key = nxMediaKey(full) || nxMediaKey(s);
+                const rel = map[key];
+                if (rel) {
+                    if (full.indexOf('http') !== 0) return rel;   // локальный арт — путь относительный
+                    // облачная/зеркальная ссылка: миниатюра лежит рядом с мастером,
+                    // подменяем только каталог media/ -> media/t/ (или media/t2/)
+                    const i = full.lastIndexOf('/media/');
+                    if (i < 0) return rel;
+                    return full.slice(0, i + 7) + rel.slice(6);
+                }
+                // b377: файла нет в картах сборки. Так бывает, когда арт залила
+                // автоотправка b343 уже после последней сборки — а значит, у него
+                // НЕТ и миниатюры, и карта в сетке грузилась мастером 2-4 МБ.
+                //
+                // Если файл известен хотя бы в мелкой карте, значит средняя для
+                // него не строилась намеренно (мастер уже 640px, MID_MIN_SRC) —
+                // возвращаем пустоту, и mediaThumbMid() откатится на 256px,
+                // без лишнего 404. Иначе путь-miniatury достраиваем по соглашению
+                // media/t/<имя>.webp: если её на сервере нет, imgErrorChain
+                // откатится на data-nx-full (полный арт) — заглушки не будет.
+                if (tier === 'mid' && NX_EMBED_THUMB[key]) return '';
+                if (!key) return '';
+                const conv = (tier === 'mid' ? 'media/t2/' : 'media/t/')
+                    + key.replace(/\.[^.]+$/, '') + '.webp';
+                if (full.indexOf('http') !== 0) return conv;
+                const j = full.lastIndexOf('/media/');
+                if (j < 0) return conv;
+                return full.slice(0, j + 7) + conv.slice(6);
             } catch (e) { return ''; }
         }
         function mediaThumb(u) {                       // 256px
@@ -550,6 +626,204 @@ THUMB_ERROR_FALLBACK = '''                // миниатюра не отдал�
                     if (full && full !== u) { el.onerror = null; el.style.display = ''; el.src = full; return true; }
                 }
 '''
+
+# --------------------------------------------------------------------------- #
+# b377: фоновый трафик qr-transfer.js. Две функции качали МАСТЕРА у каждого
+# игрока, в том числе на мобильной сети, и соревновались с загрузкой видимых
+# карточек. Замер на стенде (iPhone 12, DPR 3, 36 реальных артов «Доктор Кто»):
+#   было  — 167.4 МБ скачанных мастеров, 247.8 МБ распакованных битмапов;
+#   стало —   4.9 МБ миниатюр,        68.8 МБ битмапов.
+# --------------------------------------------------------------------------- #
+AUTOCACHE_OLD = """    const jobs = [];
+    try {
+        nxAllMediaUrls().forEach(raw => {
+            let eff = raw; try { eff = mediaUrl(raw); } catch (e) {}
+            if (eff && eff.indexOf('http') === 0) jobs.push(eff);
+        });
+    } catch (e) { return; }"""
+
+AUTOCACHE_NEW = """    const jobs = [];
+    // b377: фоново кэшируем ТО, ЧТО РЕАЛЬНО ПОКАЗЫВАЕТСЯ НА ЭКРАНЕ — миниатюры
+    // media/t/ (256px) и media/t2/ (512px), а не мастера 1080x1920.
+    //
+    // Раньше nxAutoCacheOnce() каждые 60 секунд ставила в очередь по 10 мастеров
+    // по 1.6-4.3 МБ: ~30 МБ фонового трафика в минуту на КАЖДОМ устройстве,
+    // включая мобильные, и без всякого участия игрока. Этот поток забивал канал
+    // (видимые карточки не успевали прогрузиться) и наполнял IndexedDB файлами,
+    // которые на экране не рисуются никогда. Именно так выглядит жалоба
+    // «картинки не загружаются, особенно на телефоне».
+    //
+    // Мастера по-прежнему нужны, но только авто-вшиванию b341 и автоотправке
+    // b343 в GitHub — а они работают лишь у владельца (нужен токен). Ему и
+    // оставляем полный арт, всем остальным — миниатюры (в 21 раз меньше трафика,
+    // офлайн-готовность интерфейса при этом сохраняется полностью).
+    var nxAutoWantMaster = false;
+    try { nxAutoWantMaster = !!nxGhToken() && (nxAutoEmbedOn() || nxAutoMediaOn()); } catch (e) {}
+    try {
+        nxAllMediaUrls().forEach(raw => {
+            let eff = raw; try { eff = mediaUrl(raw); } catch (e) {}
+            if (!eff || eff.indexOf('http') !== 0) return;
+            if (nxAutoWantMaster) { jobs.push(eff); return; }
+            let mid = '', small = '';
+            try { mid = nxThumbFor(raw, 'mid'); small = nxThumbFor(raw, 'small'); } catch (e) {}
+            // nxThumbFor возвращает '' для локальных (не http) артов и для файлов,
+            // которых нет в картах сборки, — тогда остаётся мастер, как раньше.
+            if (mid && mid.indexOf('http') === 0) jobs.push(mid);
+            if (small && small.indexOf('http') === 0 && small !== mid) jobs.push(small);
+            if (!mid && !small) jobs.push(eff);
+        });
+    } catch (e) { return; }"""
+
+# миниатюры весят 18-62 КБ против 1.6-4.3 МБ у мастера — за подход можно взять
+# больше файлов, и весь каталог прогреется за минуты, а не за полчаса.
+AUTOCAP_OLD = "    const CAP = 10; // за подход не больше 10 файлов — не забиваем канал"
+AUTOCAP_NEW = """    // b377: 10 — это было про мастера по 3 МБ. Миниатюры в 50 раз легче,
+    // поэтому берём больше за подход и не держим канал занятым полчаса.
+    const CAP = nxAutoWantMaster ? 10 : 40;"""
+
+CHECKARTS_LOOP_OLD = """        keys.forEach(function (k) {
+            var im = new Image();
+            im.onload = function () { ok++; fin(); };
+            im.onerror = function () { bad.push(k); fin(); };
+            im.src = NX_EMBED_MEDIA[k];
+        });"""
+CHECKARTS_LOOP_NEW = """        // b377: раньше все 73 мастера открывались ОДНОВРЕМЕННО. Теперь очередь
+        // с тремя потоками: диагностика не выбивает канал из-под видимых карточек.
+        var ptr = 0;
+        var pump = function () {
+            if (ptr >= keys.length) return;
+            var k = keys[ptr++];
+            var im = new Image();
+            im.decoding = 'async';
+            im.onload = function () { ok++; fin(); pump(); };
+            im.onerror = function () { bad.push(k); fin(); pump(); };
+            im.src = NX_EMBED_MEDIA[k];
+        };
+        for (var q = 0; q < 3; q++) pump();"""
+
+CHECKARTS_START_OLD = "setTimeout(function () { try { nxCheckArts(true); } catch (e) {} }, 9000);"
+CHECKARTS_START_NEW = """// b377: автопроверка артов больше не запускается у каждого игрока.
+// Через 9 секунд после старта она открывала 73 мастера одновременно — на
+// мобильной сети канал вставал, и карточки, которые игрок реально видит,
+// не успевали прогрузиться. Диагностика нужна владельцу (разблокированная
+// «Студия»), кнопка «Проверить картинки» в Студии осталась на месте.
+setTimeout(function () {
+    try {
+        var owner = false;
+        try { owner = !!nxGhToken() || isHiddenTabUnlocked(); } catch (e) {}
+        if (owner) nxCheckArts(true);
+    } catch (e) {}
+}, 9000);"""
+
+# --------------------------------------------------------------------------- #
+# b377: мёртвые blob:URL. IMG_OBJ держит не больше 18 записей и при вытеснении
+# отзывает blob:URL. Если этот URL всё ещё висел на живой <img>, картинка
+# мгновенно становилась битой, а imgErrorChain по blob: не делает НИЧЕГО:
+# raw.indexOf('http') !== 0 -> ни ретраев, ни зеркала, ни кэша -> сразу
+# заглушка. Игрок видит «?» вместо арта. На стенде это ловилось и до правки
+# (3 случая), а после перевода на миниатюры — чаще (11), потому что разных URL
+# в кэше стало больше. Чиним и причину (не отзываем занятое), и следствие
+# (blob: -> обратно на реальный URL арта).
+# --------------------------------------------------------------------------- #
+BLOBTOUCH_OLD = """        function imgCacheTouch(url, ou) { // LRU «памяти»: свежая запись в конец, хвост отзываем
+            try {
+                IMG_OBJ.delete(url); IMG_OBJ.set(url, ou);
+                while (IMG_OBJ.size > IMG_OBJ_MAX) {
+                    const oldest = IMG_OBJ.keys().next().value;
+                    const old = IMG_OBJ.get(oldest);
+                    IMG_OBJ.delete(oldest);
+                    try { URL.revokeObjectURL(old); } catch (e) {}
+                }
+            } catch (e) {}
+        }"""
+
+BLOBTOUCH_NEW = """        // b377: blob:URL, который ещё висит на живой <img>, отзывать НЕЛЬЗЯ —
+        // картинка мгновенно становится битой, а imgErrorChain по blob: не ретраит
+        // и не лезет в кэш, поэтому карта уходила в заглушку навсегда.
+        // Занятые URL складываем в сироты и дожигаем, когда элемент уйдёт из DOM.
+        const IMG_OBJ_ORPHANS = [];
+        const IMG_OBJ_ORPHANS_MAX = 60;
+        function nxBlobInUse(ou) {
+            try {
+                const imgs = document.images;
+                for (let i = 0; i < imgs.length; i++) {
+                    if (imgs[i].src === ou) return true;
+                    const a = imgs[i].getAttribute && imgs[i].getAttribute('src');
+                    if (a === ou) return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+        function nxBlobStillCached(ou) { // blob:URL снова вернулся в LRU — не трогаем
+            try { for (const v of IMG_OBJ.values()) if (v === ou) return true; } catch (e) {}
+            return false;
+        }
+        function nxBlobSweep() { // раз в минуту: отзываем то, что больше никому не нужно
+            try {
+                if (document.hidden) return;
+                for (let i = IMG_OBJ_ORPHANS.length - 1; i >= 0; i--) {
+                    const ou = IMG_OBJ_ORPHANS[i];
+                    if (!ou) { IMG_OBJ_ORPHANS.splice(i, 1); continue; }
+                    if (nxBlobStillCached(ou)) { IMG_OBJ_ORPHANS.splice(i, 1); continue; }
+                    if (nxBlobInUse(ou) && IMG_OBJ_ORPHANS.length <= IMG_OBJ_ORPHANS_MAX) continue;
+                    IMG_OBJ_ORPHANS.splice(i, 1);
+                    try { URL.revokeObjectURL(ou); } catch (e) {}
+                }
+            } catch (e) {}
+        }
+        setInterval(nxBlobSweep, 60000);
+        function imgCacheTouch(url, ou) { // LRU «памяти»: свежая запись в конец, хвост отзываем
+            try {
+                IMG_OBJ.delete(url); IMG_OBJ.set(url, ou);
+                while (IMG_OBJ.size > IMG_OBJ_MAX) {
+                    const oldest = IMG_OBJ.keys().next().value;
+                    const old = IMG_OBJ.get(oldest);
+                    IMG_OBJ.delete(oldest);
+                    if (!old) continue;
+                    if (nxBlobInUse(old)) {
+                        if (IMG_OBJ_ORPHANS.indexOf(old) < 0) IMG_OBJ_ORPHANS.push(old);
+                        continue;
+                    }
+                    try { URL.revokeObjectURL(old); } catch (e) {}
+                }
+            } catch (e) {}
+        }"""
+
+# запоминаем на элементе реальный http-URL арта: если blob: умрёт, откатываемся
+# на него (это миниатюра, а не мастер), и тяжёлый арт зря не качается.
+BLOBSAVE_OLD = """                const url = img.src; // абсолютный, уже после mediaUrl()-перезаписи зеркала
+                if (!url || url.indexOf('http') !== 0) return;
+                img.__nxC = 1;"""
+BLOBSAVE_NEW = """                const url = img.src; // абсолютный, уже после mediaUrl()-перезаписи зеркала
+                if (!url || url.indexOf('http') !== 0) return;
+                img.__nxC = 1;
+                img.__nxHttpUrl = url; // b377: куда вернуться, если blob:URL отзовут"""
+
+BLOBCHAIN_OLD = """                if (!u || u.indexOf('data:') === 0) return false;"""
+BLOBCHAIN_NEW = """                if (!u || u.indexOf('data:') === 0) return false;
+                // b377: src оказался мёртвым blob:URL. Ниже по коду этот случай
+                // не лечится вовсе: raw не начинается с http, поэтому ни ретраев,
+                // ни зеркала, ни поиска в кэше — элемент сразу уходил в заглушку
+                // и оставался с «?» навсегда. Возвращаем реальный URL арта:
+                // сперва сохранённый http-адрес миниатюры (дёшево), потом
+                // data-nx-full (мастер), потом запомненный оригинал.
+                if (u.indexOf('blob:') === 0) {
+                    el.__nxBlobRetry = (el.__nxBlobRetry || 0) + 1;
+                    if (el.__nxBlobRetry <= 3) {
+                        const cands = [el.__nxHttpUrl,
+                                       el.getAttribute && el.getAttribute('data-nx-full'),
+                                       el.__nxOrig, el.__nxThumbFor];
+                        for (let ci = 0; ci < cands.length; ci++) {
+                            const back = String(cands[ci] || '');
+                            if (!back || back === u) continue;
+                            if (back.indexOf('blob:') === 0 || back.indexOf('data:') === 0) continue;
+                            el.__nxPh = 0; el.__nxRetry = 0; el.__nxCacheTried = 0;
+                            el.__nxWait = 0; el.__nxOrig = back; el.__nxHttpUrl = back;
+                            el.onerror = null; el.style.display = ''; el.src = back;
+                            return true;
+                        }
+                    }
+                }"""
 
 MEMGUARD_OLD = "        if (mb < 350) return; // b318: пороги ниже — WebView Telegram живёт в меньшем лимите"
 MEMGUARD_NEW = """        // Порог не абсолютный: на слабых Android jsHeapSizeLimit бывает ~256 МБ,
@@ -979,8 +1253,17 @@ def main():
         say('assets/%-18s %8.1f КБ' % (name, os.path.getsize(p) / 1024))
 
     # сторож памяти живёт в блоке qr-transfer, а не в основном коде игры
+    say('правки qr-transfer (b377, фоновый трафик):')
     qrxfer_js, _n = patch_once(qrxfer_js, MEMGUARD_OLD, MEMGUARD_NEW,
                                'сторож памяти: относительный порог heap')
+    qrxfer_js, _n = patch_once(qrxfer_js, AUTOCACHE_OLD, AUTOCACHE_NEW,
+                               'авто-кэш: качаем миниатюры, а не мастера 1.6-4.3 МБ')
+    qrxfer_js, _n = patch_once(qrxfer_js, AUTOCAP_OLD, AUTOCAP_NEW,
+                               'авто-кэш: очередь 40 миниатюр вместо 10 мастеров')
+    qrxfer_js, _n = patch_once(qrxfer_js, CHECKARTS_LOOP_OLD, CHECKARTS_LOOP_NEW,
+                               'проверка артов: 3 потока вместо 73 сразу')
+    qrxfer_js, _n = patch_once(qrxfer_js, CHECKARTS_START_OLD, CHECKARTS_START_NEW,
+                               'проверка артов: автозапуск только у владельца')
 
     w('three.min.js', three_js)
     w('qrcode.min.js', qrcode_js)
@@ -1005,26 +1288,40 @@ def main():
     say('  · добавлены mediaThumb()/mediaThumbMid(): %d мелких + %d средних миниатюр'
         % (len(thumb_map), len(mid_map)))
 
-    for label, old, new in ALBUM_SITES:
-        js, _ = patch_once(js, old, new, 'уровни артов: ' + label, required=False)
+    # b377: want по умолчанию 1 — любое расхождение с источником роняет сборку,
+    # а не молча оставляет половину мест на мастерах.
+    for site in ALBUM_SITES:
+        label, old, new = site[0], site[1], site[2]
+        want = site[3] if len(site) > 3 else 1
+        js, _ = patch_once(js, old, new, 'уровни артов: ' + label, required=False, want=want)
     for label, old, new, want in PACK_SITES:
         n = js.count(old)
         if n != want:
             say('  ! витрина/карусель «%s»: ожидалось %d вхождений, найдено %d' % (label, want, n))
         js = js.replace(old, new)
         say('  · %s (заменено %d)' % (label, n))
-    for label, old, new in THUMB_SITES:
-        js, _ = patch_once(js, old, new, 'миниатюры: ' + label, required=False)
+    for site in THUMB_SITES:
+        label, old, new = site[0], site[1], site[2]
+        want = site[3] if len(site) > 3 else 1
+        js, _ = patch_once(js, old, new, 'миниатюры: ' + label, required=False, want=want)
     for label, old, new in PRELOAD_PATCHES:
         js, _ = patch_once(js, old, new, label)
     js, _ = patch_once(js, LOADIMG_PATCH[1], LOADIMG_PATCH[2], LOADIMG_PATCH[0])
-    for label, old, new in CV_SITES:
-        js, _ = patch_once(js, old, new, 'content-visibility: ' + label, required=False)
+    for site in CV_SITES:
+        label, old, new = site[0], site[1], site[2]
+        want = site[3] if len(site) > 3 else 1
+        js, _ = patch_once(js, old, new, 'content-visibility: ' + label, required=False, want=want)
 
     js, _ = patch_once(js,
                        'const raw = el.__nxOrig || u;',
                        THUMB_ERROR_FALLBACK + '                const raw = el.__nxOrig || u;',
                        'фолбэк миниатюра -> полный арт в imgErrorChain')
+    js, _ = patch_once(js, BLOBTOUCH_OLD, BLOBTOUCH_NEW,
+                       'b377: не отзываем blob:URL, который ещё на живой <img>')
+    js, _ = patch_once(js, BLOBSAVE_OLD, BLOBSAVE_NEW,
+                       'b377: запоминаем http-URL арта на элементе')
+    js, _ = patch_once(js, BLOBCHAIN_OLD, BLOBCHAIN_NEW,
+                       'b377: imgErrorChain лечит мёртвый blob:URL')
     js, _ = patch_once(js, PIXELRATIO_OLD, PIXELRATIO_NEW, 'nxPixelRatio: учёт deviceMemory')
     js, _ = patch_once(js, TAILWIND_GUARD_OLD, TAILWIND_GUARD_NEW, 'убран ложный тост «нет CDN»')
     js, _ = patch_once(js, WATCHDOG_OLD, WATCHDOG_NEW, 'watchdog картинок: не работаем в фоне')
