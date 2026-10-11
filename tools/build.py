@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob24'          # b380: изменились app.js/app.css/разметка сцены котика — клиенты перечитывают из cache-first кэша SW
+BUILD_TAG = 'nxmob25'          # b381: догенерированы миниатюры «Евровидения» (58 карт) и обновлены NX_EMBED_THUMB* в assets/app.js — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
