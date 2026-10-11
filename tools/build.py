@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob35'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob36'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -1323,7 +1323,7 @@ html, body {
 #kc-head{transform-origin:60px 78px}
 #kc-ear-l{transform-origin:41px 38px}
 #kc-ear-r{transform-origin:79px 38px}
-#kc-tail-up{transform-origin:46px 99px}
+#kc-tail-up{transform-origin:52px 98px}
 #kc-paw-r{transform-origin:68px 90px}
 #kc-pick{transform-origin:67px 94px}
 /* ===== b386: биомы 6-9 (прокачка пещеры до 1000 уровня) ===== */

@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob35" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob35">
+    <script src="assets/three.min.js?v=nxmob36" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob36">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob35">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob36">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob35">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob36">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -569,8 +569,8 @@
 <g id="kc-rock-8" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#4a2410" stroke="#0f172a" stroke-width="2"/><g fill="#fcd34d"><circle cx="82" cy="113" r="2.4"/><circle cx="88" cy="115" r="2"/><circle cx="110" cy="113.6" r="2.2"/><circle cx="115" cy="115" r="1.8"/></g><path d="M84 94q8-5 12 0t12-2" fill="none" stroke="#f59e0b" stroke-width="2.4" stroke-linecap="round"/><circle cx="92" cy="84" r="2.2" fill="#ef4444"/><circle cx="106" cy="90" r="1.8" fill="#ef4444"/><path d="M98 76l1.6-3.8 1.6 3.8-1.6 1.3Z" fill="#fffbeb"/><ellipse cx="98" cy="92" rx="20" ry="22" fill="#f59e0b" opacity=".16"/></g>
 <g id="kc-rock-9" style="display:none"><path d="M78 116L80 86Q83 70 96 66Q111 62 116 76L118 116Z" fill="#1e1b4b" stroke="#0f172a" stroke-width="2"/><ellipse cx="98" cy="92" rx="26" ry="10" fill="none" stroke="#a5b4fc" stroke-width="1.2" opacity=".5" transform="rotate(-16 98 92)"/><path d="M84 92l8-5 6 7 8-5M86 106l8-4 6 6 8-4" fill="none" stroke="#e0e7ff" stroke-width="1.4" opacity=".85"/><g fill="#fffbeb"><path d="M92 82l1.6-3.8 1.6 3.8-1.6 1.3Z"/><path d="M104 94l1.4-3.2 1.4 3.2-1.4 1.1Z"/><path d="M88 102l1.4-3.2 1.4 3.2-1.4 1.1Z"/></g><ellipse cx="98" cy="92" rx="20" ry="22" fill="#a5b4fc" opacity=".14"/></g>
                                     <g id="kc-cat" transform="translate(-14,0)"><ellipse cx="60" cy="115" rx="35" ry="5" fill="#000" opacity=".35"/>
-                                    <g id="kc-tail-sleep" fill="none" stroke-linecap="round"><path d="M46 101q-20 9-30-2" stroke="#e8a800" stroke-width="9"/><path d="M46 101q-20 9-30-2" stroke="#f5b800" stroke-width="6"/><circle cx="46" cy="100" r="5" fill="#f5b800"/></g>
-                                    <g id="kc-tail-up" fill="none" stroke-linecap="round"><path d="M46 99q-18 0-22-26" stroke="#e8a800" stroke-width="9"/><path d="M46 99q-18 0-22-26" stroke="#f5b800" stroke-width="6"/><circle cx="46" cy="99" r="5" fill="#f5b800"/></g>
+                                    <g id="kc-tail-sleep" fill="none" stroke-linecap="round"><path d="M52 100q-22 9-32-2" stroke="#e8a800" stroke-width="9"/><path d="M52 100q-22 9-32-2" stroke="#f5b800" stroke-width="6"/></g>
+                                    <g id="kc-tail-up" fill="none" stroke-linecap="round"><path d="M52 98q-20 0-24-26" stroke="#e8a800" stroke-width="9"/><path d="M52 98q-20 0-24-26" stroke="#f5b800" stroke-width="6"/></g>
                                     <g id="kc-body">
                                         <ellipse cx="60" cy="96" rx="18" ry="14" fill="#f5b800"/>
                                         <ellipse cx="60" cy="82" rx="11" ry="9" fill="#f5b800"/>
@@ -2588,10 +2588,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob35"></script>
-    <script src="assets/stories.js?v=nxmob35"></script>
-    <script src="assets/qrcode.min.js?v=nxmob35"></script>
-    <script src="assets/qr-transfer.js?v=nxmob35"></script>
+    <script src="assets/app.js?v=nxmob36"></script>
+    <script src="assets/stories.js?v=nxmob36"></script>
+    <script src="assets/qrcode.min.js?v=nxmob36"></script>
+    <script src="assets/qr-transfer.js?v=nxmob36"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
