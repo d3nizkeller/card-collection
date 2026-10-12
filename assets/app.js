@@ -6106,6 +6106,18 @@ function nxToggle3d() {
             const raw = parseBetStr(priceStr);
             if (!isFinite(raw) || raw < 1) { showToast('Укажите цену: число, можно 2k / 1.5m', 'error'); return false; }
             const price = normBet(raw);
+            // b409: на бирже уже 4 лота этой карты — новый не пускаем, копию
+            // мгновенно продаёт дом, иначе лишние лоты копились бы в облаке
+            if (marketLotsFor(cardId) >= MARKET_MAX_PER_CARD) {
+                const r = nxInstantSellDupes([{ id: cardId, count: 1 }]);
+                if (r.sold) {
+                    showToast('♻ На бирже уже ' + MARKET_MAX_PER_CARD + ' лота этой карты — копия продана автоматически за ' + fmtCoins(r.sum), 'success');
+                    try { nxRefreshAfterSale(); } catch (e) {}
+                    return true;
+                }
+                showToast('Лотов этой карты на бирже уже максимум', 'info');
+                return false;
+            }
             marketSetCollection(cardId, cardCopies(cardId) - 1); // копия уходит в эскроу лота
             const snap = Object.assign({}, card);
             if (typeof snap.image === 'string' && snap.image.indexOf('data:') === 0) snap.image = ''; // не тащим base64 в облако
@@ -6266,10 +6278,10 @@ function nxToggle3d() {
             idxs.forEach(i => { const card = (currentUnboxingCards || [])[i]; if (card) cnt[card.id] = (cnt[card.id] || 0) + 1; });
             const entries = Object.keys(cnt).map(id => ({ id: id, count: cnt[id] }));
             setTimeout(() => {
-                const r = nxInstantSellDupes(entries);
-                if (r.sold) {
+                const r = marketSellDupesSmart(entries);
+                if (r.listed || r.sold) {
                     idxs.forEach(i => { unboxListedIdx[i] = 1; });
-                    showToast('💰 Продано ' + r.sold + ' повторов за ' + fmtCoins(r.sum) + ' монет', 'success');
+                    showToast('💰 На биржу ' + r.listed + ' · сразу продано ' + r.sold + ' повторов за ' + fmtCoins(r.soldSum), 'success');
                     nxRefreshAfterSale();
                 } else {
                     showToast('Лишних копий для продажи не осталось', 'info');
@@ -11986,11 +11998,11 @@ function nxToggle3d() {
             if (btn) btn.disabled = true;
             showToast('⏳ Продаю дубликаты партии…', 'info');
             setTimeout(() => {
-                const r = nxInstantSellDupes(entries);
-                if (r.sold) {
+                const r = marketSellDupesSmart(entries);
+                if (r.listed || r.sold) {
                     nxBatchDupIds = [];
-                    if (btn) btn.innerHTML = '✅ Продано: ' + r.sold + ' · ' + fmtCoins(r.sum);
-                    showToast('💰 Дубликаты партии проданы: ' + r.sold + ' за ' + fmtCoins(r.sum) + ' монет', 'success');
+                    if (btn) btn.innerHTML = '✅ Биржа ' + r.listed + ' · продано ' + r.sold + ' · ' + fmtCoins(r.soldSum);
+                    showToast('💰 Дубликаты партии: на биржу ' + r.listed + ', сразу продано ' + r.sold + ' за ' + fmtCoins(r.soldSum), 'success');
                     nxRefreshAfterSale();
                 } else {
                     if (btn) btn.disabled = false;
@@ -11999,6 +12011,34 @@ function nxToggle3d() {
             }, 30);
         }
 
+        function marketLotsFor(cardId) {
+            let n = 0;
+            const lots = marketLots();
+            for (let i = 0; i < lots.length; i++) if (lots[i].card && lots[i].card.id === cardId) n++;
+            return n;
+        }
+        // b409: правило владельца — на бирже держим до 4 лотов карты от игроков,
+        // а всё сверх игра продаёт сама мгновенно, чтобы лишнее не копилось:
+        // сначала дозаполняем биржу до MARKET_MAX_PER_CARD, остаток выкупает дом.
+        function marketSellDupesSmart(entries) {
+            const items = []; const rest = [];
+            (entries || []).forEach(en => {
+                const card = state.cards.find(c => c.id === en.id);
+                if (!card) return;
+                const excess = Math.min(en.count || 0, cardCopies(en.id) - 1);
+                if (excess <= 0) return;
+                const listable = Math.max(0, MARKET_MAX_PER_CARD - marketLotsFor(en.id));
+                const take = Math.min(excess, listable);
+                if (take > 0) {
+                    const price = marketRecommendPrice(card);
+                    for (let k = 0; k < take; k++) items.push({ id: en.id, price: price });
+                }
+                if (excess - take > 0) rest.push({ id: en.id, count: excess - take });
+            });
+            const listed = items.length ? marketListMany(items) : { ok: 0, sum: 0 };
+            const sold = rest.length ? nxInstantSellDupes(rest) : { sold: 0, sum: 0 };
+            return { listed: listed.ok, listedSum: listed.sum, sold: sold.sold, soldSum: sold.sum };
+        }
         // b408: мгновенная продажа ВСЕХ лишних копий дому по фикс-цене редкости.
         // Без биржи, без лимитов лотов и без облака — работает даже офлайн,
         // одна запись состояния на всю операцию.
@@ -13277,9 +13317,11 @@ function nxToggle3d() {
             const total = entries.reduce((s2, e) => s2 + e.count, 0);
             showToast('⏳ Продаю ' + total + ' ' + pluralRu(total, 'копию', 'копии', 'копий') + '…', 'info');
             setTimeout(() => {
-                const r = nxInstantSellDupes(entries);
-                if (r.sold) {
-                    showToast('💰 Продано ' + r.sold + ' ' + pluralRu(r.sold, 'копия', 'копии', 'копий') + ' за ' + fmtCoins(r.sum) + ' монет', 'success');
+                const r = marketSellDupesSmart(entries);
+                if (r.listed || r.sold) {
+                    showToast('💰 На биржу ' + r.listed + ' ' + pluralRu(r.listed, 'лот', 'лота', 'лотов') +
+                        (r.listedSum ? ' на ' + fmtCoins(r.listedSum) : '') +
+                        (r.sold ? ' · сразу продано ' + r.sold + ' ' + pluralRu(r.sold, 'копия', 'копии', 'копий') + ' за ' + fmtCoins(r.soldSum) : ''), 'success');
                     nxRefreshAfterSale();
                 } else {
                     showToast('Лишних копий для продажи не осталось', 'info');
