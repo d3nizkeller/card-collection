@@ -3898,18 +3898,18 @@ function nxToggle3d() {
                     btn = `<span class="lqg lqg-slate px-3 py-1.5 text-xs font-semibold whitespace-nowrap"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>${fmtCoins(m.reward)}</span>`;
                 }
                 return `
-                    <div class="relative bg-slate-950/80 border ${done && !m.claimed ? 'border-amber-500/40' : 'border-slate-800'} rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 overflow-hidden">
+                    <div class="msn-row relative bg-slate-950/80 border ${done && !m.claimed ? 'border-amber-500/40' : 'border-slate-800'} rounded-2xl p-3.5 sm:p-4 flex items-center gap-3 overflow-hidden">
                         <div class="w-11 h-11 rounded-xl bg-gradient-to-br ${meta.color} flex items-center justify-center shrink-0 shadow-lg"><i class="fa-solid ${meta.icon} text-white text-lg"></i></div>
-                        <div class="flex-grow min-w-0">
+                        <div class="msn-mid flex-grow min-w-0">
                             <div class="flex items-center justify-between gap-2">
-                                <span class="text-sm font-bold text-slate-100 truncate">${m.desc}</span>
+                                <span class="msn-title text-sm font-bold text-slate-100 truncate">${m.desc}</span>
                                 <span class="text-[11px] font-mono ${done ? 'text-violet-400' : 'text-slate-400'} whitespace-nowrap">${progTxt}</span>
                             </div>
                             <div class="mt-1.5 w-full bg-slate-800 rounded-full h-2 overflow-hidden">
                                 <div class="h-full bg-gradient-to-r ${meta.color} transition-all duration-500" style="width: ${pct}%"></div>
                             </div>
                         </div>
-                        ${btn}
+                        <span class="msn-act">${btn}</span>
                     </div>`;
             }).join('');
 

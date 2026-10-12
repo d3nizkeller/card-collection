@@ -1077,3 +1077,13 @@ html, body {
 .nx-bt-nm{position:absolute;left:0;right:0;bottom:0;padding:2px 4px;background:rgba(2,6,23,.85);font-size:8px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nx-btn-sell{background:linear-gradient(90deg,#f59e0b,#fbbf24);color:#1c1917}
 .nx-btn-sell:disabled{opacity:.5;cursor:default}
+
+/* ===== b398: строки заданий дня на мобильных — награда не обрезается ===== */
+.msn-title{min-width:0;flex:1 1 auto}
+.msn-act{flex-shrink:0}
+@media (max-width:639px){
+    .msn-row{flex-wrap:wrap;gap:10px}
+    .msn-mid{flex:1 1 auto}
+    .msn-act{flex:1 1 100%;display:flex}
+    .msn-act>.lqg{flex:1 1 100%;display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal}
+}
