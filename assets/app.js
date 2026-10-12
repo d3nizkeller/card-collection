@@ -6270,25 +6270,31 @@ function nxToggle3d() {
             if (btn) btn.outerHTML = '<span class="inline-flex items-center gap-1 px-2 py-1 bg-violet-500/10 text-violet-300 rounded border border-violet-500/30 text-[10px] font-bold"><i class="fa-solid fa-check"></i>На бирже за ' + fmtCoins(price) + '</span>';
         }
         // b143+b394: одна кнопка — все раскрытые повторки улетают на биржу ОДНИМ коммитом
-        // b408: повторки вскрытия продаются все и сразу
+        // b410: кнопка «Продать все повторки» в окне вскрытия продаёт ВСЕ
+        // повторки коллекции (а не только текущего вскрытия, как было с b143):
+        // пользователь жаловался, что нажатие «ничего не делает», когда в этом
+        // вскрытии дублей не выпало. Правила те же: биржа до 4 лотов, сверх — дом.
         function sellAllDupesToMarket() {
-            const idxs = Object.keys(unboxDupeIdx).map(Number).filter(i => !unboxListedIdx[i]);
-            if (!idxs.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }
-            const cnt = {};
-            idxs.forEach(i => { const card = (currentUnboxingCards || [])[i]; if (card) cnt[card.id] = (cnt[card.id] || 0) + 1; });
-            const entries = Object.keys(cnt).map(id => ({ id: id, count: cnt[id] }));
+            const entries = [];
+            state.cards.forEach(c => {
+                const ex = cardCopies(c.id) - 1;
+                if (ex > 0) entries.push({ id: c.id, count: ex });
+            });
+            if (!entries.length) { showToast('Повторок для продажи нет', 'info'); return; }
+            const total = entries.reduce((s2, e) => s2 + e.count, 0);
+            showToast('⏳ Продаю ' + total + ' ' + pluralRu(total, 'повторку', 'повторки', 'повторок') + '…', 'info');
             setTimeout(() => {
                 const r = marketSellDupesSmart(entries);
+                Object.keys(unboxDupeIdx).forEach(i => { unboxListedIdx[i] = 1; }); // b143: кнопки раскрытых дублей гаснут
                 if (r.listed || r.sold) {
-                    idxs.forEach(i => { unboxListedIdx[i] = 1; });
-                    showToast('💰 На биржу ' + r.listed + ' · сразу продано ' + r.sold + ' повторов за ' + fmtCoins(r.soldSum), 'success');
+                    showToast('💰 На биржу ' + r.listed + ' ' + pluralRu(r.listed, 'лот', 'лота', 'лотов') +
+                        (r.sold ? ' · сразу продано ' + r.sold + ' ' + pluralRu(r.sold, 'повторка', 'повторки', 'повторок') + ' за ' + fmtCoins(r.soldSum) : ''), 'success');
                     nxRefreshAfterSale();
                 } else {
                     showToast('Лишних копий для продажи не осталось', 'info');
                 }
             }, 30);
         }
-
         // b139: кнопка под раскрытой повторкой — карта сама улетает на биржу
         function marketSellRevealed(idx) {
             const card = (currentUnboxingCards || [])[idx];
