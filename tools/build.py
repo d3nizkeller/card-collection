@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob66'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob67'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -392,6 +392,15 @@ PROFWORK_JS = [
     ('b406: честный тост при полной бирже',
      "            if (!items.length) { showToast('В этом альбоме нет лишних копий для продажи', 'info'); return; }",
      "            if (!items.length) { showToast(room <= 0 ? 'Биржа заполнена (80 лотов) и своих лотов для ротации нет — дождитесь покупок' : 'В этом альбоме нет лишних копий для продажи', 'info'); return; }"),
+    ('b407: константы и шапка автовыкупа',
+     "        function marketEnforceLimit() {\n            const byCard = {};",
+     "        // b407: дом АВТОМАТИЧЕСКИ выкупает лоты, чтобы биржа не копилась:\n        // 1) лот старше MARKET_LOT_TTL (24 ч) выкупается по фикс-цене редкости;\n        // 2) если лотов больше MARKET_SOFT_CAP (60) — дом докупает старейшие\n        //    до 60. Фикс-цена (а не цена лота) защищает от мани-абуза: нельзя\n        //    выставить свою карту за 1m и получить её от «дома».\n        const MARKET_LOT_TTL = 24 * 3600 * 1000;\n        const MARKET_SOFT_CAP = 60;\n        function marketEnforceLimit() {\n            const byCard = {};"),
+    ('b407: выкуп просрочки и переполнения',
+     "            const bought = [];\n            Object.keys(byCard).forEach(k => {\n                const arr = byCard[k];\n                let excess = arr.length - MARKET_MAX_PER_CARD;\n                if (excess <= 0) return;\n                const pool = arr.slice();\n                while (excess-- > 0 && pool.length) {\n                    const i = Math.floor(Math.random() * pool.length); // рандомный выкуп\n                    bought.push(pool.splice(i, 1)[0]);\n                }\n            });\n            if (!bought.length) return;",
+     "            const bought = [];\n            const boughtIds = {};\n            const take = l => { if (!l || boughtIds[l.id]) return; boughtIds[l.id] = 1; bought.push(l); };\n            Object.keys(byCard).forEach(k => {\n                const arr = byCard[k];\n                let excess = arr.length - MARKET_MAX_PER_CARD;\n                if (excess <= 0) return;\n                const pool = arr.slice();\n                while (excess-- > 0 && pool.length) {\n                    const i = Math.floor(Math.random() * pool.length); // рандомный выкуп\n                    take(pool.splice(i, 1)[0]);\n                }\n            });\n            // b407: просроченные лоты дом выкупает всегда\n            const nowTs = Date.now();\n            marketLots().forEach(l => { if ((nowTs - (l.at || nowTs)) > MARKET_LOT_TTL) take(l); });\n            // b407: переполнение — докупает старейшие до мягкого потолка\n            const left = marketLots().filter(l => !boughtIds[l.id]).sort((a, b) => (a.at || 0) - (b.at || 0));\n            let over = left.length + bought.length - MARKET_SOFT_CAP;\n            for (let i = 0; over > 0 && i < left.length; i++, over--) take(left[i]);\n            if (!bought.length) return;"),
+    ('b407: интервал автовыкупа',
+     "        function marketRemovedAddMany(ids) {",
+     "        // b407: автовыкуп прогоняется сам каждые 5 минут, пока игра открыта, —\n        // лоты не успевают скопиться даже без покупок и коммитов\n        setInterval(() => { try { if (!document.hidden) marketEnforceLimit(); } catch (e) {} }, 300000);\n        function marketRemovedAddMany(ids) {"),
 ]
 
 HEAD_END = 1088       # </head>

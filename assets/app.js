@@ -6018,6 +6018,9 @@ function nxToggle3d() {
         // b405: пакетная версия — один read и один write на всю партию.
         // Раньше автовыкуп 700 лотов делал 700 чтений+записей localStorage
         // подряд: на телефоне это и было «зависает при массовой продаже».
+        // b407: автовыкуп прогоняется сам каждые 5 минут, пока игра открыта, —
+        // лоты не успевают скопиться даже без покупок и коммитов
+        setInterval(() => { try { if (!document.hidden) marketEnforceLimit(); } catch (e) {} }, 300000);
         function marketRemovedAddMany(ids) {
             if (!ids || !ids.length) return;
             try {
@@ -6351,6 +6354,13 @@ function nxToggle3d() {
         // продавцы получают монеты через квитанции, а рынок не затапливается копиями.
         const MARKET_MAX_PER_CARD = 4;
         const MARKET_SYS_REFUND = { common: 20, rare: 50, epic: 120, legendary: 300 };
+        // b407: дом АВТОМАТИЧЕСКИ выкупает лоты, чтобы биржа не копилась:
+        // 1) лот старше MARKET_LOT_TTL (24 ч) выкупается по фикс-цене редкости;
+        // 2) если лотов больше MARKET_SOFT_CAP (60) — дом докупает старейшие
+        //    до 60. Фикс-цена (а не цена лота) защищает от мани-абуза: нельзя
+        //    выставить свою карту за 1m и получить её от «дома».
+        const MARKET_LOT_TTL = 24 * 3600 * 1000;
+        const MARKET_SOFT_CAP = 60;
         function marketEnforceLimit() {
             const byCard = {};
             marketLots().forEach(l => {
@@ -6359,6 +6369,8 @@ function nxToggle3d() {
                 (byCard[k] = byCard[k] || []).push(l);
             });
             const bought = [];
+            const boughtIds = {};
+            const take = l => { if (!l || boughtIds[l.id]) return; boughtIds[l.id] = 1; bought.push(l); };
             Object.keys(byCard).forEach(k => {
                 const arr = byCard[k];
                 let excess = arr.length - MARKET_MAX_PER_CARD;
@@ -6366,9 +6378,16 @@ function nxToggle3d() {
                 const pool = arr.slice();
                 while (excess-- > 0 && pool.length) {
                     const i = Math.floor(Math.random() * pool.length); // рандомный выкуп
-                    bought.push(pool.splice(i, 1)[0]);
+                    take(pool.splice(i, 1)[0]);
                 }
             });
+            // b407: просроченные лоты дом выкупает всегда
+            const nowTs = Date.now();
+            marketLots().forEach(l => { if ((nowTs - (l.at || nowTs)) > MARKET_LOT_TTL) take(l); });
+            // b407: переполнение — докупает старейшие до мягкого потолка
+            const left = marketLots().filter(l => !boughtIds[l.id]).sort((a, b) => (a.at || 0) - (b.at || 0));
+            let over = left.length + bought.length - MARKET_SOFT_CAP;
+            for (let i = 0; over > 0 && i < left.length; i++, over--) take(left[i]);
             if (!bought.length) return;
             const gone = {};
             const receipts = [];
