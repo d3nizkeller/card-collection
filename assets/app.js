@@ -3070,6 +3070,7 @@ function nxToggle3d() {
             { id: 'grid_chain3', icon: 'fa-link', title: 'Цепь цепей', desc: 'Цепь из 3+ каскадов за один спин в Сетке', reward: 500, check: s => (s.stats.bestGridChain || 0) >= 3, prog: s => [Math.min(s.stats.bestGridChain || 0, 3), 3] },
             { id: 'miner_lvl5', icon: 'fa-helmet-safety', title: 'Бригадир', desc: 'Прокачайте кирку в «Шахте» до 5 уровня', reward: 400, check: s => (s.stats.minerLvl || 0) >= 5, prog: s => [Math.min(s.stats.minerLvl || 0, 5), 5] },
             { id: 'miner_lvl10', icon: 'fa-gem', title: 'Хозяин шахты', desc: 'Прокачайте кирку до 10 уровня', reward: 800, check: s => (s.stats.minerLvl || 0) >= 10, prog: s => [Math.min(s.stats.minerLvl || 0, 10), 10] },
+            { id: 'chest_win', icon: 'fa-vault', title: 'Сундучный мастер', desc: 'Выиграйте партию в «Сундучки»', reward: 500, check: s => (s.stats.chestWins || 0) >= 1, prog: s => [Math.min(s.stats.chestWins || 0, 1), 1] }, // b400
             // b121: новые достижения по играм
             { id: 'lines_win_10', icon: 'fa-align-left', title: 'Мастер линий', desc: '10 выигрышей в «Линиях»', reward: 300, check: s => (s.stats.linesWins || 0) >= 10, prog: s => [Math.min(s.stats.linesWins || 0, 10), 10] },
             { id: 'wheel_spin_10', icon: 'fa-dharmachakra', title: 'Колесо фортуны', desc: 'Крутите «Колесо» 10 раз', reward: 250, check: s => (s.stats.wheelSpins || 0) >= 10, prog: s => [Math.min(s.stats.wheelSpins || 0, 10), 10] },
@@ -4071,6 +4072,11 @@ function nxToggle3d() {
             setModeBtn('mode-wheel-btn', m === 'wheel', 'lq-on');
             setModeBtn('mode-mines-btn', m === 'mines', 'lq-on');
             setModeBtn('mode-lines-btn', m === 'lines', 'lq-on');
+            setModeBtn('mode-chest-btn', m === 'chest', 'lq-on'); // b400
+            const lch = document.getElementById('lobby-chest');
+            if (lch) lch.classList.toggle('hidden', m !== 'chest');
+            if (m !== 'chest') { try { chestClearTimers(); } catch (e) {} } // b400: боты не ходят вне игры
+            if (m === 'chest') { try { chestRender(); } catch (e) {} }
             if (m === 'miner') renderMiner();
             // b250: ушли в другую игру — автостарт предыдущей гасим сразу
             // (раньше «Линии» при смене игры продолжали крутиться в фоне)
@@ -10916,6 +10922,7 @@ function nxToggle3d() {
             // b356: 3D-контексты нужны только во вкладке игр — уходим отдаём их
             // браузеру (иначе скрытая игра держит контекст и крутит кадры до конца сессии)
             if (tabId !== 'battle') { try { nx3dReleaseHidden('__all__'); } catch (e) {} }
+            if (tabId !== 'battle') { try { chestClearTimers(); } catch (e) {} } // b400: боты сундучков не ходят вне вкладки игр
             // b133: Студия — только по паролю комнаты облака
             if (tabId === 'studio' && studioGateNeeded()) { openStudioPassModal(); return; }
             // скрытый раздел недоступен, пока не открыт жестом
@@ -15769,3 +15776,312 @@ function nxToggle3d() {
             try { nxErrorToast(String((e && e.message) || e) + ' (при запуске)'); } catch (e2) {}
           }
         };
+        // ===== b400: СУНДУЧКИ (Go Fish) — собирай наборы из 4 карт одного достоинства =====
+        // Колода 36 или 52, раздаётся 6 или 7 карт, спрашиваешь достоинство у
+        // соперника; есть карты — забираешь все и ходишь снова; нет — «Бери карту!»
+        // и тянешь из колоды (совпало достоинство — ходишь снова). Четыре карты
+        // одного достоинства складываются в «сундучок». Побеждает тот, у кого
+        // сундучков больше; ставка кормит общий джекпот сайта, как остальные игры.
+        const CHEST_SUITS = ['♠', '♥', '♦', '♣'];
+        const CHEST_RNAME = { 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'В', 12: 'Д', 13: 'К', 14: 'Т' };
+        let chest = null;
+        let chestTimers = [];
+        function chestClearTimers() { chestTimers.forEach(t => clearTimeout(t)); chestTimers = []; }
+        function chestLater(fn, ms) { chestTimers.push(setTimeout(() => { try { fn(); } catch (e) { try { console.error('chest', e); } catch (e2) {} } }, ms)); }
+        function chestRanks(deckSize) {
+            const r = [];
+            for (let v = (deckSize === 36 ? 6 : 2); v <= 14; v++) r.push(v);
+            return r;
+        }
+        function chestBuildDeck() {
+            const ranks = chestRanks(chest.deckSize);
+            const d = [];
+            ranks.forEach(r => { for (let s = 0; s < 4; s++) d.push({ r: r, s: s }); });
+            for (let i = d.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = d[i]; d[i] = d[j]; d[j] = t; }
+            return d;
+        }
+        function chestBet() {
+            const el = document.getElementById('chest-bet');
+            const v = el ? parseBetStr(el.value) : NaN;
+            return (isFinite(v) && v >= 10) ? normBet(v) : 100;
+        }
+        function chestStart() {
+            chestClearTimers();
+            const stake = chestBet();
+            if (state.coins < stake) { showToast('Недостаточно монет для ставки ' + fmtCoins(stake), 'error'); return; }
+            const deckSize = (document.getElementById('chest-deck36') || {}).classList ? (document.getElementById('chest-deck36').classList.contains('chc-on') ? 36 : 52) : 36;
+            const nPlayers = chestPlayersSel();
+            state.coins -= stake;
+            jackpotFeed(stake); // b400: 100% ставки кормят общий банк, как остальные игры
+            updateCoinDisplay(); saveState();
+            chest = { deckSize: deckSize, deck: [], players: [], turn: 0, stake: stake, over: false, log: [], selRank: 0, selTarget: 1, busy: false }; // b400: объект партии создаём ДО сборки колоды
+            const deck = chestBuildDeck();
+            const per = deckSize === 36 ? 6 : 7;
+            const names = ['Вы', 'Котик-бот', 'Лиса-бот', 'Сова-бот'];
+            const players = [];
+            for (let i = 0; i < nPlayers; i++) players.push({ i: i, name: names[i], bot: i > 0, hand: [], chests: [], knownNo: {} });
+            for (let k = 0; k < per; k++) players.forEach(p => p.hand.push(deck.pop()));
+            chest.deck = deck; chest.players = players;
+            players.forEach(p => chestSweep(p, true));
+            chestLog('Раздача: колода ' + deckSize + ', по ' + per + ' карт, игроков ' + nPlayers + '. Ставка ' + fmtCoins(stake) + '.');
+            chestLog('Ваш ход: выберите достоинство и соперника.');
+            SoundFX.play('swap');
+            chestBeginTurn(0);
+            chestRender();
+        }
+        function chestPlayersSel() {
+            for (const n of [2, 3, 4]) {
+                const el = document.getElementById('chest-pl' + n);
+                if (el && el.classList.contains('chc-on')) return n;
+            }
+            return 3;
+        }
+        function chestLog(s) { if (chest) { chest.log.push(s); if (chest.log.length > 40) chest.log.shift(); } }
+        function chestCounts(p) {
+            const m = {};
+            p.hand.forEach(c => { m[c.r] = (m[c.r] || 0) + 1; });
+            return m;
+        }
+        function chestSweep(p, silent) {
+            let moved = true;
+            while (moved) {
+                moved = false;
+                const cnt = chestCounts(p);
+                for (const k in cnt) {
+                    if (cnt[k] === 4) {
+                        const r = Number(k);
+                        p.hand = p.hand.filter(c => c.r !== r);
+                        p.chests.push(r);
+                        moved = true;
+                        if (!silent) chestLog(p.name + ': сундучок ' + CHEST_RNAME[r] + '! (' + p.chests.length + ')');
+                    }
+                }
+            }
+        }
+        function chestAlive(p) { return p.hand.length > 0 || chest.deck.length > 0; }
+        function chestFoesWithCards(p) { return chest.players.some(x => x !== p && x.hand.length > 0); }
+        function chestCanAct(p) { return p.hand.length > 0 && chestFoesWithCards(p); }
+        // b400: соло-добор — если спрашивать не у кого (у соперников пусто),
+        // игрок тянет из колоды, иначе партия вставала в мёртвую точку
+        function chestSoloDraw(p) {
+            if (!chest.deck.length) return null;
+            const c = chest.deck.pop();
+            p.hand.push(c);
+            chestLog(p.name + ' берёт карту из колоды (спрашивать не у кого): ' + CHEST_RNAME[c.r] + CHEST_SUITS[c.s] + '.');
+            chestSweep(p);
+            return c;
+        }
+        function chestNextIdx(from) {
+            const n = chest.players.length;
+            for (let k = 1; k <= n; k++) {
+                const i = (from + k) % n;
+                if (chestAlive(chest.players[i])) return i;
+            }
+            return -1;
+        }
+        function chestBeginTurn(i) {
+            if (!chest || chest.over) return;
+            chest.turn = i;
+            const p = chest.players[i];
+            if (!p.hand.length && chest.deck.length) {
+                const c = chest.deck.pop();
+                p.hand.push(c);
+                chestLog(p.name + ' берёт карту из колоды (пустая рука).');
+                chestSweep(p);
+            }
+            while (p.hand.length && !chestFoesWithCards(p) && chest.deck.length) chestSoloDraw(p); // b400
+            if (!chestCanAct(p)) { // b400: тупик — передаём ход или завершаем
+                const nx = chestNextIdx(i);
+                if (nx < 0 || nx === i || !chestCanAct(chest.players[nx]) && !chest.deck.length) { chestCheckEnd(true); return; }
+                if (!chestCanAct(chest.players[nx])) { chestCheckEnd(true); return; }
+                chestBeginTurn(nx);
+                return;
+            }
+            if (chestCheckEnd()) return;
+            if (p.bot) chestLater(chestBotMove, 700);
+        }
+        function chestCheckEnd(forceStuck) {
+            if (!chest || chest.over) return false;
+            const handsLeft = chest.players.some(p => p.hand.length > 0);
+            if (chest.deck.length === 0 && !handsLeft) { chestFinish(); return true; }
+            // b400: колода пуста и никто не может спросить — доиграть невозможно,
+            // остатки рук уже ни во что не соберутся: фиксируем результат
+            if (forceStuck && chest.deck.length === 0 && !chest.players.some(p => chestCanAct(p))) { chestFinish(); return true; }
+            if (!chestAlive(chest.players[chest.turn])) {
+                const nx = chestNextIdx(chest.turn);
+                if (nx < 0) { chestFinish(); return true; }
+                chestBeginTurn(nx);
+                return true;
+            }
+            return false;
+        }
+        function chestAsk(rank, targetIdx) {
+            if (!chest || chest.over || chest.busy) return;
+            const p = chest.players[chest.turn];
+            const t = chest.players[targetIdx];
+            if (!p || !t || p === t || !t.hand.length) return;
+            chest.busy = true;
+            const got = t.hand.filter(c => c.r === rank);
+            if (got.length) {
+                t.hand = t.hand.filter(c => c.r !== rank);
+                got.forEach(c => p.hand.push(c));
+                chestLog(p.name + ' → ' + t.name + ': есть ' + CHEST_RNAME[rank] + '! Отдаёт ' + got.length + '.');
+                chestSweep(p);
+                SoundFX.play('coin');
+                chest.busy = false;
+                if (chestCheckEnd()) { chestRender(); return; }
+                if (!chestCanAct(p)) { chestBeginTurn(p.i); chestRender(); return; } // b400: рука опустела — добор/передача
+                chestRender();
+                if (p.bot) chestLater(chestBotMove, 700); else chestLog('Успех — ходите ещё раз.');
+            } else {
+                chestLog(t.name + ': «Бери карту!»');
+                t.knownNo = t.knownNo || {};
+                let c = null;
+                if (chest.deck.length) {
+                    c = chest.deck.pop();
+                    p.hand.push(c);
+                    chestLog(p.name + ' тянет из колоды: ' + CHEST_RNAME[c.r] + CHEST_SUITS[c.s] + '.');
+                    chestSweep(p);
+                }
+                const again = !!c && c.r === rank;
+                SoundFX.play('click');
+                chest.busy = false;
+                if (again) chestLog('Совпало с запросом — ход снова у ' + p.name + '.');
+                if (chestCheckEnd()) { chestRender(); return; }
+                if (again && !chestCanAct(p)) { chestBeginTurn(p.i); chestRender(); return; } // b400
+                if (again) {
+                    chestRender();
+                    if (p.bot) chestLater(chestBotMove, 700);
+                } else {
+                    const nx = chestNextIdx(chest.turn);
+                    if (nx < 0) { chestFinish(); chestRender(); return; }
+                    chestBeginTurn(nx);
+                    chestRender();
+                }
+            }
+        }
+        function chestPlayerAsk() {
+            if (!chest || chest.over || chest.turn !== 0 || chest.busy) return;
+            const p = chest.players[0];
+            if (!chest.selRank || !chestCounts(p)[chest.selRank]) { showToast('Выберите достоинство, которое есть у вас на руках', 'info'); return; }
+            if (!chest.selTarget || chest.selTarget === 0 || !chest.players[chest.selTarget] || !chest.players[chest.selTarget].hand.length) { showToast('Выберите соперника с картами', 'info'); return; }
+            chestAsk(chest.selRank, chest.selTarget);
+        }
+        function chestBotMove() {
+            if (!chest || chest.over || chest.busy) return;
+            const p = chest.players[chest.turn];
+            if (!p || !p.bot) return;
+            const cnt = chestCounts(p);
+            const ranks = Object.keys(cnt).map(Number).sort((a, b) => cnt[b] - cnt[a]);
+            if (!ranks.length) { const nx = chestNextIdx(chest.turn); if (nx < 0) { chestFinish(); return; } chestBeginTurn(nx); chestRender(); return; }
+            let rank = ranks[0];
+            for (const r of ranks) { if (cnt[r] >= 2) { rank = r; break; } }
+            const foes = chest.players.filter(x => x !== p && x.hand.length);
+            if (!foes.length) { chestFinish(); return; }
+            let target = foes[Math.floor(Math.random() * foes.length)];
+            // бот помнит, кто уже ответил «нет» по этому достоинству
+            const smart = foes.filter(f => !(p.knownNo && p.knownNo[f.i + ':' + rank]));
+            if (smart.length) target = smart[Math.floor(Math.random() * smart.length)];
+            if (!target.hand.some(c => c.r === rank)) { p.knownNo = p.knownNo || {}; p.knownNo[target.i + ':' + rank] = 1; }
+            chestAsk(rank, target.i);
+        }
+        function chestFinish() {
+            if (!chest || chest.over) return;
+            chest.over = true;
+            chestClearTimers();
+            const me = chest.players[0];
+            const myC = me.chests.length;
+            const best = Math.max.apply(null, chest.players.map(p => p.chests.length));
+            const winners = chest.players.filter(p => p.chests.length === best);
+            let msg, pay = 0;
+            if (best === 0 && myC === 0) { msg = 'Ничья без сундучков — ставка возвращается.'; pay = chest.stake; }
+            else if (winners.length === 1 && winners[0] === me) {
+                pay = chest.stake * chest.players.length;
+                msg = '🏆 Победа! Сундучков: ' + myC + ' — банк ' + fmtCoins(pay) + ' ваш!';
+                state.stats.chestWins = (state.stats.chestWins || 0) + 1;
+                updateMissions('chest_win', 1);
+                SoundFX.play('win');
+            } else if (winners.length > 1 && winners.indexOf(me) >= 0) {
+                pay = Math.floor(chest.stake * chest.players.length / winners.length);
+                msg = '🤝 Дележ с ' + winners.map(w => w.name).join(', ') + ': ' + myC + ' сундучков, выплата ' + fmtCoins(pay) + '.';
+                SoundFX.play('coin');
+            } else {
+                msg = '😿 Победили боты (' + winners.map(w => w.name + ': ' + w.chests.length).join(', ') + '). Ставка ушла в общий джекпот.';
+                SoundFX.play('lose');
+            }
+            if (pay) { state.coins += pay; }
+            chest.payout = pay; chest.resultMsg = msg;
+            updateCoinDisplay(); saveState(); statsTouch(); checkAchievements();
+            chestLog(msg);
+            chestRender();
+        }
+        function chestCardHTML(c) {
+            const red = (c.s === 1 || c.s === 2);
+            return '<span class="chc-card' + (red ? ' red' : '') + '"><b>' + CHEST_RNAME[c.r] + '</b><i>' + CHEST_SUITS[c.s] + '</i></span>';
+        }
+        function chestRender() {
+            const table = document.getElementById('chest-table');
+            const acts = document.getElementById('chest-actions');
+            const logEl = document.getElementById('chest-log');
+            if (!table || !acts || !chest) { if (table) table.innerHTML = ''; if (acts) acts.innerHTML = ''; return; }
+            const me = chest.players[0];
+            let h = '';
+            chest.players.forEach(p => {
+                if (p === me) return;
+                const backs = Math.min(p.hand.length, 10);
+                h += '<div class="chc-row' + (chest.turn === p.i && !chest.over ? ' act' : '') + '">' +
+                    '<span class="chc-ava">' + (p.i === 1 ? '🐱' : p.i === 2 ? '🦊' : '🦉') + '</span>' +
+                    '<span class="chc-nm">' + p.name + (chest.turn === p.i && !chest.over ? ' · ходит' : '') + '</span>' +
+                    '<span class="chc-hc">' + (p.hand.length ? '🂠 ' + p.hand.length : 'пусто') + '</span>' +
+                    '<span class="chc-chests">' + (p.chests.length ? p.chests.map(r => '<b class="chc-pile" title="сундучок ' + CHEST_RNAME[r] + '">🧰' + CHEST_RNAME[r] + '</b>').join('') : '<i>сундучков: 0</i>') + '</span>' +
+                    '<span class="chc-backs">' + '<span class="chc-back"></span>'.repeat(backs) + '</span></div>';
+            });
+            h += '<div class="chc-row deck"><span class="chc-ava"></span><span class="chc-nm">Колода</span><span class="chc-hc">' + chest.deck.length + ' карт</span>' +
+                '<span class="chc-chests">' + (me.chests.length ? me.chests.map(r => '<b class="chc-pile me">🧰' + CHEST_RNAME[r] + '</b>').join('') : '<i>ваших сундучков: 0</i>') + '</span></div>';
+            h += '<div class="chc-hand">' + (me.hand.length ? me.hand.slice().sort((a, b) => a.r - b.r || a.s - b.s).map(chestCardHTML).join('') : '<span class="chc-empty">Рука пуста</span>') + '</div>';
+            table.innerHTML = h;
+            if (chest.over) {
+                acts.innerHTML = '<div class="chc-end"><p>' + chest.resultMsg + '</p>' +
+                    '<div class="chc-score">' + chest.players.map(p => p.name + ': ' + p.chests.length).join(' · ') + '</div>' +
+                    '<button class="nx-btn nx-btn-peel" onclick="chestStart()">🔁 Сыграть ещё · ' + fmtCoins(chestBet()) + '</button></div>';
+            } else if (chest.turn === 0) {
+                if (!chestFoesWithCards(me) && chest.deck.length) {
+                    acts.innerHTML = '<div class="chc-actbar"><div class="chc-lbl">Спрашивать не у кого</div>' +
+                        '<button class="nx-btn nx-btn-peel" onclick="chestPlayerSolo()">🂠 Брать из колоды (' + chest.deck.length + ')</button></div>';
+                    if (logEl) logEl.innerHTML = chest.log.slice(-7).map(l => '<div>· ' + l + '</div>').join('');
+                    return;
+                }
+                const cnt = chestCounts(me);
+                const ranks = Object.keys(cnt).map(Number).sort((a, b) => a - b);
+                const foes = chest.players.filter(p => p.i > 0 && p.hand.length);
+                acts.innerHTML = '<div class="chc-actbar">' +
+                    '<div class="chc-lbl">Спросить достоинство:</div>' +
+                    '<div class="chc-chips">' + ranks.map(r => '<button class="chc-chip' + (chest.selRank === r ? ' on' : '') + '" onclick="chestSelRank(' + r + ')">' + CHEST_RNAME[r] + ' <i>' + cnt[r] + '</i></button>').join('') + '</div>' +
+                    '<div class="chc-lbl">у соперника:</div>' +
+                    '<div class="chc-chips">' + foes.map(p => '<button class="chc-chip' + (chest.selTarget === p.i ? ' on' : '') + '" onclick="chestSelTarget(' + p.i + ')">' + p.name + ' <i>' + p.hand.length + '</i></button>').join('') + '</div>' +
+                    '<button class="nx-btn nx-btn-peel" onclick="chestPlayerAsk()">❓ Спросить</button></div>';
+            } else {
+                acts.innerHTML = '<div class="chc-wait">Ходит ' + chest.players[chest.turn].name + '…</div>';
+            }
+            if (logEl) logEl.innerHTML = chest.log.slice(-7).map(l => '<div>· ' + l + '</div>').join('');
+        }
+        function chestPlayerSolo() {
+            if (!chest || chest.over || chest.turn !== 0 || chest.busy) return;
+            const me = chest.players[0];
+            const c = chestSoloDraw(me);
+            if (!c) { chestCheckEnd(true); chestRender(); return; }
+            SoundFX.play('click');
+            if (chestCheckEnd()) { chestRender(); return; }
+            if (!chestCanAct(me)) { const nx = chestNextIdx(0); if (nx >= 0 && nx !== 0) chestBeginTurn(nx); else chestCheckEnd(true); }
+            chestRender();
+        }
+        function chestSelRank(r) { if (chest) { chest.selRank = r; chestRender(); } }
+        function chestSelTarget(i) { if (chest) { chest.selTarget = i; chestRender(); } }
+        function chestSetOpt(id, on1, on2) {
+            const a = document.getElementById(on1), b = document.getElementById(on2);
+            if (id === on1) { if (a) a.classList.add('chc-on'); if (b) b.classList.remove('chc-on'); }
+            else { if (b) b.classList.add('chc-on'); if (a) a.classList.remove('chc-on'); }
+        }
+        function chestSetPlayers(n) { for (const k of [2, 3, 4]) { const el = document.getElementById('chest-pl' + k); if (el) el.classList.toggle('chc-on', k === n); } }
+        function chestSetBet(v) { const el = document.getElementById('chest-bet'); if (el) el.value = String(v); }
+

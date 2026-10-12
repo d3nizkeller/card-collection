@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob59" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob59">
+    <script src="assets/three.min.js?v=nxmob60" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob60">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob59">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob60">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob59">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob60">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -215,7 +215,7 @@
         <!-- BATTLE TAB -->
         <section id="tab-battle" class="space-y-6 hidden">
             <!-- b239: переключатель режимов живёт вне лобби — виден всегда -->
-                <div class="grid grid-cols-8 gap-1 sm:gap-2 w-full py-0.5">
+                <div class="grid nx-modes gap-1 sm:gap-2 w-full py-0.5">
                     <button onclick="setBattleMode('arena')" id="mode-arena-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-rose-600 text-white shadow"><i class="fa-solid fa-hand-fist mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Арена</span></button>
                     <button onclick="setBattleMode('durak')" id="mode-durak-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-diamond mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Дурак</span></button>
                     <button onclick="setBattleMode('miner')" id="mode-miner-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-helmet-safety mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Шахта</span></button>
@@ -223,6 +223,7 @@
                     <button onclick="setBattleMode('grid')" id="mode-grid-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-border-all mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Сетка</span></button>
                 <button onclick="setBattleMode('lines')" id="mode-lines-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-table-cells mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Линии</span></button>
                 <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Мины</span></button>
+                <button onclick="setBattleMode('chest')" id="mode-chest-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-vault"></i><span>Сундучки</span></button>
                 <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Колесо</span></button>
                 </div>
             <!-- Battle Lobby -->
@@ -378,6 +379,31 @@
                                 <li>Пустой сектор: ставка сгорает и уходит в общий джекпот на <b>100%</b>; 100% каждой ставки капают в банк всегда, а проигрыш докидывает ещё 100% потерянной суммы.</li>
                             </ol>
                         </div>
+                </div>
+                <!-- b400: Сундучки (Go Fish) — наборы из 4 карт одного достоинства -->
+                <div id="lobby-chest" class="space-y-4 hidden">
+                    <div class="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
+                        <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-vault text-amber-300 mr-2"></i>Сундучки</h2>
+                        <p class="text-[11px] sm:text-xs text-slate-400 mt-1 leading-relaxed">Спросите у соперника достоинство, которое держите сами. Есть — забираете все карты такого достоинства и ходите снова. Нет — «Бери карту!»: тянете из колоды, и при совпадении достоинства ход снова ваш. Четыре карты одного достоинства — сундучок. У кого сундучков больше, тот забирает банк; ставка кормит общий джекпот сайта.</p>
+                        <div class="flex flex-wrap items-center gap-2 mt-3">
+                            <button id="chest-deck36" class="chc-opt chc-on" onclick="chestSetOpt('d36','chest-deck36','chest-deck52')">36 карт · 6 на руку</button>
+                            <button id="chest-deck52" class="chc-opt" onclick="chestSetOpt('d52','chest-deck36','chest-deck52')">52 карты · 7 на руку</button>
+                            <button id="chest-pl2" class="chc-opt" onclick="chestSetPlayers(2)">2 игрока</button>
+                            <button id="chest-pl3" class="chc-opt chc-on" onclick="chestSetPlayers(3)">3</button>
+                            <button id="chest-pl4" class="chc-opt" onclick="chestSetPlayers(4)">4</button>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 mt-3">
+                            <span class="text-[10px] font-bold text-slate-400">Ставка:</span>
+                            <input id="chest-bet" type="text" value="100" class="w-24 px-2 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700 text-[12px] font-black text-center text-amber-300">
+                            <button class="chc-opt" onclick="chestSetBet(100)">100</button>
+                            <button class="chc-opt" onclick="chestSetBet(1000)">1k</button>
+                            <button class="chc-opt" onclick="chestSetBet(10000)">10k</button>
+                            <button class="nx-btn nx-btn-peel" style="flex:0 0 auto;padding:8px 18px" onclick="chestStart()"><i class="fa-solid fa-play mr-1"></i>Раздать</button>
+                        </div>
+                    </div>
+                    <div id="chest-table" class="space-y-2"></div>
+                    <div id="chest-actions"></div>
+                    <div id="chest-log" class="text-[10.5px] text-slate-500 space-y-0.5 px-1"></div>
                 </div>
                 <!-- b79: Мины -->
                 <div id="lobby-mines" class="space-y-6 hidden">
@@ -2588,10 +2614,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob59"></script>
-    <script src="assets/stories.js?v=nxmob59"></script>
-    <script src="assets/qrcode.min.js?v=nxmob59"></script>
-    <script src="assets/qr-transfer.js?v=nxmob59"></script>
+    <script src="assets/app.js?v=nxmob60"></script>
+    <script src="assets/stories.js?v=nxmob60"></script>
+    <script src="assets/qrcode.min.js?v=nxmob60"></script>
+    <script src="assets/qr-transfer.js?v=nxmob60"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

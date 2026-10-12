@@ -1098,3 +1098,38 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 @media (prefers-reduced-motion: reduce){
     .sale-banner::before,.upcoming-banner,.up-label-tile i{animation:none !important}
 }
+
+/* ===== b400: Сундучки (Go Fish) ===== */
+.nx-modes{grid-template-columns:repeat(9,minmax(0,1fr))}
+@media(max-width:639px){.nx-modes{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.chc-opt{padding:6px 10px;border-radius:10px;font-size:10px;font-weight:800;color:#cbd5e1;background:rgba(30,41,59,.7);border:1px solid #334155;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+.chc-opt:hover{background:#334155}
+.chc-opt.chc-on{background:rgba(251,191,36,.16);border-color:rgba(251,191,36,.5);color:#fde68a}
+.chc-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:12px;background:rgba(2,6,23,.55);border:1px solid rgba(51,65,85,.5);flex-wrap:wrap}
+.chc-row.act{border-color:rgba(52,211,153,.5);background:rgba(6,78,59,.18)}
+.chc-row.deck{border-style:dashed}
+.chc-ava{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.chc-nm{font-size:11px;font-weight:800;color:#e2e8f0;min-width:0}
+.chc-hc{font-size:10px;font-weight:700;color:#94a3b8;font-family:ui-monospace,monospace}
+.chc-chests{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.chc-chests i{font-size:9.5px;color:#64748b;font-style:normal}
+.chc-pile{font-size:9.5px;font-weight:900;color:#fde68a;background:rgba(180,83,9,.22);border:1px solid rgba(251,191,36,.45);border-radius:7px;padding:2px 6px}
+.chc-pile.me{color:#a7f3d0;background:rgba(6,95,70,.25);border-color:rgba(52,211,153,.5)}
+.chc-backs{display:flex;gap:2px;flex-basis:100%;overflow:hidden;height:16px}
+.chc-back{width:11px;height:16px;border-radius:3px;background:linear-gradient(140deg,#334155,#1e293b);border:1px solid #475569;flex-shrink:0}
+.chc-hand{display:flex;gap:4px;flex-wrap:wrap;padding:8px 4px 2px}
+.chc-card{position:relative;width:34px;height:48px;border-radius:7px;background:linear-gradient(160deg,#f8fafc,#e2e8f0);border:1px solid #94a3b8;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 3px 8px -4px #000}
+.chc-card b{font-size:13px;line-height:1;color:#0f172a;font-weight:900}
+.chc-card i{font-size:12px;line-height:1.1;color:#0f172a;font-style:normal}
+.chc-card.red b,.chc-card.red i{color:#dc2626}
+.chc-empty{font-size:10.5px;color:#64748b}
+.chc-end{padding:14px;border-radius:14px;background:rgba(15,23,42,.85);border:1px solid #334155;text-align:center}
+.chc-end p{margin:0 0 6px;font-size:13px;font-weight:900;color:#fde68a}
+.chc-score{font-size:10.5px;color:#94a3b8;margin-bottom:10px}
+.chc-actbar{display:flex;flex-direction:column;gap:6px;padding:10px;border-radius:14px;background:rgba(15,23,42,.7);border:1px solid #334155}
+.chc-lbl{font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#64748b}
+.chc-chips{display:flex;gap:4px;flex-wrap:wrap}
+.chc-chip{padding:5px 9px;border-radius:9px;font-size:11px;font-weight:900;color:#cbd5e1;background:rgba(30,41,59,.8);border:1px solid #334155;cursor:pointer}
+.chc-chip i{font-style:normal;font-size:9px;color:#64748b;margin-left:3px}
+.chc-chip.on{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.55);color:#bae6fd}
+.chc-wait{padding:10px;text-align:center;font-size:11px;font-weight:800;color:#94a3b8}
