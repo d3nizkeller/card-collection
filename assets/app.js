@@ -6106,6 +6106,14 @@ function nxToggle3d() {
             const raw = parseBetStr(priceStr);
             if (!isFinite(raw) || raw < 1) { showToast('Укажите цену: число, можно 2k / 1.5m', 'error'); return false; }
             const price = normBet(raw);
+            // b411: биржа забита — игра выкупает, чтобы лот всё равно встал
+            if (marketSellRoom() <= 0) {
+                try { marketEnforceLimit(); } catch (e) {}
+                if (marketSellRoom() <= 0) {
+                    const freed = marketFreeRoom(20);
+                    if (freed) showToast('♻ Биржа была забита — игра выкупила ' + freed + ' ' + pluralRu(freed, 'лот', 'лота', 'лотов'), 'info');
+                }
+            }
             // b409: на бирже уже 4 лота этой карты — новый не пускаем, копию
             // мгновенно продаёт дом, иначе лишние лоты копились бы в облаке
             if (marketLotsFor(cardId) >= MARKET_MAX_PER_CARD) {
@@ -6182,19 +6190,31 @@ function nxToggle3d() {
         // Освобождаем место своими же старыми лотами: карты возвращаются в
         // коллекцию и тут же уходят в новые лоты одним коммитом.
         function marketFreeRoom(need) {
+            // b411: «биржа забита — игра выкупает». Сначала снимаем СВОИ старые
+            // лоты (карты возвращаются в коллекцию), а если своего мало — дом
+            // выкупает старейшие ЧУЖИе лоты: продавцы получают деньги
+            // квитанциями ledger при следующей синхронизации, никто не теряет.
             try {
+                const gone = {}; const rm = []; const receipts = [];
+                let freed = 0;
                 const mine = marketLots().filter(l => marketIsMine(l)).sort((a, b) => (a.at || 0) - (b.at || 0));
-                if (!mine.length) return 0;
-                const n = Math.min(need, mine.length);
-                const gone = {}; const rm = [];
-                for (let i = 0; i < n; i++) {
-                    rm.push(mine[i].id);
-                    gone[mine[i].id] = 1;
+                for (let i = 0; i < mine.length && freed < need; i++, freed++) {
+                    rm.push(mine[i].id); gone[mine[i].id] = 1;
                     marketSetCollection(mine[i].card.id, cardCopies(mine[i].card.id) + 1); // копия вернулась
                 }
+                if (freed < need) {
+                    const foreign = marketLots().filter(l => !marketIsMine(l) && !gone[l.id]).sort((a, b) => (a.at || 0) - (b.at || 0));
+                    for (let i = 0; i < foreign.length && freed < need; i++, freed++) {
+                        const l = foreign[i];
+                        rm.push(l.id); gone[l.id] = 1;
+                        receipts.push({ id: 'sys-' + l.id, sid: l.sid, amount: MARKET_SYS_REFUND[(l.card || {}).rarity] || 20, at: Date.now(), bname: 'Игрок обмена' });
+                    }
+                }
+                if (!freed) return 0;
                 marketRemovedAddMany(rm); // одна запись LS на всю ротацию
                 CLOUD.market = marketLots().filter(l => !gone[l.id]);
-                return n;
+                if (receipts.length) CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat(receipts).slice(-60);
+                return freed;
             } catch (e) { return 0; }
         }
         function marketListMany(items) {
@@ -6369,6 +6389,10 @@ function nxToggle3d() {
         //    выставить свою карту за 1m и получить её от «дома».
         const MARKET_LOT_TTL = 24 * 3600 * 1000;
         const MARKET_SOFT_CAP = 60;
+        // b411: если биржа забита под завязку, дом выкупает агрессивнее:
+        // просрочка сокращается до 6 ч, а переполнение срезается до 40 лотов
+        const MARKET_TTL_FULL = 6 * 3600 * 1000;
+        const MARKET_HARD_TRIM = 40;
         function marketEnforceLimit() {
             const byCard = {};
             marketLots().forEach(l => {
@@ -6391,10 +6415,13 @@ function nxToggle3d() {
             });
             // b407: просроченные лоты дом выкупает всегда
             const nowTs = Date.now();
-            marketLots().forEach(l => { if ((nowTs - (l.at || nowTs)) > MARKET_LOT_TTL) take(l); });
-            // b407: переполнение — докупает старейшие до мягкого потолка
+            const full = marketLots().length >= MARKET_SOFT_CAP; // b411
+            const ttl = full ? MARKET_TTL_FULL : MARKET_LOT_TTL; // b411: забита — просрочка 6 ч
+            marketLots().forEach(l => { if ((nowTs - (l.at || nowTs)) > ttl) take(l); });
+            // b407+b411: переполнение — докупает старейшие до мягкого потолка,
+            // а если биржа была забита — срезает глубже, до MARKET_HARD_TRIM
             const left = marketLots().filter(l => !boughtIds[l.id]).sort((a, b) => (a.at || 0) - (b.at || 0));
-            let over = left.length + bought.length - MARKET_SOFT_CAP;
+            let over = left.length + bought.length - (full ? MARKET_HARD_TRIM : MARKET_SOFT_CAP);
             for (let i = 0; over > 0 && i < left.length; i++, over--) take(left[i]);
             if (!bought.length) return;
             const gone = {};
@@ -6550,9 +6577,18 @@ function nxToggle3d() {
             const tileFn = marketViewMode === 'grid' ? lotCardHTML : lotTileHTML; // b224b
             if (myBox) myBox.innerHTML = my.length ? my.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">У вас пока нет активных лотов.</p>';
             const listBox = document.getElementById('market-list');
+            // b411: видимая подсказка — при переполнении дом выкупает сам
+            let fullNote = '';
+            try {
+                const totalLots = marketLots().length;
+                if (totalLots >= MARKET_SOFT_CAP) {
+                    fullNote = '<p class="mkt-full col-span-full">🏛 Биржа заполнена: ' + totalLots + ' из 80 лотов. ' +
+                        'Дом сам выкупает старейшие лоты — деньги приходят квитанцией, а продажа дубликатов проходит всегда.</p>';
+                }
+            } catch (e) {}
             if (listBox) {
-                if (!CLOUD.connected()) listBox.innerHTML = '<p class="text-[11px] text-slate-500 col-span-full">Биржа недоступна: облако отключено.</p>';
-                else listBox.innerHTML = others.length ? others.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>';
+                if (!CLOUD.connected()) listBox.innerHTML = fullNote + '<p class="text-[11px] text-slate-500 col-span-full">Биржа недоступна: облако отключено.</p>';
+                else listBox.innerHTML = fullNote + (others.length ? others.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>');
             }
             const sc = document.getElementById('market-stat-coins');
             if (sc) sc.textContent = fmtCoins(state.coins);
@@ -12027,6 +12063,14 @@ function nxToggle3d() {
         // а всё сверх игра продаёт сама мгновенно, чтобы лишнее не копилось:
         // сначала дозаполняем биржу до MARKET_MAX_PER_CARD, остаток выкупает дом.
         function marketSellDupesSmart(entries) {
+            // b411: «если биржа забита — игра выкупает»: сначала прогоняем
+            // автовыкуп (просрочка/переполнение), затем, если места всё равно
+            // нет, дом выкупает старейшие лоты (свои и чужие с квитанциями)
+            try { marketEnforceLimit(); } catch (e) {}
+            if (marketSellRoom() <= 0) {
+                const freed = marketFreeRoom(40);
+                if (freed) showToast('♻ Биржа была забита — игра выкупила ' + freed + ' ' + pluralRu(freed, 'лот', 'лота', 'лотов') + ', место освобождено', 'info');
+            }
             const items = []; const rest = [];
             (entries || []).forEach(en => {
                 const card = state.cards.find(c => c.id === en.id);

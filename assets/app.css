@@ -1098,3 +1098,6 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 @media (prefers-reduced-motion: reduce){
     .sale-banner::before,.upcoming-banner,.up-label-tile i{animation:none !important}
 }
+
+/* b411: подсказка о переполнении биржи — дом выкупает старейшие лоты */
+.mkt-full{margin:0 0 8px;padding:7px 10px;border-radius:10px;background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.35);font-size:11px;line-height:1.35;color:#bae6fd}
