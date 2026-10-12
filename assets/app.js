@@ -16015,9 +16015,20 @@ function nxToggle3d() {
             chestLog(msg);
             chestRender();
         }
-        function chestCardHTML(c) {
+        function chestBigCard(c) {
+            // b401: классическая игральная карта как в референсе владельца:
+            // белые карты с чёрной обводкой, угол ранг+масть, фигурки — плашкой
             const red = (c.s === 1 || c.s === 2);
-            return '<span class="chc-card' + (red ? ' red' : '') + '"><b>' + CHEST_RNAME[c.r] + '</b><i>' + CHEST_SUITS[c.s] + '</i></span>';
+            const suit = CHEST_SUITS[c.s];
+            const court = { 11: ['В', '🛡'], 12: ['Д', '👑'], 13: ['К', '🦁'] }[c.r];
+            const center = court
+                ? '<span class="cht-court' + (red ? ' red' : '') + '"><b>' + court[0] + '</b><i>' + court[1] + '</i></span>'
+                : (c.r === 14
+                    ? '<span class="cht-mid ace">' + suit + '</span>'
+                    : '<span class="cht-mid">' + CHEST_RNAME[c.r] + '<i>' + suit + '</i></span>');
+            return '<span class="cht-card' + (red ? ' red' : '') + '">' +
+                '<span class="cht-c tl"><b>' + CHEST_RNAME[c.r] + '</b><i>' + suit + '</i></span>' + center +
+                '<span class="cht-c br"><b>' + CHEST_RNAME[c.r] + '</b><i>' + suit + '</i></span></span>';
         }
         function chestRender() {
             const table = document.getElementById('chest-table');
@@ -16025,45 +16036,56 @@ function nxToggle3d() {
             const logEl = document.getElementById('chest-log');
             if (!table || !acts || !chest) { if (table) table.innerHTML = ''; if (acts) acts.innerHTML = ''; return; }
             const me = chest.players[0];
-            let h = '';
+            let seats = '';
             chest.players.forEach(p => {
                 if (p === me) return;
-                const backs = Math.min(p.hand.length, 10);
-                h += '<div class="chc-row' + (chest.turn === p.i && !chest.over ? ' act' : '') + '">' +
-                    '<span class="chc-ava">' + (p.i === 1 ? '🐱' : p.i === 2 ? '🦊' : '🦉') + '</span>' +
-                    '<span class="chc-nm">' + p.name + (chest.turn === p.i && !chest.over ? ' · ходит' : '') + '</span>' +
-                    '<span class="chc-hc">' + (p.hand.length ? '🂠 ' + p.hand.length : 'пусто') + '</span>' +
-                    '<span class="chc-chests">' + (p.chests.length ? p.chests.map(r => '<b class="chc-pile" title="сундучок ' + CHEST_RNAME[r] + '">🧰' + CHEST_RNAME[r] + '</b>').join('') : '<i>сундучков: 0</i>') + '</span>' +
-                    '<span class="chc-backs">' + '<span class="chc-back"></span>'.repeat(backs) + '</span></div>';
+                seats += '<div class="cht-seat' + (chest.turn === p.i && !chest.over ? ' act' : '') + '">' +
+                    '<span class="cht-ava">' + (p.i === 1 ? '🐱' : p.i === 2 ? '🦊' : '🦉') + '</span>' +
+                    '<span class="cht-nm">' + p.name + '</span>' +
+                    '<span class="cht-hc">🂠 ' + p.hand.length + '</span>' +
+                    '<span class="cht-ch">' + (p.chests.length ? '🧰×' + p.chests.length : '') + '</span></div>';
             });
-            h += '<div class="chc-row deck"><span class="chc-ava"></span><span class="chc-nm">Колода</span><span class="chc-hc">' + chest.deck.length + ' карт</span>' +
-                '<span class="chc-chests">' + (me.chests.length ? me.chests.map(r => '<b class="chc-pile me">🧰' + CHEST_RNAME[r] + '</b>').join('') : '<i>ваших сундучков: 0</i>') + '</span></div>';
-            h += '<div class="chc-hand">' + (me.hand.length ? me.hand.slice().sort((a, b) => a.r - b.r || a.s - b.s).map(chestCardHTML).join('') : '<span class="chc-empty">Рука пуста</span>') + '</div>';
-            table.innerHTML = h;
+            const piles = chest.players.map(p =>
+                '<div class="cht-pile' + (p === me ? ' me' : '') + '" title="Сундучки: ' + p.name + '"><span>🧰</span><b>' + p.chests.length + '</b></div>').join('');
+            const last = chest.log.length ? chest.log[chest.log.length - 1] : '';
+            table.innerHTML =
+                '<div class="cht-scene">' +
+                '<div class="cht-bg" aria-hidden="true"></div>' +
+                '<div class="cht-stick" aria-hidden="true"><span class="btl">🍾</span><span>💀</span><span>🐱</span></div>' +
+                '<div class="cht-seats">' + seats + '</div>' +
+                '<div class="cht-tablewood">' +
+                    '<div class="cht-deck" title="Колода"><i></i><b>' + chest.deck.length + '</b></div>' +
+                    '<div class="cht-piles">' + piles + '</div>' +
+                    '<div class="cht-msg">' + (chest.over ? chest.resultMsg : last) + '</div>' +
+                '</div>' +
+                '<div class="cht-handwrap"><div class="cht-ribbon" aria-hidden="true"></div>' +
+                    '<div class="cht-hand">' + (me.hand.length
+                        ? me.hand.slice().sort((x, y) => x.r - y.r || x.s - y.s).map(chestBigCard).join('')
+                        : '<span class="chc-empty">Рука пуста</span>') + '</div>' +
+                '</div></div>';
             if (chest.over) {
                 acts.innerHTML = '<div class="chc-end"><p>' + chest.resultMsg + '</p>' +
                     '<div class="chc-score">' + chest.players.map(p => p.name + ': ' + p.chests.length).join(' · ') + '</div>' +
                     '<button class="nx-btn nx-btn-peel" onclick="chestStart()">🔁 Сыграть ещё · ' + fmtCoins(chestBet()) + '</button></div>';
             } else if (chest.turn === 0) {
                 if (!chestFoesWithCards(me) && chest.deck.length) {
-                    acts.innerHTML = '<div class="chc-actbar"><div class="chc-lbl">Спрашивать не у кого</div>' +
+                    acts.innerHTML = '<div class="chc-actbar cht-wood"><div class="chc-lbl">Спрашивать не у кого</div>' +
                         '<button class="nx-btn nx-btn-peel" onclick="chestPlayerSolo()">🂠 Брать из колоды (' + chest.deck.length + ')</button></div>';
-                    if (logEl) logEl.innerHTML = chest.log.slice(-7).map(l => '<div>· ' + l + '</div>').join('');
-                    return;
+                } else {
+                    const cnt = chestCounts(me);
+                    const ranks = Object.keys(cnt).map(Number).sort((x, y) => x - y);
+                    const foes = chest.players.filter(p => p.i > 0 && p.hand.length);
+                    acts.innerHTML = '<div class="chc-actbar cht-wood">' +
+                        '<div class="chc-lbl">Спросить достоинство:</div>' +
+                        '<div class="chc-chips">' + ranks.map(r => '<button class="chc-chip' + (chest.selRank === r ? ' on' : '') + '" onclick="chestSelRank(' + r + ')">' + CHEST_RNAME[r] + ' <i>' + cnt[r] + '</i></button>').join('') + '</div>' +
+                        '<div class="chc-lbl">у соперника:</div>' +
+                        '<div class="chc-chips">' + foes.map(p => '<button class="chc-chip' + (chest.selTarget === p.i ? ' on' : '') + '" onclick="chestSelTarget(' + p.i + ')">' + p.name + ' <i>' + p.hand.length + '</i></button>').join('') + '</div>' +
+                        '<button class="nx-btn nx-btn-peel" onclick="chestPlayerAsk()">❓ Спросить</button></div>';
                 }
-                const cnt = chestCounts(me);
-                const ranks = Object.keys(cnt).map(Number).sort((a, b) => a - b);
-                const foes = chest.players.filter(p => p.i > 0 && p.hand.length);
-                acts.innerHTML = '<div class="chc-actbar">' +
-                    '<div class="chc-lbl">Спросить достоинство:</div>' +
-                    '<div class="chc-chips">' + ranks.map(r => '<button class="chc-chip' + (chest.selRank === r ? ' on' : '') + '" onclick="chestSelRank(' + r + ')">' + CHEST_RNAME[r] + ' <i>' + cnt[r] + '</i></button>').join('') + '</div>' +
-                    '<div class="chc-lbl">у соперника:</div>' +
-                    '<div class="chc-chips">' + foes.map(p => '<button class="chc-chip' + (chest.selTarget === p.i ? ' on' : '') + '" onclick="chestSelTarget(' + p.i + ')">' + p.name + ' <i>' + p.hand.length + '</i></button>').join('') + '</div>' +
-                    '<button class="nx-btn nx-btn-peel" onclick="chestPlayerAsk()">❓ Спросить</button></div>';
             } else {
                 acts.innerHTML = '<div class="chc-wait">Ходит ' + chest.players[chest.turn].name + '…</div>';
             }
-            if (logEl) logEl.innerHTML = chest.log.slice(-7).map(l => '<div>· ' + l + '</div>').join('');
+            if (logEl) logEl.innerHTML = chest.log.slice(-6).map(l => '<div>· ' + l + '</div>').join('');
         }
         function chestPlayerSolo() {
             if (!chest || chest.over || chest.turn !== 0 || chest.busy) return;

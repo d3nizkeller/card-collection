@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob60'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob61'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -307,7 +307,7 @@ PROFWORK_JS = [
      "        function switchTab(tabId) {\n            nxTrail('tab:' + tabId);\n            try { setTimeout(nxPerfProbe, 1200); } catch (e) {} // b399"),
     ('b400: модуль игры Сундучки',
      "        window.onload = function() {",
-     "\n        window.onload = function() {"),
+     ""),
 ]
 
 HEAD_END = 1088       # </head>
@@ -1457,6 +1457,75 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 .chc-chip i{font-style:normal;font-size:9px;color:#64748b;margin-left:3px}
 .chc-chip.on{background:rgba(56,189,248,.18);border-color:rgba(56,189,248,.55);color:#bae6fd}
 .chc-wait{padding:10px;text-align:center;font-size:11px;font-weight:800;color:#94a3b8}
+/* ===== b401: мультяшный стол «Сундучков» (референс владельца) ===== */
+.cht-scene{position:relative;overflow:hidden;border-radius:18px;border:4px solid #120b06;background:#14607a;min-height:340px}
+.cht-bg{position:absolute;inset:0;
+ background-image:
+  radial-gradient(circle at 50% 100%, #a33320 0 44%, transparent 46%),
+  radial-gradient(circle at 50% 100%, #7a1f14 0 44%, transparent 46%),
+  radial-gradient(circle at 50% 0%, #1d7fa0 0 62%, transparent 63%);
+ background-size:150px 110px,110px 80px,100% 74%;
+ background-position:30px 0,0 0,0 0;
+ background-repeat:repeat-x,repeat-x,no-repeat}
+.cht-stick{position:absolute;left:10px;top:36%;display:flex;flex-direction:column;gap:6px;font-size:16px;filter:drop-shadow(0 2px 0 #000);z-index:2}
+.cht-stick .btl{transform:rotate(-70deg);font-size:22px}
+.cht-seats{position:relative;z-index:2;display:flex;justify-content:center;gap:12px;padding:12px 10px 0;flex-wrap:wrap}
+.cht-seat{display:flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:999px;background:rgba(20,12,6,.55);border:3px solid #120b06;box-shadow:0 3px 0 #000}
+.cht-seat.act{border-color:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.35),0 3px 0 #000}
+.cht-ava{width:34px;height:34px;border-radius:50%;background:#fff;border:3px solid #120b06;display:inline-flex;align-items:center;justify-content:center;font-size:18px}
+.cht-nm{font-size:10.5px;font-weight:900;color:#fef3c7}
+.cht-hc{font-size:10px;font-weight:800;color:#e2e8f0;font-family:ui-monospace,monospace}
+.cht-ch{font-size:10px;font-weight:900;color:#fde68a}
+.cht-tablewood{position:relative;z-index:1;margin:10px auto 0;width:94%;height:150px;border-radius:50%;
+ background:linear-gradient(#dba468,#c88b4e 70%,#b97b3e);border:6px solid #120b06;
+ box-shadow:inset 0 -14px 0 rgba(0,0,0,.14), inset 0 8px 0 rgba(255,255,255,.12)}
+.cht-deck{position:absolute;right:16%;top:24px;width:64px;height:40px}
+.cht-deck i{position:absolute;inset:0;border-radius:5px;border:3px solid #120b06;
+ background:repeating-linear-gradient(45deg,#dbeafe 0 3px,#93c5fd 3px 4px);
+ box-shadow:0 4px 0 #cbd5e1,0 7px 0 #94a3b8,0 9px 0 #120b06}
+.cht-deck b{position:absolute;right:-6px;bottom:-18px;font-size:10px;font-weight:900;color:#fff;background:#120b06;border-radius:8px;padding:1px 6px}
+.cht-piles{position:absolute;left:7%;top:20px;display:flex;gap:8px;flex-wrap:wrap}
+.cht-pile{display:flex;flex-direction:column;align-items:center;padding:4px 8px;border-radius:10px;background:rgba(18,11,6,.35);border:2px solid #120b06}
+.cht-pile span{font-size:16px}
+.cht-pile b{font-size:10px;font-weight:900;color:#fde68a}
+.cht-pile.me{background:rgba(6,78,59,.45)}
+.cht-msg{position:absolute;left:50%;top:60%;transform:translate(-50%,-50%);width:70%;text-align:center;
+ font-size:11px;font-weight:800;color:#fff;background:rgba(18,11,6,.62);border:2px solid #120b06;border-radius:12px;padding:6px 10px}
+.cht-handwrap{position:relative;z-index:3;margin:-26px 6px 10px;padding:10px 8px 8px}
+.cht-ribbon{position:absolute;left:0;right:0;top:16px;height:52px;background:#d8642f;border:5px solid #120b06;border-radius:8px;box-shadow:inset 0 -8px 0 rgba(0,0,0,.18)}
+.cht-hand{position:relative;display:flex;justify-content:center;padding:0 4px}
+.cht-card{position:relative;width:72px;height:106px;margin-left:-24px;background:#fff;border:3px solid #161616;border-radius:9px;box-shadow:0 4px 0 rgba(0,0,0,.45);flex-shrink:0;transition:transform .18s}
+.cht-card:first-child{margin-left:0}
+.cht-card:hover{transform:translateY(-8px)}
+.cht-card.red{color:#c81e1e}
+.cht-card:not(.red){color:#111}
+.cht-c{position:absolute;font-size:11px;line-height:1;font-weight:900;display:flex;flex-direction:column;align-items:center;gap:1px}
+.cht-c.tl{top:5px;left:6px}
+.cht-c.br{bottom:5px;right:6px;transform:rotate(180deg)}
+.cht-c i{font-style:normal;font-size:10px}
+.cht-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:34px;font-weight:900;font-family:Georgia,'Times New Roman',serif}
+.cht-mid i{font-style:normal;font-size:16px;margin-top:2px}
+.cht-mid.ace{font-size:44px}
+.cht-court{position:absolute;left:10px;right:10px;top:16px;bottom:16px;border-radius:6px;border:2px solid #161616;
+ background:linear-gradient(160deg,#8c2f22,#5d1d14);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.cht-court.red{background:linear-gradient(160deg,#b3392b,#7c241a)}
+.cht-court b{color:#fef3c7;font-size:22px;font-weight:900;font-family:Georgia,serif}
+.cht-court i{font-style:normal;font-size:14px}
+.chc-actbar.cht-wood{background:linear-gradient(#8a5a2b,#6d441e);border:3px solid #120b06;box-shadow:0 3px 0 #000}
+.chc-actbar.cht-wood .chc-lbl{color:#fde68a}
+.chc-actbar.cht-wood .chc-chip{background:rgba(18,11,6,.45);border-color:#120b06;color:#fef3c7}
+.chc-actbar.cht-wood .chc-chip.on{background:rgba(251,191,36,.3);border-color:#fbbf24;color:#fffbeb}
+@media(max-width:639px){
+ .cht-scene{min-height:300px}
+ .cht-tablewood{height:120px}
+ .cht-card{width:52px;height:78px;margin-left:-20px;border-width:2px}
+ .cht-mid{font-size:24px}
+ .cht-mid i{font-size:12px}
+ .cht-mid.ace{font-size:30px}
+ .cht-court b{font-size:16px}
+ .cht-c{font-size:9px}
+ .cht-msg{width:86%;font-size:10px}
+}
 '''
 
 SW_JS = '''/* nx-media-sw v2 (%s): cache-first для media/ и assets/, network-first для HTML.
