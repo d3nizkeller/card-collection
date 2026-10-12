@@ -11289,12 +11289,11 @@ function nxToggle3d() {
                             const whenWord = prem ? 'Премьера' : 'Старт';
                             const whenDate = new Date(x.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                             const t = upTint((PACK_COLORS[x.p.color] || PACK_COLORS.silver).accentText);
-                            return `<button type="button" onclick="carouselGoTo(${x.i})" class="up-card relative z-10 rounded-[16px] text-left transition" style="--upc:${t.c};--upg:${t.g};--upb:${t.b}" title="Показать пак в карусели">
+                            return `<button type="button" onclick="carouselGoTo(${x.i})" class="up-card" style="--upc:${t.c};--upg:${t.g};--upb:${t.b}" title="Показать пак в карусели">
                                 <span class="up-card-ico"><i class="fa-solid ${prem ? 'fa-clapperboard' : 'fa-hourglass-half'}"></i></span>
-                                <span class="up-price"><i class="fa-solid fa-coins"></i>${fmtCoins(x.p.price)}</span>
                                 <b class="up-title">${cloudEsc(x.p.title)}</b>
                                 <span class="up-when"><span class="up-when-word ${prem ? 'w-prem' : 'w-pre'}">${whenWord}</span><span class="up-when-date"><i class="fa-solid fa-calendar-day"></i>${whenDate}</span></span>
-                                <span class="up-perf" aria-hidden="true"></span>
+                                <span class="up-price"><i class="fa-solid fa-coins"></i>${fmtCoins(x.p.price)}</span>
                                 <span class="up-timer">${saleTimerChip(x.p, 'sale-inline')}</span>
                             </button>`;
                         }).join('');

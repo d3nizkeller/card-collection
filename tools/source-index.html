@@ -871,60 +871,38 @@ Check your Browserslist config to be sure that your targets are set up correctly
             letter-spacing: .08em; text-transform: uppercase; color: #7dd3fc;
             background: rgba(56,189,248,.10); border: 1px solid rgba(56,189,248,.28);
             box-shadow: inset 0 1px 0 rgba(255,255,255,.08); }
-        /* карточки премьер: «билеты» равной ширины; на узких — столбиком, лишее — скролл */
-        /* b286: на ПК витрина — ряд вертикальных «билетов» равной ширины (auto-fit, по центру),
-           1 пак не растягивается на всю строку; на телефоне — столбик компактных карточек (media 639) */
-        .up-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 320px));
-            justify-content: center; gap: 10px; }
-        .up-card { position: relative; overflow: hidden; padding: 10px 12px 12px;
-            display: grid; grid-template-columns: auto minmax(0,1fr);
-            grid-template-areas: "ico price" "title title" "when when" "perf perf" "timer timer";
-            align-items: center; column-gap: 8px; row-gap: 7px;
-            background:
-                radial-gradient(120% 95% at 50% 0%, var(--upg, rgba(167,139,250,.14)), transparent 62%),
-                linear-gradient(165deg, rgba(15,23,42,.68), rgba(2,6,23,.52) 74%);
-            border: 1px solid rgba(148,233,222,.16);
-            -webkit-backdrop-filter: blur(12px) saturate(140%); backdrop-filter: blur(12px) saturate(140%);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 10px 24px -18px rgba(0,0,0,.9); }
-        .up-card::before { content: ''; position: absolute; left: 12px; right: 12px; top: 0; height: 3px;
-            border-radius: 0 0 3px 3px; opacity: .9;
-            background: linear-gradient(90deg, rgba(255,255,255,0), var(--upc, #a78bfa) 22% 78%, rgba(255,255,255,0)); }
-        .up-card::after { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0;
-            transition: opacity .35s ease;
-            background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.10) 50%, transparent 60%);
-            background-size: 220% 100%; animation: saleShine 3.8s ease-in-out infinite; }
-        .up-card:hover { border-color: var(--upb, rgba(196,181,253,.45)); transform: translateY(-1px);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 12px 26px -14px var(--upg, rgba(167,139,250,.4)); }
-        .up-card:hover::after { opacity: 1; }
-        .up-card:active { transform: translateY(0) scale(.985); }
-        .up-card-ico { grid-area: ico; display: inline-flex; align-items: center;
-            justify-content: center; width: 34px; height: 34px; border-radius: 11px; font-size: 13px; flex-shrink: 0;
-            color: var(--upc, #c4b5fd);
-            background: linear-gradient(150deg, var(--upg, rgba(167,139,250,.16)), rgba(2,6,23,.42));
-            border: 1px solid var(--upb, rgba(196,181,253,.32));
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 14px -6px var(--upc, #a78bfa); }
-        .up-price { grid-area: price; justify-self: end; align-self: center; display: inline-flex; align-items: center; gap: 4px;
-            padding: 2px 8px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: .04em;
-            color: #fcd34d; background: rgba(251,191,36,.10); border: 1px solid rgba(251,191,36,.26);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,.07); }
-        .up-price i { font-size: 8.5px; opacity: .9; }
-        .up-title { grid-area: title; min-width: 0; overflow: hidden;
-            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal;
-            font-size: 12.5px; font-weight: 800; color: #f1f5f9; line-height: 1.3; }
-        .up-when { grid-area: when; display: flex; align-items: center; gap: 6px; min-width: 0; }
+        /* b397: «Скоро в продаже» — компактные строки-пилюли вместо массивных «билетов» */
+        .up-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 6px; }
+        .up-card { position: relative; overflow: hidden; display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px 6px 12px; border-radius: 12px; text-align: left;
+            background: rgba(2,6,23,.55); border: 1px solid rgba(51,65,85,.55);
+            transition: border-color .2s, background .2s, transform .15s; }
+        .up-card::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px;
+            border-radius: 0 3px 3px 0; background: linear-gradient(180deg, var(--upc, #a78bfa), rgba(255,255,255,0)); }
+        .up-card::after { display: none; }
+        .up-card:hover { border-color: var(--upb, rgba(196,181,253,.45)); background: rgba(15,23,42,.8); transform: translateY(-1px); }
+        .up-card:active { transform: scale(.985); }
+        .up-card-ico { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+            border-radius: 8px; font-size: 10px; flex-shrink: 0; color: var(--upc, #c4b5fd);
+            background: rgba(148,163,184,.10); border: 1px solid rgba(148,163,184,.18); }
+        .up-title { flex: 0 1 auto; min-width: 0; font-size: 12px; font-weight: 800; color: #e2e8f0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .up-when { display: flex; align-items: center; gap: 6px; min-width: 0; margin-left: auto; flex-shrink: 0; }
         .up-when-word { flex-shrink: 0; padding: 1.5px 6px; border-radius: 6px; font-size: 8px; font-weight: 800;
-            text-transform: uppercase; letter-spacing: .07em; }
+            letter-spacing: .06em; text-transform: uppercase; }
         .up-when-word.w-prem { color: #fde68a; background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.3); }
         .up-when-word.w-pre { color: #a5f3fc; background: rgba(34,211,238,.1); border: 1px solid rgba(34,211,238,.26); }
         .up-when-date { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-            font-size: 9px; font-weight: 700; letter-spacing: .04em; color: rgba(226,232,240,.62); }
+            font-size: 9.5px; color: #94a3b8; font-weight: 700; }
         .up-when-date i { font-size: 8px; margin-right: 4px; opacity: .8; }
-        .up-perf { grid-area: perf; height: 1px; min-width: 0; opacity: .85;
-            background: linear-gradient(90deg, rgba(255,255,255,0), var(--upb, rgba(196,181,253,.35)) 16% 84%, rgba(255,255,255,0)); }
-        .up-timer { grid-area: timer; min-width: 0; width: 100%; }
-        .up-card .sale-timer.sale-inline { margin-left: 0; flex-shrink: 0; display: flex; width: 100%; }
-        .up-card .sale-timer.sale-inline b { flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
-            gap: 6px; padding: 4px 10px; font-size: 10px; font-variant-numeric: tabular-nums; }
+        .up-price { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+            font-size: 9.5px; font-weight: 800; color: #fcd34d; }
+        .up-price i { font-size: 8.5px; opacity: .9; }
+        .up-perf { display: none; }
+        .up-timer { flex-shrink: 0; min-width: 0; }
+        .up-card .sale-timer.sale-inline { margin-left: 0; display: inline-flex; width: auto; }
+        .up-card .sale-timer.sale-inline b { display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+            padding: 3px 9px; font-size: 9.5px; font-variant-numeric: tabular-nums; }
 
         .sale-drop:hover { box-shadow: 0 0 20px -6px rgba(56,189,248,.55); background: rgba(2,6,23,.85); }
         .sale-drop:hover > span:nth-child(2) { color: #7dd3fc; }
@@ -958,18 +936,9 @@ Check your Browserslist config to be sure that your targets are set up correctly
             /* b285: на телефоне витрина «Скоро» — ВЕРТИКАЛЬНАЯ: шапка-строка сверху,
                карточки столбиком на всю ширину; название целиком (до 2 строк), ничего не свайпится */
             .upcoming-banner { gap: 7px; padding-top: 9px; padding-bottom: 9px; }
-            .up-list { display: flex; flex-direction: column; gap: 6px; overflow-x: visible; scroll-snap-type: none; }
-            .up-card { width: 100%; min-width: 0; scroll-snap-align: none; padding: 8px 10px 8px 11px;
-                grid-template-columns: auto minmax(0,1fr) auto;
-                grid-template-areas: "ico title timer" "ico when timer"; row-gap: 3px; column-gap: 9px; }
-            .up-card::before { left: 0; right: auto; top: 7px; bottom: 7px; width: 3px; height: auto;
-                border-radius: 0 3px 3px 0; background: linear-gradient(180deg, var(--upc, #a78bfa), rgba(255,255,255,0)); }
-            .up-card-ico { width: 30px; height: 30px; border-radius: 10px; font-size: 12px; }
-            .up-perf, .up-price { display: none; }
-            .up-timer { width: auto; justify-self: end; }
-            .up-card .sale-timer.sale-inline { width: auto; display: inline-block; }
-            .up-card .sale-timer.sale-inline .st-ico { display: none; }
-            .up-card .sale-timer.sale-inline b { display: inline-block; padding: 3px 9px; font-size: 9.5px; }
+                        .up-list { display: flex; flex-direction: column; gap: 5px; }
+            .up-when-date, .up-price { display: none; }
+            .up-card { padding: 5px 9px 5px 11px; }
             .up-title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: clip; }
             /* лента отсчёта/премьеры меньше — не закрывает постер на узких плитках */
             .sale-timer:not(.sale-inline) { width: 100px; height: 100px; }
@@ -14585,12 +14554,11 @@ function nxToggle3d() {
                             const whenWord = prem ? 'Премьера' : 'Старт';
                             const whenDate = new Date(x.t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                             const t = upTint((PACK_COLORS[x.p.color] || PACK_COLORS.silver).accentText);
-                            return `<button type="button" onclick="carouselGoTo(${x.i})" class="up-card relative z-10 rounded-[16px] text-left transition" style="--upc:${t.c};--upg:${t.g};--upb:${t.b}" title="Показать пак в карусели">
+                            return `<button type="button" onclick="carouselGoTo(${x.i})" class="up-card" style="--upc:${t.c};--upg:${t.g};--upb:${t.b}" title="Показать пак в карусели">
                                 <span class="up-card-ico"><i class="fa-solid ${prem ? 'fa-clapperboard' : 'fa-hourglass-half'}"></i></span>
-                                <span class="up-price"><i class="fa-solid fa-coins"></i>${fmtCoins(x.p.price)}</span>
                                 <b class="up-title">${cloudEsc(x.p.title)}</b>
                                 <span class="up-when"><span class="up-when-word ${prem ? 'w-prem' : 'w-pre'}">${whenWord}</span><span class="up-when-date"><i class="fa-solid fa-calendar-day"></i>${whenDate}</span></span>
-                                <span class="up-perf" aria-hidden="true"></span>
+                                <span class="up-price"><i class="fa-solid fa-coins"></i>${fmtCoins(x.p.price)}</span>
                                 <span class="up-timer">${saleTimerChip(x.p, 'sale-inline')}</span>
                             </button>`;
                         }).join('');
