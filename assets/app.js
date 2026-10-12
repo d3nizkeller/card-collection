@@ -6109,6 +6109,7 @@ function nxToggle3d() {
             CLOUD.market = marketLots().concat(lots);
             saveState(); jpSyncNow(); jpSyncSoon(); renderMarket(); // ОДИН пуш на партию
             marketEnforceLimit(); // b142: один проход лимита на партию
+            try { if (typeof nxRefreshAfterSale === 'function') nxRefreshAfterSale(); } catch (e) {} // b396: лимит мог выкупить часть лотов — копии вернулись
             return lots.length;
         }
         function marketListMany(items) {
@@ -6191,6 +6192,7 @@ function nxToggle3d() {
                 if (r.ok) {
                     for (let k = 0; k < Math.min(r.ok, map.length); k++) { unboxListedIdx[map[k]] = 1; marketMarkListedBtn(map[k], items[k].price); }
                     showToast('💰 Повторки отправлены на биржу: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');
+                    nxRefreshAfterSale(); // b396
                 } else {
                     showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');
                 }
@@ -11817,6 +11819,20 @@ function nxToggle3d() {
             state.collection[card.id] = 1;
             return { dup: false, refund: 0 };
         }
+        // b396: после продажи пересчитываем ВСЕ счётчики копий/повторок.
+        // Раньше обновлялся только список альбомов, а число на кнопке
+        // «Продать все повторки (N)» живёт в renderAlbumsHub — цифра «зависала».
+        function nxRefreshAfterSale() {
+            try { updateCoinDisplay(); } catch (e) {}
+            try { if (typeof renderAlbumsHub === 'function') renderAlbumsHub(); } catch (e) {}
+            try { if (typeof renderAlbumsList === 'function') renderAlbumsList(); } catch (e) {}
+            try { saveState(); } catch (e) {}
+        }
+        function nxBatchRemainingDupes() {
+            const seen = {}; let n = 0;
+            (nxBatchDupIds || []).forEach(id => { if (seen[id]) return; seen[id] = 1; n += Math.max(0, cardCopies(id) - 1); });
+            return n;
+        }
         let nxBatchDupIds = [];
         // b395: кнопка «Продать дубликаты» в окне партии — лишние копии этой
         // партии уходят на биржу ОДНИМ коммитом (marketListMany из b394)
@@ -11838,7 +11854,14 @@ function nxToggle3d() {
                 const r = marketListMany(items);
                 if (r.ok) {
                     showToast('💰 Дубликаты партии на бирже: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');
-                    if (btn) btn.innerHTML = '✅ Продано: ' + r.ok + ' · ' + fmtCoins(r.sum);
+                    nxRefreshAfterSale(); // b396: счётчики копий обновляются сразу
+                    const left = nxBatchRemainingDupes();
+                    if (btn) {
+                        btn.innerHTML = left > 0
+                            ? '💰 Продано: ' + r.ok + ' · ' + fmtCoins(r.sum) + ' — продать ещё (' + left + ')'
+                            : '✅ Продано: ' + r.ok + ' · ' + fmtCoins(r.sum) + ' · дубликатов не осталось';
+                        btn.disabled = !(left > 0);
+                    }
                 } else {
                     showToast('Не удалось выставить дубликаты (нет подключения к облаку?)', 'error');
                     if (btn) btn.disabled = false;
@@ -13090,7 +13113,7 @@ function nxToggle3d() {
                 const r = marketListMany(items);
                 if (r.ok) {
                     showToast('💰 Повторки альбома отправлены на биржу: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');
-                    try { renderAlbumsList(); } catch (e) {}
+                    nxRefreshAfterSale(); // b396: цифра на кнопке «Продать все повторки (N)» пересчитывается
                 } else {
                     showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');
                 }
