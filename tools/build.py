@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob65'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob66'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -377,6 +377,21 @@ PROFWORK_JS = [
     ('b405: тост вскрытия с остатком',
      "                    showToast('💰 Повторки отправлены на биржу: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');",
      "                    showToast('💰 На биржу: ' + r.ok + ' лотов на ' + fmtCoins(r.sum) + (r.skipped ? ' · ещё ' + r.skipped + ' позже' : ''), 'success');"),
+    ('b406: ротация лотов при полной бирже',
+     "        function marketListMany(items) {",
+     "        // b406: если документ биржи забит под завязку (80 лотов), массовая\n        // продажа молча не выставляла ничего — кнопка выглядела мёртвой.\n        // Освобождаем место своими же старыми лотами: карты возвращаются в\n        // коллекцию и тут же уходят в новые лоты одним коммитом.\n        function marketFreeRoom(need) {\n            try {\n                const mine = marketLots().filter(l => marketIsMine(l)).sort((a, b) => (a.at || 0) - (b.at || 0));\n                if (!mine.length) return 0;\n                const n = Math.min(need, mine.length);\n                const gone = {}; const rm = [];\n                for (let i = 0; i < n; i++) {\n                    rm.push(mine[i].id);\n                    gone[mine[i].id] = 1;\n                    marketSetCollection(mine[i].card.id, cardCopies(mine[i].card.id) + 1); // копия вернулась\n                }\n                marketRemovedAddMany(rm); // одна запись LS на всю ротацию\n                CLOUD.market = marketLots().filter(l => !gone[l.id]);\n                return n;\n            } catch (e) { return 0; }\n        }\n        function marketListMany(items) {"),
+    ('b406: room в альбоме',
+     "            const items = [];\n            let room = marketSellRoom(); // b405\n            cards.forEach(c => {",
+     "            const items = [];\n            let room = marketSellRoom(); // b405\n            if (room <= 0) { room = marketFreeRoom(40); if (room) showToast('♻ Биржа была заполнена: снял ' + room + ' моих старых лотов, карты уходят в новые', 'info'); } // b406\n            cards.forEach(c => {"),
+    ('b406: room во вскрытии',
+     "            const items = []; const map = [];\n            let room = marketSellRoom(); // b405",
+     "            const items = []; const map = [];\n            let room = marketSellRoom(); // b405\n            if (room <= 0) { room = marketFreeRoom(40); if (room) showToast('♻ Биржа была заполнена: снял ' + room + ' моих старых лотов, карты уходят в новые', 'info'); } // b406"),
+    ('b406: room в партии',
+     "            const items = [];\n            let room = marketSellRoom(); // b405\n            const allow = {};",
+     "            const items = [];\n            let room = marketSellRoom(); // b405\n            if (room <= 0) { room = marketFreeRoom(40); if (room) showToast('♻ Биржа была заполнена: снял ' + room + ' моих старых лотов, карты уходят в новые', 'info'); } // b406\n            const allow = {};"),
+    ('b406: честный тост при полной бирже',
+     "            if (!items.length) { showToast('В этом альбоме нет лишних копий для продажи', 'info'); return; }",
+     "            if (!items.length) { showToast(room <= 0 ? 'Биржа заполнена (80 лотов) и своих лотов для ротации нет — дождитесь покупок' : 'В этом альбоме нет лишних копий для продажи', 'info'); return; }"),
 ]
 
 HEAD_END = 1088       # </head>

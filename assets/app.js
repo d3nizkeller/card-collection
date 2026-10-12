@@ -6162,6 +6162,26 @@ function nxToggle3d() {
             return Math.max(0, MARKET_MAX_PER_CARD - exist);
         }
         function marketSellRoom() { return Math.max(0, 80 - marketLots().length); }
+        // b406: если документ биржи забит под завязку (80 лотов), массовая
+        // продажа молча не выставляла ничего — кнопка выглядела мёртвой.
+        // Освобождаем место своими же старыми лотами: карты возвращаются в
+        // коллекцию и тут же уходят в новые лоты одним коммитом.
+        function marketFreeRoom(need) {
+            try {
+                const mine = marketLots().filter(l => marketIsMine(l)).sort((a, b) => (a.at || 0) - (b.at || 0));
+                if (!mine.length) return 0;
+                const n = Math.min(need, mine.length);
+                const gone = {}; const rm = [];
+                for (let i = 0; i < n; i++) {
+                    rm.push(mine[i].id);
+                    gone[mine[i].id] = 1;
+                    marketSetCollection(mine[i].card.id, cardCopies(mine[i].card.id) + 1); // копия вернулась
+                }
+                marketRemovedAddMany(rm); // одна запись LS на всю ротацию
+                CLOUD.market = marketLots().filter(l => !gone[l.id]);
+                return n;
+            } catch (e) { return 0; }
+        }
         function marketListMany(items) {
             if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return { ok: 0, sum: 0, skipped: 0 }; }
             // b405: облачный документ биржи хранит только последние 80 лотов, а на
@@ -6240,6 +6260,7 @@ function nxToggle3d() {
             if (!idxs.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }
             const items = []; const map = [];
             let room = marketSellRoom(); // b405
+            if (room <= 0) { room = marketFreeRoom(40); if (room) showToast('♻ Биржа была заполнена: снял ' + room + ' моих старых лотов, карты уходят в новые', 'info'); } // b406
             const allow = {};
             idxs.forEach(i => {
                 const card = (currentUnboxingCards || [])[i];
@@ -11953,6 +11974,7 @@ function nxToggle3d() {
             if (!ids.length) { showToast('Дубликатов в этой партии нет', 'info'); return; }
             const items = [];
             let room = marketSellRoom(); // b405
+            if (room <= 0) { room = marketFreeRoom(40); if (room) showToast('♻ Биржа была заполнена: снял ' + room + ' моих старых лотов, карты уходят в новые', 'info'); } // b406
             const allow = {};
             ids.forEach(id => {
                 if (room <= 0) return;
@@ -13232,6 +13254,7 @@ function nxToggle3d() {
             const cards = state.cards.filter(c => c.packId === packId);
             const items = [];
             let room = marketSellRoom(); // b405
+            if (room <= 0) { room = marketFreeRoom(40); if (room) showToast('♻ Биржа была заполнена: снял ' + room + ' моих старых лотов, карты уходят в новые', 'info'); } // b406
             cards.forEach(c => {
                 if (room <= 0) return;
                 let allow = Math.min(marketSellAllowance(c.id), cardCopies(c.id) - 1, room); // одну копию оставляем
@@ -13240,7 +13263,7 @@ function nxToggle3d() {
                 const price = marketRecommendPrice(c);
                 while (allow-- > 0) items.push({ id: c.id, price: price });
             });
-            if (!items.length) { showToast('В этом альбоме нет лишних копий для продажи', 'info'); return; }
+            if (!items.length) { showToast(room <= 0 ? 'Биржа заполнена (80 лотов) и своих лотов для ротации нет — дождитесь покупок' : 'В этом альбоме нет лишних копий для продажи', 'info'); return; }
             showToast('⏳ Выставляю ' + items.length + ' ' + pluralRu(items.length, 'лот', 'лота', 'лотов') + '…', 'info');
             setTimeout(() => { // даём тосту отрисоваться до тяжёлой работы
                 const r = marketListMany(items);
