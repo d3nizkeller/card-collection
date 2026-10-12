@@ -6079,6 +6079,49 @@ function nxToggle3d() {
             if (!silent) showToast('🏷 Лот выставлен: ' + card.name + ' за ' + fmtCoins(price), 'success');
             return true;
         }
+        // ===== b394: массовая продажа без зависания =====
+        // Раньше каждый лот вызывал saveState() + jpSyncNow() (сетевой пуш в
+        // облако) + renderMarket() + marketEnforceLimit() + копирование массива
+        // лотов: 807 повторов = 807 пушей и O(N^2) → браузер крашился.
+        // Теперь лоты собираются в память, а коммит (save/sync/render/enforce)
+        // делается ОДИН раз на всю партию.
+        let nxLotSeq = 0;
+        function marketMakeLot(cardId, priceStr) {
+            if (statsBlockGuard('биржа')) return null; // b277
+            if (!CLOUD.connected()) return null;
+            const card = state.cards.find(c => c.id === cardId);
+            if (!card || cardCopies(cardId) < 1) return null;
+            const raw = parseBetStr(priceStr);
+            if (!isFinite(raw) || raw < 1) return null;
+            const price = normBet(raw);
+            marketSetCollection(cardId, cardCopies(cardId) - 1); // копия уходит в эскроу лота
+            const snap = Object.assign({}, card);
+            if (typeof snap.image === 'string' && snap.image.indexOf('data:') === 0) snap.image = ''; // не тащим base64 в облако
+            return {
+                id: 'lot-' + Date.now() + '-' + (nxLotSeq = (nxLotSeq + 1) % 1e6) + '-' + Math.floor(Math.random() * 1e6),
+                sid: cloudDeviceId(),
+                sname: getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4)),
+                price: price, at: Date.now(), card: snap
+            };
+        }
+        function marketCommitLots(lots) {
+            if (!lots || !lots.length) return 0;
+            CLOUD.market = marketLots().concat(lots);
+            saveState(); jpSyncNow(); jpSyncSoon(); renderMarket(); // ОДИН пуш на партию
+            marketEnforceLimit(); // b142: один проход лимита на партию
+            return lots.length;
+        }
+        function marketListMany(items) {
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return { ok: 0, sum: 0 }; }
+            const lots = []; let sum = 0;
+            for (let i = 0; i < items.length; i++) {
+                const lot = marketMakeLot(items[i].id, String(items[i].price));
+                if (!lot) continue;
+                lots.push(lot); sum += lot.price;
+            }
+            marketCommitLots(lots);
+            return { ok: lots.length, sum: sum };
+        }
         function marketListCard() {
             const sel = document.getElementById('market-card-select');
             const pi = document.getElementById('market-price-input');
@@ -6130,23 +6173,28 @@ function nxToggle3d() {
             const btn = document.getElementById('mk-sell-' + idx);
             if (btn) btn.outerHTML = '<span class="inline-flex items-center gap-1 px-2 py-1 bg-violet-500/10 text-violet-300 rounded border border-violet-500/30 text-[10px] font-bold"><i class="fa-solid fa-check"></i>На бирже за ' + fmtCoins(price) + '</span>';
         }
-        // b143: одна кнопка — все раскрытые повторки улетают на биржу
+        // b143+b394: одна кнопка — все раскрытые повторки улетают на биржу ОДНИМ коммитом
         function sellAllDupesToMarket() {
             const idxs = Object.keys(unboxDupeIdx).map(Number).filter(i => !unboxListedIdx[i]);
             if (!idxs.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }
-            let ok = 0, sum = 0;
+            const items = []; const map = [];
             idxs.forEach(i => {
                 const card = (currentUnboxingCards || [])[i];
                 if (!card || cardCopies(card.id) < 1) return;
-                const price = marketRecommendPrice(card);
-                if (marketListCardFor(card.id, String(price), true)) {
-                    unboxListedIdx[i] = 1;
-                    ok++; sum += price;
-                    marketMarkListedBtn(i, price);
-                }
+                items.push({ id: card.id, price: marketRecommendPrice(card) });
+                map.push(i);
             });
-            if (ok) showToast('💰 Повторки отправлены на биржу: ' + ok + ' на сумму ' + fmtCoins(sum), 'success');
-            else showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');
+            if (!items.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }
+            showToast('⏳ Выставляю ' + items.length + ' ' + pluralRu(items.length, 'лот', 'лота', 'лотов') + '…', 'info');
+            setTimeout(() => {
+                const r = marketListMany(items);
+                if (r.ok) {
+                    for (let k = 0; k < Math.min(r.ok, map.length); k++) { unboxListedIdx[map[k]] = 1; marketMarkListedBtn(map[k], items[k].price); }
+                    showToast('💰 Повторки отправлены на биржу: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');
+                } else {
+                    showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');
+                }
+            }, 30);
         }
         // b139: кнопка под раскрытой повторкой — карта сама улетает на биржу
         function marketSellRevealed(idx) {
@@ -12997,27 +13045,27 @@ function nxToggle3d() {
             renderAlbumsList();
         }
 
-        // b144: продать все повторки альбома — лишние копии уходят на биржу по рекомендуемой цене
+        // b144+b394: продать все повторки альбома — ОДНИМ коммитом лотов
         function sellAlbumDupes(packId) {
             if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
             const cards = state.cards.filter(c => c.packId === packId);
-            let ok = 0, sum = 0;
+            const items = [];
             cards.forEach(c => {
-                // одну копию каждой карты оставляем в коллекции — продаём только лишние
-                let excess = cardCopies(c.id) - 1;
-                while (excess-- > 0 && cardCopies(c.id) >= 1) {
-                    const price = marketRecommendPrice(c);
-                    if (marketListCardFor(c.id, String(price), true)) { ok++; sum += price; }
-                    else break;
-                }
+                let excess = cardCopies(c.id) - 1; // одну копию оставляем в коллекции
+                const price = marketRecommendPrice(c);
+                while (excess-- > 0) items.push({ id: c.id, price: price });
             });
-            if (ok) {
-                marketEnforceLimit(); // b142: защита от наводнения одинаковыми лотами
-                showToast('💰 Повторки альбома отправлены на биржу: ' + ok + ' на сумму ' + fmtCoins(sum), 'success');
-                try { renderAlbumsList(); } catch (e) {}
-            } else {
-                showToast('В этом альбоме нет лишних копий для продажи', 'info');
-            }
+            if (!items.length) { showToast('В этом альбоме нет лишних копий для продажи', 'info'); return; }
+            showToast('⏳ Выставляю ' + items.length + ' ' + pluralRu(items.length, 'лот', 'лота', 'лотов') + '…', 'info');
+            setTimeout(() => { // даём тосту отрисоваться до тяжёлой работы
+                const r = marketListMany(items);
+                if (r.ok) {
+                    showToast('💰 Повторки альбома отправлены на биржу: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');
+                    try { renderAlbumsList(); } catch (e) {}
+                } else {
+                    showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');
+                }
+            }, 30);
         }
         function openAlbum(packId) {
             state.currentAlbumPackId = packId;
