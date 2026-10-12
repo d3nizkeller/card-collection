@@ -11787,36 +11787,50 @@ function nxToggle3d() {
             try { if (typeof renderAlbums === 'function') renderAlbums(); } catch (e) {}
         }
         function nxShowBatchReveal(pack, cards, sum) {
+            // b393: вся стилизация модалки — собственные классы app.css (.nx-batch,
+            // .nx-bp, .nx-grid, .nx-bt, .nx-btn…): прекомпилированный tailwind.css
+            // не знает произвольных утилит (z-[95], bg-[#…], grid-cols-6), из-за
+            // чего модалка оставалась без фона/z-индекса, а сетка схлопывалась
+            // в одну колонку и страница «висла» на 160 плитках.
             const old = document.getElementById('nx-batch-modal'); if (old) old.remove();
-            const RAR = { common: ['Обычная', 'text-slate-300', 'border-slate-500/60'], rare: ['Редкая', 'text-sky-300', 'border-sky-500/70'], epic: ['Эпическая', 'text-violet-300', 'border-violet-500/70'], legendary: ['Легендарная', 'text-amber-300', 'border-amber-500/80'] };
+            const RAR = { common: ['Обычная', '#94a3b8'], rare: ['Редкая', '#38bdf8'], epic: ['Эпическая', '#a78bfa'], legendary: ['Легендарная', '#fbbf24'] };
             const tiles = cards.map((c) => {
                 const r = RAR[c.rarity] || RAR.common;
-                return '<div class="nx-bt relative aspect-[3/4] rounded-lg overflow-hidden border ' + r[2] + ' bg-slate-900" onclick="nxPeelTile(this)">' +
-                    '<img src="' + mediaThumb(c.image) + '" data-nx-full="' + mediaUrl(c.image) + '" alt="' + String(c.name || '').replace(/"/g, '&quot;') + '" class="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" onerror="imgErrorChain(this)">' +
-                    '<div class="absolute inset-x-0 bottom-0 px-1 py-0.5 bg-slate-950/85 text-[8px] font-bold truncate ' + r[1] + '">' + String(c.name || '') + '</div>' +
-                    '<div class="nx-foil absolute inset-0"></div></div>';
-            }).join('');
+                return '<div class="nx-bt" style="border-color:' + r[1] + '66" onclick="nxPeelTile(this)">' +
+                    '<img src="' + mediaThumb(c.image) + '" data-nx-full="' + mediaUrl(c.image) + '" alt="' + String(c.name || '').replace(/"/g, '&quot;') + '" class="nx-bt-img" loading="lazy" decoding="async" onerror="imgErrorChain(this)">' +
+                    '<div class="nx-bt-nm" style="color:' + r[1] + '">' + String(c.name || '') + '</div>' +
+                    '<div class="nx-foil"></div></div>';
+            });
             const chips = sum.byRar.map(x => {
-                const r = RAR[x[0]] || ['?', 'text-slate-300', 'border-slate-600'];
-                return '<span class="text-[10px] font-bold px-2 py-1 rounded-lg border ' + r[2] + ' ' + r[1] + '">' + r[0] + ': ' + x[1] + '</span>';
+                const r = RAR[x[0]] || ['?', '#94a3b8'];
+                return '<span class="nx-chip" style="color:' + r[1] + ';border-color:' + r[1] + '66">' + r[0] + ': ' + x[1] + '</span>';
             }).join('');
             const m = document.createElement('div');
             m.id = 'nx-batch-modal';
-            m.className = 'fixed inset-0 z-[95] overflow-y-auto bg-slate-950/95 backdrop-blur-sm';
-            m.innerHTML = '<div class="min-h-full flex flex-col items-center py-5 px-3">' +
-                '<div class="w-full max-w-3xl rounded-2xl border border-slate-700/70 bg-slate-900/85 p-4 sm:p-5">' +
-                '<div class="flex items-start justify-between gap-3"><div><h3 class="font-black text-white text-lg sm:text-xl leading-tight">' + pack.title + ' × ' + sum.packs + '</h3>' +
-                '<p class="text-[11px] text-slate-400 mt-0.5">' + cards.length + ' ' + pluralRu(cards.length, 'карта', 'карты', 'карт') + ' · новых ' + sum.new + ' · повторов ' + sum.dup + (sum.dupCoins ? ' (+' + fmtCoins(sum.dupCoins) + ' монет)' : '') + '</p></div>' +
-                '<button onclick="nxBatchClose()" class="shrink-0 w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-black" aria-label="Закрыть">✕</button></div>' +
-                '<div class="flex flex-wrap gap-1.5 mt-3">' + chips + '</div>' +
-                '<div class="sticky top-0 z-10 -mx-1 px-1 pt-3 bg-slate-900/95 backdrop-blur rounded-xl flex flex-col sm:flex-row gap-2.5">' +
-                '<button id="nx-batch-peel" onclick="nxPeelAll()" class="flex-1 px-4 py-3 rounded-2xl font-black text-sm bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 hover:brightness-110"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Стереть фольгу со всех</button>' +
-                '<button onclick="nxBatchClose()" class="flex-1 px-4 py-3 rounded-2xl font-black text-sm bg-slate-800 hover:bg-slate-700 text-slate-100"><i class="fa-solid fa-box-archive mr-2"></i>Забрать ' + cards.length + ' ' + pluralRu(cards.length, 'карту', 'карты', 'карт') + '</button>' +
-                '</div>' +
-                '<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 mt-3">' + tiles + '</div></div></div>';
+            m.className = 'nx-batch';
+            m.innerHTML = '<div class="nx-bp">' +
+                '<div class="nx-bh"><div><h3>' + pack.title + ' × ' + sum.packs + '</h3>' +
+                '<p>' + cards.length + ' ' + pluralRu(cards.length, 'карта', 'карты', 'карт') + ' · новых ' + sum.new + ' · повторов ' + sum.dup + (sum.dupCoins ? ' (+' + fmtCoins(sum.dupCoins) + ' монет)' : '') + '</p></div>' +
+                '<button class="nx-x" onclick="nxBatchClose()" aria-label="Закрыть">✕</button></div>' +
+                '<div class="nx-chips">' + chips + '</div>' +
+                '<div class="nx-acts"><button id="nx-batch-peel" class="nx-btn nx-btn-peel" onclick="nxPeelAll()">✨ Стереть фольгу со всех</button>' +
+                '<button class="nx-btn nx-btn-take" onclick="nxBatchClose()">📦 Забрать ' + cards.length + ' ' + pluralRu(cards.length, 'карту', 'карты', 'карт') + '</button></div>' +
+                '<div class="nx-grid"></div></div>';
             document.body.appendChild(m);
-            try { const imgs = m.querySelectorAll('img'); for (let i = 0; i < imgs.length; i++) imgCacheAttach(imgs[i]); } catch (e) {}
-            setTimeout(nxPeelAll, 450);
+            // чанковый рендер плиток (по 24 за тик): 160-396 плиток одним
+            // innerHTML вешали мобильный WebKit на первой отрисовке
+            const gridEl = m.querySelector('.nx-grid');
+            let pi = 0;
+            const CHUNK = 24;
+            const pushChunk = () => {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = tiles.slice(pi, pi + CHUNK).join('');
+                while (wrap.firstChild) gridEl.appendChild(wrap.firstChild);
+                pi += CHUNK;
+                if (pi < tiles.length) setTimeout(pushChunk, 40);
+            };
+            pushChunk();
+            setTimeout(nxPeelAll, 450 + Math.ceil(tiles.length / CHUNK) * 40);
         }
         function buyPackBatch(pack, qty) {
             const price = packSalePrice(pack);
