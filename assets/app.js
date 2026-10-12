@@ -6305,25 +6305,102 @@ function nxToggle3d() {
             showToast('⏳ Продаю ' + total + ' ' + pluralRu(total, 'повторку', 'повторки', 'повторок') + '…', 'info');
             setTimeout(() => {
                 const r = marketSellDupesSmart(entries);
-                Object.keys(unboxDupeIdx).forEach(i => { unboxListedIdx[i] = 1; }); // b143: кнопки раскрытых дублей гаснут
+                // b412: плитки раскрытых повторок гаснут по-настоящему (DOM), а не только флажом
+                Object.keys(unboxDupeIdx).forEach(i => {
+                    unboxListedIdx[i] = 1;
+                    const c = (currentUnboxingCards || [])[i];
+                    if (c && cardCopies(c.id) <= 1 && !unboxSoldInfo[i]) unboxSoldInfo[i] = { listed: 0, instant: 0, sum: 0, bulk: 1 };
+                });
+                nxRefreshUnboxDupeUI();
                 if (r.listed || r.sold) {
                     showToast('💰 На биржу ' + r.listed + ' ' + pluralRu(r.listed, 'лот', 'лота', 'лотов') +
                         (r.sold ? ' · сразу продано ' + r.sold + ' ' + pluralRu(r.sold, 'повторка', 'повторки', 'повторок') + ' за ' + fmtCoins(r.soldSum) : ''), 'success');
                     nxRefreshAfterSale();
                 } else {
                     showToast('Лишних копий для продажи не осталось', 'info');
+                    nxRefreshUnboxDupeUI(); // b412: подписи кнопок могли устареть
                 }
             }, 30);
         }
-        // b139: кнопка под раскрытой повторкой — карта сама улетает на биржу
+        // b412: кнопки раскрытых повторок больше не «застывают». Подпись и
+        // состояние пересчитываются при каждой перерисовке, а план продажи
+        // честный: на биржу — пока по карте меньше MARKET_MAX_PER_CARD лотов,
+        // остальное дом выкупает сразу; офлайн всё продаётся сразу (b408).
+        let unboxSoldInfo = {};
+        function nxDupeSalePlan(card) {
+            const dupes = Math.max(0, cardCopies(card.id) - 1);
+            const refund = MARKET_SYS_REFUND[card.rarity] || 20;
+            const price = marketRecommendPrice(card);
+            let listed = 0;
+            if (dupes > 0 && CLOUD.connected()) {
+                listed = Math.min(dupes, Math.max(0, MARKET_MAX_PER_CARD - marketLotsFor(card.id)));
+            }
+            const instant = dupes - listed;
+            return { dupes: dupes, listed: listed, instant: instant, price: price, refund: refund, sum: instant * refund };
+        }
+        function nxDupeSellLabel(card) {
+            const p = nxDupeSalePlan(card);
+            if (p.dupes <= 0) return '';
+            const dn = p.dupes + ' ' + pluralRu(p.dupes, 'повторку', 'повторки', 'повторок');
+            if (p.listed > 0 && p.instant > 0) return 'Продать ' + dn + ': биржа ' + p.listed + ' · сразу ' + p.instant + ' (+' + fmtCoins(p.sum) + ')';
+            if (p.listed > 0) return p.dupes === 1 ? 'Продать повторку на бирже за ' + fmtCoins(p.price) : 'Продать ' + dn + ' на бирже по ' + fmtCoins(p.price);
+            return p.dupes === 1 ? 'Продать повторку сразу за +' + fmtCoins(p.sum) : 'Продать ' + dn + ' сразу за +' + fmtCoins(p.sum);
+        }
+        function nxDupeBtnHTML(card, idx) {
+            const label = nxDupeSellLabel(card);
+            if (!label) return '';
+            return '<button id="mk-sell-' + idx + '" onclick="marketSellRevealed(' + idx + ')" class="inline-flex items-center gap-1 px-2 py-1 bg-violet-600/90 hover:bg-violet-500 text-white rounded border border-violet-400/50 text-[11px] font-bold backdrop-blur-sm transition shadow-md shadow-violet-950/40"><i class="fa-solid fa-tag"></i><span>' + label + '</span></button>';
+        }
+        // b412: вся строка статуса под раскрытой повторкой: бейдж + кнопка,
+        // а после продажи — зелёная плашка «Продано» вместо живой кнопки
+        function nxUnboxDupeStatusHTML(card, idx) {
+            const sold = unboxSoldInfo[idx];
+            if (sold || cardCopies(card.id) <= 1) {
+                const parts = [];
+                if (sold && sold.listed) parts.push('на бирже ' + sold.listed);
+                if (sold && sold.instant) parts.push('сразу ' + sold.instant + ' (+' + fmtCoins(sold.sum || 0) + ')');
+                const txt = parts.length ? 'Продано: ' + parts.join(' · ') : 'Повторки проданы';
+                return '<span class="nx-dupesold inline-flex items-center flex-wrap gap-1.5 px-2 py-1 rounded border text-[11px]"><i class="fa-solid fa-check"></i><span>' + txt + '</span></span>';
+            }
+            const refund = MARKET_SYS_REFUND[card.rarity] || 20;
+            return '<span class="inline-flex items-center flex-wrap gap-1.5 px-2 py-1 bg-amber-950/90 text-amber-300 rounded border border-amber-500/50 text-[11px] backdrop-blur-sm"><i class="fa-solid fa-coins"></i><span>♻️ Повторка ×' + cardCopies(card.id) + ' (+' + refund + ')</span>' + nxDupeBtnHTML(card, idx) + '</span>';
+        }
+        function nxRefreshUnboxDupeUI() {
+            if (!currentUnboxingCards || !currentUnboxingCards.length) return;
+            Object.keys(unboxDupeIdx).forEach(i => {
+                const card = currentUnboxingCards[i];
+                const el = document.getElementById('status-' + i);
+                if (!card || !el) return;
+                el.innerHTML = nxUnboxDupeStatusHTML(card, i);
+            });
+        }
+        // b139+b412: кнопка под раскрытой повторкой продаёт ВСЕ повторки этой
+        // карты одним нажатием (правила b409/b411), затем плитка гаснет
         function marketSellRevealed(idx) {
             const card = (currentUnboxingCards || [])[idx];
             if (!card) return;
-            const price = marketRecommendPrice(card);
-            if (marketListCardFor(card.id, String(price))) {
-                unboxListedIdx[idx] = 1;
-                marketMarkListedBtn(idx, price);
+            const plan = nxDupeSalePlan(card);
+            if (plan.dupes <= 0) {
+                nxRefreshUnboxDupeUI();
+                showToast('Повторки этой карты уже проданы', 'info');
+                return;
             }
+            let r;
+            if (CLOUD.connected()) {
+                r = marketSellDupesSmart([{ id: card.id, count: plan.dupes }]);
+            } else {
+                const q = nxInstantSellDupes([{ id: card.id, count: plan.dupes }]);
+                r = { listed: 0, sold: q.sold, soldSum: q.sum };
+            }
+            if (!r.listed && !r.sold) { showToast('Не удалось продать повторки этой карты', 'error'); return; }
+            unboxListedIdx[idx] = 1;
+            unboxSoldInfo[idx] = { listed: r.listed, instant: r.sold, sum: r.soldSum };
+            nxRefreshUnboxDupeUI();
+            showToast('💰 «' + (card.name || 'карта') + '»: ' +
+                (r.listed ? 'на биржу ' + r.listed + ' ' + pluralRu(r.listed, 'лот', 'лота', 'лотов') : '') +
+                (r.listed && r.sold ? ' · ' : '') +
+                (r.sold ? 'сразу продано ' + r.sold + ' за ' + fmtCoins(r.soldSum) : ''), 'success');
+            nxRefreshAfterSale();
         }
         function marketCancel(lotId) {
             const lot = marketLots().find(l => l.id === lotId);
@@ -12020,6 +12097,7 @@ function nxToggle3d() {
             // после массовой продажи. Рисуем только то, что сейчас на экране.
             const inAlbum = !!(state.currentAlbumPackId);
             try { if (inAlbum && typeof renderAlbumsList === 'function') renderAlbumsList(); else if (typeof renderAlbumsHub === 'function') renderAlbumsHub(); } catch (e) {}
+            try { nxRefreshUnboxDupeUI(); } catch (e) {} // b412: кнопки раскрытых повторок синхронны с коллекцией
             try { saveState(); } catch (e) {}
         }
         function nxBatchRemainingDupes() {
@@ -12278,7 +12356,7 @@ function nxToggle3d() {
         function showUnboxingUI(pack, cards) {
             nxTrail('unbox2d');
             currentUnboxingCards = cards;
-            unboxDupeIdx = {}; unboxListedIdx = {}; // b143: новое вскрытие — новые повторки
+            unboxDupeIdx = {}; unboxListedIdx = {}; unboxSoldInfo = {}; // b143+b412: новое вскрытие — новые повторки
 
             document.getElementById('unboxing-title').innerText = `Вскрытие пака: ${pack.title}`;
             syncUnboxBuyBtn(pack); // b216: ценник кнопки «Купить пак»
@@ -12615,11 +12693,9 @@ function nxToggle3d() {
                 state.stats.duplicatesSold++;
                 state.stats.coinsFromDupes += refund;
                 unboxDupeIdx[idx] = true; // b143: помним повторку для массовой продажи
-                const mkPrice = marketRecommendPrice(card);
-                const mkBtn = CLOUD.connected()
-                    ? `<button id="mk-sell-${idx}" onclick="marketSellRevealed(${idx})" class="inline-flex items-center gap-1 px-2 py-1 bg-violet-600/90 hover:bg-violet-500 text-white rounded border border-violet-400/50 text-[11px] font-bold backdrop-blur-sm transition shadow-md shadow-violet-950/40"><i class="fa-solid fa-tag"></i><span>Продать на бирже за ${fmtCoins(mkPrice)}</span></button>`
-                    : '';
-                statusEl.innerHTML = `<span class="inline-flex items-center flex-wrap gap-1.5 px-2 py-1 bg-amber-950/90 text-amber-300 rounded border border-amber-500/50 text-[11px] backdrop-blur-sm"><i class="fa-solid fa-coins"></i><span>♻️ Повторка ×${cardCopies(card.id)} (+${refund})</span>${mkBtn}</span>`;
+                // b412: кнопка повторки рисуется общим рендером статуса: честная
+                // подпись (биржа/сразу), работает офлайн, гаснет после продажи
+                statusEl.innerHTML = nxUnboxDupeStatusHTML(card, idx);
                 showToast(`Повторная карта ${card.name} продана за ${refund} монет!`, 'refund');
                 SoundFX.play('coin');
                 updateMissions('sell_dupe', 1);
