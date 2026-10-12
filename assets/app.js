@@ -11817,6 +11817,34 @@ function nxToggle3d() {
             state.collection[card.id] = 1;
             return { dup: false, refund: 0 };
         }
+        let nxBatchDupIds = [];
+        // b395: кнопка «Продать дубликаты» в окне партии — лишние копии этой
+        // партии уходят на биржу ОДНИМ коммитом (marketListMany из b394)
+        function nxBatchSellDupes() {
+            const btn = document.getElementById('nx-batch-sell');
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
+            const ids = (nxBatchDupIds || []).slice();
+            if (!ids.length) { showToast('Дубликатов в этой партии нет', 'info'); return; }
+            const items = [];
+            ids.forEach(id => {
+                const card = state.cards.find(c => c.id === id);
+                if (!card || cardCopies(id) - 1 < 1) return; // одну копию оставляем себе
+                items.push({ id: id, price: marketRecommendPrice(card) });
+            });
+            if (!items.length) { showToast('Лишних копий для продажи не осталось', 'info'); if (btn) btn.disabled = true; return; }
+            if (btn) btn.disabled = true;
+            showToast('⏳ Выставляю ' + items.length + ' ' + pluralRu(items.length, 'лот', 'лота', 'лотов') + '…', 'info');
+            setTimeout(() => {
+                const r = marketListMany(items);
+                if (r.ok) {
+                    showToast('💰 Дубликаты партии на бирже: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');
+                    if (btn) btn.innerHTML = '✅ Продано: ' + r.ok + ' · ' + fmtCoins(r.sum);
+                } else {
+                    showToast('Не удалось выставить дубликаты (нет подключения к облаку?)', 'error');
+                    if (btn) btn.disabled = false;
+                }
+            }, 30);
+        }
         function nxPeelTile(el) { if (el) el.classList.add('nx-peel'); }
         function nxPeelAll() {
             const m = document.getElementById('nx-batch-modal'); if (!m) return;
@@ -11861,9 +11889,10 @@ function nxToggle3d() {
                 '<p>' + cards.length + ' ' + pluralRu(cards.length, 'карта', 'карты', 'карт') + ' · новых ' + sum.new + ' · повторов ' + sum.dup + (sum.dupCoins ? ' (+' + fmtCoins(sum.dupCoins) + ' монет)' : '') + '</p></div>' +
                 '<button class="nx-x" onclick="nxBatchClose()" aria-label="Закрыть">✕</button></div>' +
                 '<div class="nx-chips">' + chips + '</div>' +
-                '<div class="nx-acts"><button id="nx-batch-peel" class="nx-btn nx-btn-peel" onclick="nxPeelAll()">✨ Стереть фольгу со всех</button>' +
+                '<div class="nx-acts"><button id="nx-batch-sell" class="nx-btn nx-btn-sell" onclick="nxBatchSellDupes()" ' + (sum.dup ? '' : 'disabled') + '>' + (sum.dup ? '💰 Продать дубликаты (' + sum.dup + ')' : '💰 Дубликатов нет') + '</button>' +
                 '<button class="nx-btn nx-btn-take" onclick="nxBatchClose()">📦 Забрать ' + cards.length + ' ' + pluralRu(cards.length, 'карту', 'карты', 'карт') + '</button></div>' +
                 '<div class="nx-grid"></div></div>';
+            nxBatchDupIds = sum.dupIds || [];
             document.body.appendChild(m);
             // чанковый рендер плиток (по 24 за тик): 160-396 плиток одним
             // innerHTML вешали мобильный WebKit на первой отрисовке
@@ -11890,10 +11919,10 @@ function nxToggle3d() {
                 opened++;
                 for (let k = 0; k < r.length; k++) cards.push(r[k]);
             }
-            const sum = { packs: opened, new: 0, dup: 0, dupCoins: 0, byRar: {} };
+            const sum = { packs: opened, new: 0, dup: 0, dupCoins: 0, byRar: {}, dupIds: [] };
             for (let i = 0; i < cards.length; i++) {
                 const g = nxGrantCard(cards[i]);
-                if (g.dup) { sum.dup++; sum.dupCoins += g.refund; } else sum.new++;
+                if (g.dup) { sum.dup++; sum.dupCoins += g.refund; sum.dupIds.push(cards[i].id); } else sum.new++;
                 sum.byRar[cards[i].rarity] = (sum.byRar[cards[i].rarity] || 0) + 1;
             }
             sum.byRar = Object.keys(sum.byRar).map(k => [k, sum.byRar[k]]);
