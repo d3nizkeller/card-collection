@@ -6413,6 +6413,7 @@ function nxToggle3d() {
         }
         function marketBuy(lotId) {
             if (statsBlockGuard('биржа')) return; // b277
+            if (String(lotId).indexOf('syslot:') === 0) return marketBuySys(String(lotId).slice(7)); // b413: витрина Дома
             if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
             const lot = marketLots().find(l => l.id === lotId);
             if (!lot) { showToast('Лот уже куплен или снят', 'error'); renderMarket(); return; }
@@ -6434,6 +6435,24 @@ function nxToggle3d() {
             try { preloadImages([lot.card.image]); } catch (e) {}
             try { SoundFX.play('coin'); } catch (e) {}
             showToast('🎉 Куплено: «' + (lot.card.name || 'карта') + '» в коллекции!', 'success');
+        }
+        // b413: покупка у «витрины Дома»: мгновенно, по фикс-цене редкости.
+        // Без квитанций (Дом забирает монеты себе), лот виртуальный — из облака
+        // удалять нечего, карта встаёт в коллекцию как обычная покупка.
+        function marketBuySys(cardId) {
+            if (statsBlockGuard('биржа')) return;
+            if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
+            const card = (state.cards || []).find(c => c.id === cardId);
+            if (!card) { showToast('Лот уже недоступен', 'error'); renderMarket(); return; }
+            const price = marketSysPrice(card);
+            if (state.coins < price) { showToast('Не хватает монет: нужно ' + fmtCoins(price), 'error'); return; }
+            state.coins -= price;
+            marketSetCollection(card.id, cardCopies(card.id) + 1);
+            saveState(); updateCoinDisplay(); checkAchievements();
+            jpSyncSoon(); renderMarket();
+            try { preloadImages([card.image]); } catch (e) {}
+            try { SoundFX.play('coin'); } catch (e) {}
+            showToast('🏛 Дом продал: «' + (card.name || 'карта') + '» — карта в коллекции!', 'success');
         }
         function marketCreditLedger() {
             const led = Array.isArray(CLOUD.ledger) ? CLOUD.ledger : [];
@@ -6459,6 +6478,31 @@ function nxToggle3d() {
         // продавцы получают монеты через квитанции, а рынок не затапливается копиями.
         const MARKET_MAX_PER_CARD = 4;
         const MARKET_SYS_REFUND = { common: 20, rare: 50, epic: 120, legendary: 300 };
+        // b413: «ВИТРИНА ДОМА» — на бирже должны быть ВСЕ карты игры (все паки,
+        // старые и новые), а не только лоты игроков, которые влезают в облачный
+        // лимит. По каждой карте, где нет лота игрока, Дом выставляет собственный
+        // виртуальный лот с фикс-ценой редкости (= рекомендованная цена игрока).
+        // Виртуальные лоты НЕ лежат в облачном документе: нет раздувания,
+        // автовыкуп их не трогает, рисуются на лету из state.cards.
+        const MARKET_SYS_PRICE = { common: 100, rare: 400, epic: 1000, legendary: 3500 };
+        // b413: полный каталог — 300+ лотов; одним innerHTML такой список
+        // вешал мобильный WebKit. Рисуем чанками по MARKET_SHOWN_STEP,
+        // кнопка «Показать ещё» додаёт следующий чанк.
+        const MARKET_SHOWN_STEP = 120;
+        let marketShownCap = MARKET_SHOWN_STEP;
+        function marketShowMore() { marketShownCap += MARKET_SHOWN_STEP; renderMarket(); }
+        function marketSysPrice(card) { return MARKET_SYS_PRICE[(card || {}).rarity] || 100; }
+        function marketSystemLots() {
+            if (!CLOUD.connected()) return [];
+            const cov = {};
+            marketLots().forEach(l => { const k = (l && l.card) ? l.card.id : ''; if (k) cov[k] = 1; });
+            const out = [];
+            (state.cards || []).forEach(c => {
+                if (!c || cov[c.id]) return;
+                out.push({ id: 'syslot:' + c.id, sys: true, sid: '', sname: 'Дом коллекционера', card: c, price: marketSysPrice(c), at: 0 });
+            });
+            return out;
+        }
         // b407: дом АВТОМАТИЧЕСКИ выкупает лоты, чтобы биржа не копилась:
         // 1) лот старше MARKET_LOT_TTL (24 ч) выкупается по фикс-цене редкости;
         // 2) если лотов больше MARKET_SOFT_CAP (60) — дом докупает старейшие
@@ -6537,7 +6581,7 @@ function nxToggle3d() {
                         <h3 class="font-bold text-white text-[12px] sm:text-[13px] leading-tight truncate min-w-0 flex-1">${cloudEsc(c.name || 'Карта')}</h3>
                         <span class="shrink-0 text-[12px] sm:text-[13px] font-mono font-black text-violet-200 bg-slate-950/85 border border-violet-400/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm shadow-lg shadow-black/40" title="Номер карты в её паке">#${getCardLocalNumber(c)}</span>
                     </div>
-                    <p class="text-[9px] text-slate-500 truncate mt-0.5">${mine ? 'ваш лот' : 'продавец: ' + cloudEsc(l.sname || 'игрок')}${pack ? ' • ' + cloudEsc(pack.title) : ''}</p>
+                    <p class="text-[9px] text-slate-500 truncate mt-0.5">${mine ? 'ваш лот' : (l.sys ? '🏛 Дом коллекционера · фикс-цена' : 'продавец: ' + cloudEsc(l.sname || 'игрок'))}${pack ? ' • ' + cloudEsc(pack.title) : ''}</p>
                 </div>
                 <span class="lqg lqg-amber inline-flex items-center justify-center gap-1 text-[11px] font-black px-2 py-1 shrink-0 w-16" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
                 ${mine
@@ -6582,7 +6626,7 @@ function nxToggle3d() {
                     <span class="absolute top-1.5 right-1.5 text-[12px] sm:text-[13px] font-mono font-black text-violet-200 bg-slate-950/85 border border-violet-400/40 px-1.5 py-0.5 rounded-md backdrop-blur-sm shadow-lg shadow-black/40">#${getCardLocalNumber(c)}</span>
                 </div>
                 <h3 class="font-bold text-white text-[11px] leading-tight truncate">${cloudEsc(c.name || 'Карта')}</h3>
-                <p class="text-[8px] text-slate-500 truncate">${mine ? 'ваш лот' : cloudEsc(l.sname || 'игрок')}</p>
+                <p class="text-[8px] text-slate-500 truncate">${mine ? 'ваш лот' : (l.sys ? '🏛 Дом коллекционера' : cloudEsc(l.sname || 'игрок'))}</p>
                 <div class="flex items-center justify-between gap-1">
                     <span class="lqg lqg-amber inline-flex items-center justify-center gap-1 text-[10px] font-black px-1.5 py-1 shrink-0" title="Цена"><i class="fa-solid fa-coins"></i>${fmtCoins(l.price || 0)}</span>
                     ${mine
@@ -6600,7 +6644,7 @@ function nxToggle3d() {
                 const rar0 = String((document.getElementById('market-rarity') || {}).value || '');
                 const sort0 = String((document.getElementById('market-sort') || {}).value || '');
                 const sig = 'M|' + marketViewMode + '|' + marketLots().map(l => l.id + ':' + l.price + ':' + ((l.card && l.card.image) ? 1 : 0)).join(',') + '|' + ps0 + '|' + as0 + '|' + q0 + '|' + rar0 + '|' + sort0 + '|' +
-                    state.cards.filter(c => cardCopies(c.id) > 0).map(c => c.id + cardCopies(c.id)).join(',');
+                    state.cards.filter(c => cardCopies(c.id) > 0).map(c => c.id + cardCopies(c.id)).join(',') + '|S' + marketSystemLots().length + '|C' + marketShownCap;
                 if (sig === window.__nxMktSig) return;
                 window.__nxMktSig = sig;
             } catch (e) {}
@@ -6621,7 +6665,7 @@ function nxToggle3d() {
                 if (keepP && state.packs.some(p => p.id === keepP)) psel.value = keepP;
             }
             const my = marketLots().filter(marketIsMine).sort((a, b) => (b.at || 0) - (a.at || 0));
-            let others = marketLots().filter(l => !marketIsMine(l));
+            let others = marketLots().filter(l => !marketIsMine(l)).concat(marketSystemLots()); // b413: витрина Дома
             const q = String((document.getElementById('market-search') || {}).value || '').trim().toLowerCase();
             const fpk = psel ? psel.value : '';
             const frar = (document.getElementById('market-rarity') || {}).value || '';
@@ -6648,8 +6692,18 @@ function nxToggle3d() {
                 if (fsort === 'name') return String((a.card || {}).name || '').localeCompare(String((b.card || {}).name || ''), 'ru');
                 return (b.at || 0) - (a.at || 0);
             });
+            // b413: сменился фильтр — сбрасываем чанк; «показать ещё» не сбрасывает
+            const fkey = q + '|' + fpk + '|' + frar + '|' + fsort;
+            if (fkey !== window.__nxMktFKey) { window.__nxMktFKey = fkey; marketShownCap = MARKET_SHOWN_STEP; }
+            const visOthers = others.slice(0, marketShownCap);
+            const moreLeft = others.length - visOthers.length;
+            const moreBtn = moreLeft > 0
+                ? '<button onclick="marketShowMore()" class="lqg lqg-vio col-span-full px-3 py-2.5 text-[11px] font-bold transition"><i class="fa-solid fa-chevron-down mr-1"></i>Показать ещё… (осталось: ' + moreLeft + ')</button>'
+                : '';
+            const sCnt = others.filter(l => l.sys).length;
+            const uCnt = others.length - sCnt;
             const found = document.getElementById('market-found');
-            if (found) found.innerHTML = 'Найдено лотов: <b class="text-violet-300">' + others.length + '</b>' + (q || fpk || frar ? ' по фильтру' : '');
+            if (found) found.innerHTML = 'Найдено лотов: <b class="text-violet-300">' + others.length + '</b>' + (q || fpk || frar ? ' по фильтру' : '') + (sCnt ? ' <span class="text-slate-500">· игроки: ' + uCnt + ' · витрина Дома: ' + sCnt + '</span>' : '');
             const myBox = document.getElementById('market-my-lots');
             const tileFn = marketViewMode === 'grid' ? lotCardHTML : lotTileHTML; // b224b
             if (myBox) myBox.innerHTML = my.length ? my.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">У вас пока нет активных лотов.</p>';
@@ -6665,7 +6719,7 @@ function nxToggle3d() {
             } catch (e) {}
             if (listBox) {
                 if (!CLOUD.connected()) listBox.innerHTML = fullNote + '<p class="text-[11px] text-slate-500 col-span-full">Биржа недоступна: облако отключено.</p>';
-                else listBox.innerHTML = fullNote + (others.length ? others.map(tileFn).join('') : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>');
+                else listBox.innerHTML = fullNote + (others.length ? (visOthers.map(tileFn).join('') + moreBtn) : '<p class="text-[11px] text-slate-500 col-span-full">Лотов пока нет — выставьте первую карту!</p>');
             }
             const sc = document.getElementById('market-stat-coins');
             if (sc) sc.textContent = fmtCoins(state.coins);
