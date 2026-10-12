@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob63'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob64'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -305,6 +305,45 @@ PROFWORK_JS = [
     ('b399: проба FPS при смене вкладки',
      "        function switchTab(tabId) {\n            nxTrail('tab:' + tabId);",
      "        function switchTab(tabId) {\n            nxTrail('tab:' + tabId);\n            try { setTimeout(nxPerfProbe, 1200); } catch (e) {} // b399"),
+    ('b404: 0',
+     "        function jpFetch() {\n            const url = jpPath() + (CLOUD.db ? '' : '?nc=' + Date.now());\n            const opt = CLOUD.db ? { headers: { 'Accept': 'application/json' } } : { cache: 'no-store' };",
+     "        // b404: облачные запросы с таймаутом 15 c: повисший канал раньше держал\n        // jpBusy=true вечно и вся синхронизация банка/биржи умирала до перезагрузки\n        function nxCloudOpt(opt) {\n            try {\n                if (typeof AbortController !== 'undefined') {\n                    const ac = new AbortController();\n                    setTimeout(() => { try { ac.abort(); } catch (e) {} }, 15000);\n                    opt.signal = ac.signal;\n                }\n            } catch (e) {}\n            return opt;\n        }\n        function jpFetch() {\n            const url = jpPath() + (CLOUD.db ? '' : '?nc=' + Date.now());\n            const opt = nxCloudOpt(CLOUD.db ? { headers: { 'Accept': 'application/json' } } : { cache: 'no-store' });"),
+    ('b404: 1',
+     "            return fetch(jpPath(), {\n                method: isDb ? 'PUT' : 'POST',\n                headers: { 'Content-Type': isDb ? 'application/json' : 'text/plain' },\n                body: JSON.stringify(doc)\n            }).then(",
+     "            return fetch(jpPath(), nxCloudOpt({ // b404: таймаут 15 c и на запись\n                method: isDb ? 'PUT' : 'POST',\n                headers: { 'Content-Type': isDb ? 'application/json' : 'text/plain' },\n                body: JSON.stringify(doc)\n            })).then("),
+    ('b404: 2',
+     "                jpSyncNow(); setInterval(jpSyncNow, 60000);",
+     "                jpSyncNow(); setInterval(() => { if (!document.hidden) jpSyncNow(); }, 60000); // b404: в фоне сеть не дёргаем\n                document.addEventListener('visibilitychange', () => { if (!document.hidden) jpSyncSoon(); }); // b404"),
+    ('b404: 3',
+     "            if (jpBusy) { jpPending = true; return; }\n            jpBusy = true;",
+     "            if (jpBusy) { jpPending = true; return; }\n            jpBusy = true; window.__nxJpAt = Date.now(); // b404: отметка для watchdog"),
+    ('b404: 4',
+     "        function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }",
+     "        window.addEventListener('unhandledrejection', e => { // b404: тихий журнал вместо спама\n            try { nxCrashLog('unhandledrejection: ' + String((e && e.reason && e.reason.message) || e.reason || '?').slice(0, 140)); } catch (e2) {}\n            try { e.preventDefault(); } catch (e2) {}\n        });\n        // b404: страховка — если промис синха потерялся (аборт без reject, сон WebView),\n        // jpBusy не должен держать банк заложником больше 40 секунд\n        setInterval(() => {\n            try {\n                if (jpBusy && Date.now() - (window.__nxJpAt || 0) > 40000) { jpBusy = false; if (jpPending) { jpPending = false; jpSyncNow(); } }\n            } catch (e) {}\n        }, 10000);\n        function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }"),
+    ('b404: 5',
+     "            state.stats.packsOpened++;\n            saveState();\n            statsTouch(); // b277: свежий баланс и счётчик паков — сразу в общий реестр сайта",
+     "            state.stats.packsOpened++;\n            if (!window.__nxBatchRoll) { saveState(); statsTouch(); } // b404: в партии сейв один на всех в конце"),
+    ('b404: 6',
+     "        function buyPackBatch(pack, qty) {\n            const price = packSalePrice(pack);\n            const cards = [];\n            let opened = 0;",
+     "        function buyPackBatch(pack, qty) {\n            const price = packSalePrice(pack);\n            const cards = [];\n            let opened = 0;\n            window.__nxBatchRoll = 1; // b404: 99 saveState подряд вешали телефон"),
+    ('b404: 7',
+     "            const sum = { packs: opened, new: 0, dup: 0, dupCoins: 0, byRar: {}, dupIds: [] };",
+     "            window.__nxBatchRoll = 0; // b404\n            const sum = { packs: opened, new: 0, dup: 0, dupCoins: 0, byRar: {}, dupIds: [] };"),
+    ('b404: 8',
+     "            try { preloadImages(cards.map(c => c.image)); } catch (e) {}",
+     "            try { preloadImages(cards.slice(0, 40).map(c => c.image)); } catch (e) {} // b404: греем первые 40, остальное лениво доскроллит"),
+    ('b404: 9',
+     "            (urls || []).forEach(raw => {\n                if (!raw || typeof raw !== 'string') return;",
+     "            if (imgQueue.length > 400) return; // b404: очередь предзагрузки не резиновая\n            (urls || []).forEach(raw => {\n                if (!raw || typeof raw !== 'string') return;\n                if (IMG_PRELOADED.size > 4000) IMG_PRELOADED.clear(); // b404: мемо предзагрузки ограничено"),
+    ('b404: 10',
+     "            document.getElementById(`tab-${tabId}`).classList.remove('hidden');",
+     "            const nxTabEl = document.getElementById(`tab-${tabId}`);\n            if (!nxTabEl) return; // b404: неизвестная вкладка не роняет навигацию\n            nxTabEl.classList.remove('hidden');"),
+    ('b404: 11',
+     "        function nxBatchClose() {",
+     "        // b404: при закрытии окна вскрытия гасим скретч-холсты: на DPR2 четыре\n        // канваса 300x400 держат ~7 МБ распакованной памяти каждый\n        function nxScratchRelease() {\n            try {\n                document.querySelectorAll('#modal-unboxing canvas, .scratch-canvas, canvas[data-scratch]').forEach(cv => {\n                    cv.width = 1; cv.height = 1;\n                });\n            } catch (e) {}\n        }\n        function nxBatchClose() {"),
+    ('b404: 12',
+     "        function closeUnboxingModal() {",
+     "        function closeUnboxingModal() {\n            try { nxScratchRelease(); } catch (e) {} // b404"),
 ]
 
 HEAD_END = 1088       # </head>

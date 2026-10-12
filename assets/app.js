@@ -2217,8 +2217,10 @@ function nxToggle3d() {
             }
         }
         function preloadImages(urls, tier) {
+            if (imgQueue.length > 400) return; // b404: очередь предзагрузки не резиновая
             (urls || []).forEach(raw => {
                 if (!raw || typeof raw !== 'string') return;
+                if (IMG_PRELOADED.size > 4000) IMG_PRELOADED.clear(); // b404: мемо предзагрузки ограничено
                 // tier='full' — греть полный арт (нужно только для просмотра карты).
                 // По умолчанию греем миниатюру 256px: полный арт облачного каталога
                 // весит 2-4 МБ и показывается в списках размером 30-180 px.
@@ -4775,9 +4777,21 @@ function nxToggle3d() {
             try { if (CLOUD.db) return CLOUD.db + '/nexus-jackpot-v2.json'; } catch (e) {}
             return 'https://textdb.dev/api/data/nexus-tcg-jackpot-v2';
         }
+        // b404: облачные запросы с таймаутом 15 c: повисший канал раньше держал
+        // jpBusy=true вечно и вся синхронизация банка/биржи умирала до перезагрузки
+        function nxCloudOpt(opt) {
+            try {
+                if (typeof AbortController !== 'undefined') {
+                    const ac = new AbortController();
+                    setTimeout(() => { try { ac.abort(); } catch (e) {} }, 15000);
+                    opt.signal = ac.signal;
+                }
+            } catch (e) {}
+            return opt;
+        }
         function jpFetch() {
             const url = jpPath() + (CLOUD.db ? '' : '?nc=' + Date.now());
-            const opt = CLOUD.db ? { headers: { 'Accept': 'application/json' } } : { cache: 'no-store' };
+            const opt = nxCloudOpt(CLOUD.db ? { headers: { 'Accept': 'application/json' } } : { cache: 'no-store' });
             return fetch(url, opt).then(r => {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.text();
@@ -4791,11 +4805,11 @@ function nxToggle3d() {
             // b71: textdb пишет через POST с text/plain (простой запрос без CORS-префлайта,
             // как и публикация каталога); firebase — классический REST PUT
             const isDb = !!CLOUD.db;
-            return fetch(jpPath(), {
+            return fetch(jpPath(), nxCloudOpt({ // b404: таймаут 15 c и на запись
                 method: isDb ? 'PUT' : 'POST',
                 headers: { 'Content-Type': isDb ? 'application/json' : 'text/plain' },
                 body: JSON.stringify(doc)
-            }).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
+            })).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return true; });
         }
         // b183: наш локальный реестр (max-слияние всего, что мы видели) знает больше, чем облако —
         // значит чей-то пуш перезаписал документ и часть взносов/выплат/побед потерялась. Возвращаем их повторным циклом.
@@ -4817,7 +4831,7 @@ function nxToggle3d() {
             // b183: раньше пуш во время занятого канала молча отбрасывался — так терялись победы
             // (игрок срывал банк, вкладка закрывалась, и облако про это никогда не узнавало).
             if (jpBusy) { jpPending = true; return; }
-            jpBusy = true;
+            jpBusy = true; window.__nxJpAt = Date.now(); // b404: отметка для watchdog
             const cycle = depth => jpFetch().then(remote => {
                 jackpotMerge(remote && remote.jp ? remote.jp : remote);
                 marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
@@ -4842,7 +4856,18 @@ function nxToggle3d() {
               .then(() => { jpBusy = false; jpLastAt = Date.now(); if (jpPending) { jpPending = false; jpSyncNow(); } }); // b183: догоняющий пуш
             cycle(0);
         }
+        window.addEventListener('unhandledrejection', e => { // b404: тихий журнал вместо спама
+            try { nxCrashLog('unhandledrejection: ' + String((e && e.reason && e.reason.message) || e.reason || '?').slice(0, 140)); } catch (e2) {}
+            try { e.preventDefault(); } catch (e2) {}
+        });
         function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }
+        // b404: страховка — если промис синха потерялся (аборт без reject, сон WebView),
+        // jpBusy не должен держать банк заложником больше 40 секунд
+        setInterval(() => {
+            try {
+                if (jpBusy && Date.now() - (window.__nxJpAt || 0) > 40000) { jpBusy = false; if (jpPending) { jpPending = false; jpSyncNow(); } }
+            } catch (e) {}
+        }, 10000);
         // b183: документ общего банка (тот же, что пушит jpSyncNow) — нужен и для аварийной отправки
         function jpDoc() {
             return {
@@ -10935,7 +10960,9 @@ function nxToggle3d() {
                 }
             });
 
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const nxTabEl = document.getElementById(`tab-${tabId}`);
+            if (!nxTabEl) return; // b404: неизвестная вкладка не роняет навигацию
+            nxTabEl.classList.remove('hidden');
             const activeNav = document.getElementById(`nav-${tabId}`);
             if (activeNav) activeNav.className = "px-3 py-2 rounded-lg text-sm font-medium transition-all bg-violet-600 text-white shadow";
             const activeMob = document.getElementById(`mob-nav-${tabId}`);
@@ -11917,6 +11944,15 @@ function nxToggle3d() {
             const b = document.getElementById('nx-batch-peel'); if (b) b.disabled = true;
             try { SoundFX.play('swap'); } catch (e) {}
         }
+        // b404: при закрытии окна вскрытия гасим скретч-холсты: на DPR2 четыре
+        // канваса 300x400 держат ~7 МБ распакованной памяти каждый
+        function nxScratchRelease() {
+            try {
+                document.querySelectorAll('#modal-unboxing canvas, .scratch-canvas, canvas[data-scratch]').forEach(cv => {
+                    cv.width = 1; cv.height = 1;
+                });
+            } catch (e) {}
+        }
         function nxBatchClose() {
             const m = document.getElementById('nx-batch-modal'); if (m) m.remove();
             try { PackMusic.stop(); } catch (e) {}
@@ -11974,12 +12010,14 @@ function nxToggle3d() {
             const price = packSalePrice(pack);
             const cards = [];
             let opened = 0;
+            window.__nxBatchRoll = 1; // b404: 99 saveState подряд вешали телефон
             for (let i = 0; i < qty; i++) {
                 const r = rollPackCards(pack);
                 if (!r) { state.coins += price * (qty - i); updateCoinDisplay(); saveState(); break; }
                 opened++;
                 for (let k = 0; k < r.length; k++) cards.push(r[k]);
             }
+            window.__nxBatchRoll = 0; // b404
             const sum = { packs: opened, new: 0, dup: 0, dupCoins: 0, byRar: {}, dupIds: [] };
             for (let i = 0; i < cards.length; i++) {
                 const g = nxGrantCard(cards[i]);
@@ -11989,7 +12027,7 @@ function nxToggle3d() {
             sum.byRar = Object.keys(sum.byRar).map(k => [k, sum.byRar[k]]);
             updateCoinDisplay(); saveState();
             try { statsTouch(); } catch (e) {}
-            try { preloadImages(cards.map(c => c.image)); } catch (e) {}
+            try { preloadImages(cards.slice(0, 40).map(c => c.image)); } catch (e) {} // b404: греем первые 40, остальное лениво доскроллит
             try { PackMusic.startFor(pack); } catch (e) {}
             nxShowBatchReveal(pack, cards, sum);
         }
@@ -12020,8 +12058,7 @@ function nxToggle3d() {
             state.pity.packsSinceEpic = finalGotEpicPlus ? 0 : state.pity.packsSinceEpic + 1;
 
             state.stats.packsOpened++;
-            saveState();
-            statsTouch(); // b277: свежий баланс и счётчик паков — сразу в общий реестр сайта
+            if (!window.__nxBatchRoll) { saveState(); statsTouch(); } // b404: в партии сейв один на всех в конце
             updatePityIndicator();
             updateMissions('open_pack', 1);
             // b130: картинки выпавших карт грузятся сразу, пока идёт анимация вскрытия
@@ -12475,6 +12512,7 @@ function nxToggle3d() {
         }
 
         function closeUnboxingModal() {
+            try { nxScratchRelease(); } catch (e) {} // b404
             document.getElementById('modal-unboxing').classList.add('hidden');
             PackMusic.stop(); // b19: окно закрыли — музыка точно не играет
             currentUnboxingPack = null;
@@ -15751,7 +15789,8 @@ function nxToggle3d() {
             // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
             // b183: уходим со страницы — срочно отправляем банк (jpFlush), вернулись — полная синхронизация
             try {
-                jpSyncNow(); setInterval(jpSyncNow, 60000);
+                jpSyncNow(); setInterval(() => { if (!document.hidden) jpSyncNow(); }, 60000); // b404: в фоне сеть не дёргаем
+                document.addEventListener('visibilitychange', () => { if (!document.hidden) jpSyncSoon(); }); // b404
                 document.addEventListener('visibilitychange', () => { if (document.hidden) jpFlush(); else jpSyncNow(); });
                 window.addEventListener('pagehide', jpFlush);
             } catch (e) {}
