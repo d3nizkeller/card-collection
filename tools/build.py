@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob50'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob37'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -245,6 +245,39 @@ PROFWORK_JS = [
     ('b384: возврат морды после поглаживания',
      "if (s2) s2.classList.remove('petting'); }, 620);",
      "if (s2) s2.classList.remove('petting'); try { minerCatFaceSync(); } catch (e) {} }, 620); // b384"),
+    ('b391: функции пакетного вскрытия',
+     "        let currentUnboxingCards = [];",
+     "// ===== b391: ПАКЕТНОЕ ВСКРЫТИЕ — открыть N паков за один раз =====\n        let nxPackQty = 1;\n        try { nxPackQty = Math.max(1, Math.min(99, parseInt(LS.getItem('nx_pack_qty') || '1', 10) || 1)); } catch (e) {}\n        const NX_QTY_PRESETS = [1, 5, 10, 20, 40];\n        function nxSetPackQty(q) {\n            nxPackQty = Math.max(1, Math.min(99, Math.floor(q) || 1));\n            try { LS.setItem('nx_pack_qty', String(nxPackQty)); } catch (e) {}\n            try { SoundFX.play('click'); } catch (e) {}\n            try { carouselUpdateDetail(); } catch (e) {}\n        }\n        function nxGrantCard(card) {\n            if (state.collection[card.id]) {\n                const refundMap = { common: 20, rare: 50, epic: 120, legendary: 300 };\n                const refund = refundMap[card.rarity] || 20;\n                state.collection[card.id] = cardCopies(card.id) + 1;\n                state.coins += refund;\n                state.stats.duplicatesSold++;\n                state.stats.coinsFromDupes += refund;\n                return { dup: true, refund: refund };\n            }\n            state.collection[card.id] = 1;\n            return { dup: false, refund: 0 };\n        }\n        function nxPeelTile(el) { if (el) el.classList.add('nx-peel'); }\n        function nxPeelAll() {\n            const m = document.getElementById('nx-batch-modal'); if (!m) return;\n            const tiles = m.querySelectorAll('.nx-bt');\n            for (let i = 0; i < tiles.length; i++) {\n                tiles[i].style.setProperty('--nx-d', Math.min(i * 28, 1800) + 'ms');\n                tiles[i].classList.add('nx-peel');\n            }\n            const b = document.getElementById('nx-batch-peel'); if (b) b.disabled = true;\n            try { SoundFX.play('swap'); } catch (e) {}\n        }\n        function nxBatchClose() {\n            const m = document.getElementById('nx-batch-modal'); if (m) m.remove();\n            try { PackMusic.stop(); } catch (e) {}\n            try { updateCoinDisplay(); saveState(); checkAchievements(); } catch (e) {}\n            try { if (typeof renderAlbums === 'function') renderAlbums(); } catch (e) {}\n        }\n        function nxShowBatchReveal(pack, cards, sum) {\n            const old = document.getElementById('nx-batch-modal'); if (old) old.remove();\n            const RAR = { common: ['Обычная', 'text-slate-300', 'border-slate-500/60'], rare: ['Редкая', 'text-sky-300', 'border-sky-500/70'], epic: ['Эпическая', 'text-violet-300', 'border-violet-500/70'], legendary: ['Легендарная', 'text-amber-300', 'border-amber-500/80'] };\n            const tiles = cards.map((c) => {\n                const r = RAR[c.rarity] || RAR.common;\n                return '<div class=\"nx-bt relative aspect-[3/4] rounded-lg overflow-hidden border ' + r[2] + ' bg-slate-900\" onclick=\"nxPeelTile(this)\">' +\n                    '<img src=\"' + mediaThumb(c.image) + '\" data-nx-full=\"' + mediaUrl(c.image) + '\" alt=\"' + String(c.name || '').replace(/\"/g, '&quot;') + '\" class=\"absolute inset-0 w-full h-full object-cover\" loading=\"lazy\" decoding=\"async\" onerror=\"imgErrorChain(this)\">' +\n                    '<div class=\"absolute inset-x-0 bottom-0 px-1 py-0.5 bg-slate-950/85 text-[8px] font-bold truncate ' + r[1] + '\">' + String(c.name || '') + '</div>' +\n                    '<div class=\"nx-foil absolute inset-0\"></div></div>';\n            }).join('');\n            const chips = sum.byRar.map(x => {\n                const r = RAR[x[0]] || ['?', 'text-slate-300', 'border-slate-600'];\n                return '<span class=\"text-[10px] font-bold px-2 py-1 rounded-lg border ' + r[2] + ' ' + r[1] + '\">' + r[0] + ': ' + x[1] + '</span>';\n            }).join('');\n            const m = document.createElement('div');\n            m.id = 'nx-batch-modal';\n            m.className = 'fixed inset-0 z-[95] overflow-y-auto bg-slate-950/95 backdrop-blur-sm';\n            m.innerHTML = '<div class=\"min-h-full flex flex-col items-center py-5 px-3\">' +\n                '<div class=\"w-full max-w-3xl rounded-2xl border border-slate-700/70 bg-slate-900/85 p-4 sm:p-5\">' +\n                '<div class=\"flex items-start justify-between gap-3\"><div><h3 class=\"font-black text-white text-lg sm:text-xl leading-tight\">' + pack.title + ' × ' + sum.packs + '</h3>' +\n                '<p class=\"text-[11px] text-slate-400 mt-0.5\">' + cards.length + ' ' + pluralRu(cards.length, 'карта', 'карты', 'карт') + ' · новых ' + sum.new + ' · повторов ' + sum.dup + (sum.dupCoins ? ' (+' + fmtCoins(sum.dupCoins) + ' монет)' : '') + '</p></div>' +\n                '<button onclick=\"nxBatchClose()\" class=\"shrink-0 w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-black\" aria-label=\"Закрыть\">✕</button></div>' +\n                '<div class=\"flex flex-wrap gap-1.5 mt-3\">' + chips + '</div>' +\n                '<div class=\"grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 mt-4\">' + tiles + '</div>' +\n                '<div class=\"flex flex-col sm:flex-row gap-2.5 mt-4\">' +\n                '<button id=\"nx-batch-peel\" onclick=\"nxPeelAll()\" class=\"flex-1 px-4 py-3 rounded-2xl font-black text-sm bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 hover:brightness-110\"><i class=\"fa-solid fa-wand-magic-sparkles mr-2\"></i>Стереть фольгу со всех</button>' +\n                '<button onclick=\"nxBatchClose()\" class=\"flex-1 px-4 py-3 rounded-2xl font-black text-sm bg-slate-800 hover:bg-slate-700 text-slate-100\"><i class=\"fa-solid fa-box-archive mr-2\"></i>Забрать ' + cards.length + ' ' + pluralRu(cards.length, 'карту', 'карты', 'карт') + '</button>' +\n                '</div></div></div>';\n            document.body.appendChild(m);\n            try { const imgs = m.querySelectorAll('img'); for (let i = 0; i < imgs.length; i++) imgCacheAttach(imgs[i]); } catch (e) {}\n            setTimeout(nxPeelAll, 450);\n        }\n        function buyPackBatch(pack, qty) {\n            const price = packSalePrice(pack);\n            const cards = [];\n            let opened = 0;\n            for (let i = 0; i < qty; i++) {\n                const r = rollPackCards(pack);\n                if (!r) { state.coins += price * (qty - i); updateCoinDisplay(); saveState(); break; }\n                opened++;\n                for (let k = 0; k < r.length; k++) cards.push(r[k]);\n            }\n            const sum = { packs: opened, new: 0, dup: 0, dupCoins: 0, byRar: {} };\n            for (let i = 0; i < cards.length; i++) {\n                const g = nxGrantCard(cards[i]);\n                if (g.dup) { sum.dup++; sum.dupCoins += g.refund; } else sum.new++;\n                sum.byRar[cards[i].rarity] = (sum.byRar[cards[i].rarity] || 0) + 1;\n            }\n            sum.byRar = Object.keys(sum.byRar).map(k => [k, sum.byRar[k]]);\n            updateCoinDisplay(); saveState();\n            try { statsTouch(); } catch (e) {}\n            try { preloadImages(cards.map(c => c.image)); } catch (e) {}\n            try { PackMusic.startFor(pack); } catch (e) {}\n            nxShowBatchReveal(pack, cards, sum);\n        }\n        let currentUnboxingCards = [];"),
+    ('b391: buyPack принимает количество',
+     "        function buyPack(packId) {",
+     "        function buyPack(packId, qty) { // b391: qty — сколько паков вскрыть за раз"),
+    ('b391: q и итоговая цена',
+     "            const packPrice = packSalePrice(pack); // b160: скидка окна продажи",
+     "            const packPrice = packSalePrice(pack); // b160: скидка окна продажи\n            const q = Math.max(1, Math.min(99, Math.floor(qty) || 1)); // b391: количество паков\n            const packPriceTotal = packPrice * q; // b391: итоговая цена партии"),
+    ('b391: проверка монет на партию',
+     "            if (state.coins < packPrice) {\n                showToast('Недостаточно монет!', 'error');",
+     "            if (state.coins < packPriceTotal) { // b391\n                showToast('Недостаточно монет! Нужно ' + fmtCoins(packPriceTotal) + (q > 1 ? ' за ' + q + ' ' + pluralRu(q, 'пак', 'пака', 'паков') : ''), 'error');"),
+    ('b391: списание за партию',
+     "            state.coins -= packPrice;",
+     "            state.coins -= packPriceTotal; // b391"),
+    ('b391: лимит окна на партию',
+     "                if ((wb0[k0] || 0) >= pack.schedule.limitN) {",
+     "                if ((wb0[k0] || 0) + q > pack.schedule.limitN) { /* b391: лимит на всю партию */"),
+    ('b391: счётчик окна += q',
+     "                if (swGuard) { const kk = pack.id + ':' + swGuard.start; wb[kk] = (wb[kk] || 0) + 1; }",
+     "                if (swGuard) { const kk = pack.id + ':' + swGuard.start; wb[kk] = (wb[kk] || 0) + q; } // b391"),
+    ('b391: статистика продаж += q',
+     "                en.opens++; en.revenue += packPrice;",
+     "                en.opens += q; en.revenue += packPriceTotal; // b391"),
+    ('b391: дневной счётчик += q',
+     "                en.days[dk] = (en.days[dk] || 0) + 1;",
+     "                en.days[dk] = (en.days[dk] || 0) + q; // b391"),
+    ('b391: ветка пакетного вскрытия',
+     "            const cards = rollPackCards(pack);",
+     "            if (q > 1) { // b391: пакетное вскрытие — без 3D и поштучной фольги\n                const pc = state.cards.filter(c => c.packId === pack.id);\n                if (!pc.length) { showToast('В этом паке пока нет карточек!', 'error'); state.coins += packPriceTotal; updateCoinDisplay(); saveState(); return; }\n                buyPackBatch(pack, q);\n                return;\n            }\n            const cards = rollPackCards(pack);"),
+    ('b391: строка количества в панели пака',
+     "<div class=\"mt-auto pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3\">",
+     "<div class=\"mt-3 flex flex-wrap items-center gap-1.5\" id=\"nx-qty-row\">\\n                            <span class=\"text-[10px] font-bold text-slate-400 mr-0.5\"><i class=\"fa-solid fa-layer-group mr-1 text-sky-300\"></i>Открыть сразу:</span>\\n                            ${NX_QTY_PRESETS.map(v => '<button onclick=\"nxSetPackQty(' + v + ')\" class=\"px-2 py-1 rounded-lg text-[10px] font-black border ' + (nxPackQty === v ? 'bg-sky-500/20 border-sky-400/60 text-sky-200' : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:bg-slate-700') + '\">' + v + '</button>').join('')}\\n                            <button onclick=\"nxSetPackQty(Math.floor(state.coins / ${salePrice}))\" class=\"px-2 py-1 rounded-lg text-[10px] font-black border bg-slate-800/70 border-slate-700 text-amber-300 hover:bg-slate-700\" title=\"Открыть максимум паков на текущий баланс\">MAX</button>\\n                            <input id=\"nx-qty-input\" type=\"number\" min=\"1\" max=\"99\" value=\"${nxPackQty}\" onchange=\"nxSetPackQty(this.value)\" class=\"w-14 px-1.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-[11px] font-black text-center text-slate-100\" aria-label=\"Количество паков\">\\n                            <span class=\"text-[10px] font-bold text-amber-300\">итого ${fmtCoins(salePrice * nxPackQty)}</span>\\n                        </div>\\n                        <div class=\"mt-auto pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3\">"),
 ]
 
 HEAD_END = 1088       # </head>
@@ -1343,6 +1376,13 @@ html, body {
 #miner-cat-box[data-tier="7"]{box-shadow:inset 0 0 34px rgba(125,211,252,.09)}
 #miner-cat-box[data-tier="8"]{box-shadow:inset 0 0 36px rgba(252,211,77,.1)}
 #miner-cat-box[data-tier="9"]{box-shadow:inset 0 0 42px rgba(165,180,252,.12)}
+/* ===== b391: пакетное вскрытие — фольга и волна распаковки ===== */
+.nx-foil{background:linear-gradient(115deg,#c7ccd8 0%,#eef1f7 18%,#b9c0cf 32%,#f2f4fa 47%,#c2c8d6 61%,#e9ecf4 78%,#bfc6d4 100%);transition:transform .5s cubic-bezier(.4,0,.2,1) var(--nx-d,0ms),opacity .45s linear var(--nx-d,0ms)}
+.nx-foil:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.16) 0 6px,rgba(255,255,255,0) 6px 12px)}
+.nx-peel .nx-foil{transform:translateY(-112%) rotate(7deg);opacity:0}
+.nx-bt{cursor:pointer}
+#nx-batch-modal .nx-bt img{transition:transform .3s}
+#nx-batch-modal .nx-peel img{transform:scale(1.02)}
 '''
 
 SW_JS = '''/* nx-media-sw v2 (%s): cache-first для media/ и assets/, network-first для HTML.
@@ -1607,6 +1647,7 @@ def main():
     say('правки b380 (котик работает киркой, скала и берлога прокачиваются):')
     for _lbl, _o, _n in PROFWORK_JS:
         js, _ = patch_once(js, _o, _n, 'b380: ' + _lbl)
+    js = js.replace('onclick="buyPack(\'${pack.id}\')"', 'onclick="buyPack(\'${pack.id}\', nxPackQty)"')  # b391: все кнопки вскрытия уважают количество
     js, _ = patch_once(js, BLOBTOUCH_OLD, BLOBTOUCH_NEW,
                        'b377: не отзываем blob:URL, который ещё на живой <img>')
     js, _ = patch_once(js, BLOBSAVE_OLD, BLOBSAVE_NEW,

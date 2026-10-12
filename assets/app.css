@@ -1070,3 +1070,11 @@ html, body {
 #miner-cat-box[data-tier="7"]{box-shadow:inset 0 0 34px rgba(125,211,252,.09)}
 #miner-cat-box[data-tier="8"]{box-shadow:inset 0 0 36px rgba(252,211,77,.1)}
 #miner-cat-box[data-tier="9"]{box-shadow:inset 0 0 42px rgba(165,180,252,.12)}
+
+/* ===== b391: пакетное вскрытие — фольга и волна распаковки ===== */
+.nx-foil{background:linear-gradient(115deg,#c7ccd8 0%,#eef1f7 18%,#b9c0cf 32%,#f2f4fa 47%,#c2c8d6 61%,#e9ecf4 78%,#bfc6d4 100%);transition:transform .5s cubic-bezier(.4,0,.2,1) var(--nx-d,0ms),opacity .45s linear var(--nx-d,0ms)}
+.nx-foil:after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(255,255,255,.16) 0 6px,rgba(255,255,255,0) 6px 12px)}
+.nx-peel .nx-foil{transform:translateY(-112%) rotate(7deg);opacity:0}
+.nx-bt{cursor:pointer}
+#nx-batch-modal .nx-bt img{transition:transform .3s}
+#nx-batch-modal .nx-peel img{transform:scale(1.02)}
