@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob58'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob59'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -287,6 +287,24 @@ PROFWORK_JS = [
     ('b394: продажа повторов вскрытия одним коммитом',
      "        // b143: одна кнопка — все раскрытые повторки улетают на биржу\n        function sellAllDupesToMarket() {\n            const idxs = Object.keys(unboxDupeIdx).map(Number).filter(i => !unboxListedIdx[i]);\n            if (!idxs.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }\n            let ok = 0, sum = 0;\n            idxs.forEach(i => {\n                const card = (currentUnboxingCards || [])[i];\n                if (!card || cardCopies(card.id) < 1) return;\n                const price = marketRecommendPrice(card);\n                if (marketListCardFor(card.id, String(price), true)) {\n                    unboxListedIdx[i] = 1;\n                    ok++; sum += price;\n                    marketMarkListedBtn(i, price);\n                }\n            });\n            if (ok) showToast('💰 Повторки отправлены на биржу: ' + ok + ' на сумму ' + fmtCoins(sum), 'success');\n            else showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');\n        }",
      "        // b143+b394: одна кнопка — все раскрытые повторки улетают на биржу ОДНИМ коммитом\n        function sellAllDupesToMarket() {\n            const idxs = Object.keys(unboxDupeIdx).map(Number).filter(i => !unboxListedIdx[i]);\n            if (!idxs.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }\n            const items = []; const map = [];\n            idxs.forEach(i => {\n                const card = (currentUnboxingCards || [])[i];\n                if (!card || cardCopies(card.id) < 1) return;\n                items.push({ id: card.id, price: marketRecommendPrice(card) });\n                map.push(i);\n            });\n            if (!items.length) { showToast('Раскрытых повторок для продажи пока нет', 'info'); return; }\n            showToast('⏳ Выставляю ' + items.length + ' ' + pluralRu(items.length, 'лот', 'лота', 'лотов') + '…', 'info');\n            setTimeout(() => {\n                const r = marketListMany(items);\n                if (r.ok) {\n                    for (let k = 0; k < Math.min(r.ok, map.length); k++) { unboxListedIdx[map[k]] = 1; marketMarkListedBtn(map[k], items[k].price); }\n                    showToast('💰 Повторки отправлены на биржу: ' + r.ok + ' на сумму ' + fmtCoins(r.sum), 'success');\n                    nxRefreshAfterSale(); // b396\n                } else {\n                    showToast('Не удалось выставить повторки (нет подключения к облаку?)', 'error');\n                }\n            }, 30);\n        }"),
+    ('b399: детектор FPS и энергорежим',
+     "        function switchTab(tabId) {",
+     "        // ===== b399: авто-детектор слабого устройства и энергорежим =====\n        let nxLowPow = false;\n        try { nxLowPow = LS.getItem('nx_lowpow') === '1'; } catch (e) {}\n        let nxProbeRunning = false, nxProbeLast = 0;\n        function nxLowPowApply(on) {\n            nxLowPow = !!on;\n            try { document.documentElement.classList.toggle('nx-lowpow', nxLowPow); } catch (e) {}\n            try { LS.setItem('nx_lowpow', nxLowPow ? '1' : '0'); } catch (e) {}\n            try { carouselStopAuto(); carouselStartAuto(); } catch (e) {}\n        }\n        function nxPerfProbe() {\n            if (nxProbeRunning || document.hidden) return;\n            const now = Date.now();\n            if (now - nxProbeLast < 30000) return;\n            nxProbeLast = now; nxProbeRunning = true;\n            let frames = 0, t0 = 0, acc = 0, last = 0;\n            const step = (ts) => {\n                if (!t0) { t0 = ts; last = ts; }\n                else { acc += Math.min(200, ts - last); last = ts; frames++; }\n                if (ts - t0 < 2500) { requestAnimationFrame(step); return; }\n                nxProbeRunning = false;\n                if (frames < 10) return;\n                const avg = acc / frames;\n                if (avg > 28 && !nxLowPow) nxLowPowApply(true);\n                else if (avg < 18 && nxLowPow) nxLowPowApply(false);\n            };\n            requestAnimationFrame(step);\n        }\n        try {\n            nxLowPowApply(nxLowPow);\n            setTimeout(nxPerfProbe, 3000);\n            document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(nxPerfProbe, 1500); });\n        } catch (e) {}\n        function switchTab(tabId) {"),
+    ('b399: saleTick не работает в фоне',
+     "        function saleTick() {\n            // b149/b158: живой отсчёт на всех видимых таймерах (секунда), режимы: до старта и до конца\n            const now = Date.now();",
+     "        function saleTick() {\n            // b399: в скрытой вкладке отсчёт не нужен вовсе, в энергорежиме — раз в 2 c\n            if (document.hidden) return;\n            if (nxLowPow && (Date.now() & 1024)) return;\n            // b149/b158: живой отсчёт на всех видимых таймерах (секунда), режимы: до старта и до конца\n            const now = Date.now();"),
+    ('b399: интервал карусели изменяемый',
+     "        const CAROUSEL_AUTO_MS = 15000;",
+     "        let CAROUSEL_AUTO_MS = 15000; // b399: в энергорежиме — 30 c"),
+    ('b399: карусель стоит в скрытой вкладке',
+     "            packCarousel.autoTimer = setInterval(() => {\n                if (packCarousel.dragging || packCarousel.hover) return;",
+     "            packCarousel.autoTimer = setInterval(() => {\n                if (document.hidden) return; // b399\n                if (packCarousel.dragging || packCarousel.hover) return;"),
+    ('b399: старт карусели с учётом энергорежима',
+     "            if (state.packs.length < 2) return;\n            if (document.hidden) return;",
+     "            if (state.packs.length < 2) return;\n            if (document.hidden) return;\n            CAROUSEL_AUTO_MS = (typeof nxLowPow !== 'undefined' && nxLowPow) ? 30000 : 15000; // b399"),
+    ('b399: проба FPS при смене вкладки',
+     "        function switchTab(tabId) {\n            nxTrail('tab:' + tabId);",
+     "        function switchTab(tabId) {\n            nxTrail('tab:' + tabId);\n            try { setTimeout(nxPerfProbe, 1200); } catch (e) {} // b399"),
 ]
 
 HEAD_END = 1088       # </head>
@@ -1392,6 +1410,16 @@ html, body {
 .nx-bt{cursor:pointer}
 #nx-batch-modal .nx-bt img{transition:transform .3s}
 #nx-batch-modal .nx-peel img{transform:scale(1.02)}
+/* ===== b399: энергорежим для слабых устройств (html.nx-lowpow) ===== */
+html.nx-lowpow .sale-banner::before{animation:none;background:none}
+html.nx-lowpow .upcoming-banner{animation:none}
+html.nx-lowpow .up-label-tile i{animation:none}
+html.nx-lowpow #miner-cat-stage svg{animation-duration:6.8s}
+html.nx-lowpow #kc-body,html.nx-lowpow #kc-head,html.nx-lowpow #kc-tail-up{animation-duration:6.8s}
+html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
+@media (prefers-reduced-motion: reduce){
+    .sale-banner::before,.upcoming-banner,.up-label-tile i{animation:none !important}
+}
 '''
 
 SW_JS = '''/* nx-media-sw v2 (%s): cache-first для media/ и assets/, network-first для HTML.

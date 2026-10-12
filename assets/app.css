@@ -1087,3 +1087,14 @@ html, body {
     .msn-act{flex:1 1 100%;display:flex}
     .msn-act>.lqg{flex:1 1 100%;display:flex;align-items:center;justify-content:center;text-align:center;white-space:normal}
 }
+
+/* ===== b399: энергорежим для слабых устройств (html.nx-lowpow) ===== */
+html.nx-lowpow .sale-banner::before{animation:none;background:none}
+html.nx-lowpow .upcoming-banner{animation:none}
+html.nx-lowpow .up-label-tile i{animation:none}
+html.nx-lowpow #miner-cat-stage svg{animation-duration:6.8s}
+html.nx-lowpow #kc-body,html.nx-lowpow #kc-head,html.nx-lowpow #kc-tail-up{animation-duration:6.8s}
+html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
+@media (prefers-reduced-motion: reduce){
+    .sale-banner::before,.upcoming-banner,.up-label-tile i{animation:none !important}
+}

@@ -10874,8 +10874,42 @@ function nxToggle3d() {
             if (name === 'stats') { try { statsRender(); jpSyncNow(); } catch (e) {} } // b277: вкладка статистики — сразу тянем свежие данные из облака
             try { LS.setItem('nexus_studio_sec', name); } catch (e) {}
         }
+        // ===== b399: авто-детектор слабого устройства и энергорежим =====
+        let nxLowPow = false;
+        try { nxLowPow = LS.getItem('nx_lowpow') === '1'; } catch (e) {}
+        let nxProbeRunning = false, nxProbeLast = 0;
+        function nxLowPowApply(on) {
+            nxLowPow = !!on;
+            try { document.documentElement.classList.toggle('nx-lowpow', nxLowPow); } catch (e) {}
+            try { LS.setItem('nx_lowpow', nxLowPow ? '1' : '0'); } catch (e) {}
+            try { carouselStopAuto(); carouselStartAuto(); } catch (e) {}
+        }
+        function nxPerfProbe() {
+            if (nxProbeRunning || document.hidden) return;
+            const now = Date.now();
+            if (now - nxProbeLast < 30000) return;
+            nxProbeLast = now; nxProbeRunning = true;
+            let frames = 0, t0 = 0, acc = 0, last = 0;
+            const step = (ts) => {
+                if (!t0) { t0 = ts; last = ts; }
+                else { acc += Math.min(200, ts - last); last = ts; frames++; }
+                if (ts - t0 < 2500) { requestAnimationFrame(step); return; }
+                nxProbeRunning = false;
+                if (frames < 10) return;
+                const avg = acc / frames;
+                if (avg > 28 && !nxLowPow) nxLowPowApply(true);
+                else if (avg < 18 && nxLowPow) nxLowPowApply(false);
+            };
+            requestAnimationFrame(step);
+        }
+        try {
+            nxLowPowApply(nxLowPow);
+            setTimeout(nxPerfProbe, 3000);
+            document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(nxPerfProbe, 1500); });
+        } catch (e) {}
         function switchTab(tabId) {
             nxTrail('tab:' + tabId);
+            try { setTimeout(nxPerfProbe, 1200); } catch (e) {} // b399
             // b250: ушли с вкладки «Игры» — автостарт автоматов выключается сразу,
             // спины не крутятся и не тратят монеты/CPU на других вкладках
             if (tabId !== 'battle') stopAllGameAutos('переход на другую вкладку');
@@ -11094,6 +11128,9 @@ function nxToggle3d() {
             return state.packs.map(p => p.id + ':' + (packIsRetired(p) ? 'r' : saleModeOf(p))).join(',');
         }
         function saleTick() {
+            // b399: в скрытой вкладке отсчёт не нужен вовсе, в энергорежиме — раз в 2 c
+            if (document.hidden) return;
+            if (nxLowPow && (Date.now() & 1024)) return;
             // b149/b158: живой отсчёт на всех видимых таймерах (секунда), режимы: до старта и до конца
             const now = Date.now();
             document.querySelectorAll('[data-sale-ends]').forEach(el => {
@@ -11659,12 +11696,14 @@ function nxToggle3d() {
 
         // Автовращение витрины: паки прокручиваются по очереди каждые 15 секунд
         // (останавливается при наведении/взаимодействии)
-        const CAROUSEL_AUTO_MS = 15000;
+        let CAROUSEL_AUTO_MS = 15000; // b399: в энергорежиме — 30 c
         function carouselStartAuto() {
             carouselStopAuto();
             if (state.packs.length < 2) return;
             if (document.hidden) return;
+            CAROUSEL_AUTO_MS = (typeof nxLowPow !== 'undefined' && nxLowPow) ? 30000 : 15000; // b399
             packCarousel.autoTimer = setInterval(() => {
+                if (document.hidden) return; // b399
                 if (packCarousel.dragging || packCarousel.hover) return;
                 const tab = document.getElementById('tab-store');
                 if (!tab || tab.classList.contains('hidden')) return;
