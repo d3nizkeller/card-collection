@@ -11462,15 +11462,15 @@ function nxToggle3d() {
                             <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg bg-violet-500/10 text-violet-300 border border-violet-500/30">${cardsInPack} карт</span>
                         </div>
 
-                        <p class="text-[11px] sm:text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">${pack.description || ''}</p>
-                        <div id="carousel-odds" class="mt-3">${renderPackOdds(pack)}</div>
-                        <div class="mt-3 flex flex-wrap items-center gap-1.5" id="nx-qty-row">
+<div class="mt-3 flex flex-wrap items-center gap-1.5" id="nx-qty-row">
                             <span class="text-[10px] font-bold text-slate-400 mr-0.5"><i class="fa-solid fa-layer-group mr-1 text-sky-300"></i>Открыть сразу:</span>
                             ${NX_QTY_PRESETS.map(v => '<button onclick="nxSetPackQty(' + v + ')" class="px-2 py-1 rounded-lg text-[10px] font-black border ' + (nxPackQty === v ? 'bg-sky-500/20 border-sky-400/60 text-sky-200' : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + v + '</button>').join('')}
                             <button onclick="nxSetPackQty(Math.floor(state.coins / ${salePrice}))" class="px-2 py-1 rounded-lg text-[10px] font-black border bg-slate-800/70 border-slate-700 text-amber-300 hover:bg-slate-700" title="Открыть максимум паков на текущий баланс">MAX</button>
                             <input id="nx-qty-input" type="number" min="1" max="99" value="${nxPackQty}" onchange="nxSetPackQty(this.value)" class="w-14 px-1.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-[11px] font-black text-center text-slate-100" aria-label="Количество паков">
                             <span class="text-[10px] font-bold text-amber-300">итого ${fmtCoins(salePrice * nxPackQty)}</span>
                         </div>
+                                                <p class="text-[11px] sm:text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">${pack.description || ''}</p>
+                        <div id="carousel-odds" class="mt-3">${renderPackOdds(pack)}</div>
                         <div class="mt-auto pt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
                             <span id="carousel-price" class="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-br from-amber-400/15 via-amber-500/10 to-amber-600/15 border ${hasDisc ? 'border-rose-500/60' : 'border-amber-500/40'} px-4 py-3 font-black text-amber-300 shadow-inner shadow-amber-950/40 sm:min-w-[132px]">
                                 <i class="fa-solid fa-coins text-amber-400 text-base"></i>
@@ -11809,11 +11809,11 @@ function nxToggle3d() {
                 '<p class="text-[11px] text-slate-400 mt-0.5">' + cards.length + ' ' + pluralRu(cards.length, 'карта', 'карты', 'карт') + ' · новых ' + sum.new + ' · повторов ' + sum.dup + (sum.dupCoins ? ' (+' + fmtCoins(sum.dupCoins) + ' монет)' : '') + '</p></div>' +
                 '<button onclick="nxBatchClose()" class="shrink-0 w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-black" aria-label="Закрыть">✕</button></div>' +
                 '<div class="flex flex-wrap gap-1.5 mt-3">' + chips + '</div>' +
-                '<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 mt-4">' + tiles + '</div>' +
-                '<div class="flex flex-col sm:flex-row gap-2.5 mt-4">' +
+                '<div class="sticky top-0 z-10 -mx-1 px-1 pt-3 bg-slate-900/95 backdrop-blur rounded-xl flex flex-col sm:flex-row gap-2.5">' +
                 '<button id="nx-batch-peel" onclick="nxPeelAll()" class="flex-1 px-4 py-3 rounded-2xl font-black text-sm bg-gradient-to-r from-sky-500 to-cyan-400 text-slate-950 hover:brightness-110"><i class="fa-solid fa-wand-magic-sparkles mr-2"></i>Стереть фольгу со всех</button>' +
                 '<button onclick="nxBatchClose()" class="flex-1 px-4 py-3 rounded-2xl font-black text-sm bg-slate-800 hover:bg-slate-700 text-slate-100"><i class="fa-solid fa-box-archive mr-2"></i>Забрать ' + cards.length + ' ' + pluralRu(cards.length, 'карту', 'карты', 'карт') + '</button>' +
-                '</div></div></div>';
+                '</div>' +
+                '<div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-1.5 mt-3">' + tiles + '</div></div></div>';
             document.body.appendChild(m);
             try { const imgs = m.querySelectorAll('img'); for (let i = 0; i < imgs.length; i++) imgCacheAttach(imgs[i]); } catch (e) {}
             setTimeout(nxPeelAll, 450);
