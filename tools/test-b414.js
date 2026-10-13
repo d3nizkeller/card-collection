@@ -95,8 +95,9 @@ function freq(fn, n) { let h = 0; for (let i = 0; i < n; i++) if (fn()) h++; ret
     ok(!!sec, 'есть секция .studio-sec[data-sec="jackpot"]');
     ok(['jpc-sum', 'jpc-prob', 'jpc-users', 'jpc-pool-set', 'jpc-grant-amt', 'jpc-sim-out', 'jpc-on']
         .every(id => !!doc.getElementById(id)), 'в секции есть все ключевые узлы');
-    ok(doc.getElementById('studio-nav').firstElementChild.className.indexOf('grid-cols-8') >= 0,
-        'сетка вкладок Студии расширена до grid-cols-8');
+    const navCls = doc.getElementById('studio-nav').firstElementChild.className;
+    ok(navCls.indexOf('grid-cols-4') >= 0 && navCls.indexOf('sm:grid-cols-8') >= 0,
+        'сетка вкладок Студии адаптивная: grid-cols-4 на телефоне, sm:grid-cols-8 на широких');
     if (sec) sec.hidden = true;
     let secErr = '';
     try { w.showStudioSec('jackpot'); } catch (e) { secErr = e.message; }
