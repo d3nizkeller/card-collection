@@ -116,7 +116,7 @@ function boot() {
     ev('cardMusicSeekRender()');
     eq(doc.getElementById('inspect-music-cur').textContent, '0:30', 'текущее время 0:30');
     eq(doc.getElementById('inspect-music-dur').textContent, '2:00', 'длительность 2:00');
-    ok(doc.getElementById('inspect-music-fill').style.width === '25%', 'полоса на 25%');
+    ok(doc.getElementById('inspect-music-bar').style.background.indexOf('25%') >= 0, 'полоса на 25% (градиент прогресса)');
     ev('cardMusicSeekTo(0.5)');
     eq(ev('CardMusic.audio.currentTime'), 60, 'промотка на середину (0.5 × 120 = 60)');
     ev('cardMusicSeekTo(2)');

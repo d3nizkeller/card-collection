@@ -77,10 +77,10 @@ NEW_TOGGLE = OLD_TOGGLE + """
             let cur = 0, dur = 0;
             try { cur = Number(a.currentTime) || 0; dur = Number(a.duration) || 0; } catch (e) {}
             const pct = (isFinite(dur) && dur > 0) ? Math.min(100, Math.max(0, cur / dur * 100)) : 0;
-            const fill = document.getElementById('inspect-music-fill');
-            const knob = document.getElementById('inspect-music-knob');
-            if (fill) fill.style.width = pct + '%';
-            if (knob) knob.style.left = 'calc(' + pct + '% - 6px)';
+            // b427.1: прогресс рисуем фоном самой полосы (linear-gradient) — один
+            // красящийся элемент вместо absolute-детей: надёжно во всех WebView
+            const bar = document.getElementById('inspect-music-bar');
+            if (bar) bar.style.background = 'linear-gradient(to right, #c026d3 0% ' + pct + '%, #1e293b ' + pct + '% 100%)';
             const tc = document.getElementById('inspect-music-cur');
             const td = document.getElementById('inspect-music-dur');
             if (tc) tc.textContent = nxTimeFmt(cur);
@@ -128,10 +128,7 @@ HTML_PATCHES = [
      '            <button id="inspect-music-btn" onclick="cardMusicToggle()" class="hidden mt-3 px-4 py-2 rounded-xl text-xs font-bold transition"></button>\n'
      '            <!-- b427: промотка трека карты -->\n'
      '            <div id="inspect-music-seek" class="hidden w-full max-w-sm mt-2 px-2">\n'
-     '                <div id="inspect-music-bar" class="relative h-2 bg-slate-800 rounded-full cursor-pointer touch-none select-none">\n'
-     '                    <div id="inspect-music-fill" class="absolute inset-y-0 left-0 bg-fuchsia-500 rounded-full" style="width:0%"></div>\n'
-     '                    <div id="inspect-music-knob" class="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow" style="left:-6px"></div>\n'
-     '                </div>\n'
+     '                <div id="inspect-music-bar" class="relative h-2 rounded-full cursor-pointer touch-none select-none" style="background:#1e293b"></div>\n'
      '                <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1"><span id="inspect-music-cur">0:00</span><span id="inspect-music-dur">—:—</span></div>\n'
      '            </div>\n'),
 ]

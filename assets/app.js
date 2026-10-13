@@ -14552,10 +14552,10 @@ function nxToggle3d() {
             let cur = 0, dur = 0;
             try { cur = Number(a.currentTime) || 0; dur = Number(a.duration) || 0; } catch (e) {}
             const pct = (isFinite(dur) && dur > 0) ? Math.min(100, Math.max(0, cur / dur * 100)) : 0;
-            const fill = document.getElementById('inspect-music-fill');
-            const knob = document.getElementById('inspect-music-knob');
-            if (fill) fill.style.width = pct + '%';
-            if (knob) knob.style.left = 'calc(' + pct + '% - 6px)';
+            // b427.1: прогресс рисуем фоном самой полосы (linear-gradient) — один
+            // красящийся элемент вместо absolute-детей: надёжно во всех WebView
+            const bar = document.getElementById('inspect-music-bar');
+            if (bar) bar.style.background = 'linear-gradient(to right, #c026d3 0% ' + pct + '%, #1e293b ' + pct + '% 100%)';
             const tc = document.getElementById('inspect-music-cur');
             const td = document.getElementById('inspect-music-dur');
             if (tc) tc.textContent = nxTimeFmt(cur);
