@@ -14643,6 +14643,8 @@ function nxToggle3d() {
             updateInspectNav();
             updateInspectSlotsBtn();
             updateInspectMarketBtn();
+            // b429: на время просмотра блокируем скролл тела — свайп не панит страницу
+            try { document.body.classList.add('nx-inspect-open'); } catch (e) {}
             document.getElementById('modal-inspect').classList.remove('hidden');
         }
 
@@ -14724,11 +14726,26 @@ function nxToggle3d() {
 
         function closeInspectModal() {
             CardMusic.stop();
+            try { document.body.classList.remove('nx-inspect-open'); } catch (e) {} // b429
+            try { inspectRender.style.transform = ''; } catch (e) {} // b429: сброс tilt
             document.getElementById('modal-inspect').classList.add('hidden');
         }
 
         const inspectRender = document.getElementById('inspect-card-render');
+        // b429: на тач-устройствах совместимые mousemove приходят во время свайпа —
+        // tilt крутил карту под пальцем и страница «ездила»; там tilt не нужен
+        function nxIsTouchDevice() {
+            // b429: одного «ontouchstart in window» мало (он есть и в jsdom, и в
+            // десктопном Chrome с тач-эмуляцией) — решаем по фактическим тач-указателям
+            try {
+                if ((navigator.maxTouchPoints | 0) > 0) return true;
+                if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+                if (window.matchMedia && window.matchMedia('(hover: none)').matches && ('ontouchstart' in window)) return true;
+            } catch (e) {}
+            return false;
+        }
         document.addEventListener('mousemove', (e) => {
+            if (nxIsTouchDevice()) return; // b429
             if (document.getElementById('modal-inspect').classList.contains('hidden')) return;
             const rect = inspectRender.getBoundingClientRect();
             const x = e.clientX - rect.left - rect.width / 2;
