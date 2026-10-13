@@ -3862,6 +3862,47 @@ function nxToggle3d() {
             }
         }
 
+        // ============ b424: ЗНАЧКИ АЛЬБОМОВ — КРУЖОЧКИ С ОБЛОЖКАМИ ============
+        // По значку на каждый альбом игры: собранный — обложка в янтарном кольце
+        // с галочкой и свечением; несобранный — серый, с дробью прогресса поверх
+        // обложки. Монет не начисляет: это витрина коллекции (монетные награды за
+        // альбомы уже живут в достижениях album_complete / albums_3/5/10).
+        function albumPackProgress(p) {
+            const cs = (state.cards || []).filter(c => c.packId === p.id);
+            let have = 0;
+            for (let i = 0; i < cs.length; i++) if (state.collection && state.collection[cs[i].id]) have++;
+            return [have, cs.length];
+        }
+        function renderAlbumBadges() {
+            const box = document.getElementById('rewards-album-badges');
+            if (!box) return;
+            const packs = state.packs || [];
+            const items = packs.map(p => {
+                const pr = albumPackProgress(p);
+                return { p: p, have: pr[0], total: pr[1], done: pr[1] > 0 && pr[0] >= pr[1] };
+            });
+            const cnt = document.getElementById('album-badges-counter');
+            if (cnt) {
+                const doneN = items.filter(i => i.done).length;
+                cnt.innerHTML = 'Собрано: <b class="text-amber-400">' + doneN + '</b> из ' + items.length;
+            }
+            box.innerHTML = items.map(i => {
+                const cover = mediaThumb(i.p.image) || mediaUrl(i.p.image);
+                const title = jpcEsc(i.p.title || i.p.id);
+                return '<div class="flex flex-col items-center gap-1.5" style="width:5.5rem">' +
+                    '<div class="relative w-20 h-20 rounded-full overflow-hidden border-2 shrink-0 ' +
+                        (i.done ? 'border-amber-400 shadow-[0_0_18px_rgba(251,191,36,.45)]' : 'border-slate-700') + '" ' +
+                        'title="' + title + ' — ' + i.have + '/' + i.total + '">' +
+                        '<img src="' + cover + '" alt="' + title + '" class="w-full h-full object-cover ' + (i.done ? '' : 'grayscale') + '" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">' +
+                        (i.done
+                            ? '<div class="absolute inset-0 flex items-end justify-center pb-1.5 bg-gradient-to-t from-amber-950/85 via-transparent to-transparent"><i class="fa-solid fa-check text-amber-300 text-sm"></i></div>'
+                            : '<div class="absolute inset-0 bg-slate-950/70 flex items-center justify-center"><span class="text-[11px] font-mono font-bold text-slate-300">' + i.have + '/' + i.total + '</span></div>') +
+                    '</div>' +
+                    '<span class="text-[10px] font-bold text-center leading-tight line-clamp-2 ' + (i.done ? 'text-amber-300' : 'text-slate-500') + '">' + title + '</span>' +
+                '</div>';
+            }).join('');
+        }
+
         // ============ ВКЛАДКА «НАГРАДЫ» ============
         function renderRewardsIfVisible() {
             const tab = document.getElementById('tab-rewards');
@@ -3943,6 +3984,9 @@ function nxToggle3d() {
                         </div>
                     </div>`;
             }).join('');
+
+            // b424: круглые значки за собранные альбомы — с обложками
+            renderAlbumBadges();
 
             updateCountdowns();
         }
