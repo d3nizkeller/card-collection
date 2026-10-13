@@ -35,7 +35,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OLD_V = 'nxmob77'
-NEW_V = 'nxmob78'
+NEW_V = 'nxmob79'  # b417.1 догоняет по тегу: app.js менялся после публикации nxmob78
 
 # --------------------------------------------------------------------------- #
 # app.js
@@ -70,7 +70,9 @@ JS_PATCHES = [
                 spin.disabled = state.coins < slots.bet || slots.spinning;
                 spin.classList.toggle('opacity-40', state.coins < slots.bet);
 """,
-     """                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(slots.bet);
+     """                // b417.1: при нехватке монет прямо на кнопке видно, сколько не хватает, —
+                // в тёмном Liquid Glass одна лишь opacity-40 читается плохо
+                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(slots.bet) + (state.coins < slots.bet ? ' · мало ' + fmtCoins(slots.bet - state.coins) : '');
                 // b417: disabled — только пока крутится; нехватка монет гасит кнопку
                 // визуально, но клик доходит до slotsSpin и там объясняется
                 spin.disabled = slots.spinning;
@@ -88,7 +90,7 @@ JS_PATCHES = [
                 spin.disabled = state.coins < grid.bet || grid.spinning;
                 spin.classList.toggle('opacity-40', state.coins < grid.bet);
 """,
-     """                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(grid.bet);
+     """                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(grid.bet) + (state.coins < grid.bet ? ' · мало ' + fmtCoins(grid.bet - state.coins) : '');
                 spin.disabled = grid.spinning; // b417: нехватка монет — не disabled
                 spin.classList.toggle('opacity-40', state.coins < grid.bet);
 """),
@@ -104,7 +106,8 @@ JS_PATCHES = [
                 start.disabled = state.coins < mines.bet;
                 start.classList.toggle('opacity-40', state.coins < mines.bet);
 """,
-     """                start.classList.toggle('hidden', mines.active);
+     """                start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Начать раунд — ' + fmtCoins(mines.bet) + (state.coins < mines.bet ? ' · мало ' + fmtCoins(mines.bet - state.coins) : '');
+                start.classList.toggle('hidden', mines.active);
                 start.disabled = mines.active; // b417: нехватка монет — не disabled
                 start.classList.toggle('opacity-40', state.coins < mines.bet);
 """),
@@ -130,7 +133,7 @@ JS_PATCHES = [
                 spin.disabled = wheel.spinning || state.coins < wheel.bet;
                 spin.classList.toggle('opacity-40', wheel.spinning || state.coins < wheel.bet);
 """,
-     """                spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet);
+     """                spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet) + (state.coins < wheel.bet ? ' · мало ' + fmtCoins(wheel.bet - state.coins) : '');
                 spin.disabled = wheel.spinning; // b417: нехватка монет — не disabled
                 spin.classList.toggle('opacity-40', wheel.spinning || state.coins < wheel.bet);
 """),

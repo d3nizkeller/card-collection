@@ -88,6 +88,7 @@ const toasts = doc => Array.from((doc.getElementById('toast-container') || { chi
     ev("stepBet('slots', -1); renderSlotsUI()");
     eq(ev('slots.bet'), 5000000, 'кнопка «−» снизила ставку до 5m');
     eq(G.doc.getElementById('slots-spin').classList.contains('opacity-40'), false, 'кнопка ожила: ставка по балансу');
+    ok(!/мало/.test(G.doc.getElementById('slots-spin').textContent), 'подпись «мало» ушла вместе с нехваткой');
     btn.click();
     ok(ev('slots.spinning') === true || ev('state.stats.slotsSpins || 0') > spins0, 'спин по сниженной ставке запускается');
 

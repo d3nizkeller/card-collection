@@ -8028,7 +8028,9 @@ function nxToggle3d() {
             }
             const spin = document.getElementById('slots-spin');
             if (spin) {
-                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(slots.bet);
+                // b417.1: при нехватке монет прямо на кнопке видно, сколько не хватает, —
+                // в тёмном Liquid Glass одна лишь opacity-40 читается плохо
+                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(slots.bet) + (state.coins < slots.bet ? ' · мало ' + fmtCoins(slots.bet - state.coins) : '');
                 // b417: disabled — только пока крутится; нехватка монет гасит кнопку
                 // визуально, но клик доходит до slotsSpin и там объясняется
                 spin.disabled = slots.spinning;
@@ -8524,7 +8526,7 @@ function nxToggle3d() {
             }
             const spin = document.getElementById('grid-spin');
             if (spin) {
-                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(grid.bet);
+                spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(grid.bet) + (state.coins < grid.bet ? ' · мало ' + fmtCoins(grid.bet - state.coins) : '');
                 spin.disabled = grid.spinning; // b417: нехватка монет — не disabled
                 spin.classList.toggle('opacity-40', state.coins < grid.bet);
             }
@@ -9801,7 +9803,7 @@ function nxToggle3d() {
             if (mcl) mcl.textContent = mines.m;
             const start = document.getElementById('mines-start');
             if (start) {
-                start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Начать раунд — ' + fmtCoins(mines.bet);
+                start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Начать раунд — ' + fmtCoins(mines.bet) + (state.coins < mines.bet ? ' · мало ' + fmtCoins(mines.bet - state.coins) : '');
                 start.classList.toggle('hidden', mines.active);
                 start.disabled = mines.active; // b417: нехватка монет — не disabled
                 start.classList.toggle('opacity-40', state.coins < mines.bet);
@@ -10694,7 +10696,7 @@ function nxToggle3d() {
             if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="wheelSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (wheel.bet === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
             const spin = document.getElementById('wheel-spin');
             if (spin) {
-                spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet);
+                spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet) + (state.coins < wheel.bet ? ' · мало ' + fmtCoins(wheel.bet - state.coins) : '');
                 spin.disabled = wheel.spinning; // b417: нехватка монет — не disabled
                 spin.classList.toggle('opacity-40', wheel.spinning || state.coins < wheel.bet);
             }

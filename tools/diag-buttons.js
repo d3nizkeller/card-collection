@@ -27,7 +27,19 @@ async function boot(browser, coins, bet) {
     await page.goto(URL, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof window.slotsSpin === 'function', null, { timeout: 30000 });
     await page.waitForTimeout(2500);
-    if (bet) await page.evaluate(b => { slotsSetBet(b); }, bet);
+    // игра стартует не на вкладке игр — переключаемся на Слоты, иначе кнопка скрыта
+    await page.evaluate(() => {
+        try { switchTab('battle'); setBattleMode('slots'); } catch (e) {}
+        // модалка ежедневного бонуса на первом входе перехватывает клики — закрываем
+        try {
+            ['modal-daily', 'modal-unboxing', 'modal-qr', 'modal-reset'].forEach(id => {
+                const m = document.getElementById(id);
+                if (m) m.classList.add('hidden');
+            });
+        } catch (e) {}
+    });
+    await page.waitForTimeout(600);
+    if (bet) await page.evaluate(b => { slotsSetBet(b); renderSlotsUI(); }, bet);
     await page.waitForTimeout(300);
     return { ctx, page, errors };
 }
