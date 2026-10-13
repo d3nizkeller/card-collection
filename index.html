@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob91" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob91">
+    <script src="assets/three.min.js?v=nxmob92" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob92">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob91">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob92">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob91">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob92">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -2008,10 +2008,10 @@ min-height:56vh}
             </div>
             <button id="inspect-slots-btn" onclick="inspectSlotsToggle()" title="Карта станет символом на барабанах автоматов «Слоты», «Сетка» и «Линии» (до 5 карт)" class="hidden mt-2 px-4 py-2 rounded-xl text-xs font-bold transition"></button>
             <button id="inspect-market-btn" onclick="openInspectMarket()" title="Выставить копию этой карты на биржу" class="hidden mt-2 px-4 py-2 rounded-xl text-xs font-bold transition bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200"><i class="fa-solid fa-tag mr-1.5"></i>Отправить на продажу</button>
-            <p class="mt-1 text-[10px] text-slate-600 text-center">Листайте стрелками ← → или свайпом, Esc — закрыть</p>
+            <p class="mt-1 text-[10px] text-slate-600 text-center"><span class="sm:hidden">Свайп влево/вправо — листать, ✕ — закрыть</span><span class="hidden sm:inline">Листайте стрелками ← → или свайпом, Esc — закрыть</span></p>
         </div>
-        <button id="inspect-prev" onclick="inspectStep(-1)" title="Предыдущая (←)" style="display:none;" class="hidden fixed left-2 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-slate-900/85 border border-slate-700 hover:border-violet-400 hover:text-violet-300 text-slate-200 flex items-center justify-center transition shadow-xl"><i class="fa-solid fa-chevron-left"></i></button>
-        <button id="inspect-next" onclick="inspectStep(1)" title="Следующая (→)" style="display:none;" class="hidden fixed right-2 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-slate-900/85 border border-slate-700 hover:border-violet-400 hover:text-violet-300 text-slate-200 flex items-center justify-center transition shadow-xl"><i class="fa-solid fa-chevron-right"></i></button>
+        <button id="inspect-prev" onclick="inspectStep(-1)" title="Предыдущая (←)" style="display:none;" class="hidden fixed left-1 sm:left-6 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/85 border border-slate-700 hover:border-violet-400 hover:text-violet-300 text-slate-200 flex items-center justify-center transition shadow-xl"><i class="fa-solid fa-chevron-left text-sm sm:text-base"></i></button>
+        <button id="inspect-next" onclick="inspectStep(1)" title="Следующая (→)" style="display:none;" class="hidden fixed right-1 sm:right-6 top-1/2 -translate-y-1/2 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/85 border border-slate-700 hover:border-violet-400 hover:text-violet-300 text-slate-200 flex items-center justify-center transition shadow-xl"><i class="fa-solid fa-chevron-right text-sm sm:text-base"></i></button>
     </div>
 
     <!-- Export Modal (fallback when downloads are blocked) -->
@@ -2398,6 +2398,12 @@ min-height:56vh}
     <!-- b97: все уведомления сверху, по центру, под безопасной зоной челки -->
     <!-- b217: уведомления в стиле Liquid Glass -->
     <style>
+    /* b428: просмотр карты на телефоне — целиком на одном экране: карта
+       ужимается по высоте (58vh при пропорции 9/16), кнопки и стрелки
+       остаются видимыми без скролла модалки */
+    @media (max-width:640px){
+        #inspect-float{ max-width: min(24rem, calc(58vh * 0.5625)); margin: 0 auto; }
+    }
     /* b217: стек уведомлений — сразу под меню вкладок; точный top выставляет JS по высоте шапки */
     #toast-container{ top: calc(env(safe-area-inset-top, 0px) + 64px); transform: translateX(-50%); }
     @media (max-width:640px){
@@ -2742,10 +2748,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob91"></script>
-    <script src="assets/stories.js?v=nxmob91"></script>
-    <script src="assets/qrcode.min.js?v=nxmob91"></script>
-    <script src="assets/qr-transfer.js?v=nxmob91"></script>
+    <script src="assets/app.js?v=nxmob92"></script>
+    <script src="assets/stories.js?v=nxmob92"></script>
+    <script src="assets/qrcode.min.js?v=nxmob92"></script>
+    <script src="assets/qr-transfer.js?v=nxmob92"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
