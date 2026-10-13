@@ -5622,6 +5622,62 @@ function nxToggle3d() {
             try { e.preventDefault(); } catch (e2) {}
         });
         function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }
+        // b422: реальное время. Лёгкий pull раз в 15 секунд: fetch → merge всех
+        // четырёх разделов → push ТОЛЬКО если наш реестр впереди облака. Полный
+        // цикл jpSyncNow (с повторным чтением после записи) остаётся для событий.
+        function jpPullLight() {
+            if (jpBusy) return;
+            jpBusy = true; window.__nxJpAt = Date.now(); // b404: отметка для watchdog
+            jpFetch().then(remote => {
+                const rj = remote && remote.jp ? remote.jp : remote;
+                jackpotMerge(rj);
+                jpcMerge(remote && remote.jpc); // b414
+                marketMerge(remote && remote.mk); // b136
+                siteStatsMerge(remote && remote.st); // b277
+                try { jpcApplyGrants(); } catch (e) {} // b414
+                if (jpAheadOf(rj)) { jpBusy = false; jpSyncNow(); return; } // мы впереди — догоняющий пуш
+                try { marketCreditLedger(); } catch (e) {}
+                try { statsRenderIfVisible(); } catch (e) {}
+                try { renderMarketIfVisible(); } catch (e) {}
+            }).catch(() => { /* офлайн — дождёмся следующего тика */ })
+              .then(() => { jpBusy = false; jpLastAt = Date.now(); });
+        }
+        // b422: открытый таб на старой сборке после b421 синхронизируется через
+        // брошенный документ v2 и видит СВОЙ банк (те самые «38q против 24q»).
+        // Сверяем тег сборки с сервером и просим обновить вкладку: только так
+        // старая вселенная схлопывается в общую.
+        function nxOwnTag() {
+            try {
+                const list = document.scripts || [];
+                for (let i = 0; i < list.length; i++) {
+                    const src = String(list[i].src || '');
+                    if (src.indexOf('assets/app.js') < 0) continue;
+                    const m = src.match(/v=(nxmob\d+)/);
+                    if (m) return m[1];
+                }
+            } catch (e) {}
+            return '';
+        }
+        function nxVersionNudge() {
+            try {
+                const own = nxOwnTag();
+                if (!own || document.getElementById('nx-ver-toast')) return;
+                fetch('index.html?nc=' + Date.now(), { cache: 'no-store' }).then(r => (r && r.ok) ? r.text() : '').then(t => {
+                    const m = String(t || '').match(/assets\/app\.js\?v=(nxmob\d+)/);
+                    if (!m || m[1] === own) return;
+                    if (document.getElementById('nx-ver-toast')) return;
+                    const c = document.getElementById('toast-container');
+                    if (!c) return;
+                    positionToastContainer();
+                    const el = document.createElement('div');
+                    el.id = 'nx-ver-toast';
+                    el.className = 'pointer-events-auto w-full px-3.5 py-3 flex items-center gap-2.5 rounded-xl border border-amber-500/40 bg-amber-950/95 text-amber-100 text-[11px] font-bold leading-snug shadow-lg';
+                    el.innerHTML = '<i class="fa-solid fa-rotate text-amber-300"></i><span>Версия игры обновилась (' + m[1] + '). Эта вкладка синхронизируется по старому документу и видит свой банк — обновите, чтобы играть со всеми.</span>' +
+                        '<button type="button" onclick="location.reload()" class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black shrink-0 transition">Обновить</button>';
+                    c.appendChild(el);
+                }).catch(() => {});
+            } catch (e) {}
+        }
         // b404: страховка — если промис синха потерялся (аборт без reject, сон WebView),
         // jpBusy не должен держать банк заложником больше 40 секунд
         setInterval(() => {
@@ -16942,7 +16998,8 @@ function nxToggle3d() {
             // b71: общий джекпот сайта — первичная синхронизация, авто-раз в минуту и при возврате на вкладку
             // b183: уходим со страницы — срочно отправляем банк (jpFlush), вернулись — полная синхронизация
             try {
-                jpSyncNow(); setInterval(() => { if (!document.hidden) jpSyncNow(); }, 60000); // b404: в фоне сеть не дёргаем
+                jpSyncNow(); setInterval(() => { if (!document.hidden) jpPullLight(); }, 15000); // b422: реальное время — лёгкий pull каждые 15 с (в фоне сеть не дёргаем)
+                setInterval(() => { try { if (!document.hidden) nxVersionNudge(); } catch (e) {} }, 180000); // b422: старая вкладка узнаёт, что она старая
                 document.addEventListener('visibilitychange', () => { if (!document.hidden) jpSyncSoon(); }); // b404
                 document.addEventListener('visibilitychange', () => { if (document.hidden) jpFlush(); else jpSyncNow(); });
                 window.addEventListener('pagehide', jpFlush);
