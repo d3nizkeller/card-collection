@@ -117,6 +117,10 @@ function boot() {
     ok(badges.every(b => { const c = b.firstElementChild; return c.className.indexOf('sm:w-24') >= 0; }), 'кружки крупнее на широких экранах (sm:w-24)');
     ok(badges.every(b => b.className.indexOf('w-full') >= 0), 'ячейка тянется на колонку сетки');
 
+    console.log('\nD3. Подсказка под заголовком убрана (просьба владельца)');
+    ok(!/Круглый значок с обложкой загорается/.test(sec.innerHTML), 'текста-подсказки в карточке значков нет');
+    ok(!!doc.getElementById('rewards-album-badges'), 'сами значки на месте');
+
     console.log('\nE. Остальная вкладка наград на месте');
     ok(!!doc.getElementById('rewards-daily-strip'), 'ежедневная награда');
     ok(!!doc.getElementById('rewards-missions-list'), 'задания дня');
