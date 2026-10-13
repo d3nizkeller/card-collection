@@ -97,18 +97,19 @@ function boot(ledger, cid) {
     const B = boot(null);
     const bv = B.ev;
     bv('jackpot.led = {}; jackpot.won = {};');
-    eq(bv('jpLedAdd("led", "px", 2.5e12)'), 2.5e12, 'взнос 2.5t лёг целиком');
-    eq(bv('jpLedNum(jackpot.led["px"])'), BUCKET, 'ведро 0 = 1e12');
-    eq(bv('jpLedNum(jackpot.led["px#1"])'), BUCKET, 'ведро 1 = 1e12');
-    eq(bv('jpLedNum(jackpot.led["px#2"])'), 0.5e12, 'ведро 2 = 0.5t');
-    eq(bv('jpLedOf("led", "px")'), 2.5e12, 'jpLedOf суммирует все вёдра игрока');
-    eq(bv('jpLedSum(jackpot.led)'), 2.5e12, 'jpLedSum видит вёдра');
-    eq(bv('jackpotPlayers()'), 1, '«копят банк»: три вёдра = один игрок');
-    eq(bv('jpLedAdd("led", "px", 1e18)'), 4096 * BUCKET - 2.5e12, 'взнос 1e18 обрезан суммарной ёмкостью вёдер (4096 × 1e12)');
-    ok(bv('jpLedOf("led", "px")') <= 4096 * BUCKET, 'суммарный счётчик не выше 4096 × 1e12 = 4e15');
-    // siteStats видит сумму по вёдрам
+    eq(bv('jpLedAdd("led", "px", 2.5e12)'), 2.5e12, 'взнос 2.5t лёг в разряд 0');
+    eq(bv('jpLedNum(jackpot.led["px"])'), 2.5e12, 'разряд 0 = 2.5t');
+    eq(bv('jpLedAdd("led", "px", 8e12)'), 8e12, 'взнос 8t лёг целиком');
+    eq(bv('jpLedNum(jackpot.led["px"])'), 1e13, 'разряд 0 заполнен до ёмкости 1e13');
+    eq(bv('jpLedNum(jackpot.led["px#1"], 1)'), 0.5e12, 'переполнение 0.5t ушло в разряд 1');
+    eq(bv('jpLedOf("led", "px")'), 1.05e13, 'jpLedOf суммирует разряды игрока');
+    eq(bv('jpLedSum(jackpot.led)'), 1.05e13, 'jpLedSum видит разряды');
+    eq(bv('jackpotPlayers()'), 1, '«копят банк»: разряды одного cid = один игрок');
+    eq(bv('jpLedAdd("led", "px", 1e18)'), 1e18, 'b419: взнос 1e18 лёг целиком — без потолка');
+    ok(bv('jpLedNum(jackpot.led["px#2"], 2)') > 0, '1e18 донеслось до разряда 2');
+    // siteStats видит сумму по разрядам
     bv('siteStatsSelfUpdate()');
-    eq(bv('siteStats.p[JACKPOT_CID].fed'), bv('jpLedOf("led", JACKPOT_CID)'), 'в реестр сайта fed ушёл суммой по вёдрам');
+    eq(bv('siteStats.p[JACKPOT_CID].fed'), bv('jpLedOf("led", JACKPOT_CID)'), 'в реестр сайта fed ушёл суммой по разрядам');
 
     // ===== C. зал славы и tombstone =====
     console.log('\nC. Сброс топа джекпотов: мусор не воскресает');
@@ -124,7 +125,7 @@ function boot(ledger, cid) {
     cv('cloudGuest = () => false');
     ok(cv('jackpot.hall.length') === 2, 'до сброса в зале 2 записи (в т.ч. «+1e+42q»)');
     cv('jackpotRender()');
-    ok(/1e\+42q/.test((C.doc.getElementById('slots-jp-top-list') || {}).innerHTML || ''), 'мусор виден в топе-3 до сброса (как на скриншоте)');
+    ok(/1e\+24d/.test((C.doc.getElementById('slots-jp-top-list') || {}).innerHTML || ''), 'мусор виден в топе-3 до сброса (1e57 → «1e+24d» буквами b419)');
     cv('jpcResetHall()');
     eq(cv('jackpot.hall.length'), 0, 'зал славы очищен');
     ok(cv('jackpot.hallCut') > 1791887502400, 'tombstone hallCut поставлен');
@@ -174,7 +175,7 @@ function boot(ledger, cid) {
     const f0 = fv('jackpotPool()');
     for (let i = 0; i < 20; i++) fv('jackpotFeed(10000)');
     eq(fv('jackpotPool()') - f0, 200000, 'банк растёт от ставок');
-    ok(fv('JP_BUCKET') === 1e12 && fv('JP_LED_CAP') === 1e13, 'константы вёдер и потолка на месте');
+    ok(fv('JP_TIER0') === 1e13 && fv('JP_TIERS') === 24 && fv('JP_TIER_MUL') === 1000, 'разряды b419 на месте (1e13 × 1000^i)');
     ok(typeof fv('nxBetLack') === 'function' && typeof fv('nxLackNote') === 'function', 'хелперы b417 на месте');
 
     console.log('\n' + (fails ? '💥 ' + fails + ' из ' + checks + ' провалено' : '✅ ALL PASS: ' + checks + ' проверок'));

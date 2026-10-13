@@ -153,14 +153,14 @@ function bootDom(withFixture, ownerCid) {
     // ================= D. потолок и точность =================
     console.log('\nD. Потолок счётчика, точность сумм, честный «Поставить банк»');
     ev('jpcSet({floor:1000})'); reset();
-    const PCAP = ev('JP_MAX_BUCKETS * JP_BUCKET'); // b418: 4096 вёдер × 1e12
-    eq(ev('jpLedAdd("led", JACKPOT_CID, 1e30)'), PCAP, 'b418: взнос 1e30 обрезан суммарной ёмкостью вёдер (' + PCAP + ')');
-    eq(ev('jpLedSum(jackpot.led)'), PCAP, 'сумма реестра = ёмкость вёдер, не 1e30');
-    ok(ev('jackpotPool()') <= 1000 + PCAP, 'банк не улетел в астрономию: ' + ev('fmtCoins(jackpotPool())'));
-    ok(ev('jpLedNum(jackpot.led[JACKPOT_CID])') <= ev('JP_BUCKET'), 'b418: в одном ключе не больше 1e12 — точность double жива');
+    eq(ev('jpLedAdd("led", JACKPOT_CID, 1e30)'), 1e30, 'b419: взнос 1e30 лёг ПОЛНОСТЬЮ — ограничений роста нет');
+    eq(ev('jpLedSum(jackpot.led)'), 1e30, 'сумма реестра точна');
+    ok(ev('jpLedNum(jackpot.led[JACKPOT_CID + "#1"], 1)') > 0, 'переполнение ушло в старший разряд (#1)');
+    ok(ev('jpLedNum(jackpot.led[JACKPOT_CID], 0)') <= ev('jpTierCap(0)'), 'разряд 0 не выше своей ёмкости 1e13');
+    eq(ev('jackpotPool()'), 1000 + 1e30, 'банк вырос до 1e30');
     reset();
     ev('jpcSetPool(1e30)');
-    ok(ev('jackpotPool()') <= 1000 + PCAP, '«Поставить банк 1e30» не раздувает реестр (банк ' + ev('fmtCoins(jackpotPool())') + ')');
+    eq(ev('jackpotPool()'), 1000 + 1e30, '«Поставить банк 1e30» → ровно 1e30 сверх пола');
     reset();
     ev('jpcSetPool(500000)');
     eq(ev('jackpotPool()'), 500000, '«Поставить банк 500k» → ровно 500k');

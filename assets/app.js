@@ -4492,14 +4492,15 @@ function nxToggle3d() {
         const JP_LED_CAP = 1e13;   // 10 триллионов на один счётчик: недостижимо честной игрой, но 9000 таких записей = 9e15 ≈ Number.MAX_SAFE_INTEGER, то есть сумма остаётся точной до монеты
         const JP_HOUSE = 'house';  // служебная запись реестра: дом гасит долг испорченного банка (в «копят банк» не считается)
         let jpFixInfo = { n: 0, debt: 0, at: 0 }; // что починил jpRepairLedger — видно в Студии
-        // запись пригодна для счёта, если это целое в пределах [0, JP_LED_CAP]
-        function jpLedBad(v) { const n = Number(v); return !(isFinite(n) && n >= 0 && n <= JP_LED_CAP && n === Math.floor(n)); }
-        function jpLedNum(v) { return jpLedBad(v) ? 0 : Math.floor(Number(v)); }
+        // b416/b419: запись пригодна для счёта, только если это целое в пределах
+        // ёмкости СВОЕГО разряда (tier по суффиксу ключа; без аргумента — разряд 0)
+        function jpLedBad(v, tier) { const n = Number(v); return !(isFinite(n) && n >= 0 && n <= jpTierCap(tier || 0) && n === Math.floor(n)); }
+        function jpLedNum(v, tier) { return jpLedBad(v, tier) ? 0 : Math.floor(Number(v)); }
         function jpLedSum(m) {
             // b416: испорченные счётчики в сумму не идут вовсе, остальные складываем
             // по возрастанию — слагаемые целые и ≤ 1e13, значит сумма точная
             const a = [];
-            for (const k in m) { const v = jpLedNum(m[k]); if (v > 0) a.push(v); }
+            for (const k in m) { const v = jpLedNum(m[k], jpTierOfKey(k)); if (v > 0) a.push(v); } // b419: разряды
             a.sort((x, y) => x - y);
             let s = 0;
             for (let i = 0; i < a.length; i++) s += a[i];
@@ -4507,23 +4508,32 @@ function nxToggle3d() {
         }
         // b418: счётчик-«вёдра». Одномерный счётчик с потолком можно упереть в
         // потолок (владелец докормил led до 1e13 — и взносы снова стали исчезать,
-        // «банк вырос на +0»). Теперь переполнение дописывается в следующее ведро
-        // (cid#1, cid#2, …): слияние то же (max на ключ), суммы точные (слагаемые
-        // ≤ 1e12), а живой банк не упирается ни во что: 4096 вёдер × 1e12 = 4e15
-        // на игрока. Мусор (> JP_LED_CAP в одном ключе) по-прежнему режется.
-        const JP_BUCKET = 1e12;
-        const JP_MAX_BUCKETS = 4096;
+        // «банк вырос на +0»).
+        // b419: «джекпот должен расти без ограничений» — вёдра стали РАЗРЯДАМИ
+        // смешанной системы с основанием 1000: разряд i вмещает JP_TIER0*1000^i
+        // (1e13, 1e16, 1e19, … до 1e82). Переполнение разряда уходит в старший,
+        // любой взнос любой величины ложится полностью, ключей на игроку нужно
+        // ~log1000(банк) (при банке 1e40 — десять), слияние то же (max на ключ).
+        // Жёстких потолков роста больше нет; «мусор» = запись вне ёмкости СВОЕГО
+        // разряда, так что защита b416 от 1e57 на месте, а старые ключи с 1e13
+        // (ровно ёмкость разряда 0) остаются валидными без миграции.
+        const JP_TIER0 = 1e13;
+        const JP_TIER_MUL = 1000;
+        const JP_TIERS = 24; // до 1e13*1000^23 ≈ 1e82 — дальше только экспоненциальная запись
+        function jpTierCap(i) { return JP_TIER0 * Math.pow(JP_TIER_MUL, i | 0); }
+        function jpTierOfKey(k) { const h = String(k).indexOf('#'); return h > 0 ? (Math.abs(parseInt(String(k).slice(h + 1), 10)) || 0) : 0; }
         function jpBucketKey(cid, i) { return i ? cid + '#' + i : cid; }
         function jpLedAdd(field, cid, x) {
-            // возвращает, сколько РЕАЛЬНО легло в реестр (0 = не влезло ни в одно ведро)
+            // b419: каскад по разрядам; возвращает, сколько легло (для любой
+            // конечной суммы вплоть до 1e82 — ровно x, пределов роста нет)
             x = Math.floor(Number(x) || 0);
             if (!(x > 0)) return 0;
             const m = jackpot[field] || (jackpot[field] = {});
             let left = x, added = 0;
-            for (let i = 0; left > 0 && i < JP_MAX_BUCKETS; i++) {
+            for (let i = 0; left > 0 && i < JP_TIERS; i++) {
                 const k = jpBucketKey(cid, i);
-                const cur = jpLedNum(m[k]);
-                const put = Math.min(left, JP_BUCKET - cur);
+                const cur = jpLedNum(m[k], i);
+                const put = Math.min(left, jpTierCap(i) - cur);
                 if (put > 0) { m[k] = cur + put; added += put; left -= put; }
             }
             return added;
@@ -4532,7 +4542,7 @@ function nxToggle3d() {
             // b418: суммарный счётчик игрока по всем его вёдрам
             const m = jackpot[field] || {};
             let s = 0;
-            for (const k in m) if (k === cid || k.indexOf(cid + '#') === 0) s += jpLedNum(m[k]);
+            for (const k in m) if (k === cid || k.indexOf(cid + '#') === 0) s += jpLedNum(m[k], jpTierOfKey(k)); // b419: разряды
             return s;
         }
         function jpHallFiltered(hall, cut) {
@@ -4553,7 +4563,7 @@ function nxToggle3d() {
             let n = 0;
             ['led', 'won'].forEach(f => {
                 const m = jackpot[f] || (jackpot[f] = {});
-                for (const k in m) if (jpLedBad(m[k])) { delete m[k]; n++; }
+                for (const k in m) if (jpLedBad(m[k], jpTierOfKey(k))) { delete m[k]; n++; } // b419: вне ёмкости своего разряда
             });
             const debt = JACKPOT_SEED - jpRawPool();
             if (debt > 0) { if (jpLedAdd('led', JP_HOUSE, debt)) n++; }
@@ -4768,7 +4778,7 @@ function nxToggle3d() {
             const got = jackpotPool();
             if (got === target) showToast((d > 0 ? '📈 Банк поднят до ' : '📉 Банк снижен до ') + fmtCoins(got), 'success');
             // b416: честная подпись — раньше тост рапортовал успех, даже если сумма не встала
-            else showToast('Банк не встал ровно: сейчас ' + fmtCoins(got) + ' (потолок одного счётчика ' + fmtCoins(JP_LED_CAP) + ')', 'info');
+            else showToast('Банк не встал ровно: сейчас ' + fmtCoins(got) + ' (так бывает только с нечисловой суммой)', 'info'); // b419: потолков больше нет
         }
         function jpcNudgePool(delta) { jpcSetPool(jackpotPool() + Math.round(Number(delta) || 0)); }
         function jpcResetPoolFloor() { jpcSetPool(Math.max(0, Math.round(jpc.floor || 0))); }
@@ -4904,7 +4914,7 @@ function nxToggle3d() {
                     fn.hidden = false;
                     fn.innerHTML = '<i class="fa-solid fa-screwdriver-wrench text-emerald-400 mr-1"></i>Реестр банка починен автоматически: испорченных записей <b class="text-slate-300">' + jpFixInfo.n + '</b>' +
                         (jpFixInfo.debt > 0 ? ', долг <b class="text-slate-300">' + fmtCoins(jpFixInfo.debt) + '</b> покрыт домом' : '') +
-                        '. Счётчики выше <b class="text-slate-300">' + fmtCoins(JP_LED_CAP) + '</b> банк не учитывает — на таких величинах у double шаг ≈ 1e40, и взносы игроков исчезали, поэтому банк стоял на месте.';
+                        '. Битые записи реестра банк не учитывает — раньше они уводили счётчики в 1e57, где у double шаг ≈ 1e40 и взносы игроков исчезали, поэтому банк стоял на месте. С b419 банк растёт без ограничений: реестр ведётся разрядами 1e13 → 1e16 → 1e19…';
                 } else fn.hidden = true;
             }
         }
@@ -5289,7 +5299,7 @@ function nxToggle3d() {
         function jackpotPlayers() {
             const seen = {};
             for (const k in jackpot.led) {
-                if (jpLedBad(jackpot.led[k])) continue;
+                if (jpLedBad(jackpot.led[k], jpTierOfKey(k))) continue; // b419
                 const h = k.indexOf('#');
                 const base = h > 0 ? k.slice(0, h) : k;
                 if (base === JP_HOUSE) continue;
@@ -8012,6 +8022,13 @@ function nxToggle3d() {
             else if (last === 'b' || last === 'б') { mult = 1e9; t = t.slice(0, -1); } // b221: миллиарды тоже буквой
             else if (last === 't' || last === 'т') { mult = 1e12; t = t.slice(0, -1); } // b222: триллионы
             else if (last === 'q') { mult = 1e15; t = t.slice(0, -1); } // b222: квадриллионы
+            // b419: те же буквы, что и в fmtCoins, — ставку и банк можно писать до дециллионов
+            else if (last === 's') { mult = 1e18; t = t.slice(0, -1); }
+            else if (last === 'u') { mult = 1e21; t = t.slice(0, -1); }
+            else if (last === 'p') { mult = 1e24; t = t.slice(0, -1); }
+            else if (last === 'o') { mult = 1e27; t = t.slice(0, -1); }
+            else if (last === 'n') { mult = 1e30; t = t.slice(0, -1); }
+            else if (last === 'd') { mult = 1e33; t = t.slice(0, -1); }
             const n = Number(t.replace(',', '.'));
             if (!isFinite(n) || n <= 0) return NaN;
             return n * mult;
@@ -11665,11 +11682,15 @@ function nxToggle3d() {
         function fmtCoins(n) {
             n = Math.floor(Number(n) || 0);
             if (n < 1000) return String(n);
-            const units = [[1e15, 'q'], [1e12, 't'], [1e9, 'b'], [1e6, 'm'], [1e3, 'k']]; // b222: буквы до квадриллионов
+            // b222: буквы до квадриллионов; b419: и дальше — до дециллионов, чтобы
+            // неограниченно растущий банк показывался буквами, а не «1000q»/«1e+42q»
+            const units = [[1e33, 'd'], [1e30, 'n'], [1e27, 'o'], [1e24, 'p'], [1e21, 'u'], [1e18, 's'], [1e15, 'q'], [1e12, 't'], [1e9, 'b'], [1e6, 'm'], [1e3, 'k']];
             for (let i = 0; i < units.length; i++) {
                 if (n >= units[i][0]) {
                     const x = n / units[i][0];
-                    const t = x >= 100 ? Math.floor(x) : Math.floor(x * 10) / 10;
+                    // b419: эпсилон-дозводка: 3e30/1e30 в double = 2.9999999999999996,
+                    // без неё витрина показала бы «2.9n» вместо «3n»
+                    const t = x >= 100 ? Math.floor(x + 1e-9) : Math.floor(x * 10 + 1e-6) / 10;
                     return String(t).replace(/\.0$/, '') + units[i][1];
                 }
             }
