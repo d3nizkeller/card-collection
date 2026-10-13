@@ -4570,6 +4570,48 @@ function nxToggle3d() {
             if (n) jpFixInfo = { n: (jpFixInfo.n || 0) + n, debt: (jpFixInfo.debt || 0) + (debt > 0 ? debt : 0), at: Date.now() };
             return n;
         }
+        // b420: уплотнение реестра: все разряды игрока сводятся в минимальный
+        // каскад (1–10 ключей вместо тысяч), эпоха ep увеличивается — клиенты b420+
+        // примут реестр целиком, старые ключи уйдут из облака и из localStorage.
+        // Суммы (Σled − Σwon) сохраняются, значит банк не меняется.
+        function jpCompact(silent) {
+            if (jpcAdminGuard()) return false;
+            // b420: клиент ДО эпох (nxmob81 и старше) не знает ep и при max-слиянии
+            // вернёт старые ключи-разряды поверх уплотнённых — банк удвоится.
+            // Поэтому уплотняем только когда старых клиентов не было видно 10 минут
+            if ((window.__nxJpLegacyAt || 0) > Date.now() - 600000) {
+                if (!silent) showToast('⏳ Сейчас активен клиент старой версии — уплотнение удвоит его витрину. Обновите все вкладки игры и повторите', 'error');
+                return false;
+            }
+            const rebuild = f => {
+                const src = jackpot[f] || {};
+                const totals = {};
+                for (const k in src) {
+                    const h = k.indexOf('#');
+                    const base = h > 0 ? k.slice(0, h) : k;
+                    totals[base] = (totals[base] || 0) + jpLedNum(src[k], jpTierOfKey(k));
+                }
+                const out = {};
+                for (const base in totals) {
+                    let left = Math.floor(totals[base] || 0);
+                    for (let i = 0; left > 0 && i < JP_TIERS; i++) {
+                        const put = Math.min(left, jpTierCap(i));
+                        if (put > 0) out[jpBucketKey(base, i)] = put;
+                        left -= put;
+                    }
+                }
+                return out;
+            };
+            jackpot.led = rebuild('led');
+            jackpot.won = rebuild('won');
+            jackpot.ep = (Math.floor(jackpot.ep) || 0) + 1;
+            jackpotSave(); jackpotRender();
+            try { jpcAdminPreview(); } catch (e) {}
+            try { jpSyncNow(); } catch (e) {}
+            if (!silent) showToast('📦 Реестр банка уплотнён до ' + (Object.keys(jackpot.led).length + Object.keys(jackpot.won).length) + ' ключей и опубликован (эпоха ' + jackpot.ep + ')', 'success');
+            return true;
+        }
+        function jpDocBytes() { try { return JSON.stringify(jpDoc()).length; } catch (e) { return 0; } }
         function jpRepairNow() {
             // кнопка «Починить банк» в Студии: то же самое, что автоматика, но сразу
             // с публикацией — владелец может починить банк для всех игроков сайта
@@ -5128,7 +5170,7 @@ function nxToggle3d() {
         function jackpotLoad() {
             try {
                 const j = JSON.parse(LS.getItem(JACKPOT_KEY) || 'null');
-                if (j && j.led) return { led: j.led || {}, won: j.won || {}, wins: j.wins || {}, names: j.names || {}, hall: jpHallFiltered(j.hall, j.hallCut), hallCut: Math.floor(j.hallCut) || 0 }; // b418: tombstone зала славы
+                if (j && j.led) return { led: j.led || {}, won: j.won || {}, wins: j.wins || {}, names: j.names || {}, hall: jpHallFiltered(j.hall, j.hallCut), hallCut: Math.floor(j.hallCut) || 0, ep: Math.floor(j.ep) || 0 }; // b418: tombstone зала славы; b420: эпоха реестра
                 // b71: миграция старого личного банка в собственный взнос игрока
                 if (j && j.pool >= 1) {
                     const led = {}; const extra = Math.floor(j.pool) - JACKPOT_SEED;
@@ -5315,7 +5357,23 @@ function nxToggle3d() {
                 if (!src || typeof src !== 'object') return;
                 for (const k in src) { const v = Math.floor(src[k]) || 0; if (v > (dst[k] || 0)) { dst[k] = v; ch = true; } }
             };
-            pick(jackpot.led, remote.led); pick(jackpot.won, remote.won); pick(jackpot.wins, remote.wins);
+            // b420: эпоха реестра. После уплотнения (jpCompact) реестр принимается
+            // ЦЕЛИКОМ: max-слияние вернуло бы старые ключи-разряды и документ снова
+            // раздулся бы; имена/зал славы ниже сливаются как обычно
+            const rep = Math.floor(remote.ep) || 0;
+            const myEp = Math.floor(jackpot.ep) || 0;
+            if (rep > myEp) {
+                jackpot.led = (remote.led && typeof remote.led === 'object') ? remote.led : {};
+                jackpot.won = (remote.won && typeof remote.won === 'object') ? remote.won : {};
+                jackpot.wins = (remote.wins && typeof remote.wins === 'object') ? remote.wins : {};
+                jackpot.ep = rep;
+            } else if (rep === myEp) {
+                pick(jackpot.led, remote.led); pick(jackpot.won, remote.won); pick(jackpot.wins, remote.wins);
+            }
+            // b420: rep < myEp — реестр собеседника старше нашего уплотнения
+            // (или вообще без эпохи): его ключи легли бы ПОВЕРХ уплотнённых и
+            // удвоили бы банк, поэтому реестр от него не принимается (имена и
+            // зал славы ниже сливаются как обычно). Он догонит после обновления.
             if (jpRepairLedger()) ch = true; // b416: облако (или старый клиент) могло притащить счётчики-гиганты
             // b91: имена игроков: своё локальное имя важнее, чужие — из облака
             if (remote.names && typeof remote.names === 'object') {
@@ -5515,6 +5573,8 @@ function nxToggle3d() {
             if (jpBusy) { jpPending = true; return; }
             jpBusy = true; window.__nxJpAt = Date.now(); // b404: отметка для watchdog
             const cycle = depth => jpFetch().then(remote => {
+                // b420: документ без ep притащил клиент ДО эпох — запоминаем для охраны уплотнения
+                try { const rj0 = remote && remote.jp ? remote.jp : remote; if (rj0 && !rj0.ep) window.__nxJpLegacyAt = Date.now(); } catch (e) {}
                 jackpotMerge(remote && remote.jp ? remote.jp : remote);
                 jpcMerge(remote && remote.jpc); // b414: настройки джекпота от владельца комнаты
                 marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
@@ -5536,6 +5596,14 @@ function nxToggle3d() {
                     jpcApplyGrants();           // b414: назначенный мне джекпот — сразу на баланс
                     statsRenderIfVisible();     // b277
                     renderMarketIfVisible();
+                    // b420: документ распух → уплотняем реестр (владелец комнаты),
+                    // иначе мобильные клиенты не долетают в 15-секундный таймаут
+                    try {
+                        if (!cloudGuest() && jpDocBytes() > 600000 && Date.now() - (window.__nxJpCompactAt || 0) > 300000) {
+                            window.__nxJpCompactAt = Date.now();
+                            jpCompact(true);
+                        }
+                    } catch (e) {}
                 }));
             }).catch(() => { /* офлайн или облако недоступно — банк дождётся следующей синхронизации */ })
               .then(() => { jpBusy = false; jpLastAt = Date.now(); if (jpPending) { jpPending = false; jpSyncNow(); } }); // b183: догоняющий пуш
@@ -5556,7 +5624,7 @@ function nxToggle3d() {
         // b183: документ общего банка (тот же, что пушит jpSyncNow) — нужен и для аварийной отправки
         function jpDoc() {
             return {
-                jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall, hallCut: jackpot.hallCut || 0 }, // b418: tombstone зала славы едет со всеми
+                jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall, hallCut: jackpot.hallCut || 0, ep: Math.floor(jackpot.ep) || 0 }, // b418: tombstone; b420: эпоха реестра
                 jpc: jpcDoc(), // b414: настройки джекпота и назначенные выдачи — видны всему сайту
                 mk: marketDoc(), // b136
                 st: siteStatsDoc(), // b277: статистика игроков сайта — балансы, паки, джекпоты
@@ -6701,8 +6769,25 @@ function nxToggle3d() {
                 return res;
             } catch (e) { return {}; }
         }
+        // b420: tombstone снятых лотов раньше сливался без обрезки (union по всем
+        // клиентам за историю = 16 918 записей = 728 КБ в каждом пуше) — мобильные
+        // клиенты не долетали в 15-секундный таймаут и выпадали из синхронизации.
+        // Tombstone нужен лишь пока жив кэш виденных лотов (10 минут, b336):
+        // держим 2 часа и не больше 300 записей.
+        const MK_RM_TTL = 2 * 60 * 60 * 1000;
+        const MK_RM_MAX = 300;
+        function marketRemovedPrune(o) {
+            try {
+                const cut = Date.now() - MK_RM_TTL;
+                let ks = Object.keys(o || {});
+                for (let i = 0; i < ks.length; i++) if ((o[ks[i]] || 0) < cut) delete o[ks[i]];
+                ks = Object.keys(o || {}).sort((a, b) => (o[a] || 0) - (o[b] || 0));
+                if (ks.length > MK_RM_MAX) ks.slice(0, ks.length - MK_RM_MAX).forEach(k => delete o[k]);
+            } catch (e) {}
+            return o;
+        }
         function marketRemovedAdd(id) {
-            try { const o = marketRemoved(); o[id] = Date.now(); const ks = Object.keys(o); if (ks.length > 300) delete o[ks[0]]; LS.setItem('nexus_market_removed', JSON.stringify(o)); } catch (e) {}
+            try { const o = marketRemoved(); o[id] = Date.now(); marketRemovedPrune(o); LS.setItem('nexus_market_removed', JSON.stringify(o)); } catch (e) {} // b420: prune
         }
         // b405: пакетная версия — один read и один write на всю партию.
         // Раньше автовыкуп 700 лотов делал 700 чтений+записей localStorage
@@ -6716,13 +6801,12 @@ function nxToggle3d() {
                 const o = marketRemoved();
                 const now = Date.now();
                 for (let i = 0; i < ids.length; i++) o[ids[i]] = now;
-                const ks = Object.keys(o);
-                if (ks.length > 300) { ks.slice(0, ks.length - 300).forEach(k => delete o[k]); }
+                marketRemovedPrune(o); // b420: возраст + количество, а не «первые 300»
                 LS.setItem('nexus_market_removed', JSON.stringify(o));
             } catch (e) {}
         }
         function marketDoc() {
-            return { lots: marketLots().slice(-80), ledger: (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).slice(-60), rm: marketRemoved() }; // b336: rm — снятые лоты
+            return { lots: marketLots().slice(-80), ledger: (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).slice(-60), rm: marketRemovedPrune(marketRemoved()) }; // b336: rm — снятые лоты; b420: обрезанные по возрасту/количеству
         }
         function marketMerge(rmk) {
             if (!rmk || typeof rmk !== 'object') return;
@@ -6732,6 +6816,7 @@ function nxToggle3d() {
                     const o = JSON.parse(LS.getItem('nexus_market_removed') || '{}');
                     let ch2 = false;
                     for (const k in rrm) { if (rrm[k] && (!o[k] || rrm[k] > o[k])) { o[k] = rrm[k]; ch2 = true; } }
+                    marketRemovedPrune(o); // b420: чужой rm больше не раздувает наш документ
                     if (ch2) LS.setItem('nexus_market_removed', JSON.stringify(o));
                 }
             } catch (e) {}

@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob81" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob81">
+    <script src="assets/three.min.js?v=nxmob82" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob82">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob81">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob82">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob81">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob82">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1906,6 +1906,7 @@ min-height:56vh}
                     <button type="button" onclick="jpcNudgePool(-10000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">−10k</button>
                     <button type="button" onclick="jpcResetPoolFloor()" class="px-2.5 py-1.5 bg-slate-900 hover:bg-rose-950/60 border border-slate-800 rounded-lg text-[11px] font-bold text-slate-400 transition">Сбросить до минимума</button>
                     <button type="button" onclick="jpRepairNow()" title="Выбросить испорченные счётчики реестра и погасить долг банка" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-screwdriver-wrench mr-1"></i>Починить банк</button>
+                    <button type="button" onclick="jpCompact()" title="Свести тысячи ключей-разрядов в минимальный каскад и опубликовать (эпоха +1): облачный документ станет легче, синхронизация — быстрее" class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-boxes-stacked mr-1"></i>Уплотнить реестр</button>
                 </div>
                 <p class="text-[10px] text-slate-500 leading-snug">Сумма понимает буквы: <b class="text-slate-300">10k</b>, <b class="text-slate-300">5m</b>, <b class="text-slate-300">1b</b>. Банк общий на весь сайт — правка видна всем игрокам после синхронизации. «Сбросить до минимума» оставляет в банке только несгораемый остаток.</p>
                 <p id="jpc-fix-note" hidden class="text-[10px] text-emerald-300 leading-snug"></p>
@@ -2720,10 +2721,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob81"></script>
-    <script src="assets/stories.js?v=nxmob81"></script>
-    <script src="assets/qrcode.min.js?v=nxmob81"></script>
-    <script src="assets/qr-transfer.js?v=nxmob81"></script>
+    <script src="assets/app.js?v=nxmob82"></script>
+    <script src="assets/stories.js?v=nxmob82"></script>
+    <script src="assets/qrcode.min.js?v=nxmob82"></script>
+    <script src="assets/qr-transfer.js?v=nxmob82"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
