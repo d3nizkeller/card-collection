@@ -171,6 +171,8 @@
             url: '',
             play(url) {
                 this.stop();
+                // b426: одновременно не больше одного трека: музыка карты глушит трек пака
+                try { if (PackMusic.playing) PackMusic.stop(); } catch (e) {}
                 url = mediaUrl(url); // b38: трек тоже может лежать на зеркале
                 if (!url) return;
                 try {
@@ -277,6 +279,8 @@
             play(url) {
                 const u = String(mediaUrl(url) || '').trim(); // b38
                 if (!u) return false;
+                // b426: одновременно не больше одного трека: трек пака глушит музыку карты
+                try { if (CardMusic.url) { CardMusic.stop(); inspectRenderMusicBtn(inspectCardRef); } } catch (e) {}
                 if (!SoundFX.enabled) { this.lastErr = '\u{1F507} звук выключен — включите динамик в шапке'; updateUnboxMusicUI(); return false; }
                 const a = this._mk(); if (!a) return false;
                 if (this.playing && this.url === u) return true;
@@ -13875,7 +13879,7 @@ function nxToggle3d() {
             const badgeHtml = `<div class="w-full flex justify-between items-start gap-1">
                         <span class="text-xs font-mono font-bold text-slate-200 bg-slate-950/70 px-2 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
                         <span class="flex items-center gap-1 shrink-0">
-                            ${card.musicUrl ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30 backdrop-blur-sm" title="У карты своя музыка — трек играет в просмотре"><i class="fa-solid fa-music"></i></span>` : ''}
+                            ${card.musicUrl ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-fuchsia-500/10 text-fuchsia-300 border border-fuchsia-500/30 backdrop-blur-sm" title="У карты своя музыка — включается кнопкой в просмотре"><i class="fa-solid fa-music"></i></span>` : ''}
                             ${copies > 1 ? `<span class="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 backdrop-blur-sm" title="Копий в коллекции">×${copies}</span>` : ''}
                             <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900/80 text-slate-200 border border-slate-700 backdrop-blur-sm" style="color:${rarColor}">${rarLabel}</span>
                         </span>
@@ -13929,7 +13933,7 @@ function nxToggle3d() {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5">
                             <h4 class="font-bold text-sm text-white truncate group-hover:text-violet-300 transition-colors">${card.name}</h4>
-                            ${card.musicUrl ? '<i class="fa-solid fa-music text-[9px] text-fuchsia-300" title="У карты своя музыка"></i>' : ''}
+                            ${card.musicUrl ? '<i class="fa-solid fa-music text-[9px] text-fuchsia-300" title="У карты своя музыка — включается кнопкой в просмотре"></i>' : ''}
                             ${copies > 1 ? `<span class="text-[9px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 shrink-0">×${copies}</span>` : ''}
                         </div>
                         <p class="text-[10px] text-slate-500 truncate">${card.description || ''}</p>
@@ -14498,6 +14502,35 @@ function nxToggle3d() {
         let inspectIdx = -1;
         let inspectTouchX = null;
 
+        // ============ b426: МУЗЫКА КАРТЫ — КНОПКА «ПЛЕЙ/СТОП» В КАРТЕ ============
+        // Трек карты больше не включается сам: в просмотре карты появляется кнопка,
+        // которой пользователь включает и выключает свою музыку. Одновременно во
+        // всей игре играет не больше одного трека (см. CardMusic.play/PackMusic.play).
+        let inspectCardRef = null;
+        function inspectRenderMusicBtn(card) {
+            inspectCardRef = card || null;
+            const b = document.getElementById('inspect-music-btn');
+            if (!b) return;
+            const url = card && card.musicUrl ? String(card.musicUrl) : '';
+            if (!url) { b.classList.add('hidden'); b.innerHTML = ''; return; }
+            b.classList.remove('hidden');
+            const playing = !!CardMusic.audio && CardMusic.url === mediaUrl(url);
+            b.className = 'mt-3 px-4 py-2 rounded-xl text-xs font-bold transition ' + (playing
+                ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-950/40 animate-pulse'
+                : 'bg-fuchsia-600/15 hover:bg-fuchsia-600/25 border border-fuchsia-500/40 text-fuchsia-200');
+            b.innerHTML = playing
+                ? '<i class="fa-solid fa-stop mr-1.5"></i>Стоп · ' + jpcEsc(PackMusic.nameOf(url))
+                : '<i class="fa-solid fa-play mr-1.5"></i>Включить трек карты';
+            b.title = playing ? 'Выключить трек этой карты' : 'Включить трек этой карты';
+        }
+        function cardMusicToggle() {
+            const card = inspectCardRef;
+            if (!card || !card.musicUrl) return;
+            const url = mediaUrl(card.musicUrl);
+            if (CardMusic.url === url && CardMusic.audio) CardMusic.stop();
+            else CardMusic.play(card.musicUrl);
+            inspectRenderMusicBtn(card);
+        }
         function inspectCard(cardId, list) {
             const card = state.cards.find(c => c.id === cardId);
             if (!card) return;
@@ -14543,8 +14576,11 @@ function nxToggle3d() {
                 ${cardShineOverlay(card)}
             `;
             applyCardAura(document.getElementById('inspect-aura'), card, 'aura-inspect');
-            // личная музыка карты: играет, пока карта открыта
-            if (card.musicUrl) CardMusic.play(card.musicUrl); else CardMusic.stop();
+            // b426: личная музыка карты больше не стартует сама (иначе вместе с
+            // треком пака играло несколько треков сразу): предыдущий трек глушим,
+            // управление — кнопкой «Плей/Стоп» в просмотре карты
+            CardMusic.stop();
+            inspectRenderMusicBtn(card);
 
             updateInspectNav();
             updateInspectSlotsBtn();
