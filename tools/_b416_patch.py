@@ -267,8 +267,23 @@ NEW_PREVIEW = """            const pn = document.getElementById('jpc-pool-now');
             }
 """
 
+# --- 12. реестр сайта: fed/won — копии счётчиков банка, режем тем же потолком ---
+OLD_NORM = """                jp: Math.max(0, Math.floor(e.jp) || 0),
+                fed: Math.max(0, Math.floor(e.fed) || 0),
+                won: Math.max(0, Math.floor(e.won) || 0),
+"""
+NEW_NORM = """                jp: Math.max(0, Math.floor(e.jp) || 0),
+                // b416: fed/won — это копии счётчиков реестра банка; режем их тем же
+                // потолком, иначе старый клиент с 1e57 в localStorage снова тащит
+                // астрономию в таблицу Студии (записи сливаются по «at», поэтому
+                // своя свежая публикация их и так перетирает — это страховка)
+                fed: jpLedNum(e.fed),
+                won: jpLedNum(e.won),
+"""
+
 JS_PATCHES = [
     ('модуль целостности реестра (b416)', ANCHOR_MODULE, ANCHOR_MODULE + MODULE),
+    ('siteStatsNorm: fed/won в потолке', OLD_NORM, NEW_NORM),
     ('jackpotPool + jackpotPlayers', OLD_POOL, NEW_POOL),
     ('ремонт реестра при загрузке', OLD_LOAD, NEW_LOAD),
     ('ремонт реестра после слияния', OLD_MERGE, NEW_MERGE),

@@ -5524,8 +5524,12 @@ function nxToggle3d() {
                 bal: Math.max(0, Math.floor(e.bal) || 0),
                 op: Math.max(0, Math.floor(e.op) || 0),
                 jp: Math.max(0, Math.floor(e.jp) || 0),
-                fed: Math.max(0, Math.floor(e.fed) || 0),
-                won: Math.max(0, Math.floor(e.won) || 0),
+                // b416: fed/won — это копии счётчиков реестра банка; режем их тем же
+                // потолком, иначе старый клиент с 1e57 в localStorage снова тащит
+                // астрономию в таблицу Студии (записи сливаются по «at», поэтому
+                // своя свежая публикация их и так перетирает — это страховка)
+                fed: jpLedNum(e.fed),
+                won: jpLedNum(e.won),
                 at: Math.floor(e.at) || 0,
                 ip: String(e.ip || '').slice(0, 45),   // b363: публичный IP устройства
                 dev: String(e.dev || '').slice(0, 90), // b363: ОС/браузер/форм-фактор/экран
