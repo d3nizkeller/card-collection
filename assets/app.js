@@ -7875,7 +7875,7 @@ function nxToggle3d() {
             if (slots.spinning) return;
             if (statsBlockGuard('слоты')) return; // b277
             const bet = slots.bet;
-            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet), 'error'); return; }
+            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet) + '.' + nxLackNote(bet), 'error'); return; }
             if (!slots.symbols.length) slots.symbols = slotsSymbols();
             state.coins -= bet;
             state.stats.slotsSpins = (state.stats.slotsSpins || 0) + 1;
@@ -8029,7 +8029,9 @@ function nxToggle3d() {
             const spin = document.getElementById('slots-spin');
             if (spin) {
                 spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(slots.bet);
-                spin.disabled = state.coins < slots.bet || slots.spinning;
+                // b417: disabled — только пока крутится; нехватка монет гасит кнопку
+                // визуально, но клик доходит до slotsSpin и там объясняется
+                spin.disabled = slots.spinning;
                 spin.classList.toggle('opacity-40', state.coins < slots.bet);
             }
             const lw = document.getElementById('slots-last');
@@ -8409,7 +8411,7 @@ function nxToggle3d() {
             if (grid.spinning) return;
             if (statsBlockGuard('ставки в сетке')) return; // b277
             const bet = grid.bet;
-            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet), 'error'); return; }
+            if (state.coins < bet) { showToast('Недостаточно монет для ставки ' + fmtCoins(bet) + '.' + nxLackNote(bet), 'error'); return; }
             state.coins -= bet;
             state.stats.gridSpins = (state.stats.gridSpins || 0) + 1;
             updateMissions('spin_grid', 1); // b122: задание дня
@@ -8523,7 +8525,7 @@ function nxToggle3d() {
             const spin = document.getElementById('grid-spin');
             if (spin) {
                 spin.innerHTML = '<i class="fa-solid fa-rotate mr-1"></i>Крутить — ' + fmtCoins(grid.bet);
-                spin.disabled = state.coins < grid.bet || grid.spinning;
+                spin.disabled = grid.spinning; // b417: нехватка монет — не disabled
                 spin.classList.toggle('opacity-40', state.coins < grid.bet);
             }
             const lw = document.getElementById('grid-last');
@@ -9728,7 +9730,7 @@ function nxToggle3d() {
             if (mines.active) return;
             if (statsBlockGuard('мины')) return; // b277
             const bet = mines.bet;
-            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            if (state.coins < bet) { showToast('Недостаточно монет!' + nxLackNote(bet), 'error'); return; }
             state.coins -= bet;
             updateCoinDisplay(); saveState();
             jackpotFeed(bet); // b79: мины тоже кормят общий джекпот
@@ -9801,7 +9803,7 @@ function nxToggle3d() {
             if (start) {
                 start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Начать раунд — ' + fmtCoins(mines.bet);
                 start.classList.toggle('hidden', mines.active);
-                start.disabled = state.coins < mines.bet;
+                start.disabled = mines.active; // b417: нехватка монет — не disabled
                 start.classList.toggle('opacity-40', state.coins < mines.bet);
             }
             const cash = document.getElementById('mines-cash');
@@ -9972,7 +9974,7 @@ function nxToggle3d() {
             const bets = document.getElementById('lines-bets');
             if (bets) bets.innerHTML = SLOTS_BETS.map(v => '<button type="button" onclick="linesSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (lines.bet === v ? 'bg-sky-500 border-sky-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + fmtCoins(v) + '</button>').join('');
             const spin = document.getElementById('lines-spin');
-            if (spin) { spin.disabled = lines.spinning || state.coins < lines.bet; spin.classList.toggle('opacity-40', lines.spinning || state.coins < lines.bet); }
+            if (spin) { spin.disabled = lines.spinning; spin.classList.toggle('opacity-40', lines.spinning || state.coins < lines.bet); } // b417: нехватка монет — не disabled
             const ab = document.getElementById('lines-auto-btn');
             if (ab) ab.classList.toggle('on', lines.auto);
             const cr = document.getElementById('lines-credit');
@@ -10016,7 +10018,7 @@ function nxToggle3d() {
             if (lines.spinning) return;
             if (statsBlockGuard('линии')) return; // b277
             const bet = lines.bet;
-            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            if (state.coins < bet) { showToast('Недостаточно монет!' + nxLackNote(bet), 'error'); return; }
             linesEnsure();
             linesMakePool();
             state.coins -= bet;
@@ -10693,7 +10695,7 @@ function nxToggle3d() {
             const spin = document.getElementById('wheel-spin');
             if (spin) {
                 spin.innerHTML = '<i class="fa-solid fa-dharmachakra mr-1"></i>Крутить — ' + fmtCoins(wheel.bet);
-                spin.disabled = wheel.spinning || state.coins < wheel.bet;
+                spin.disabled = wheel.spinning; // b417: нехватка монет — не disabled
                 spin.classList.toggle('opacity-40', wheel.spinning || state.coins < wheel.bet);
             }
             const sp = document.getElementById('wheel-spins');
@@ -10704,7 +10706,7 @@ function nxToggle3d() {
             if (wheel.spinning) return;
             if (statsBlockGuard('колесо')) return; // b277
             const bet = wheel.bet;
-            if (state.coins < bet) { showToast('Недостаточно монет!', 'error'); return; }
+            if (state.coins < bet) { showToast('Недостаточно монет!' + nxLackNote(bet), 'error'); return; }
             wheelEnsure();
             state.coins -= bet;
             updateCoinDisplay(); saveState();
@@ -11601,6 +11603,21 @@ function nxToggle3d() {
                 }
             }
             return String(n);
+        }
+        // ============ b417: ЗАВИСШАЯ КНОПКА — ЭТО ТА, КОТОРАЯ МОЛЧИТ ============
+        // До b417 при нехватке монет кнопка ставки получала disabled: клик не
+        // доходил до обработчика, тост «Недостаточно монет» не показывался, и
+        // игрок видел «кнопка зависла». Теперь disabled выдаётся только на время
+        // спина/раунда, а при нехватке монет кнопка гаснет визуально, но остаётся
+        // кликабельной — обработчик объясняет причину и подсказывает выход.
+        function nxBetLack(bet) {
+            return Math.max(0, Math.round((Number(bet) || 0) - (Math.floor(Number(state.coins)) || 0)));
+        }
+        function nxLackNote(bet) {
+            const lack = nxBetLack(bet);
+            if (lack <= 0) return '';
+            if ((Math.floor(Number(state.coins)) || 0) < 100) return ' Монеты кончились — их дают Шахта и задания дня.';
+            return ' Не хватает ' + fmtCoins(lack) + ' — снизьте ставку кнопкой «−».';
         }
         function updateCoinDisplay() {
             // b373: счётчик монет перезаписывался каждую секунду даже без изменений
