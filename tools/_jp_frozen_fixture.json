@@ -1,0 +1,99 @@
+{
+ "_note": "Обрезанный снимок РЕАЛЬНОГО облачного документа общего банка (textdb nexus-tcg-jackpot-v2, 2026-10-13): 4 испорченных счётчика (вплоть до 1e57) + честные взносы и выплаты, из-за которых реестр уходит в минус. Используется в tools/test-b416.js и tools/repro-jp-frozen.js. Полный документ — 97 записей led, 20 won; поведение то же.",
+ "jp": {
+  "led": {
+   "pfv54j1oa81": 169227176852730560,
+   "p4njjfxsoiw": 71012720315664280,
+   "pzrlb2rhldn": 539500192168892600,
+   "py6rh6lc0bo": 24000000016497400,
+   "pt3pn1nbdf2": 15007171400,
+   "p6odhaon1yh": 61258800,
+   "pmnxg2q89v2": 35645500,
+   "phnrpnwnvzo": 10302600,
+   "pq5bq3913sk": 6745600,
+   "pv98ibalrgc": 4617400,
+   "p0l341nqv8z": 302000,
+   "p7qg7xf8bty": 100,
+   "pgqlm856blx": 200
+  },
+  "won": {
+   "pfv54j1oa81": 2169340740514004,
+   "p4njjfxsoiw": 33008224553932532,
+   "pzrlb2rhldn": 398948145023770200,
+   "py6rh6lc0bo": 792000000000055300,
+   "phnrpnwnvzo": 699200,
+   "p0l341nqv8z": 22000063200,
+   "p7qg7xf8bty": 10000029600,
+   "pgqlm856blx": 10012300
+  },
+  "wins": {
+   "pl4lq4hk5sk": 62,
+   "peexw9bz2ve": 14,
+   "peh62isj6fc": 89,
+   "p4njjfxsoiw": 15,
+   "pfv54j1oa81": 19,
+   "p7g6avfzsyt": 11
+  },
+  "names": {
+   "pfv54j1oa81": "Денис Keller",
+   "p4njjfxsoiw": "An",
+   "pzrlb2rhldn": "Денис Keller",
+   "py6rh6lc0bo": "Денис Keller",
+   "phnrpnwnvzo": "Игрок-hnrp",
+   "p0l341nqv8z": "Игрок-0l34",
+   "p7qg7xf8bty": "Игрок-7qg7",
+   "pgqlm856blx": "Игрок-gqlm"
+  },
+  "hall": [
+   {
+    "n": "Денис Keller",
+    "a": 10000000,
+    "t": 1791887502300,
+    "c": "pl4lq4hk5sk"
+   },
+   {
+    "n": "Денис Keller",
+    "a": 10000000,
+    "t": 1791887498200,
+    "c": "pl4lq4hk5sk"
+   },
+   {
+    "n": "Денис Keller",
+    "a": 10000000,
+    "t": 1791887490849,
+    "c": "pl4lq4hk5sk"
+   },
+   {
+    "n": "Денис Keller",
+    "a": 1e+57,
+    "t": 1791886774701,
+    "c": "pl4lq4hk5sk"
+   }
+  ]
+ },
+ "jpc": {
+  "on": 1,
+  "feedBet": 100,
+  "feedLoss": 100,
+  "payout": 100,
+  "floor": 10000000,
+  "cap": 0,
+  "pSlots": 1.5,
+  "pitySlots": 0,
+  "pGrid": 1.35,
+  "pityGrid": 0,
+  "pLines": 1.85,
+  "pityLines": 0,
+  "pWheel": 1.35,
+  "pityWheel": 0,
+  "grant": {
+   "pl4lq4hk5sk": {
+    "a": 0,
+    "t": 1791886774628
+   }
+  },
+  "at": 1791887534498,
+  "by": "pl4lq4hk5sk"
+ },
+ "updatedAt": "1791888108104-pl4lq4hk5sk"
+}

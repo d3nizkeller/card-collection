@@ -4478,6 +4478,78 @@ function nxToggle3d() {
         const JACKPOT_SEED = 1000;
         const JACKPOT_FEED = 1; // b96: базовый множитель взноса; сам процент ставки задаётся в Студии (b414/b415)
 
+        // ============ b416: ЦЕЛОСТНОСТЬ РЕЕСТРА БАНКА (банк больше не замерзает) ============
+        // Диагноз жалобы «число в банке не растёт» (воспроизведение — tools/repro-jp-frozen.js):
+        // реестр банка это CRDT «max на игрока», счётчики led/won в нём только растут.
+        // Ручные правки банка и срывы джекпота при банке, прижатом к полу, раздули
+        // счётчик владельца до 1e57, а у double на такой величине шаг (ulp) ≈ 8.7e40:
+        //     jackpot.led[cid] += 10000  →  1e57 + 1e4 === 1e57   (взнос исчезал),
+        //     Σled − Σwon = 1e57 − 1e57 = 0, честные взносы остальных 96 игроков
+        //     тонули в погрешности, и банк стоял на floor = 10 000 000 намертво —
+        //     его не двигали ни ставки, ни проигрыши, ни «Поставить банк» в Студии.
+        // Поэтому: (1) у каждого счётчика есть потолок, (2) суммы считаются через
+        // jpLedSum() — мусор в них не попадает, (3) испорченный реестр лечится сам.
+        const JP_LED_CAP = 1e13;   // 10 триллионов на один счётчик: недостижимо честной игрой, но 9000 таких записей = 9e15 ≈ Number.MAX_SAFE_INTEGER, то есть сумма остаётся точной до монеты
+        const JP_HOUSE = 'house';  // служебная запись реестра: дом гасит долг испорченного банка (в «копят банк» не считается)
+        let jpFixInfo = { n: 0, debt: 0, at: 0 }; // что починил jpRepairLedger — видно в Студии
+        // запись пригодна для счёта, если это целое в пределах [0, JP_LED_CAP]
+        function jpLedBad(v) { const n = Number(v); return !(isFinite(n) && n >= 0 && n <= JP_LED_CAP && n === Math.floor(n)); }
+        function jpLedNum(v) { return jpLedBad(v) ? 0 : Math.floor(Number(v)); }
+        function jpLedSum(m) {
+            // b416: испорченные счётчики в сумму не идут вовсе, остальные складываем
+            // по возрастанию — слагаемые целые и ≤ 1e13, значит сумма точная
+            const a = [];
+            for (const k in m) { const v = jpLedNum(m[k]); if (v > 0) a.push(v); }
+            a.sort((x, y) => x - y);
+            let s = 0;
+            for (let i = 0; i < a.length; i++) s += a[i];
+            return s;
+        }
+        function jpLedAdd(field, cid, x) {
+            // b416: единственный способ писать в реестр банка — со срезом мусора и
+            // потолком. Возвращает, сколько РЕАЛЬНО легло в счётчик (0 = не влезло).
+            x = Math.floor(Number(x) || 0);
+            if (!(x > 0)) return 0;
+            const m = jackpot[field] || (jackpot[field] = {});
+            const cur = jpLedNum(m[cid]);
+            const add = Math.min(x, JP_LED_CAP - cur);
+            if (!(add > 0)) return 0;
+            m[cid] = cur + add;
+            return add;
+        }
+        function jpFloor() { const fl = Number(jpc.floor); return (isFinite(fl) && fl >= 0) ? Math.round(fl) : JACKPOT_SEED; }
+        function jpRawPool() { return Math.round(JACKPOT_SEED + jpLedSum(jackpot.led) - jpLedSum(jackpot.won)); }
+        function jpExcess() { return Math.max(0, jpRawPool() - JACKPOT_SEED); } // накоплено сверх сида
+        function jpRepairLedger() {
+            // b416: (1) выбрасываем счётчики, улетевшие за потолок, — это не честный
+            // вклад, а мусор, который обнуляет банк; (2) образовавшийся «долг»
+            // (Σвыплат > Σвзносов — наследие срывов при банке на полу и прежней
+            // записи всей выплаты в won) гасит дом ОДНОЙ служебной записью: она
+            // общая для всех клиентов и сливается тем же правилом max, поэтому
+            // ремонт идемпотентен — повторный прогон ничего не меняет и не плодит деньги.
+            let n = 0;
+            ['led', 'won'].forEach(f => {
+                const m = jackpot[f] || (jackpot[f] = {});
+                for (const k in m) if (jpLedBad(m[k])) { delete m[k]; n++; }
+            });
+            const debt = JACKPOT_SEED - jpRawPool();
+            if (debt > 0) { if (jpLedAdd('led', JP_HOUSE, debt)) n++; }
+            if (n) jpFixInfo = { n: (jpFixInfo.n || 0) + n, debt: (jpFixInfo.debt || 0) + (debt > 0 ? debt : 0), at: Date.now() };
+            return n;
+        }
+        function jpRepairNow() {
+            // кнопка «Починить банк» в Студии: то же самое, что автоматика, но сразу
+            // с публикацией — владелец может починить банк для всех игроков сайта
+            if (jpcAdminGuard()) return;
+            const n = jpRepairLedger();
+            jackpotSave(); jackpotRender();
+            try { jpcAdminPreview(); } catch (e) {}
+            try { jpSyncNow(); } catch (e) {}
+            showToast(n
+                ? '🧰 Банк починен: записей с мусором/долгом — ' + n + ', банк сейчас ' + fmtCoins(jackpotPool())
+                : 'Банк в порядке — реестр чистый, банк ' + fmtCoins(jackpotPool()), n ? 'success' : 'info');
+        }
+
         // ============ b414: НАСТРОЙКИ ДЖЕКПОТА ИЗ СТУДИИ (вкладка «Джекпот») ============
         // Всё, что раньше было зашито константами (100 % ставки в банк, 100 % банка
         // победителю, вес символа JACKPOT 3/2/1, золотой сектор колеса 1 из 16), теперь
@@ -4661,12 +4733,19 @@ function nxToggle3d() {
             const now = jackpotPool();
             const d = target - now;
             if (!d) { showToast('Банк уже равен ' + fmtCoins(target), 'info'); return; }
-            if (d > 0) jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + d;
-            else jackpot.won[JACKPOT_CID] = (jackpot.won[JACKPOT_CID] || 0) + (-d);
+            // b416: пишем через jpLedAdd (потолок + срез мусора). Дельта больше не
+            // тонет в погрешности double, поэтому «Поставить банк» снова работает и
+            // на огромных числах, и после испорченного реестра.
+            if (d > 0) jpLedAdd('led', JACKPOT_CID, d);
+            else jpLedAdd('won', JACKPOT_CID, -d);
+            jpRepairLedger(); // уход ниже пола гасится домом сразу — долг не копится
             jackpotSave(); jackpotRender();
             try { jpcAdminPreview(); } catch (e) {}
             try { jpSyncNow(); } catch (e) {}
-            showToast((d > 0 ? '📈 Банк поднят до ' : '📉 Банк снижен до ') + fmtCoins(jackpotPool()), 'success');
+            const got = jackpotPool();
+            if (got === target) showToast((d > 0 ? '📈 Банк поднят до ' : '📉 Банк снижен до ') + fmtCoins(got), 'success');
+            // b416: честная подпись — раньше тост рапортовал успех, даже если сумма не встала
+            else showToast('Банк не встал ровно: сейчас ' + fmtCoins(got) + ' (потолок одного счётчика ' + fmtCoins(JP_LED_CAP) + ')', 'info');
         }
         function jpcNudgePool(delta) { jpcSetPool(jackpotPool() + Math.round(Number(delta) || 0)); }
         function jpcResetPoolFloor() { jpcSetPool(Math.max(0, Math.round(jpc.floor || 0))); }
@@ -4743,8 +4822,7 @@ function nxToggle3d() {
         function jpcSumChips() {
             let wins = 0, fed = 0, won = 0;
             for (const k in jackpot.wins) wins += jackpot.wins[k] || 0;
-            for (const k in jackpot.led) fed += jackpot.led[k] || 0;
-            for (const k in jackpot.won) won += jackpot.won[k] || 0;
+            fed = jpLedSum(jackpot.led); won = jpLedSum(jackpot.won); // b416: суммы без мусора и без потери точности
             const pool = jackpotPool();
             const chip = (ic, col, lab, val) => '<div class="rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0">' +
                 '<p class="text-[9px] uppercase tracking-wide text-slate-500 flex items-center gap-1.5 truncate"><i class="fa-solid ' + ic + ' ' + col + '"></i>' + lab + '</p>' +
@@ -4770,6 +4848,16 @@ function nxToggle3d() {
             if (sum) sum.innerHTML = jpcSumChips();
             const pn = document.getElementById('jpc-pool-now');
             if (pn) pn.textContent = fmtCoins(jackpotPool());
+            // b416: что именно починила автоматика — владелец должен видеть причину
+            const fn = document.getElementById('jpc-fix-note');
+            if (fn) {
+                if (jpFixInfo.n > 0) {
+                    fn.hidden = false;
+                    fn.innerHTML = '<i class="fa-solid fa-screwdriver-wrench text-emerald-400 mr-1"></i>Реестр банка починен автоматически: испорченных записей <b class="text-slate-300">' + jpFixInfo.n + '</b>' +
+                        (jpFixInfo.debt > 0 ? ', долг <b class="text-slate-300">' + fmtCoins(jpFixInfo.debt) + '</b> покрыт домом' : '') +
+                        '. Счётчики выше <b class="text-slate-300">' + fmtCoins(JP_LED_CAP) + '</b> банк не учитывает — на таких величинах у double шаг ≈ 1e40, и взносы игроков исчезали, поэтому банк стоял на месте.';
+                } else fn.hidden = true;
+            }
         }
         function jpcProbRows() {
             return JPC_GAMES.map(g => {
@@ -4993,6 +5081,10 @@ function nxToggle3d() {
             return { led: {}, won: {}, wins: {}, names: {}, hall: [] };
         }
         let jackpot = jackpotLoad();
+        // b416: реестр, доставшийся от прежних версий/чужих пушей, может содержать
+        // счётчики за пределами double-точности (1e57) — с ними банк замерзает.
+        // Чиним сразу, до первого рендера и до первой синхронизации.
+        if (jpRepairLedger()) { try { jackpotSave(); } catch (e) {} }
         // b91: имя игрока для таблицы победителей джекпота
         const PLAYER_NAME_KEY = 'nexus_player_name';
         function getPlayerName() {
@@ -5134,15 +5226,17 @@ function nxToggle3d() {
         }
 
         function jackpotPool() {
-            let c = 0, w = 0;
-            for (const k in jackpot.led) c += jackpot.led[k] || 0;
-            for (const k in jackpot.won) w += jackpot.won[k] || 0;
             // b414: несгораемый остаток банка задаётся в Студии (заводской = прежний сид)
-            const fl = Number(jpc.floor);
-            const floor = (isFinite(fl) && fl >= 0) ? Math.round(fl) : JACKPOT_SEED;
-            return Math.max(floor, Math.round(JACKPOT_SEED + c - w));
+            // b416: floor — это ГАРАНТИЯ ПОЛА, а не «мёртвая зона». Раньше было
+            // max(floor, SEED + Σвзносов − Σвыплат), и при floor = 10 000 000 витрина
+            // стояла на месте, пока взносы не переползут 10m (при ставке 10k — тысяча
+            // спинов). Теперь банк = floor + всё, что накоплено сверх сида: с первой
+            // же ставки число растёт, а ниже floor не опускается. При заводском
+            // floor = JACKPOT_SEED формула даёт ровно прежние числа.
+            return Math.round(jpFloor() + jpExcess());
         }
-        function jackpotPlayers() { return Object.keys(jackpot.led).length; }
+        // b416: служебная запись дома и испорченные счётчики игроками не считаются
+        function jackpotPlayers() { let n = 0; for (const k in jackpot.led) if (k !== JP_HOUSE && !jpLedBad(jackpot.led[k])) n++; return n; }
         function jackpotSave() { try { LS.setItem(JACKPOT_KEY, JSON.stringify(jackpot)); } catch (e) {} }
         function jackpotMerge(remote) {
             if (!remote || typeof remote !== 'object') return false;
@@ -5152,6 +5246,7 @@ function nxToggle3d() {
                 for (const k in src) { const v = Math.floor(src[k]) || 0; if (v > (dst[k] || 0)) { dst[k] = v; ch = true; } }
             };
             pick(jackpot.led, remote.led); pick(jackpot.won, remote.won); pick(jackpot.wins, remote.wins);
+            if (jpRepairLedger()) ch = true; // b416: облако (или старый клиент) могло притащить счётчики-гиганты
             // b91: имена игроков: своё локальное имя важнее, чужие — из облака
             if (remote.names && typeof remote.names === 'object') {
                 for (const k in remote.names) {
@@ -5187,7 +5282,7 @@ function nxToggle3d() {
             const pct = isFinite(+jpc.feedBet) ? Math.max(0, +jpc.feedBet) : 100;
             const x = pct > 0 ? Math.max(1, Math.round((bet || 0) * JACKPOT_FEED * pct / 100)) : 0;
             if (x <= 0) return;
-            jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + x;
+            jpLedAdd('led', JACKPOT_CID, x); // b416: запись через потолок — счётчик больше не улетает в 1e57
             jackpotSave(); jackpotRender(); jpSyncSoon();
         }
         // b92: каждый проигрыш пополняет общий банк на процент потерянной суммы —
@@ -5198,9 +5293,9 @@ function nxToggle3d() {
             const pct = isFinite(+jpc.feedLoss) ? Math.max(0, +jpc.feedLoss) : 100;
             const add = pct > 0 ? Math.max(1, Math.round((loss || 0) * pct / 100)) : 0;
             if (add <= 0) return 0;
-            jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + add;
+            const got = jpLedAdd('led', JACKPOT_CID, add); // b416: через потолок; возвращаем, сколько реально легло в банк
             jackpotSave(); jackpotRender(); jpSyncSoon();
-            return add;
+            return got;
         }
         function jackpotWin() {
             // b414: победителю уходит payout % банка (было всегда 100 %), остаток копится
@@ -5211,7 +5306,11 @@ function nxToggle3d() {
             const cpm = Math.round(Number(jpc.cap) || 0);
             if (cpm > 0 && prize > cpm) prize = cpm;
             prize = Math.max(0, prize);
-            jackpot.won[JACKPOT_CID] = (jackpot.won[JACKPOT_CID] || 0) + prize;
+            // b416: в реестр выплат пишем только обеспеченную часть — ту, что реально
+            // накоплена сверх несгораемого остатка. Раньше сюда падал весь prize, и срыв
+            // банка, стоящего на полу, создавал «фантомный долг»: Σвыплат уезжала выше
+            // Σвзносов, банк навсегда прижимался к floor и переставал расти.
+            jpLedAdd('won', JACKPOT_CID, Math.min(prize, jpExcess()));
             jackpot.wins[JACKPOT_CID] = (jackpot.wins[JACKPOT_CID] || 0) + 1;
             // b91: фиксируем победителя по имени — зал славы увидят все игроки сайта
             const wname = getPlayerName() || ('Игрок-' + JACKPOT_CID.slice(1, 5));
@@ -5557,8 +5656,8 @@ function nxToggle3d() {
                 e.bal = Math.max(0, Math.floor(state.coins) || 0);
                 e.op = Math.max(0, Math.floor(state.stats && state.stats.packsOpened) || 0);
                 e.jp = Math.floor(jackpot.wins[JACKPOT_CID]) || 0;
-                e.fed = Math.floor(jackpot.led[JACKPOT_CID]) || 0;
-                e.won = Math.floor(jackpot.won[JACKPOT_CID]) || 0;
+                e.fed = jpLedNum(jackpot.led[JACKPOT_CID]); // b416: в реестр сайта не утекает 1e57
+                e.won = jpLedNum(jackpot.won[JACKPOT_CID]);
                 const pk = {};
                 const ps = state.packStats || {};
                 Object.keys(ps).slice(0, 24).forEach(id => { const o = Math.floor(ps[id] && ps[id].opens) || 0; if (o > 0) pk[id] = o; });
@@ -6311,8 +6410,7 @@ function nxToggle3d() {
             let pool = 0, wins = 0, fed = 0, won = 0;
             try { pool = jackpotPool(); } catch (e) {}
             for (const k in jackpot.wins) wins += jackpot.wins[k] || 0;
-            for (const k in jackpot.led) fed += jackpot.led[k] || 0;
-            for (const k in jackpot.won) won += jackpot.won[k] || 0;
+            fed = jpLedSum(jackpot.led); won = jpLedSum(jackpot.won); // b416: суммы без мусора и без потери точности
             let plist = Object.keys(siteStats.p).map(k => siteStats.p[k]);
             // b335: онлайн = активность за последние 2 минуты (heartbeat каждые 30 c)
             const nxNow = Date.now();
