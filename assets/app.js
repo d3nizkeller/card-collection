@@ -5514,8 +5514,16 @@ function nxToggle3d() {
         // ==== b71: синхронизация общего банка джекпота между всеми игроками ====
         let jpT = null, jpBusy = false, jpLastAt = 0, jpPending = false; // b183: jpPending — отложенный пуш вместо потерянного
         function jpPath() {
-            try { if (CLOUD.db) return CLOUD.db + '/nexus-jackpot-v2.json'; } catch (e) {}
-            return 'https://textdb.dev/api/data/nexus-tcg-jackpot-v2';
+            // b421: синхронизация переехала на документ v3. В v2 остались
+            // клиенты ДО nxmob82: они пушат туда раздутый rm и тысячи старых
+            // ключей, а max-merge не даёт вычистить это из общего документа.
+            // На v3 пишут только сборки с эпохами (ep) и обрезанным rm —
+            // документ лёгкий, мобильные клиенты долетают в таймаут.
+            // Комнаты на firebase: свой документ v3 на комнату; если его ещё
+            // нет, первый же клиент b421+ запушит свой реестр и банк комнаты
+            // продолжится с того же места.
+            try { if (CLOUD.db) return CLOUD.db + '/nexus-jackpot-v3.json'; } catch (e) {}
+            return 'https://textdb.dev/api/data/nexus-tcg-jackpot-v3';
         }
         // b404: облачные запросы с таймаутом 15 c: повисший канал раньше держал
         // jpBusy=true вечно и вся синхронизация банка/биржи умирала до перезагрузки

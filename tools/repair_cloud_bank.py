@@ -22,7 +22,7 @@ import time
 import urllib.request
 from decimal import Decimal
 
-URL = 'https://textdb.dev/api/data/nexus-tcg-jackpot-v2'
+URL = 'https://textdb.dev/api/data/nexus-tcg-jackpot-v3'
 CAP = 10 ** 13          # JP_LED_CAP
 SEED = 1000             # JACKPOT_SEED
 HOUSE = 'house'         # JP_HOUSE

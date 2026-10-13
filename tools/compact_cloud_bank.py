@@ -26,7 +26,7 @@ import time
 import urllib.request
 from decimal import Decimal
 
-URL = 'https://textdb.dev/api/data/nexus-tcg-jackpot-v2'
+URL = 'https://textdb.dev/api/data/nexus-tcg-jackpot-v3'
 TIER0, TIER_MUL, TIERS = Decimal(10) ** 13, Decimal(1000), 24
 RM_TTL = 2 * 60 * 60 * 1000
 RM_MAX = 300
