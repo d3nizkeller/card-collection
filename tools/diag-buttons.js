@@ -84,6 +84,7 @@ const snap = page => page.evaluate(() => {
         // тап по «мёртвой» кнопке: доходит ли хоть что-то до игрока?
         await page.click('#slots-spin', { force: true });
         await page.waitForTimeout(600);
+        await page.screenshot({ path: '/tmp/shot-B-tap.png', clip: { x: 0, y: 0, width: 412, height: 900 } });
         const s1 = await snap(page);
         // работают ли шаги ставки вниз?
         await page.click('button[onclick="stepBet(\'slots\',-1)"]');
