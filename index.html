@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob73" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob73">
+    <script src="assets/three.min.js?v=nxmob74" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob74">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob73">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob74">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob73">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob74">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -891,7 +891,7 @@
 
             <!-- b162: разделы студии — легче находить нужное -->
             <div id="studio-nav" class="sticky z-40" style="top: clamp(54px, 4vw + 40px, 68px);">
-                <div class="grid grid-cols-7 gap-1 bg-slate-900/95 backdrop-blur p-1 rounded-xl border border-slate-800 shadow-lg shadow-black/30">
+                <div class="grid grid-cols-8 gap-1 bg-slate-900/95 backdrop-blur p-1 rounded-xl border border-slate-800 shadow-lg shadow-black/30">
                     <button id="studio-nav-cloud" type="button" onclick="showStudioSec('cloud')" class="w-full min-w-0 px-1 sm:px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-cloud"></i>Облако</button>
                     <button id="studio-nav-packs" type="button" onclick="showStudioSec('packs')" class="w-full min-w-0 px-1 sm:px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap overflow-hidden bg-violet-600 text-white shadow"><i class="fa-solid fa-box"></i>Паки</button>
                     <!-- b164: существующие паки — отдельная вкладка «Каталог» -->
@@ -901,6 +901,8 @@
                     <button id="studio-nav-story" type="button" onclick="showStudioSec('story')" class="w-full min-w-0 px-1 sm:px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-crop"></i>Нарезка карточек</button>
                     <!-- b277: статистика сайта — пользователи, паки, джекпоты -->
                     <button id="studio-nav-stats" type="button" onclick="showStudioSec('stats')" class="w-full min-w-0 px-1 sm:px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-chart-line"></i>Статистика</button>
+                    <!-- b414: управление общим джекпотом сайта -->
+                    <button id="studio-nav-jackpot" type="button" onclick="showStudioSec('jackpot')" class="w-full min-w-0 px-1 sm:px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap overflow-hidden bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-crown"></i>Джекпот</button>
                 </div>
             </div>
             <div class="studio-sec space-y-3" data-sec="cloud" hidden>
@@ -1816,6 +1818,129 @@ min-height:56vh}
             </div>
             </div><!-- /studio-sec stats -->
 
+            <!-- b414: управление общим джекпотом сайта — проценты, вероятности, выдача игрокам -->
+            <div class="studio-sec space-y-3" data-sec="jackpot" hidden>
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-crown text-amber-400"></i>
+                        <span>Управление джекпотом сайта</span>
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="jpc-note" class="text-[10px] text-slate-500"></span>
+                        <button type="button" onclick="jpcRefresh()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition"><i class="fa-solid fa-arrows-rotate mr-1"></i>Обновить</button>
+                        <button type="button" onclick="jpcPublish()" class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-bullhorn mr-1"></i>Опубликовать для всех</button>
+                    </div>
+                </div>
+                <div id="jpc-sum" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2"></div>
+                <label class="flex items-start gap-2 text-[11px] font-bold text-slate-200 cursor-pointer leading-snug">
+                    <input id="jpc-on" type="checkbox" onchange="jpcSet({on:this.checked?1:0})" class="w-4 h-4 mt-0.5 shrink-0 accent-amber-500">
+                    <span>Джекпот включён. Снимите — символ JACKPOT перестанет выпадать во всех играх, но банк продолжит копиться.</span>
+                </label>
+                <p class="text-[10px] text-slate-500 leading-snug"><i class="fa-solid fa-circle-info text-amber-400 mr-1"></i>Настройки уезжают в тот же облачный документ, что и общий банк, поэтому действуют <b class="text-slate-300">для всех игроков сайта</b>. Меняются локально сразу, а до остальных доезжают после «Опубликовать для всех» (или при ближайшей синхронизации, около минуты).</p>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-percent text-emerald-400"></i>
+                    <span>Проценты — как копится банк и сколько уходит победителю</span>
+                </h3>
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                    <label class="block rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0">
+                        <span class="block text-[9px] uppercase tracking-wide text-slate-500 mb-1 leading-tight">% ставки в банк</span>
+                        <input id="jpc-feedBet" type="number" min="0" max="1000" step="1" value="100"
+                               onchange="jpcSet({feedBet:Number(this.value)})"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-white">
+                        <span class="block text-[9px] text-slate-600 mt-1 leading-tight">100 = вся ставка уходит в общий банк (как было)</span>
+                    </label>
+                    <label class="block rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0">
+                        <span class="block text-[9px] uppercase tracking-wide text-slate-500 mb-1 leading-tight">% проигрыша в банк</span>
+                        <input id="jpc-feedLoss" type="number" min="0" max="1000" step="1" value="100"
+                               onchange="jpcSet({feedLoss:Number(this.value)})"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-white">
+                        <span class="block text-[9px] text-slate-600 mt-1 leading-tight">100 = проигранная сумма докидывается в банк целиком</span>
+                    </label>
+                    <label class="block rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0">
+                        <span class="block text-[9px] uppercase tracking-wide text-slate-500 mb-1 leading-tight">% банка победителю</span>
+                        <input id="jpc-payout" type="number" min="0" max="100" step="1" value="100"
+                               onchange="jpcSet({payout:Number(this.value)})"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-white">
+                        <span class="block text-[9px] text-slate-600 mt-1 leading-tight">100 = весь банк; 50 = половина, остаток копится дальше</span>
+                    </label>
+                    <label class="block rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0">
+                        <span class="block text-[9px] uppercase tracking-wide text-slate-500 mb-1 leading-tight">Несгораемый остаток</span>
+                        <input id="jpc-floor" type="number" min="0" max="1000000000" step="1000" value="1000"
+                               onchange="jpcSet({floor:Number(this.value)})"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-white">
+                        <span class="block text-[9px] text-slate-600 mt-1 leading-tight">Банк никогда не опускается ниже этого значения</span>
+                    </label>
+                    <label class="block rounded-xl border border-slate-800 bg-slate-950/60 px-2.5 py-2 min-w-0">
+                        <span class="block text-[9px] uppercase tracking-wide text-slate-500 mb-1 leading-tight">Потолок одной выплаты</span>
+                        <input id="jpc-cap" type="number" min="0" max="1000000000000" step="10000" value="0"
+                               onchange="jpcSet({cap:Number(this.value)})"
+                               class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-sm font-black text-white">
+                        <span class="block text-[9px] text-slate-600 mt-1 leading-tight">0 = без потолка; иначе больше этой суммы не выплачивается</span>
+                    </label>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-snug">Пример: ставка 10k при «100% ставки в банк» добавляет в банк 10k монет; при выплате 100% победитель забирает не весь банк, а только его часть — остаток копится дальше и не обнуляет витрину.</p>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-vault text-sky-400"></i>
+                    <span>Банк вручную</span>
+                    <span class="ml-auto text-xs font-black text-amber-300">сейчас: <span id="jpc-pool-now">—</span></span>
+                </h3>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <input id="jpc-pool-set" type="text" inputmode="numeric" placeholder="Новый банк: 250k"
+                           class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-white" style="width:11rem">
+                    <button type="button" onclick="jpcSetPoolInput()" class="px-2.5 py-1.5 bg-sky-500 hover:bg-sky-400 text-slate-950 rounded-lg text-[11px] font-black transition">Поставить банк</button>
+                    <button type="button" onclick="jpcNudgePool(1000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">+1k</button>
+                    <button type="button" onclick="jpcNudgePool(10000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">+10k</button>
+                    <button type="button" onclick="jpcNudgePool(100000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">+100k</button>
+                    <button type="button" onclick="jpcNudgePool(-1000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">−1k</button>
+                    <button type="button" onclick="jpcNudgePool(-10000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">−10k</button>
+                    <button type="button" onclick="jpcResetPoolFloor()" class="px-2.5 py-1.5 bg-slate-900 hover:bg-rose-950/60 border border-slate-800 rounded-lg text-[11px] font-bold text-slate-400 transition">Сбросить до минимума</button>
+                </div>
+                <p class="text-[10px] text-slate-500 leading-snug">Сумма понимает буквы: <b class="text-slate-300">10k</b>, <b class="text-slate-300">5m</b>, <b class="text-slate-300">1b</b>. Банк общий на весь сайт — правка видна всем игрокам после синхронизации. «Сбросить до минимума» оставляет в банке только несгораемый остаток.</p>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-dice text-violet-400"></i>
+                    <span>Вероятность JACKPOT и гарантия</span>
+                </h3>
+                <div id="jpc-prob" class="space-y-2"></div>
+                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16.</p>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-gift text-rose-400"></i>
+                    <span>Выдать джекпот игроку</span>
+                </h3>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <input id="jpc-grant-amt" type="text" inputmode="numeric" placeholder="Сумма: 100k (пусто = весь банк)"
+                           class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-white" style="width:14rem">
+                    <input id="jpc-search" type="search" oninput="jpcAdminUsers()" placeholder="Поиск: имя или ID"
+                           class="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-white" style="width:12rem">
+                    <button type="button" onclick="jpcGrantAllFromInput()" class="px-2.5 py-1.5 bg-rose-500 hover:bg-rose-400 text-slate-950 rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-people-group mr-1"></i>Выдать ВСЕМ</button>
+                </div>
+                <div id="jpc-users" class="space-y-1.5 max-h-[26rem] overflow-y-auto pr-1"></div>
+                <p class="text-[10px] text-slate-500 leading-snug"><b class="text-slate-300">«Выдать банк»</b> — игрок получает payout % общего банка (как при обычном срыве, с записью в зал славы). <b class="text-slate-300">«Выдать сумму»</b> — начисляет ровно вписанную сумму, банк не трогает. Назначение доезжает до игрока при ближайшей синхронизации (около минуты) и срабатывает один раз; «Отменить» отзывает ещё не полученную выдачу.</p>
+            </div>
+
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-flask text-sky-400"></i>
+                    <span>Симулятор частоты</span>
+                    <button type="button" onclick="jpcSim()" class="ml-auto px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-semibold text-slate-200 transition"><i class="fa-solid fa-calculator mr-1"></i>Посчитать</button>
+                </h3>
+                <div id="jpc-sim-out" class="text-[11px] text-slate-300"></div>
+            </div>
+            </div><!-- /studio-sec jackpot -->
+
+
         </section>
     </main>
 
@@ -2588,10 +2713,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob73"></script>
-    <script src="assets/stories.js?v=nxmob73"></script>
-    <script src="assets/qrcode.min.js?v=nxmob73"></script>
-    <script src="assets/qr-transfer.js?v=nxmob73"></script>
+    <script src="assets/app.js?v=nxmob74"></script>
+    <script src="assets/stories.js?v=nxmob74"></script>
+    <script src="assets/qrcode.min.js?v=nxmob74"></script>
+    <script src="assets/qr-transfer.js?v=nxmob74"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
