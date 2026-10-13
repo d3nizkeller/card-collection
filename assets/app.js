@@ -14519,9 +14519,10 @@ function nxToggle3d() {
                 ? 'bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-950/40 animate-pulse'
                 : 'bg-fuchsia-600/15 hover:bg-fuchsia-600/25 border border-fuchsia-500/40 text-fuchsia-200');
             b.innerHTML = playing
-                ? '<i class="fa-solid fa-stop mr-1.5"></i>Стоп · ' + jpcEsc(PackMusic.nameOf(url))
+                ? '<i class="fa-solid fa-stop mr-1.5"></i>Стоп' // b427: название трека не показываем
                 : '<i class="fa-solid fa-play mr-1.5"></i>Включить трек карты';
             b.title = playing ? 'Выключить трек этой карты' : 'Включить трек этой карты';
+            try { cardMusicSeekRender(); } catch (e) {} // b427: полоса промотки следует за состоянием
         }
         function cardMusicToggle() {
             const card = inspectCardRef;
@@ -14531,6 +14532,63 @@ function nxToggle3d() {
             else CardMusic.play(card.musicUrl);
             inspectRenderMusicBtn(card);
         }
+
+        // ============ b427: ПРОМОТКА ТРЕКА КАРТЫ ============
+        // Мини-плеер под кнопкой: полоса прогресса с бегунком, клик/перетаскивание
+        // перематывают, по краям — текущее время и длительность. Видна только пока
+        // трек карты играет.
+        function nxTimeFmt(sec) {
+            sec = Math.max(0, Math.floor(Number(sec) || 0));
+            const m = Math.floor(sec / 60), s = sec % 60;
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+        function cardMusicSeekRender() {
+            const wrap = document.getElementById('inspect-music-seek');
+            if (!wrap) return;
+            const a = CardMusic.audio;
+            const playing = !!a && !!CardMusic.url;
+            if (!playing) { wrap.classList.add('hidden'); return; }
+            wrap.classList.remove('hidden');
+            let cur = 0, dur = 0;
+            try { cur = Number(a.currentTime) || 0; dur = Number(a.duration) || 0; } catch (e) {}
+            const pct = (isFinite(dur) && dur > 0) ? Math.min(100, Math.max(0, cur / dur * 100)) : 0;
+            const fill = document.getElementById('inspect-music-fill');
+            const knob = document.getElementById('inspect-music-knob');
+            if (fill) fill.style.width = pct + '%';
+            if (knob) knob.style.left = 'calc(' + pct + '% - 6px)';
+            const tc = document.getElementById('inspect-music-cur');
+            const td = document.getElementById('inspect-music-dur');
+            if (tc) tc.textContent = nxTimeFmt(cur);
+            if (td) td.textContent = (isFinite(dur) && dur > 0) ? nxTimeFmt(dur) : '—:—';
+        }
+        function cardMusicSeekTo(frac) {
+            const a = CardMusic.audio;
+            if (!a) return;
+            let dur = 0;
+            try { dur = Number(a.duration) || 0; } catch (e) {}
+            if (!isFinite(dur) || dur <= 0) return; // метаданные ещё не доехали — промотка недоступна
+            try { a.currentTime = Math.max(0, Math.min(1, frac)) * dur; } catch (e) {}
+            cardMusicSeekRender();
+        }
+        function cardMusicSeekInit() {
+            if (window.__nxCardMusicSeekBound) return;
+            const bar = document.getElementById('inspect-music-bar');
+            if (!bar) return;
+            window.__nxCardMusicSeekBound = 1;
+            let drag = false;
+            const fracOf = ev => {
+                const r = bar.getBoundingClientRect();
+                if (!r || !r.width) return 0;
+                return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width));
+            };
+            bar.addEventListener('pointerdown', ev => { drag = true; try { bar.setPointerCapture(ev.pointerId); } catch (e) {} cardMusicSeekTo(fracOf(ev)); });
+            bar.addEventListener('pointermove', ev => { if (drag) cardMusicSeekTo(fracOf(ev)); });
+            bar.addEventListener('pointerup', () => { drag = false; });
+            bar.addEventListener('pointercancel', () => { drag = false; });
+            // тик прогресса: дёшево, только когда есть играющий трек карты
+            setInterval(() => { try { if (CardMusic.url) cardMusicSeekRender(); } catch (e) {} }, 500);
+        }
+        try { cardMusicSeekInit(); } catch (e) {}
         function inspectCard(cardId, list) {
             const card = state.cards.find(c => c.id === cardId);
             if (!card) return;

@@ -78,7 +78,7 @@ function boot() {
     console.log('\nB. Плей/Стоп переключают трек');
     ev('cardMusicToggle()');
     ok(ev('CardMusic.url').indexOf('card-track.mp3') >= 0, 'трек включился: ' + ev('CardMusic.url'));
-    ok(/Стоп/.test(btn.textContent) && /card-track\.mp3/.test(btn.textContent), 'кнопка стала «' + btn.textContent.trim() + '»');
+    ok(/Стоп/.test(btn.textContent) && !/\.mp3/.test(btn.textContent), 'кнопка стала «' + btn.textContent.trim() + '» (b427: без имени файла)');
     ev('cardMusicToggle()');
     eq(ev('CardMusic.url'), '', 'трек выключился');
     ok(/Включить трек карты/.test(btn.textContent), 'кнопка снова зовёт включить');
@@ -104,6 +104,30 @@ function boot() {
     ok(ev('CardMusic.url').length > 0, 'трек играет перед закрытием');
     ev('closeInspectModal()');
     eq(ev('CardMusic.url'), '', 'после закрытия просмотра трек остановлен');
+
+    console.log('\nF. b427: без названия трека + промотка');
+    ev('inspectCard("cm1")');
+    ev('cardMusicToggle()');
+    ok(!/\.mp3|Simple|track/i.test(doc.getElementById('inspect-music-btn').textContent), 'на кнопке нет имени файла: «' + doc.getElementById('inspect-music-btn').textContent.trim() + '»');
+    const seek = doc.getElementById('inspect-music-seek');
+    ok(seek && !seek.classList.contains('hidden'), 'полоса промотки видна пока трек играет');
+    // подменяем audio на управляемый стаб и проверяем полосу/перемотку
+    ev('CardMusic.audio = { currentTime: 30, duration: 120, pause: function(){}, paused: false };');
+    ev('cardMusicSeekRender()');
+    eq(doc.getElementById('inspect-music-cur').textContent, '0:30', 'текущее время 0:30');
+    eq(doc.getElementById('inspect-music-dur').textContent, '2:00', 'длительность 2:00');
+    ok(doc.getElementById('inspect-music-fill').style.width === '25%', 'полоса на 25%');
+    ev('cardMusicSeekTo(0.5)');
+    eq(ev('CardMusic.audio.currentTime'), 60, 'промотка на середину (0.5 × 120 = 60)');
+    ev('cardMusicSeekTo(2)');
+    eq(ev('CardMusic.audio.currentTime'), 120, 'frac > 1 режется в конец');
+    ev('CardMusic.audio = { currentTime: 5, duration: NaN, pause: function(){} };');
+    ev('cardMusicSeekTo(0.5)');
+    eq(ev('CardMusic.audio.currentTime'), 5, 'при NaN-длительности промотка не трогает трек');
+    ev('CardMusic.stop()');
+    ev('cardMusicSeekRender()');
+    eq(seek.classList.contains('hidden'), true, 'без играющего трека полоса скрыта');
+    eq(ev('nxTimeFmt(75)'), '1:15', 'формат времени 75 → 1:15');
 
     console.log('\n' + (fails ? '💥 ' + fails + ' из ' + checks + ' провалено' : '✅ ALL PASS: ' + checks + ' проверок'));
     process.exit(fails ? 1 : 0);
