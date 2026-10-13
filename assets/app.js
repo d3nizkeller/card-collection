@@ -4574,12 +4574,15 @@ function nxToggle3d() {
         // каскад (1–10 ключей вместо тысяч), эпоха ep увеличивается — клиенты b420+
         // примут реестр целиком, старые ключи уйдут из облака и из localStorage.
         // Суммы (Σled − Σwon) сохраняются, значит банк не меняется.
-        function jpCompact(silent) {
+        function jpCompact(silent, force) {
             if (jpcAdminGuard()) return false;
             // b420: клиент ДО эпох (nxmob81 и старше) не знает ep и при max-слиянии
             // вернёт старые ключи-разряды поверх уплотнённых — банк удвоится.
-            // Поэтому уплотняем только когда старых клиентов не было видно 10 минут
-            if ((window.__nxJpLegacyAt || 0) > Date.now() - 600000) {
+            // Поэтому уплотняем только когда старых клиентов не было видно 10 минут.
+            // b423: force — самовосстановление после загрязнения v3: на v3 все
+            // клиенты знают ep (≤81 пишут в брошенный v2), поэтому удвоение
+            // исключено, и охрану можно обойти
+            if (!force && (window.__nxJpLegacyAt || 0) > Date.now() - 600000) {
                 if (!silent) showToast('⏳ Сейчас активен клиент старой версии — уплотнение удвоит его витрину. Обновите все вкладки игры и повторите', 'error');
                 return false;
             }
@@ -4612,6 +4615,20 @@ function nxToggle3d() {
             return true;
         }
         function jpDocBytes() { try { return JSON.stringify(jpDoc()).length; } catch (e) { return 0; } }
+
+        // b423: самовосстановление: если после слияния в реестре опять тысячи
+        // ключей (вкладка, открывшаяся в окно миграции, запушила старый реестр),
+        // любой активный клиент владельца уплотняет его обратно за один цикл
+        function jpAutoCompactIfNeeded() {
+            try {
+                if (cloudGuest()) return;
+                const n = Object.keys(jackpot.led).length + Object.keys(jackpot.won).length;
+                if (n <= 800) return;
+                if (Date.now() - (window.__nxJpCompactAt || 0) < 60000) return;
+                window.__nxJpCompactAt = Date.now();
+                jpCompact(true, true);
+            } catch (e) {}
+        }
         function jpRepairNow() {
             // кнопка «Починить банк» в Студии: то же самое, что автоматика, но сразу
             // с публикацией — владелец может починить банк для всех игроков сайта
@@ -5587,6 +5604,7 @@ function nxToggle3d() {
                 jpcMerge(remote && remote.jpc); // b414: настройки джекпота от владельца комнаты
                 marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
                 siteStatsMerge(remote && remote.st); // b277: чужие записи реестра игроков
+                jpAutoCompactIfNeeded(); // b423: загрязнённый реестр чиним до пуша
                 const doc = jpDoc(); // b183
                 return jpPush(doc).then(() => jpFetch().then(chk => {
                     const rj = (chk && chk.jp) ? chk.jp : chk;
@@ -5635,6 +5653,7 @@ function nxToggle3d() {
                 marketMerge(remote && remote.mk); // b136
                 siteStatsMerge(remote && remote.st); // b277
                 try { jpcApplyGrants(); } catch (e) {} // b414
+                jpAutoCompactIfNeeded(); // b423
                 if (jpAheadOf(rj)) { jpBusy = false; jpSyncNow(); return; } // мы впереди — догоняющий пуш
                 try { marketCreditLedger(); } catch (e) {}
                 try { statsRenderIfVisible(); } catch (e) {}

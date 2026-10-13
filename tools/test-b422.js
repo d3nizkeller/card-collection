@@ -116,6 +116,18 @@ const resp = obj => Promise.resolve({ ok: true, status: 200, text: () => Promise
     await D.ev('nxVersionNudge(), new Promise(r => setTimeout(r, 300))');
     ok(!D.doc.getElementById('nx-ver-toast'), 'на актуальной сборке тост не появляется');
 
+    // ===== D2. самовосстановление после загрязнения (b423) =====
+    console.log('\nD2. b423: загрязнённый реестр чинит себя сам');
+    const G = boot((url, opt) => resp({ jp: { led: { clean: 1000 }, won: {}, wins: {}, hall: [], ep: 5 }, updatedAt: '1-x' }));
+    const gv = G.ev;
+    gv('cloudGuest = () => false');
+    gv('jackpot.ep = 5; jackpot.led = {}; jackpot.won = {}; for (let i = 0; i < 900; i++) { jackpot.led["junk#" + i] = 1e12; }');
+    const pushesG = G.calls.filter(c => c.method !== 'GET').length;
+    await gv('jpPullLight(), new Promise(r => setTimeout(r, 800))');
+    ok(gv('Object.keys(jackpot.led).length') <= 6, '900 ключей схлопнулись в каскад: ' + gv('Object.keys(jackpot.led).length'));
+    eq(gv('jackpot.ep'), 6, 'эпоха увеличена — остальные примут реестр целиком');
+    ok(G.calls.filter(c => c.method !== 'GET').length > pushesG, 'уплотнённый реестр сразу опубликован');
+
     // ===== E. регрессии =====
     console.log('\nE. Регрессии b419–b421');
     const E = boot();
