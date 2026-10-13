@@ -4476,7 +4476,7 @@ function nxToggle3d() {
         // ============ b56: ДЖЕКПОТ (общий банк для Слотов и Сетки) ============
         const JACKPOT_KEY = 'nexus_jackpot_v2'; // b94: чистый старт банка без тестового мусора старых сессий
         const JACKPOT_SEED = 1000;
-        const JACKPOT_FEED = 1; // b96: 100% каждой ставки идёт в общий банк сайта
+        const JACKPOT_FEED = 1; // b96: базовый множитель взноса; сам процент ставки задаётся в Студии (b414/b415)
 
         // ============ b414: НАСТРОЙКИ ДЖЕКПОТА ИЗ СТУДИИ (вкладка «Джекпот») ============
         // Всё, что раньше было зашито константами (100 % ставки в банк, 100 % банка
@@ -4876,6 +4876,55 @@ function nxToggle3d() {
             try { jpcSim(); } catch (e) {}
             showToast('🔄 Тянем свежие данные банка и игроков…', 'info');
         }
+        // ============ b415: НАДПИСИ О ПРОЦЕНТАХ СЛЕДУЮТ ЗА НАСТРОЙКАМИ ============
+        // Все пользовательские тексты про «100 % ставки», «весь банк ваш» и
+        // «1 из 16 спинов» размечены в index.html атрибутами data-jpc="…".
+        // Один рендер подставляет в них актуальные значения; вызывается из
+        // jackpotRender(), поэтому надписи обновляются и после своих правок в
+        // Студии, и когда прилетает чужая редакция настроек из облака.
+        function jpcPctTxt(v) {
+            const x = Math.round((Number(v) || 0) * 10) / 10;
+            return String(x) + '%';
+        }
+        function jpcPhrase(key) {
+            const p = Math.round(Number(jpc.payout) || 0);
+            switch (key) {
+                case 'feed': return jpcPctTxt(jpc.feedBet);
+                case 'loss': return jpcPctTxt(jpc.feedLoss);
+                case 'paynum': return jpcPctTxt(p);
+                case 'pay': return p >= 100 ? 'весь банк ваш' : ('вам ' + p + '% банка');
+                case 'pay2': return p >= 100 ? 'весь общий банк сайта' : (p + '% общего банка сайта');
+                case 'pay2v': return p >= 100 ? 'весь общий банк сайта ваш' : ('вам ' + p + '% общего банка сайта');
+                case 'pay3': return p >= 100 ? 'весь банк джекпота' : (p + '% банка джекпота');
+                case 'odds-wheel': {
+                    if (jpcOff()) return 'не выпадает';
+                    const pp = jpcP('Wheel');
+                    if (pp >= 100) return 'каждый спин';
+                    if (pp <= 0) return 'не выпадает';
+                    const n = 100 / pp;
+                    return '1 из ' + (n >= 100 ? Math.round(n).toLocaleString('ru-RU') : (Math.round(n * 10) / 10)) + ' спинов';
+                }
+            }
+            return '';
+        }
+        const JPC_LABEL_KEYS = ['feed', 'loss', 'pay', 'pay2', 'pay2v', 'pay3', 'paynum', 'odds-wheel'];
+        function jpcLabelsRender() {
+            for (let i = 0; i < JPC_LABEL_KEYS.length; i++) {
+                const key = JPC_LABEL_KEYS[i];
+                const txt = jpcPhrase(key);
+                const nodes = document.querySelectorAll('[data-jpc="' + key + '"]');
+                for (let k = 0; k < nodes.length; k++) {
+                    if (nodes[k].textContent !== txt) nodes[k].textContent = txt;
+                }
+            }
+            // живой пример в панели «Джекпот»: ставка 10k и текущая выплата
+            const ea = document.getElementById('jpc-ex-add');
+            if (ea) ea.textContent = fmtCoins(Math.max(0, Math.round(10000 * (Number(jpc.feedBet) || 0) / 100)));
+            const ew = document.getElementById('jpc-ex-win');
+            if (ew) { try { ew.textContent = fmtCoins(Math.round(jackpotPool() * (Number(jpc.payout) || 0) / 100)); } catch (e) {} }
+        }
+        try { jpcLabelsRender(); } catch (e) {} // разметка уже в DOM: скрипт в конце body
+
         // ---- симулятор: как часто джекпот будет выпадать с текущими процентами ----
         function jpcSim() {
             const out = document.getElementById('jpc-sim-out');
@@ -5141,8 +5190,9 @@ function nxToggle3d() {
             jackpot.led[JACKPOT_CID] = (jackpot.led[JACKPOT_CID] || 0) + x;
             jackpotSave(); jackpotRender(); jpSyncSoon();
         }
-        // b92: каждый проигрыш пополняет общий банк на 100% потерянной суммы —
-        // джекпот собирает все проигрыши пользователей целиком (раньше было 25%)
+        // b92: каждый проигрыш пополняет общий банк на процент потерянной суммы —
+        // джекпот собирает проигрыши пользователей целиком (раньше было 25%).
+        // b415: процент (заводской 100) настраивается в Студии → feedLoss.
         function jackpotOnLoss(loss) {
             // b414: процент проигрыша, уходящий в банк, настраивается в Студии (было всегда 100 %)
             const pct = isFinite(+jpc.feedLoss) ? Math.max(0, +jpc.feedLoss) : 100;
@@ -5222,6 +5272,7 @@ function nxToggle3d() {
             if (wv) { wv.textContent = wtxt; wv.title = wtitle; }
             const lv = document.getElementById('lines-jp-top-list');
             if (lv) lv.innerHTML = html;
+            try { jpcLabelsRender(); } catch (e) {} // b415: надписи о процентах — вслед за настройками
         }
 
         // ==== b71: синхронизация общего банка джекпота между всеми игроками ====
@@ -7727,7 +7778,7 @@ function nxToggle3d() {
             state.coins -= bet;
             state.stats.slotsSpins = (state.stats.slotsSpins || 0) + 1;
             updateMissions('spin_slots', 1); // b121: задание дня
-            jackpotFeed(bet); // b96: 100% ставки в банк
+            jackpotFeed(bet); // b96; b415: % ставки в банк — из настроек Студии
             saveState(); updateCoinDisplay(); renderSlotsUI();
             const N = slots.symbols.length;
             const res = [0, 1, 2].map(() => slotsWeightedRand(jpcSpinPct('Slots'))); // b56; b414: вероятность из Студии
@@ -7774,7 +7825,7 @@ function nxToggle3d() {
                 checkAchievements(); // b61: награды по играм
                 showToast('🎰 ' + kind + '! Выигрыш +' + fmtCoins(win) + ' монет', 'success');
             } else {
-                const add = jackpotOnLoss(bet); // b94: джекпот растёт на 100% проигрыша
+                const add = jackpotOnLoss(bet); // b94; b415: джекпот растёт на % проигрыша из настроек Студии
                 showToast('Мимо — банк джекпота вырос на +' + fmtCoins(add) + ' и теперь ' + fmtCoins(jackpotPool()), 'refund');
             }
             saveState(); updateCoinDisplay(); renderSlotsUI();
@@ -8260,7 +8311,7 @@ function nxToggle3d() {
             state.coins -= bet;
             state.stats.gridSpins = (state.stats.gridSpins || 0) + 1;
             updateMissions('spin_grid', 1); // b122: задание дня
-            jackpotFeed(bet); // b96: 100% ставки в банк
+            jackpotFeed(bet); // b96; b415: % ставки в банк — из настроек Студии
             saveState(); updateCoinDisplay(); renderGridUI();
             grid.spinning = true; grid.chain = 0; grid.total = 0; grid.jpPaid = 0; grid.lastBet = bet; // b57 / b183
             try { SoundFX.play('click'); } catch (e) {}
@@ -8348,7 +8399,7 @@ function nxToggle3d() {
                 if (grid.auto && grid.total >= (grid.lastBet || grid.bet) * 10) gridAutoStop(true); // b93
             } else {
                 grid.lastWin = 0;
-                const add = jackpotOnLoss(grid.lastBet || grid.bet); // b94: +100% проигрыша в банк
+                const add = jackpotOnLoss(grid.lastBet || grid.bet); // b94; b415: +% проигрыша в банк из настроек Студии
                 showToast('Сетка тихая — банк джекпота вырос на +' + fmtCoins(add) + ' и теперь ' + fmtCoins(jackpotPool()), 'refund');
             }
             saveState(); updateCoinDisplay(); renderGridUI();
@@ -9537,8 +9588,8 @@ function nxToggle3d() {
 
         // ============ b79: МИНЫ ============
         // 25 плиток, m мин. Честный множитель: 1/P(все k открытий безопасны) × 0.97.
-        // Забрать выигрыш можно в любой момент; мина сжигает ставку (в джекпот уходит 100% проигрыша),
-        // старт раунда кормит общий джекпот сайта 100% ставки.
+        // Забрать выигрыш можно в любой момент; мина сжигает ставку (в джекпот уходит
+        // feedLoss% проигрыша), старт раунда кормит общий джекпот сайта feedBet% ставки (b415).
         const MINES_TILES = 25;
         // b81: плитки мин показывают ВАШИ паки: текстура пака из Студии/облака -> data-URL
         const MINES_PACK_URL = {};
@@ -9868,7 +9919,7 @@ function nxToggle3d() {
             linesMakePool();
             state.coins -= bet;
             updateCoinDisplay(); saveState();
-            jackpotFeed(bet); // b105: 100% ставки кормят общий банк
+            jackpotFeed(bet); // b105; b415: % ставки в банк — из настроек Студии
             state.stats.linesSpins = (state.stats.linesSpins || 0) + 1;
             updateMissions('spin_lines', 1); // b122: задание дня
             lines.spinning = true;
@@ -9941,7 +9992,7 @@ function nxToggle3d() {
                 updateMissions('win_lines', 1); // b121: задание дня
                 updateMissions('lines_coins', total); // b122: задание дня
             }
-            if (!total && !jpHit) jackpotOnLoss(bet); // b105: проигрыш отдаёт банку 100% ставки
+            if (!total && !jpHit) jackpotOnLoss(bet); // b105; b415: % проигрыша в банк — из настроек Студии
             saveState(); updateCoinDisplay();
             linesRenderBoard();
             linesDrawWinLines();
@@ -9969,7 +10020,7 @@ function nxToggle3d() {
                 if (res) res.innerHTML = 'Линии <b class="text-sky-300">' + nums + '</b> — +' + fmtCoins(total) + ' монет';
             } else {
                 try { SoundFX.play('tear'); } catch (e) {}
-                if (res) res.innerHTML = 'Линий нет — 100% ставки ушли в общий джекпот';
+                if (res) res.innerHTML = 'Линий нет — ' + jpcPctTxt(jpc.feedBet) + ' ставки ушли в общий джекпот';
             }
         }
 
@@ -10607,7 +10658,7 @@ function nxToggle3d() {
             let win = 0, paid = false;
             if (sec.t === 'mult') {
                 win = Math.round(bet * sec.m);
-                // b92: в банк идёт 100% чистого проигрыша (пусто — вся ставка, ×0.5 — половина)
+                // b92; b415: в банк идёт feedLoss% чистого проигрыша (пусто — вся ставка, ×0.5 — половина)
                 if (win < bet) jackpotOnLoss(bet - win);
             } else if (sec.t === 'card') {
                 const card = wheelGrantCard();
@@ -10638,7 +10689,7 @@ function nxToggle3d() {
             saveState(); updateCoinDisplay();
             const res = document.getElementById('wheel-result');
             if (res) res.innerHTML = 'Выпало: <b class="text-amber-300">' + sec.label + '</b>' +
-                (sec.t === 'jackpot' ? ' — весь общий банк сайта ваш!' : (win > 0 ? ' — +' + fmtCoins(win) + ' монет' : ''));
+                (sec.t === 'jackpot' ? ' — ' + jpcPhrase('pay2v') + '!' : (win > 0 ? ' — +' + fmtCoins(win) + ' монет' : ''));
             renderWheelUI();
         }
 
@@ -10719,7 +10770,7 @@ function nxToggle3d() {
                 bet: durakBet // b237: ставка партии
             };
             state.coins -= durakBet; saveState(); updateCoinDisplay(); SoundFX.play('coin'); // b237: ставка списана
-            jackpotFeed(durakBet); // b238: Дурак кормит общий джекпот — 100% ставки в банк
+            jackpotFeed(durakBet); // b238; b415: Дурак кормит джекпот — % ставки из настроек Студии
             durakLog(`Козырь: ${trump.rank}${trump.suit}. Первым ходит ${attacker === 'player' ? 'игрок' : 'ИИ'}. Ставка: ${fmtCoins(durakBet)}.`);
             SoundFX.play('swap');
             battle = null;
@@ -10950,7 +11001,7 @@ function nxToggle3d() {
                 state.stats.durakStreak = 0;
                 durak.rewardTotal = 0;
                 durak.rewardParts = [`Поражение: ставка ${fmtCoins(durak.bet || 0)} сгорела и ушла в общий джекпот, серия побед сброшена`];
-                jackpotOnLoss(durak.bet || 0); // b238: проигрыш кормит банк на 100%
+                jackpotOnLoss(durak.bet || 0); // b238; b415: проигрыш кормит банк на % из настроек Студии
                 saveState();
                 SoundFX.play('lose');
                 showToast('В этот раз вы дурак… Реванш?', 'error');

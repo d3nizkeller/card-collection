@@ -297,6 +297,50 @@ function freq(fn, n) { let h = 0; for (let i = 0; i < n; i++) if (fn()) h++; ret
     near(ev('jpcWeight(50,5)'), 50, 0.001, 'jpcWeight(50 %, 5 символов) = 50 → шанс ровно половина');
     near(ev('jpcWeight(0,5)'), 0, 0, 'jpcWeight(0 %) = 0');
 
+    // ================= K. живые надписи (b415) =================
+    console.log('\nK. Надписи о процентах следуют за настройками (b415)');
+    const lbl = key => Array.from(doc.querySelectorAll('[data-jpc="' + key + '"]')).map(e => e.textContent);
+    ok(lbl('feed').length >= 10, 'разметка data-jpc="feed" есть во всех играх (' + lbl('feed').length + ' мест)');
+    ok(lbl('loss').length >= 10, 'разметка data-jpc="loss" есть во всех играх (' + lbl('loss').length + ' мест)');
+    ok(lbl('feed').every(t => t === '100%'), 'заводские: все надписи взноса = «100%»');
+    ok(lbl('loss').every(t => t === '100%'), 'заводские: все надписи проигрыша = «100%»');
+    ok(lbl('pay').every(t => t === 'весь банк ваш'), 'заводские: «весь банк ваш»');
+    ok(lbl('odds-wheel').every(t => t === '1 из 16 спинов'), 'заводские: колесо «1 из 16 спинов»');
+    ev('jpcSet({feedBet:25,feedLoss:50})');
+    ev('jackpotRender()');
+    ok(lbl('feed').every(t => t === '25%'), 'feedBet=25 → все надписи взноса стали «25%» (' + lbl('feed').length + ')');
+    ok(lbl('loss').every(t => t === '50%'), 'feedLoss=50 → все надписи проигрыша стали «50%» (' + lbl('loss').length + ')');
+    ok(doc.getElementById('jpc-ex-add').textContent === '2.5k', 'живой пример в Студии: 10k × 25% = 2.5k');
+    ev('jpcSet({payout:40})');
+    ev('jackpotRender()');
+    ok(lbl('pay').every(t => t === 'вам 40% банка'), 'payout=40 → «вам 40% банка» во всех трёх баннерах');
+    ok(lbl('pay2').every(t => t === '40% общего банка сайта'), 'payout=40 → «40% общего банка сайта» (колесо)');
+    ok(lbl('pay2v').every(t => t === 'вам 40% общего банка сайта'), 'payout=40 → «вам 40% общего банка сайта» (линии)');
+    ok(lbl('pay3').every(t => t === '40% банка джекпота'), 'payout=40 → «40% банка джекпота» (строка выплат)');
+    ok(lbl('paynum').every(t => t === '40%'), 'payout=40 → «40%» в живом примере');
+    const poolNow = ev('jackpotPool()');
+    ok(doc.getElementById('jpc-ex-win').textContent === ev('fmtCoins(' + Math.round(poolNow * 0.4) + ')'),
+        'живой пример: выплата = 40% текущего банка (' + doc.getElementById('jpc-ex-win').textContent + ')');
+    ok(ev('jpcPhrase("pay2v")') === 'вам 40% общего банка сайта', 'jpcPhrase("pay2v") для динамического результата колеса');
+    ev('jpcSet({pWheel:25})');
+    ev('jackpotRender()');
+    ok(lbl('odds-wheel').every(t => t === '1 из 4 спинов'), 'pWheel=25 → колесо «1 из 4 спинов»');
+    ev('jpcSet({pWheel:0.5})');
+    ev('jackpotRender()');
+    ok(lbl('odds-wheel').every(t => t === '1 из 200 спинов'), 'pWheel=0.5 → колесо «1 из 200 спинов»');
+    ev('jpcSet({on:0})');
+    ev('jackpotRender()');
+    ok(lbl('odds-wheel').every(t => t === 'не выпадает'), 'on=0 → колесо «не выпадает»');
+    ev('jpcSet({on:1,feedBet:100,feedLoss:100,payout:100,pWheel:6.25})');
+    ev('jackpotRender()');
+    ok(lbl('feed').every(t => t === '100%') && lbl('pay').every(t => t === 'весь банк ваш')
+        && lbl('odds-wheel').every(t => t === '1 из 16 спинов'), 'возврат к заводским: надписи снова прежние');
+    // чужая редакция настроек тоже обновляет надписи
+    ev('window.__b414m = JSON.parse(JSON.stringify(jpcGet())); window.__b414m.feedBet=7; window.__b414m.at=Date.now()+600000;');
+    ev('jpcMerge(window.__b414m)');
+    ok(lbl('feed').every(t => t === '7%'), 'чужая редакция из облака (feedBet=7) обновила надписи без ручного вызова');
+    ev('jpcSet({feedBet:100})');
+
     console.log('\n' + '─'.repeat(58));
     if (fails) { console.log('❌ ' + fails + ' из ' + checks + ' проверок НЕ пройдено'); process.exit(1); }
     console.log('✅ ALL PASS — ' + checks + ' проверок, ошибок 0');

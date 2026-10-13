@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob74" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob74">
+    <script src="assets/three.min.js?v=nxmob75" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob75">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob74">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob75">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob74">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob75">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -246,7 +246,7 @@
                                 <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
                                 <span id="slots-jackpot" class="jp-value">0</span>
                             </div>
-                            <p class="jp-desc">три символа JACKPOT подряд на барабанах — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</p>
+                            <p class="jp-desc">три символа JACKPOT подряд на барабанах — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> каждого проигрыша</p>
                             <p id="slots-jackpot-note" class="jp-note"></p>
                             <p id="slots-jp-winner" class="jp-winner"></p>
                             </div>
@@ -272,14 +272,14 @@
                             <span id="slots-last">Последний выигрыш: —</span>
                             <span id="slots-stats" class="ml-auto font-mono text-slate-500">спинов: 0 • побед: 0</span>
                         </div>
-                        <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-circle-info text-violet-400 mr-1"></i>Выплаты: пара — ×2; три обычных — ×8, редких — ×12, эпических — ×18, легендарных — ×30 от ставки. Три символа JACKPOT подряд — весь банк джекпота.</p>
+                        <p class="text-[10px] text-slate-500 mt-2"><i class="fa-solid fa-circle-info text-violet-400 mr-1"></i>Выплаты: пара — ×2; три обычных — ×8, редких — ×12, эпических — ×18, легендарных — ×30 от ставки. Три символа JACKPOT подряд — <b data-jpc="pay3">весь банк джекпота</b>.</p>
                     </div>
 <div class="rules-card">
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
                                 <li>Выбери ставку (100–1m) и нажми <b>«Крутить»</b> (на телефоне — тап по самой машине).</li>
                                 <li>На 3D-барабанах крутятся карты сайта: <b>три одинаковые</b> — джекпот-множитель по редкости карты (<b>×8…×30</b>), <b>две одинаковые</b> — <b>×2</b>.</li>
-                                <li>100% каждой ставки кормят общий джекпот сайта, проигрышный спин отдаёт банку ещё 100% ставки. Выигрыш сразу падает в баланс.</li>
+                                <li><b data-jpc="feed">100%</b> каждой ставки кормят общий джекпот сайта, проигрышный спин отдаёт банку ещё <b data-jpc="loss">100%</b> ставки. Выигрыш сразу падает в баланс.</li>
                             </ol>
                         </div>
                 </div>
@@ -303,7 +303,7 @@
                                 <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
                                 <span id="grid-jackpot" class="jp-value">0</span>
                             </div>
-                            <p class="jp-desc">3+ карт JACKPOT где угодно на поле — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</p>
+                            <p class="jp-desc">3+ карт JACKPOT где угодно на поле — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> каждого проигрыша</p>
                             <p id="grid-jackpot-note" class="jp-note"></p>
                             <p id="grid-jp-winner" class="jp-winner"></p>
                             </div>
@@ -342,7 +342,7 @@
                                 <li>Выбери ставку и нажми <b>«Спин»</b>: поле 5×5 заполняется картами сайта.</li>
                                 <li><b>8+ одинаковых карт</b> где угодно на поле — выигрыш (до <b>×360</b> от ставки).</li>
                                 <li>Выигравшие ячейки взрываются и досыпаются каскадом: каждая цепь усиливает выплату (×1.5…×8).</li>
-                                <li>100% ставки кормят общий джекпот; проигрышный спин отдаёт в банк ещё 100% проигрыша.</li>
+                                <li><b data-jpc="feed">100%</b> ставки кормят общий джекпот; проигрышный спин отдаёт в банк ещё <b data-jpc="loss">100%</b> проигрыша.</li>
                                 <li>Выплата за группу: <b>8–9 карт — ×2, 10–11 — ×5, 12+ — ×15</b> от ставки, умноженные на редкость карты (×1…×3).</li>
                                 <li>Несколько групп одинаковых карт в одном спине складываются; ставка списывается и выигрыш возвращается в общий баланс.</li>
                             </ol>
@@ -355,7 +355,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-dharmachakra text-amber-300 mr-2"></i>Колесо Фортуны</h2>
-                                <p class="text-sm text-slate-400 mt-1">3D-колесо с призами: множители ставки до ×5, случайная карта сайта, кирка +1 и золотой сектор JACKPOT (1 из 16 спинов) — срывает весь общий банк сайта! Каждая ставка кормит банк на 100%, а проигрыш отдаёт банку ещё 100% потерянной суммы. Крутить можно тапом по самому колесу — кнопка не обязательна!</p>
+                                <p class="text-sm text-slate-400 mt-1">3D-колесо с призами: множители ставки до ×5, случайная карта сайта, кирка +1 и золотой сектор JACKPOT (<b data-jpc="odds-wheel">1 из 16 спинов</b>) — срывает <b data-jpc="pay2">весь общий банк сайта</b>! Каждая ставка кормит банк на <b data-jpc="feed">100%</b>, а проигрыш отдаёт банку ещё <b data-jpc="loss">100%</b> потерянной суммы. Крутить можно тапом по самому колесу — кнопка не обязательна!</p>
                                                     </div>
                         </div>
                         <div class="wheel-lights mt-4" aria-hidden="true"></div>
@@ -374,8 +374,8 @@
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
                                 <li>Выбери ставку и нажми <b>«Крутить»</b> — или просто тапни по самому колесу.</li>
-                                <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> (один — 1 из 16 спинов) — весь общий банк сайта.</li>
-                                <li>Пустой сектор: ставка сгорает и уходит в общий джекпот на <b>100%</b>; 100% каждой ставки капают в банк всегда, а проигрыш докидывает ещё 100% потерянной суммы.</li>
+                                <li>Куда укажет указчик — тот приз: множители ставки <b>×0.5…×5</b>, случайная <b>карта сайта</b>, <b>кирка +1</b> или золотой сектор <b>JACKPOT</b> (один — <b data-jpc="odds-wheel">1 из 16 спинов</b>) — <b data-jpc="pay2">весь общий банк сайта</b>.</li>
+                                <li>Пустой сектор: ставка сгорает и уходит в общий джекпот на <b data-jpc="loss">100%</b>; <b data-jpc="feed">100%</b> каждой ставки капают в банк всегда, а проигрыш докидывает ещё <b data-jpc="loss">100%</b> потерянной суммы.</li>
                             </ol>
                         </div>
                 </div>
@@ -385,7 +385,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-bomb text-rose-400 mr-2"></i>Мины</h2>
-                                <p class="text-sm text-slate-400 mt-1">Открывайте плитки: под каждой ваш пак или мина. Каждый пак растит множитель — заберите выигрыш в любой момент или рискуйте дальше. Мина сжигает ставку и кормит общий джекпот сайта (100% ставки при старте + 100% проигрыша при мине).</p>
+                                <p class="text-sm text-slate-400 mt-1">Открывайте плитки: под каждой ваш пак или мина. Каждый пак растит множитель — заберите выигрыш в любой момент или рискуйте дальше. Мина сжигает ставку и кормит общий джекпот сайта (<b data-jpc="feed">100%</b> ставки при старте + <b data-jpc="loss">100%</b> проигрыша при мине).</p>
                                                     </div>
                         </div>
                         <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
@@ -415,7 +415,7 @@
                                 <li>Выбери ставку и число мин (<b>3 / 5 / 10</b>), нажми <b>«Начать раунд»</b>.</li>
                                 <li>Открывай плитки: под каждой ваш <b>пак</b> (множитель растёт — видно на кнопке «Забрать») или <b>мина</b> (раунд проигран).</li>
                                 <li>Жми <b>«Забрать»</b> в любой момент, чтобы зафиксировать выигрыш; открыли все безопасные плитки — автовыплата.</li>
-                                <li>Мина: ставка сгорает и уходит в общий джекпот сайта на <b>100%</b>; старт раунда кормит банк 100% ставки.</li>
+                                <li>Мина: ставка сгорает и уходит в общий джекпот сайта на <b data-jpc="loss">100%</b>; старт раунда кормит банк <b data-jpc="feed">100%</b> ставки.</li>
                             </ol>
                         </div>
                 </div>
@@ -425,7 +425,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-table-cells text-sky-300 mr-2"></i>Сеточный слот: Линии</h2>
-                                <p class="text-sm text-slate-400 mt-1">Классический автомат: <b class="text-sky-300">5 барабанов × 3 ряда</b> и <b>10 цветных линий оплаты</b> (номера линий — по бокам поля). Одинаковые карты <b>слева направо</b> по линии: 3, 4 или 5 штук — выплата по редкости и длине. Линия из JACKPOT — весь общий банк сайта ваш!</p>
+                                <p class="text-sm text-slate-400 mt-1">Классический автомат: <b class="text-sky-300">5 барабанов × 3 ряда</b> и <b>10 цветных линий оплаты</b> (номера линий — по бокам поля). Одинаковые карты <b>слева направо</b> по линии: 3, 4 или 5 штук — выплата по редкости и длине. Линия из JACKPOT — <b data-jpc="pay2v">весь общий банк сайта ваш</b>!</p>
                             </div>
                         </div>
                         <!-- b107: блок джекпота сайта и в Линиях -->
@@ -437,7 +437,7 @@
                                         <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
                                         <span id="lines-jackpot" class="jp-value">0</span>
                                     </div>
-                                    <p class="jp-desc">линия JACKPOT слева направо — весь банк ваш; банк кормят 100% каждой ставки и 100% каждого проигрыша</p>
+                                    <p class="jp-desc">линия JACKPOT слева направо — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> каждого проигрыша</p>
                                     <p id="lines-jackpot-note" class="jp-note"></p>
                                     <p id="lines-jp-winner" class="jp-winner"></p>
                                 </div>
@@ -472,7 +472,7 @@
                                 <li>Кнопка <b>«Карты»</b> — выберите свои карты для барабанов (до 5 в общем выборе Слотов/Сетки/Линий); не выбрали — крутятся случайные карты сайта. Выбери ставку и жми <b>СТАРТ</b> (или <b>АВТО</b>, <b>МАКС СТАВКА</b>): 5 барабанов × 3 ряда закрутятся и остановятся слева направо.</li>
                                 <li>Линия оплаты идёт <b>слева направо</b>: 3, 4 или 5 одинаковых карт на одной из <b>10 линий</b> (горизонтали и зигзаги — цвета и номера по бокам поля).</li>
                                 <li>Выплата по редкости и длине: обычная <b>×0.5/×2/×10</b>, редкая <b>×1/×5/×25</b>, эпическая <b>×2/×10/×50</b>, легендарная <b>×5/×25/×100</b> от ставки; несколько линий складываются.</li>
-                                <li>Три символа <b>JACKPOT</b> слева на линии — весь общий банк сайта ваш; 100% ставки кормят банк каждый спин, проигрыш докидывает 100% ставки.</li>
+                                <li>Три символа <b>JACKPOT</b> слева на линии — <b data-jpc="pay2v">весь общий банк сайта ваш</b>; <b data-jpc="feed">100%</b> ставки кормят банк каждый спин, проигрыш докидывает <b data-jpc="loss">100%</b> ставки.</li>
 </ol>
                         </div>
                     </div>
@@ -1882,7 +1882,7 @@ min-height:56vh}
                         <span class="block text-[9px] text-slate-600 mt-1 leading-tight">0 = без потолка; иначе больше этой суммы не выплачивается</span>
                     </label>
                 </div>
-                <p class="text-[10px] text-slate-500 leading-snug">Пример: ставка 10k при «100% ставки в банк» добавляет в банк 10k монет; при выплате 100% победитель забирает не весь банк, а только его часть — остаток копится дальше и не обнуляет витрину.</p>
+                <p class="text-[10px] text-slate-500 leading-snug">Живой пример по текущим настройкам: ставка <b class="text-slate-300">10k</b> кормит банк на <b data-jpc="feed">100%</b> — это <b class="text-slate-300"><span id="jpc-ex-add">10k</span></b>; победитель забирает <b data-jpc="paynum">100%</b> банка — сейчас это <b class="text-slate-300"><span id="jpc-ex-win">—</span></b>, остальное копится дальше и не обнуляет витрину.</p>
             </div>
 
             <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
@@ -2713,10 +2713,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob74"></script>
-    <script src="assets/stories.js?v=nxmob74"></script>
-    <script src="assets/qrcode.min.js?v=nxmob74"></script>
-    <script src="assets/qr-transfer.js?v=nxmob74"></script>
+    <script src="assets/app.js?v=nxmob75"></script>
+    <script src="assets/stories.js?v=nxmob75"></script>
+    <script src="assets/qrcode.min.js?v=nxmob75"></script>
+    <script src="assets/qr-transfer.js?v=nxmob75"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
