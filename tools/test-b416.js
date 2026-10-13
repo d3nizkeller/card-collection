@@ -153,12 +153,14 @@ function bootDom(withFixture, ownerCid) {
     // ================= D. потолок и точность =================
     console.log('\nD. Потолок счётчика, точность сумм, честный «Поставить банк»');
     ev('jpcSet({floor:1000})'); reset();
-    eq(ev('jpLedAdd("led", JACKPOT_CID, 1e30)'), CAP, 'взнос 1e30 обрезан до потолка ' + CAP);
-    eq(ev('jpLedSum(jackpot.led)'), CAP, 'сумма реестра = потолок, не 1e30');
-    ok(ev('jackpotPool()') <= 1000 + CAP, 'банк не улетел в астрономию: ' + ev('fmtCoins(jackpotPool())'));
+    const PCAP = ev('JP_MAX_BUCKETS * JP_BUCKET'); // b418: 4096 вёдер × 1e12
+    eq(ev('jpLedAdd("led", JACKPOT_CID, 1e30)'), PCAP, 'b418: взнос 1e30 обрезан суммарной ёмкостью вёдер (' + PCAP + ')');
+    eq(ev('jpLedSum(jackpot.led)'), PCAP, 'сумма реестра = ёмкость вёдер, не 1e30');
+    ok(ev('jackpotPool()') <= 1000 + PCAP, 'банк не улетел в астрономию: ' + ev('fmtCoins(jackpotPool())'));
+    ok(ev('jpLedNum(jackpot.led[JACKPOT_CID])') <= ev('JP_BUCKET'), 'b418: в одном ключе не больше 1e12 — точность double жива');
     reset();
     ev('jpcSetPool(1e30)');
-    ok(ev('jackpotPool()') <= 1000 + CAP, '«Поставить банк 1e30» не раздувает реестр (банк ' + ev('fmtCoins(jackpotPool())') + ')');
+    ok(ev('jackpotPool()') <= 1000 + PCAP, '«Поставить банк 1e30» не раздувает реестр (банк ' + ev('fmtCoins(jackpotPool())') + ')');
     reset();
     ev('jpcSetPool(500000)');
     eq(ev('jackpotPool()'), 500000, '«Поставить банк 500k» → ровно 500k');
@@ -175,7 +177,7 @@ function bootDom(withFixture, ownerCid) {
     const big = {}; for (let i = 0; i < 1000; i++) big['p' + i] = 1e9;
     big.pmax = CAP;
     eq(ev('jpLedSum(' + JSON.stringify(big) + ')'), 1e12 + CAP, 'сумма 1001 записей (1000×1e9 + потолок) точна до монеты');
-    eq(ev('jpLedSum({a:1e57,b:-5,c:"x",d:NaN,e:7})'), 7, 'мусор (1e57, −5, "x", NaN) в сумму не попадает');
+        eq(ev('jpLedSum({a:1e57,b:-5,c:"x",d:NaN,e:7})'), 7, 'мусор (1e57, −5, "x", NaN) в сумму не попадает');
 
     // ================= E. идемпотентность ремонта =================
     console.log('\nE. Ремонт реестра идемпотентен');

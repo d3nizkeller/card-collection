@@ -4505,17 +4505,40 @@ function nxToggle3d() {
             for (let i = 0; i < a.length; i++) s += a[i];
             return s;
         }
+        // b418: счётчик-«вёдра». Одномерный счётчик с потолком можно упереть в
+        // потолок (владелец докормил led до 1e13 — и взносы снова стали исчезать,
+        // «банк вырос на +0»). Теперь переполнение дописывается в следующее ведро
+        // (cid#1, cid#2, …): слияние то же (max на ключ), суммы точные (слагаемые
+        // ≤ 1e12), а живой банк не упирается ни во что: 4096 вёдер × 1e12 = 4e15
+        // на игрока. Мусор (> JP_LED_CAP в одном ключе) по-прежнему режется.
+        const JP_BUCKET = 1e12;
+        const JP_MAX_BUCKETS = 4096;
+        function jpBucketKey(cid, i) { return i ? cid + '#' + i : cid; }
         function jpLedAdd(field, cid, x) {
-            // b416: единственный способ писать в реестр банка — со срезом мусора и
-            // потолком. Возвращает, сколько РЕАЛЬНО легло в счётчик (0 = не влезло).
+            // возвращает, сколько РЕАЛЬНО легло в реестр (0 = не влезло ни в одно ведро)
             x = Math.floor(Number(x) || 0);
             if (!(x > 0)) return 0;
             const m = jackpot[field] || (jackpot[field] = {});
-            const cur = jpLedNum(m[cid]);
-            const add = Math.min(x, JP_LED_CAP - cur);
-            if (!(add > 0)) return 0;
-            m[cid] = cur + add;
-            return add;
+            let left = x, added = 0;
+            for (let i = 0; left > 0 && i < JP_MAX_BUCKETS; i++) {
+                const k = jpBucketKey(cid, i);
+                const cur = jpLedNum(m[k]);
+                const put = Math.min(left, JP_BUCKET - cur);
+                if (put > 0) { m[k] = cur + put; added += put; left -= put; }
+            }
+            return added;
+        }
+        function jpLedOf(field, cid) {
+            // b418: суммарный счётчик игрока по всем его вёдрам
+            const m = jackpot[field] || {};
+            let s = 0;
+            for (const k in m) if (k === cid || k.indexOf(cid + '#') === 0) s += jpLedNum(m[k]);
+            return s;
+        }
+        function jpHallFiltered(hall, cut) {
+            // b418: записи зала славы старше tombstone hallCut не показываются нигде
+            const c = Math.floor(Number(cut) || 0);
+            return (Array.isArray(hall) ? hall : []).filter(h => h && h.t > c);
         }
         function jpFloor() { const fl = Number(jpc.floor); return (isFinite(fl) && fl >= 0) ? Math.round(fl) : JACKPOT_SEED; }
         function jpRawPool() { return Math.round(JACKPOT_SEED + jpLedSum(jackpot.led) - jpLedSum(jackpot.won)); }
@@ -4749,6 +4772,32 @@ function nxToggle3d() {
         }
         function jpcNudgePool(delta) { jpcSetPool(jackpotPool() + Math.round(Number(delta) || 0)); }
         function jpcResetPoolFloor() { jpcSetPool(Math.max(0, Math.round(jpc.floor || 0))); }
+        // b418: кнопка «Стандартные настройки» в Студии — заводские проценты b414
+        // (100/100/100, пол 1000, без потолка, заводские вероятности и гарантии)
+        // с публикацией всем игрокам сайта; назначенные выдачи (grant) сохраняем
+        function jpcResetDefaults() {
+            if (jpcAdminGuard()) return;
+            const kept = jpc.grant;
+            jpc = jpcNorm(JPC_DEFAULTS);
+            jpc.grant = kept;
+            jpcSave();
+            jpcPublish(true); // b414: at/by + пуш в облако, тост свой не нужен
+            try { jackpotRender(); } catch (e) {}
+            try { if (jpcVisible()) jpcAdminRender(); else jpcAdminPreview(); } catch (e) {}
+            showToast('♻️ Настройки джекпота сброшены к стандартным и опубликованы для всех', 'success');
+        }
+        // b418: кнопка «Сбросить топ джекпотов сайта» — очищает зал славы и топ-3
+        // на ВСЕХ клиентах: tombstone hallCut не даст старым записям (включая мусор
+        // эпохи 1e57) воскреснуть при слиянии; банк и настройки не трогает
+        function jpcResetHall() {
+            if (jpcAdminGuard()) return;
+            jackpot.hall = [];
+            jackpot.hallCut = Date.now();
+            jackpotSave(); jackpotRender();
+            try { jpcAdminPreview(); } catch (e) {}
+            try { jpSyncNow(); } catch (e) {}
+            showToast('🏆 Топ джекпотов сайта сброшен — банк и настройки не тронуты', 'success');
+        }
         function jpcParseAmount(raw, what) {
             raw = String(raw == null ? '' : raw).trim();
             if (!raw) { showToast('Введите ' + what + ' — например 100k', 'error'); return null; }
@@ -5069,7 +5118,7 @@ function nxToggle3d() {
         function jackpotLoad() {
             try {
                 const j = JSON.parse(LS.getItem(JACKPOT_KEY) || 'null');
-                if (j && j.led) return { led: j.led || {}, won: j.won || {}, wins: j.wins || {}, names: j.names || {}, hall: j.hall || [] };
+                if (j && j.led) return { led: j.led || {}, won: j.won || {}, wins: j.wins || {}, names: j.names || {}, hall: jpHallFiltered(j.hall, j.hallCut), hallCut: Math.floor(j.hallCut) || 0 }; // b418: tombstone зала славы
                 // b71: миграция старого личного банка в собственный взнос игрока
                 if (j && j.pool >= 1) {
                     const led = {}; const extra = Math.floor(j.pool) - JACKPOT_SEED;
@@ -5236,7 +5285,18 @@ function nxToggle3d() {
             return Math.round(jpFloor() + jpExcess());
         }
         // b416: служебная запись дома и испорченные счётчики игроками не считаются
-        function jackpotPlayers() { let n = 0; for (const k in jackpot.led) if (k !== JP_HOUSE && !jpLedBad(jackpot.led[k])) n++; return n; }
+        // b418: вёдра cid#N одного игрока считаем за ОДНОГО игрока
+        function jackpotPlayers() {
+            const seen = {};
+            for (const k in jackpot.led) {
+                if (jpLedBad(jackpot.led[k])) continue;
+                const h = k.indexOf('#');
+                const base = h > 0 ? k.slice(0, h) : k;
+                if (base === JP_HOUSE) continue;
+                seen[base] = 1;
+            }
+            return Object.keys(seen).length;
+        }
         function jackpotSave() { try { LS.setItem(JACKPOT_KEY, JSON.stringify(jackpot)); } catch (e) {} }
         function jackpotMerge(remote) {
             if (!remote || typeof remote !== 'object') return false;
@@ -5257,11 +5317,18 @@ function nxToggle3d() {
                 }
             }
             // зал славы победителей: объединяем по метке времени, держим 6 последних
+            // b418: сброс зала славы — tombstone hallCut: записи с t ≤ hallCut не
+            // воскресают ни из облака, ни из localStorage старых клиентов
+            const cut = Math.max(Math.floor(jackpot.hallCut) || 0, Math.floor(remote.hallCut) || 0);
+            if (cut > (Math.floor(jackpot.hallCut) || 0)) { jackpot.hallCut = cut; ch = true; }
             if (Array.isArray(remote.hall) && remote.hall.length) {
                 const map = {};
-                (jackpot.hall || []).forEach(h => { if (h && h.t) map[h.t] = h; });
-                remote.hall.forEach(h => { if (h && h.t && !map[h.t]) { map[h.t] = h; ch = true; } });
+                (jackpot.hall || []).forEach(h => { if (h && h.t && h.t > cut) map[h.t] = h; });
+                remote.hall.forEach(h => { if (h && h.t && h.t > cut && !map[h.t]) { map[h.t] = h; ch = true; } });
                 jackpot.hall = Object.keys(map).map(k => map[k]).sort((a, b) => b.t - a.t).slice(0, 20);
+            } else if ((jackpot.hall || []).some(h => h && h.t <= cut)) {
+                jackpot.hall = (jackpot.hall || []).filter(h => h && h.t > cut);
+                ch = true;
             }
             if (ch) {
                 jackpotSave(); jackpotRender();
@@ -5343,17 +5410,19 @@ function nxToggle3d() {
             if (na) na.textContent = note;
             if (nb) nb.textContent = note;
             // b91: кто последним сорвал джекпот — видно всем
-            const top = (jackpot.hall || [])[0];
+            // b418: зал славы читаем через tombstone hallCut (после сброса топ пуст)
+            const hall = jpHallFiltered(jackpot.hall, jackpot.hallCut);
+            const top = hall[0];
             const wtxt = top
                 ? '👑 Последний джекпот: ' + (top.n || 'игрок') + ' — +' + fmtCoins(top.a || 0) + ' (' + new Date(top.t).toLocaleDateString() + ')'
                 : '👑 Джекпот сайта ещё не срывали — станьте первым!';
-            const wtitle = (jackpot.hall || []).map(h => (h.n || 'игрок') + ': +' + fmtCoins(h.a || 0) + ' (' + new Date(h.t).toLocaleDateString() + ')').join('\n');
+            const wtitle = hall.map(h => (h.n || 'игрок') + ': +' + fmtCoins(h.a || 0) + ' (' + new Date(h.t).toLocaleDateString() + ')').join('\n');
             const wa = document.getElementById('slots-jp-winner');
             const wb = document.getElementById('grid-jp-winner');
             if (wa) { wa.textContent = wtxt; wa.title = wtitle; }
             if (wb) { wb.textContent = wtxt; wb.title = wtitle; }
             // b98: ТОП-5 крупнейших срывов банка
-            const topWins = (jackpot.hall || []).slice().sort((a, b) => (b.a || 0) - (a.a || 0)).slice(0, 3); // b101: топ-3
+            const topWins = hall.slice().sort((a, b) => (b.a || 0) - (a.a || 0)).slice(0, 3); // b101: топ-3; b418: после сброса — пуст
             const medals = ['🥇', '🥈', '🥉'];
             const html = topWins.length
                 ? topWins.map((h, i) => '<li><span class="jp-rank">' + (i + 1) + (medals[i] ? ' ' + medals[i] : '.') + '</span><span class="jp-name">' + String(h.n || 'игрок').replace(/[<>&]/g, '') + '</span><span class="jp-amt">+' + fmtCoins(h.a || 0) + '</span><span class="jp-date">' + new Date(h.t || 0).toLocaleDateString() + '</span></li>').join('')
@@ -5477,7 +5546,7 @@ function nxToggle3d() {
         // b183: документ общего банка (тот же, что пушит jpSyncNow) — нужен и для аварийной отправки
         function jpDoc() {
             return {
-                jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall },
+                jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall, hallCut: jackpot.hallCut || 0 }, // b418: tombstone зала славы едет со всеми
                 jpc: jpcDoc(), // b414: настройки джекпота и назначенные выдачи — видны всему сайту
                 mk: marketDoc(), // b136
                 st: siteStatsDoc(), // b277: статистика игроков сайта — балансы, паки, джекпоты
@@ -5660,8 +5729,8 @@ function nxToggle3d() {
                 e.bal = Math.max(0, Math.floor(state.coins) || 0);
                 e.op = Math.max(0, Math.floor(state.stats && state.stats.packsOpened) || 0);
                 e.jp = Math.floor(jackpot.wins[JACKPOT_CID]) || 0;
-                e.fed = jpLedNum(jackpot.led[JACKPOT_CID]); // b416: в реестр сайта не утекает 1e57
-                e.won = jpLedNum(jackpot.won[JACKPOT_CID]);
+                e.fed = jpLedOf('led', JACKPOT_CID); // b416: в реестр сайта не утекает 1e57; b418: сумма по всем вёдрам
+                e.won = jpLedOf('won', JACKPOT_CID);
                 const pk = {};
                 const ps = state.packStats || {};
                 Object.keys(ps).slice(0, 24).forEach(id => { const o = Math.floor(ps[id] && ps[id].opens) || 0; if (o > 0) pk[id] = o; });
