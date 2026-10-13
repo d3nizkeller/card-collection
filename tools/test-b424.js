@@ -105,6 +105,18 @@ function boot() {
     ok(b1b.innerHTML.indexOf('border-amber-400') >= 0, 'второй значок стал янтарным');
     ok(ev('completedAlbums(state)') >= 2, 'completedAlbums согласован со значками');
 
+    console.log('\nD2. b425: значки ПЕРЕД достижениями, адаптивная сетка');
+    const sec = doc.getElementById('tab-rewards');
+    const badgesCard = box.closest('.rounded-2xl');
+    const achCard = doc.getElementById('rewards-achievements-grid').closest('.rounded-2xl');
+    const kids = Array.from(sec.children);
+    ok(kids.indexOf(badgesCard) < kids.indexOf(achCard), 'карточка значков стоит РАНЬШЕ карточки достижений');
+    ok(box.className.indexOf('grid grid-cols-3') === 0 || box.className.indexOf('grid ') >= 0, 'контейнер — сетка: ' + box.className.slice(0, 60) + '…');
+    ok(box.className.indexOf('sm:grid-cols-4') >= 0 && box.className.indexOf('md:grid-cols-6') >= 0 && box.className.indexOf('lg:grid-cols-8') >= 0, 'колонки 3/4/6/8 по ширине экрана');
+    ok(box.className.indexOf('justify-items-center') >= 0, 'кружки центрированы в колонках');
+    ok(badges.every(b => { const c = b.firstElementChild; return c.className.indexOf('sm:w-24') >= 0; }), 'кружки крупнее на широких экранах (sm:w-24)');
+    ok(badges.every(b => b.className.indexOf('w-full') >= 0), 'ячейка тянется на колонку сетки');
+
     console.log('\nE. Остальная вкладка наград на месте');
     ok(!!doc.getElementById('rewards-daily-strip'), 'ежедневная награда');
     ok(!!doc.getElementById('rewards-missions-list'), 'задания дня');

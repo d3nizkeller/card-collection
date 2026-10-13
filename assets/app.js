@@ -3889,8 +3889,8 @@ function nxToggle3d() {
             box.innerHTML = items.map(i => {
                 const cover = mediaThumb(i.p.image) || mediaUrl(i.p.image);
                 const title = jpcEsc(i.p.title || i.p.id);
-                return '<div class="flex flex-col items-center gap-1.5" style="width:5.5rem">' +
-                    '<div class="relative w-20 h-20 rounded-full overflow-hidden border-2 shrink-0 ' +
+                return '<div class="w-full min-w-0 flex flex-col items-center gap-1.5">' + // b425: ячейка сетки на всю колонку
+                    '<div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 shrink-0 ' + // b425: крупнее на широких экранах
                         (i.done ? 'border-amber-400 shadow-[0_0_18px_rgba(251,191,36,.45)]' : 'border-slate-700') + '" ' +
                         'title="' + title + ' — ' + i.have + '/' + i.total + '">' +
                         '<img src="' + cover + '" alt="' + title + '" class="w-full h-full object-cover ' + (i.done ? '' : 'grayscale') + '" loading="lazy" decoding="async" onerror="this.onerror=null;imgErrorChain(this);">' +
