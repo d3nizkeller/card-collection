@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob93" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob93">
+    <script src="assets/three.min.js?v=nxmob94" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob94">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob93">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob94">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob93">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob94">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -2373,6 +2373,10 @@ min-height:56vh}
         <div class="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-4 shadow-2xl">
             <h3 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-lock text-amber-400"></i><span>Вход в Студию</span></h3>
             <p class="text-xs text-slate-400">Студия защищена паролем комнаты облака. Введите пароль комнаты, чтобы открыть редактирование паков и карточек.</p>
+            <div class="flex items-center gap-2" title="b430: на ввод пароля 30 секунд, потом окно закроется">
+                <div class="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden"><div id="studio-pass-bar" class="h-full bg-amber-500 rounded-full" style="width:100%"></div></div>
+                <span class="text-[11px] font-mono text-amber-300 whitespace-nowrap"><span id="studio-pass-timer">30</span> с</span>
+            </div>
             <input id="studio-pass-input" type="password" maxlength="64" placeholder="Пароль комнаты" class="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-sm font-bold placeholder-slate-500 focus:border-amber-400/70 focus:outline-none" onkeydown="if(event.key==='Enter')submitStudioPass()">
             <p id="studio-pass-err" class="hidden text-[11px] text-rose-400 font-bold"></p>
             <button onclick="submitStudioPass()" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl transition"><i class="fa-solid fa-key mr-1.5"></i>Войти в Студию</button>
@@ -2753,10 +2757,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob93"></script>
-    <script src="assets/stories.js?v=nxmob93"></script>
-    <script src="assets/qrcode.min.js?v=nxmob93"></script>
-    <script src="assets/qr-transfer.js?v=nxmob93"></script>
+    <script src="assets/app.js?v=nxmob94"></script>
+    <script src="assets/stories.js?v=nxmob94"></script>
+    <script src="assets/qrcode.min.js?v=nxmob94"></script>
+    <script src="assets/qr-transfer.js?v=nxmob94"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

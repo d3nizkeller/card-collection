@@ -12061,6 +12061,40 @@ function nxToggle3d() {
             // пароль в комнате ещё не задан — гейта нет, Студия открывается как раньше
             return cloudAuthReady() && !studioUnlocked;
         }
+        // b430: на ввод пароля — 30 секунд. Не успели — окно и доступ закрываются:
+        // открытая нараспашку модалка пароля на чужом телефоне больше не оставит
+        // Студию в одном шаге от входа.
+        let studioPassTimer = null, studioPassLeft = 0;
+        function studioPassLimit() { return Math.max(1, Math.floor(Number(window.__nxStudioPassSec) || 30)); }
+        function studioPassCountdown() {
+            const lim = studioPassLimit();
+            const el = document.getElementById('studio-pass-timer');
+            if (el) el.textContent = String(Math.max(0, studioPassLeft));
+            const bar = document.getElementById('studio-pass-bar');
+            if (bar) bar.style.width = Math.max(0, Math.min(100, studioPassLeft / lim * 100)) + '%';
+        }
+        function studioPassDisarmTimer() {
+            if (studioPassTimer) { try { clearInterval(studioPassTimer); } catch (e) {} studioPassTimer = null; }
+        }
+        function studioPassArmTimer() {
+            studioPassDisarmTimer();
+            studioPassLeft = studioPassLimit();
+            studioPassCountdown();
+            studioPassTimer = setInterval(() => {
+                studioPassLeft--;
+                studioPassCountdown();
+                if (studioPassLeft > 0) return;
+                studioPassDisarmTimer();
+                closeStudioPassModal();
+                // b430: «студия закрывается» — если вкладка Студии вдруг открыта без
+                // разблокировки, уходим с неё обратно в магазин
+                try {
+                    const t = document.getElementById('tab-studio');
+                    if (!studioUnlocked && t && !t.classList.contains('hidden')) switchTab('store');
+                } catch (e) {}
+                showToast('⏳ Пароль не введён за ' + studioPassLimit() + ' секунд — Студия закрыта', 'error');
+            }, 1000);
+        }
         function openStudioPassModal() {
             const m = document.getElementById('modal-studio-pass');
             const i = document.getElementById('studio-pass-input');
@@ -12068,9 +12102,11 @@ function nxToggle3d() {
             if (i) i.value = '';
             if (e) e.classList.add('hidden');
             if (m) m.classList.remove('hidden');
+            studioPassArmTimer(); // b430: 30 секунд на ввод пароля
             setTimeout(() => { try { i.focus(); } catch (e) {} }, 60);
         }
         function closeStudioPassModal() {
+            studioPassDisarmTimer(); // b430: таймер не живёт дольше открытого окна
             const m = document.getElementById('modal-studio-pass');
             if (m) m.classList.add('hidden');
         }
