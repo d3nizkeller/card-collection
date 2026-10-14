@@ -4598,6 +4598,14 @@ function nxToggle3d() {
             const c = Math.floor(Number(cut) || 0);
             return (Array.isArray(hall) ? hall : []).filter(h => h && h.t > c);
         }
+        // b432: в топ сайта попадают только игроки, которые ВВЕЛИ имя: запись с
+        // флагом nm (после b432) или, для старого зала, с именем без префикса «Игрок-»
+        function jpHallNamed(h) {
+            if (!h) return false;
+            if (h.nm !== undefined) return !!h.nm;
+            const n = String(h.n || '');
+            return !!n && n.indexOf('Игрок-') !== 0;
+        }
         function jpFloor() { const fl = Number(jpc.floor); return (isFinite(fl) && fl >= 0) ? Math.round(fl) : JACKPOT_SEED; }
         function jpRawPool() { return Math.round(JACKPOT_SEED + jpLedSum(jackpot.led) - jpLedSum(jackpot.won)); }
         function jpExcess() { return Math.max(0, jpRawPool() - JACKPOT_SEED); } // накоплено сверх сида
@@ -5467,7 +5475,7 @@ function nxToggle3d() {
                 jackpotSave(); jackpotRender();
                 // b91: чужая свежая победа — видим её сразу: «чисто и честно»
                 try {
-                    const top = (jackpot.hall || [])[0];
+                    const top = (jackpot.hall || []).filter(jpHallNamed)[0]; // b432: анонс только именным
                     const seen = parseInt(LS.getItem('nexus_jp_seen') || '0', 10) || 0;
                     if (top && top.t > seen) {
                         LS.setItem('nexus_jp_seen', String(top.t));
@@ -5513,10 +5521,12 @@ function nxToggle3d() {
             jpLedAdd('won', JACKPOT_CID, Math.min(prize, jpExcess()));
             jackpot.wins[JACKPOT_CID] = (jackpot.wins[JACKPOT_CID] || 0) + 1;
             // b91: фиксируем победителя по имени — зал славы увидят все игроки сайта
-            const wname = getPlayerName() || ('Игрок-' + JACKPOT_CID.slice(1, 5));
+            // b432: флаг nm — попал ли срыв в топ сайта (только игроки с именем)
+            const realName = getPlayerName();
+            const wname = realName || ('Игрок-' + JACKPOT_CID.slice(1, 5));
             jackpot.names[JACKPOT_CID] = wname;
             jackpot.hall = jackpot.hall || [];
-            jackpot.hall.unshift({ n: wname, a: prize, t: Date.now(), c: JACKPOT_CID });
+            jackpot.hall.unshift({ n: wname, a: prize, t: Date.now(), c: JACKPOT_CID, nm: realName ? 1 : 0 });
             jackpot.hall = jackpot.hall.slice(0, 40); // b431: окно зала 40
             try { LS.setItem('nexus_jp_seen', String(Date.now())); } catch (e) {}
             jackpotSave();
@@ -5528,6 +5538,8 @@ function nxToggle3d() {
             try { SoundFX.play('legendary'); } catch (e) {}
             launchConfetti(220); // b61: джекпот — полный салют
             showToast('👑 JACKPOT! +' + fmtCoins(prize) + ' монет' + (pct < 100 ? ' (' + pct + '% банка)' : ' — весь банк сайта ваш'), 'success');
+            // b432: безымянный победитель узнаёт, как попасть в топ сайта
+            if (!realName) setTimeout(() => { try { showToast('🖊 Введите имя игрока — и ваши срывы джекпота попадут в топ сайта', 'info'); } catch (e) {} }, 1200);
             jackpotRender(); jpSyncNow();
             return prize;
         }
@@ -5544,7 +5556,8 @@ function nxToggle3d() {
             if (nb) nb.textContent = note;
             // b91: кто последним сорвал джекпот — видно всем
             // b418: зал славы читаем через tombstone hallCut (после сброса топ пуст)
-            const hall = jpHallFiltered(jackpot.hall, jackpot.hallCut);
+            // b432: топ и «последний срыв» — только игроки С ИМЕНЕМ
+            const hall = jpHallFiltered(jackpot.hall, jackpot.hallCut).filter(jpHallNamed);
             const top = hall[0];
             const wtxt = top
                 ? '👑 Последний джекпот: ' + (top.n || 'игрок') + ' — +' + fmtCoins(top.a || 0) + ' (' + new Date(top.t).toLocaleDateString() + ')'
@@ -5562,7 +5575,9 @@ function nxToggle3d() {
             const medals = ['🥇', '🥈', '🥉'];
             const html = topWins.length
                 ? topWins.map((h, i) => '<li><span class="jp-rank">' + (i + 1) + (medals[i] ? ' ' + medals[i] : '.') + '</span><span class="jp-name">' + String(h.n || 'игрок').replace(/[<>&]/g, '') + '</span><span class="jp-amt">+' + fmtCoins(h.a || 0) + '</span><span class="jp-date">' + new Date(h.t || 0).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + new Date(h.t || 0).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + '</span></li>').join('') // b431: дата И время срыва
-                : '<li class="jp-empty">Джекпот ещё не срывали — станьте первым в топе!</li>';
+                : (jackpot.hall || []).length
+                    ? '<li class="jp-empty">Все срывы пока без имени — введите имя, чтобы попасть в топ</li>'
+                    : '<li class="jp-empty">Джекпот ещё не срывали — станьте первым в топе!</li>'; // b432
             const la = document.getElementById('slots-jp-top-list');
             const lb = document.getElementById('grid-jp-top-list');
             if (la) la.innerHTML = html;
