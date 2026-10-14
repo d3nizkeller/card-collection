@@ -5458,7 +5458,7 @@ function nxToggle3d() {
                 const map = {};
                 (jackpot.hall || []).forEach(h => { if (h && h.t && h.t > cut) map[h.t] = h; });
                 remote.hall.forEach(h => { if (h && h.t && h.t > cut && !map[h.t]) { map[h.t] = h; ch = true; } });
-                jackpot.hall = Object.keys(map).map(k => map[k]).sort((a, b) => b.t - a.t).slice(0, 20);
+                jackpot.hall = Object.keys(map).map(k => map[k]).sort((a, b) => b.t - a.t).slice(0, 40); // b431: окно зала 40
             } else if ((jackpot.hall || []).some(h => h && h.t <= cut)) {
                 jackpot.hall = (jackpot.hall || []).filter(h => h && h.t > cut);
                 ch = true;
@@ -5517,7 +5517,7 @@ function nxToggle3d() {
             jackpot.names[JACKPOT_CID] = wname;
             jackpot.hall = jackpot.hall || [];
             jackpot.hall.unshift({ n: wname, a: prize, t: Date.now(), c: JACKPOT_CID });
-            jackpot.hall = jackpot.hall.slice(0, 20);
+            jackpot.hall = jackpot.hall.slice(0, 40); // b431: окно зала 40
             try { LS.setItem('nexus_jp_seen', String(Date.now())); } catch (e) {}
             jackpotSave();
             state.coins += prize;
@@ -5555,10 +5555,13 @@ function nxToggle3d() {
             if (wa) { wa.textContent = wtxt; wa.title = wtitle; }
             if (wb) { wb.textContent = wtxt; wb.title = wtitle; }
             // b98: ТОП-5 крупнейших срывов банка
-            const topWins = hall.slice().sort((a, b) => (b.a || 0) - (a.a || 0)).slice(0, 3); // b101: топ-3; b418: после сброса — пуст
+            // b431: топ-3 = ТРИ ПОСЛЕДНИХ срыва (по t): новый джекпот виден сразу,
+            // а не только когда он крупнее старых (b98/b101: было — по сумме);
+            // b418: после сброса — пуст
+            const topWins = hall.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 3);
             const medals = ['🥇', '🥈', '🥉'];
             const html = topWins.length
-                ? topWins.map((h, i) => '<li><span class="jp-rank">' + (i + 1) + (medals[i] ? ' ' + medals[i] : '.') + '</span><span class="jp-name">' + String(h.n || 'игрок').replace(/[<>&]/g, '') + '</span><span class="jp-amt">+' + fmtCoins(h.a || 0) + '</span><span class="jp-date">' + new Date(h.t || 0).toLocaleDateString() + '</span></li>').join('')
+                ? topWins.map((h, i) => '<li><span class="jp-rank">' + (i + 1) + (medals[i] ? ' ' + medals[i] : '.') + '</span><span class="jp-name">' + String(h.n || 'игрок').replace(/[<>&]/g, '') + '</span><span class="jp-amt">+' + fmtCoins(h.a || 0) + '</span><span class="jp-date">' + new Date(h.t || 0).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + new Date(h.t || 0).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + '</span></li>').join('') // b431: дата И время срыва
                 : '<li class="jp-empty">Джекпот ещё не срывали — станьте первым в топе!</li>';
             const la = document.getElementById('slots-jp-top-list');
             const lb = document.getElementById('grid-jp-top-list');
@@ -5688,6 +5691,17 @@ function nxToggle3d() {
             try { e.preventDefault(); } catch (e2) {}
         });
         function jpSyncSoon() { clearTimeout(jpT); jpT = setTimeout(jpSyncNow, 2500); }
+        // b431: сторож синхронизации: если вкладка видима, но 60 секунд не было
+        // ни одного успешного цикла (тихо умерший pull, сон WebView, обрыв сети),
+        // дёргаем jpSyncNow принудительно — топ и банк догоняют облако сами
+        function nxSyncWatchdog() {
+            try {
+                const limit = Math.max(5000, Math.floor(Number(window.__nxSyncWatchMs) || 60000));
+                if (document.hidden || jpBusy) return;
+                if (Date.now() - jpLastAt > limit) jpSyncNow();
+            } catch (e) {}
+        }
+        setInterval(nxSyncWatchdog, 20000);
         // b422: реальное время. Лёгкий pull раз в 15 секунд: fetch → merge всех
         // четырёх разделов → push ТОЛЬКО если наш реестр впереди облака. Полный
         // цикл jpSyncNow (с повторным чтением после записи) остаётся для событий.
@@ -5701,6 +5715,10 @@ function nxToggle3d() {
                 marketMerge(remote && remote.mk); // b136
                 siteStatsMerge(remote && remote.st); // b277
                 try { jpcApplyGrants(); } catch (e) {} // b414
+                // b431: витрина джекпота (банк, топ-3, надписи) перерисовывается
+                // КАЖДЫЙ pull, даже если слияние не нашло изменений, — залипнуть
+                // на старом DOM невозможно
+                try { jackpotRender(); } catch (e) {}
                 jpAutoCompactIfNeeded(); // b423
                 if (jpAheadOf(rj)) { jpBusy = false; jpSyncNow(); return; } // мы впереди — догоняющий пуш
                 try { marketCreditLedger(); } catch (e) {}
