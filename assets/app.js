@@ -741,7 +741,26 @@ function nxToggle3d() {
             try { r.forceContextLoss && r.forceContextLoss(); } catch (e) {}
             try { r.dispose && r.dispose(); } catch (e) {}
         }
+        // b434: переключение вкладок больше не замораживает игры: висящий спин
+        // дочитывается тем же финишем, который вызвал бы убитый цикл
+        function nxForceFinishSpins() {
+            try { if (slots.spinning) { slots.spinning = false; slotsFinish(slots.lastResult, slots.bet); } } catch (e) {}
+            try { if (lines.spinning) { const p = lines3d.pending; lines3d.pending = null; linesFinish(p ? p.final : lines.cells.slice(), p ? p.bet : lines.bet); } } catch (e) {}
+            try { if (grid.spinning) gridEnd(); } catch (e) {}
+        }
+        // b434: сторож «висящих» спинов: потеря контекста, сон WebView, тихая
+        // смерть цикла — спин дольше нормального времени дочитывается сам
+        function nxSpinWatchdog() {
+            try {
+                const now = Date.now();
+                if (slots.spinning && now - (slots.spinAt || now) > 12000) { slots.spinning = false; slotsFinish(slots.lastResult, slots.bet); }
+                if (lines.spinning && now - (lines.spinAt || now) > 12000) { const p = lines3d.pending; lines3d.pending = null; linesFinish(p ? p.final : lines.cells.slice(), p ? p.bet : lines.bet); }
+                if (grid.spinning && now - (grid.spinAt || now) > 25000) gridEnd();
+            } catch (e) {}
+        }
+        setInterval(nxSpinWatchdog, 5000);
         function nx3dReleaseHidden(m) {
+            nxForceFinishSpins(); // b434: сначала дочитать спины, потом гасить контексты
             // скрытая игра не держит WebGL-контекст: мобильный Chrome держит ~8-16
             // контекстов, потом начинает убивать их сам — прямо во время игры
             try {
@@ -8228,6 +8247,7 @@ function nxToggle3d() {
                 return;
             }
             slots.spinning = true;
+            slots.spinAt = Date.now(); // b434: метка для сторожа висящих спинов
             slots.reels.forEach((grp, i) => {
                 const u = grp.userData;
                 u.phase = 'spin';
@@ -8762,7 +8782,7 @@ function nxToggle3d() {
             updateMissions('spin_grid', 1); // b122: задание дня
             jackpotFeed(bet); // b96; b415: % ставки в банк — из настроек Студии
             saveState(); updateCoinDisplay(); renderGridUI();
-            grid.spinning = true; grid.chain = 0; grid.total = 0; grid.jpPaid = 0; grid.lastBet = bet; // b57 / b183
+            grid.spinning = true; grid.chain = 0; grid.total = 0; grid.jpPaid = 0; grid.lastBet = bet; grid.spinAt = Date.now(); // b57 / b183 / b434
             try { SoundFX.play('click'); } catch (e) {}
             if (grid3d.ready) {
                 grid.phase3d = 'spinning';
@@ -10372,6 +10392,7 @@ function nxToggle3d() {
             state.stats.linesSpins = (state.stats.linesSpins || 0) + 1;
             updateMissions('spin_lines', 1); // b122: задание дня
             lines.spinning = true;
+            lines.spinAt = Date.now(); // b434: метка для сторожа висящих спинов
             linesClearWin();
             linesRenderBoard();
             try { SoundFX.play('whoosh'); } catch (e) {}
