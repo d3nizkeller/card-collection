@@ -7409,7 +7409,7 @@ function nxToggle3d() {
             if (!CLOUD.connected()) { showToast('Биржа работает при подключённом облаке комнаты', 'error'); return; }
             const card = (state.cards || []).find(c => c.id === cardId);
             if (!card) { showToast('Лот уже недоступен', 'error'); renderMarket(); return; }
-            const price = marketSysPrice(card);
+            const price = marketHousePrice(card); // b435: платит столько, сколько на ценнике
             if (state.coins < price) { showToast('Не хватает монет: нужно ' + fmtCoins(price), 'error'); return; }
             state.coins -= price;
             marketSetCollection(card.id, cardCopies(card.id) + 1);
@@ -7450,6 +7450,13 @@ function nxToggle3d() {
         // Виртуальные лоты НЕ лежат в облачном документе: нет раздувания,
         // автовыкуп их не трогает, рисуются на лету из state.cards.
         const MARKET_SYS_PRICE = { common: 100, rare: 400, epic: 1000, legendary: 3500 };
+        // b435: ценники витрины «Дом коллекционера» — от 1 миллиарда (просьба
+        // владельца). Это ОТДЕЛЬНЫЕ цены от MARKET_SYS_PRICE: низкая фикс-цена
+        // там защищает автовыкуп от мани-абаза (нельзя выставить свою карту за
+        // миллион и получить его от дома), а ценники витрины и цена покупки
+        // лота Дома теперь миллиардные (tag = charge, marketBuySys берёт её же).
+        const MARKET_HOUSE_PRICE = { common: 1000000000, rare: 4000000000, epic: 10000000000, legendary: 35000000000 };
+        function marketHousePrice(card) { return MARKET_HOUSE_PRICE[(card || {}).rarity] || 1000000000; }
         // b413: полный каталог — 300+ лотов; одним innerHTML такой список
         // вешал мобильный WebKit. Рисуем чанками по MARKET_SHOWN_STEP,
         // кнопка «Показать ещё» додаёт следующий чанк.
@@ -7464,7 +7471,7 @@ function nxToggle3d() {
             const out = [];
             (state.cards || []).forEach(c => {
                 if (!c || cov[c.id]) return;
-                out.push({ id: 'syslot:' + c.id, sys: true, sid: '', sname: 'Дом коллекционера', card: c, price: marketSysPrice(c), at: 0 });
+                out.push({ id: 'syslot:' + c.id, sys: true, sid: '', sname: 'Дом коллекционера', card: c, price: marketHousePrice(c), at: 0 }); // b435: ценники от 1b
             });
             return out;
         }
