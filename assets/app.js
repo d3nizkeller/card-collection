@@ -5558,7 +5558,8 @@ function nxToggle3d() {
             // b418: зал славы читаем через tombstone hallCut (после сброса топ пуст)
             // b432: топ и «последний срыв» — только игроки С ИМЕНЕМ
             const hall = jpHallFiltered(jackpot.hall, jackpot.hallCut).filter(jpHallNamed);
-            const top = hall[0];
+            // b433: «последний срыв» = свежайший именной, независимо от порядка хранения
+            const top = hall.slice().sort((a, b) => (b.t || 0) - (a.t || 0))[0];
             const wtxt = top
                 ? '👑 Последний джекпот: ' + (top.n || 'игрок') + ' — +' + fmtCoins(top.a || 0) + ' (' + new Date(top.t).toLocaleDateString() + ')'
                 : '👑 Джекпот сайта ещё не срывали — станьте первым!';
@@ -5568,10 +5569,17 @@ function nxToggle3d() {
             if (wa) { wa.textContent = wtxt; wa.title = wtitle; }
             if (wb) { wb.textContent = wtxt; wb.title = wtitle; }
             // b98: ТОП-5 крупнейших срывов банка
-            // b431: топ-3 = ТРИ ПОСЛЕДНИХ срыва (по t): новый джекпот виден сразу,
-            // а не только когда он крупнее старых (b98/b101: было — по сумме);
+            // b433: топ-3 ПО СУММЕ среди срывов за последние 24 часа: рейтинг
+            // «правильный по суммам» (759q выше 18q) и обновляется в реальном
+            // времени — новый срыв входит в окно сразу и, если он крупнее,
+            // двигает места. b431 было по свежести (суммы стояли вразнос),
+            // b98/b101 — по сумме за ВЕСЬ зал (залипало на старых рекордах).
             // b418: после сброса — пуст
-            const topWins = hall.slice().sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 3);
+            const topNow = Date.now();
+            const topWinMs = Math.max(1000, Math.floor(Number(window.__nxJpTopWindowMs) || 86400000));
+            let cands = hall.filter(h => (topNow - (h.t || 0)) <= topWinMs);
+            if (!cands.length) cands = hall.slice(); // все срывы старше окна — показываем их
+            const topWins = cands.slice().sort((a, b) => (b.a || 0) - (a.a || 0)).slice(0, 3);
             const medals = ['🥇', '🥈', '🥉'];
             const html = topWins.length
                 ? topWins.map((h, i) => '<li><span class="jp-rank">' + (i + 1) + (medals[i] ? ' ' + medals[i] : '.') + '</span><span class="jp-name">' + String(h.n || 'игрок').replace(/[<>&]/g, '') + '</span><span class="jp-amt">+' + fmtCoins(h.a || 0) + '</span><span class="jp-date">' + new Date(h.t || 0).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + new Date(h.t || 0).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + '</span></li>').join('') // b431: дата И время срыва

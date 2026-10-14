@@ -5,7 +5,7 @@
    B. jpPullLight перерисовывает витрину каждый pull, даже без изменений.
    C. Сторож синхронизации: 60 с тишины при видимой вкладке → jpSyncNow.
    D. Окно зала славы 40 записей.
-   E. Заголовок блока — «Последние срывы джекпота» с live-точкой (3 баннера).
+   E. Заголовок блока — «Топ-3 джекпота сайта · 24 ч» с live-точкой (3 баннера).
 
    Запуск:  node tools/test-b431.js
 */
@@ -52,7 +52,7 @@ function boot(fetchHandler) {
 const resp = obj => Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve(JSON.stringify(obj)), json: () => Promise.resolve(obj) });
 
 (async () => {
-    console.log('\nA. Топ-3 — последние срывы, с датой и временем');
+    console.log('\nA. Топ-3 по сумме за 24 ч, с датой и временем; строка последнего — по свежести');
     const A = boot();
     const av = A.ev;
     const tOld = 1791980000000, tNew = tOld + 60000;
@@ -60,7 +60,8 @@ const resp = obj => Promise.resolve({ ok: true, status: 200, text: () => Promise
        '{ n: "Старый гигант", a: 900000000000, t: ' + tOld + ' },' +
        '{ n: "Свежий срыв", a: 5000, t: ' + tNew + ' }]; jackpotRender()');
     const list = A.doc.getElementById('slots-jp-top-list').innerHTML;
-    ok(list.indexOf('Свежий срыв') < list.indexOf('Старый гигант'), 'свежий срыв стоит ПЕРВЫМ, хотя он меньше');
+    ok(list.indexOf('Старый гигант') < list.indexOf('Свежий срыв'), 'b433: топ по сумме — крупный срыв выше свежего малого');
+    ok(A.doc.getElementById('slots-jp-winner').textContent.indexOf('Свежий срыв') >= 0, 'b431: строка «Последний джекпот» — свежий срыв (реальное время)');
     ok(/🥇/.test(list.slice(0, list.indexOf('Свежий срыв') + 20)), 'свежий срыв с медалью первого места');
     const d = new Date(tNew);
     const expect = d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -103,7 +104,7 @@ const resp = obj => Promise.resolve({ ok: true, status: 200, text: () => Promise
     const E = boot();
     const heads = E.doc.querySelectorAll('.jp-top-title');
     eq(heads.length, 3, 'три баннера (Слоты/Сетка/Линии)');
-    ok(Array.from(heads).every(h => /Последние срывы джекпота/.test(h.textContent)), 'заголовок: «Последние срывы джекпота»');
+    ok(Array.from(heads).every(h => /Топ-3 джекпота сайта/.test(h.textContent)), 'b433: заголовок: «Топ-3 джекпота сайта · 24 ч»');
     ok(Array.from(heads).every(h => h.querySelector('.animate-pulse')), 'live-точка пульсирует');
 
     console.log('\n' + (fails ? '💥 ' + fails + ' из ' + checks + ' провалено' : '✅ ALL PASS: ' + checks + ' проверок'));

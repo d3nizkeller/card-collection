@@ -91,13 +91,14 @@ const toasts = doc => Array.from((doc.getElementById('toast-container') || { chi
     ev2('jackpotWin()');
     eq(ev2('jackpot.hall[0].nm'), 1, 'с именем запись получила nm=1');
 
-    console.log('\nE. Регрессия b431: среди именных — по свежести');
+    console.log('\nE. Регрессии b431/b433: среди именных топ по сумме, строка последнего — по свежести');
     const F = boot();
     F.ev('jackpot.hall = [' +
        '{ n: "Ранний", a: 999000, t: ' + t1 + ', nm: 1 },' +
        '{ n: "Свежий", a: 1000, t: ' + t2 + ', nm: 1 }]; jackpotRender()');
     const l2 = F.doc.getElementById('grid-jp-top-list').innerHTML;
-    ok(l2.indexOf('Свежий') < l2.indexOf('Ранний'), 'свежий именной срыв первым');
+    ok(l2.indexOf('Ранний') < l2.indexOf('Свежий'), 'b433: топ по сумме — крупнее выше');
+    ok(F.doc.getElementById('grid-jp-winner').textContent.indexOf('Свежий') >= 0, 'b431: «последний срыв» — свежайший именной');
 
     console.log('\n' + (fails ? '💥 ' + fails + ' из ' + checks + ' провалено' : '✅ ALL PASS: ' + checks + ' проверок'));
     process.exit(fails ? 1 : 0);
