@@ -88,7 +88,7 @@ function boot() {
     await D.w.eval('new Promise(r => setTimeout(r, 1500))');
     eq(dv('slots.spinning'), false, 'спин завершился сам');
     const delta = dv('state.coins') - d0;
-    ok(delta === -1000 || delta >= 0, 'баланс сошёлся (ставка ± выплата): ' + delta);
+    ok(delta >= -1000, 'баланс сошёлся (ставка списана ровно один раз, выигрыш сверху): ' + delta);
 
     console.log('\nE. Двойного финиша нет');
     const E = boot();

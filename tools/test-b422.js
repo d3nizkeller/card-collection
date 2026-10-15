@@ -3,8 +3,9 @@
    A. jpPullLight: лёгкий pull сливает облако без лишнего пуша (15-секундный
       ритм вместо 60-секундного): чужой взнос виден сразу.
    B. jpPullLight: если наш реестр впереди облака — запускает догоняющий пуш.
-   C. nxVersionNudge: вкладка на старой сборке получает неснимаемый тост
-      «Обновить», когда тег на сервере новее её собственного.
+   C. b436: вкладка на старой сборке замечает новую тихо — без баннера и
+      кнопки: регистрирует авто-обновление (window.__nxAutoUpd), активную
+      видимую вкладку не перезагружает.
    D. Регрессии: эпохи b420/b421, разряды b419, prune rm b420.
 
    Запуск:  node tools/test-b422.js
@@ -93,28 +94,32 @@ const resp = obj => Promise.resolve({ ok: true, status: 200, text: () => Promise
     await bv('jpPullLight(), new Promise(r => setTimeout(r, 600))');
     ok(B.calls.filter(c => c.method !== 'GET').length > before, 'обнаружив себя впереди, клиент запушил реестр');
 
-    // ===== C. нудж обновления вкладки =====
-    console.log('\nC. nxVersionNudge: старая вкладка узнаёт, что она старая');
+    // ===== C. проверка версии (b436: тихо, без баннера) =====
+    console.log('\nC. nxVersionNudge → b436: старая вкладка узнаёт о новой сборке тихо');
     const C = boot((url) => {
         if (String(url).indexOf('index.html') === 0 || String(url).indexOf('index.html?nc') >= 0)
             return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('<script src="assets/app.js?v=nxmob99"></script>'), json: () => Promise.resolve(null) });
+        if (String(url).indexOf('assets/app.js') >= 0)
+            return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('/* new build */ nexus-tcg-jackpot-v3 nexus-jackpot-v3.json'), json: () => Promise.resolve(null) });
         return resp({ jp: { led: {}, won: {}, wins: {}, hall: [], ep: 0 }, updatedAt: '1-x' });
     }, 'nxmob83');
     const cv = C.ev;
     eq(cv('nxOwnTag()'), 'nxmob83', 'свой тег читается из src скрипта');
     await cv('nxVersionNudge(), new Promise(r => setTimeout(r, 300))');
-    const toast = C.doc.getElementById('nx-ver-toast');
-    ok(!!toast, 'появился неснимаемый тост о новой версии');
-    ok(toast && /обновите, чтобы играть со всеми/i.test(toast.textContent), 'в тосте объяснение: вкладка видит свой банк');
-    ok(toast && !!toast.querySelector('button[onclick="location.reload()"]'), 'и кнопка «Обновить»');
-    // свой тег совпадает — тоста нет
+    ok(!C.doc.getElementById('nx-ver-toast'), 'b436: баннера «Обновить» больше нет');
+    eq((C.doc.getElementById('toast-container') || { childElementCount: 0 }).childElementCount, 0, 'и вообще никаких тостов о версии');
+    eq(cv('(window.__nxAutoUpd || {}).tag'), 'nxmob99', 'но авто-обновление зарегистрировало новый тег');
+    eq(cv('(window.__nxAutoUpd || {}).swapped || ""'), '', 'документ тот же v3 — hot-swap не нужен');
+    eq(cv('window.__reloads || 0'), 0, 'видимая активная вкладка не перезагружается');
+    // свой тег совпадает — авто-обновление не стартует
     const D = boot((url) => {
         if (String(url).indexOf('index.html') >= 0)
             return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('<script src="assets/app.js?v=nxmob84"></script>'), json: () => Promise.resolve(null) });
         return resp({ jp: { led: {}, won: {}, wins: {}, hall: [], ep: 0 }, updatedAt: '1-x' });
     }, 'nxmob84');
     await D.ev('nxVersionNudge(), new Promise(r => setTimeout(r, 300))');
-    ok(!D.doc.getElementById('nx-ver-toast'), 'на актуальной сборке тост не появляется');
+    ok(!D.doc.getElementById('nx-ver-toast'), 'на актуальной сборке баннера нет');
+    ok(!D.ev('(window.__nxAutoUpd || {}).tag'), 'и авто-обновление не регистрируется');
 
     // ===== D2. самовосстановление после загрязнения (b423) =====
     console.log('\nD2. b423: загрязнённый реестр чинит себя сам');

@@ -5624,6 +5624,9 @@ function nxToggle3d() {
         // ==== b71: синхронизация общего банка джекпота между всеми игроками ====
         let jpT = null, jpBusy = false, jpLastAt = 0, jpPending = false; // b183: jpPending — отложенный пуш вместо потерянного
         function jpPath() {
+            // b436: тихое авто-обновление уже перевело синхронизацию на новый
+            // документ общего банка (hot-swap без перезагрузки страницы)
+            try { if (window.__nxJpSwap) return CLOUD.db ? CLOUD.db + '/' + window.__nxJpSwap.room : 'https://textdb.dev/api/data/' + window.__nxJpSwap.doc; } catch (e) {}
             // b421: синхронизация переехала на документ v3. В v2 остались
             // клиенты ДО nxmob82: они пушат туда раздутый rm и тысячи старых
             // ключей, а max-merge не даёт вычистить это из общего документа.
@@ -5785,25 +5788,106 @@ function nxToggle3d() {
             } catch (e) {}
             return '';
         }
-        function nxVersionNudge() {
+        // b436: ТИХОЕ АВТО-ОБНОВЛЕНИЕ. Старая вкладка сама замечает новую сборку и
+        // сама же её применяет — без баннера и кнопки, которые отвлекали игроков:
+        //  1) если сборка перенесла общий документ банка — синхронизация прямо на
+        //     лету переключается на него (hot-swap jpPath без перезагрузки), и
+        //     «свой банк» старой вкладки вливается в общий при ближайшем пуше;
+        //  2) перезагрузка страницы ради нового кода планируется на момент, когда
+        //     игрок НЕ смотрит на экран: вкладка в фоне (скрыта) или видима, но
+        //     простаивает (нет спинов, открытых окон, музыки и касаний 2 минуты).
+        // Перед перезагрузкой банк срочно отправляется в облако (jpFlush).
+        // Диагностика без UI: window.__nxAutoUpd = {tag, at, swapped, plan, reloads}.
+        const NX_AUTOUPD_IDLE_MS = 120000; // b436: видимая вкладка перезагружается только после 2 минут простоя
+        let nxAutoUpdTimer = 0, nxAutoUpdVis = null;
+        window.__nxLastInputAt = Date.now();
+        ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(ev => {
+            try { window.addEventListener(ev, () => { window.__nxLastInputAt = Date.now(); }, { passive: true, capture: true }); } catch (e) {}
+        });
+        function nxAutoUpdLog() { return window.__nxAutoUpd = window.__nxAutoUpd || { tag: '', at: 0, swapped: '', plan: '', reloads: 0, reloadAt: 0 }; }
+        function nxAudioPlaying() {
+            try { if (CardMusic.audio && !CardMusic.audio.paused) return true; } catch (e) {}
+            try { if (PackMusic.playing) return true; } catch (e) {}
+            return false;
+        }
+        function nxModalOpen() {
+            try {
+                const list = document.querySelectorAll('.fixed.inset-0');
+                for (let i = 0; i < list.length; i++) if (!list[i].classList.contains('hidden')) return true;
+            } catch (e) {}
+            return false;
+        }
+        function nxReloadSafe() {
+            try {
+                if (nxAudioPlaying()) return false;  // не обрываем трек карты/пака
+                if (slots.spinning || lines.spinning || grid.spinning) return false; // не рвём спин
+                if (nxModalOpen()) return false;     // вскрытие, просмотр карты, ежедневка, пароль студии
+                if (document.hidden) return true;    // вкладка в фоне — перезагрузку никто не видит
+                if (Date.now() - (window.__nxLastInputAt || 0) < NX_AUTOUPD_IDLE_MS) return false; // игрок трогает игру
+                const st = document.getElementById('tab-studio');
+                if (st && !st.classList.contains('hidden')) return false; // в студии могли остаться несохранённые формы
+                return true;
+            } catch (e) { return false; }
+        }
+        function nxAutoUpdCheck() {
             try {
                 const own = nxOwnTag();
-                if (!own || document.getElementById('nx-ver-toast')) return;
+                if (!own) return;
                 fetch('index.html?nc=' + Date.now(), { cache: 'no-store' }).then(r => (r && r.ok) ? r.text() : '').then(t => {
                     const m = String(t || '').match(/assets\/app\.js\?v=(nxmob\d+)/);
                     if (!m || m[1] === own) return;
-                    if (document.getElementById('nx-ver-toast')) return;
-                    const c = document.getElementById('toast-container');
-                    if (!c) return;
-                    positionToastContainer();
-                    const el = document.createElement('div');
-                    el.id = 'nx-ver-toast';
-                    el.className = 'pointer-events-auto w-full px-3.5 py-3 flex items-center gap-2.5 rounded-xl border border-amber-500/40 bg-amber-950/95 text-amber-100 text-[11px] font-bold leading-snug shadow-lg';
-                    el.innerHTML = '<i class="fa-solid fa-rotate text-amber-300"></i><span>Версия игры обновилась (' + m[1] + '). Эта вкладка синхронизируется по старому документу и видит свой банк — обновите, чтобы играть со всеми.</span>' +
-                        '<button type="button" onclick="location.reload()" class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-[11px] font-black shrink-0 transition">Обновить</button>';
-                    c.appendChild(el);
+                    nxAutoUpdApply(m[1]);
                 }).catch(() => {});
             } catch (e) {}
+        }
+        function nxVersionNudge() { nxAutoUpdCheck(); } // b422 → b436: та же проверка, но теперь тихая
+        function nxAutoUpdApply(tag) {
+            const S = nxAutoUpdLog();
+            S.tag = tag; S.at = Date.now();
+            nxJpHotSwap(tag);        // сначала — общий документ без перезагрузки
+            nxSilentReloadPlan(tag); // затем — новый код в тихий момент
+        }
+        function nxJpHotSwap(tag) {
+            const S = nxAutoUpdLog();
+            if (S.hotFor === tag) return; S.hotFor = tag;
+            // читаем новый app.js текстом: если банк переехал на другой документ —
+            // переключаем jpPath прямо в этой вкладке и мерджим свой банк в общий
+            fetch('assets/app.js?nc=' + Date.now(), { cache: 'no-store' }).then(r => (r && r.ok) ? r.text() : '').then(t => {
+                t = String(t || '');
+                const mDoc = t.match(/nexus-tcg-jackpot-v(\d+)/);
+                const mRoom = t.match(/nexus-jackpot-v(\d+)\.json/);
+                const newN = (mDoc && mDoc[1]) || (mRoom && mRoom[1]) || '';
+                const curN = (jpPath().match(/jackpot-v(\d+)/) || [])[1] || '';
+                if (!newN || newN === curN) return;
+                window.__nxJpSwap = { doc: 'nexus-tcg-jackpot-v' + newN, room: 'nexus-jackpot-v' + newN + '.json' };
+                S.swapped = newN;
+                try { jpSyncNow(); } catch (e) {} // свой банк вливается в новый общий документ
+            }).catch(() => {});
+        }
+        function nxSilentReloadPlan(tag) {
+            nxAutoUpdLog().plan = tag;
+            if (nxAutoUpdTimer) return;
+            nxAutoUpdVis = () => { try { if (document.hidden) nxSilentReloadTry(tag); } catch (e) {} };
+            document.addEventListener('visibilitychange', nxAutoUpdVis);
+            nxAutoUpdTimer = setInterval(() => { try { nxSilentReloadTry(tag); } catch (e) {} }, 15000);
+            nxSilentReloadTry(tag); // вкладка уже в фоне — обновляемся сразу
+        }
+        function nxAutoUpdStop() {
+            try { if (nxAutoUpdTimer) clearInterval(nxAutoUpdTimer); } catch (e) {}
+            nxAutoUpdTimer = 0;
+            try { if (nxAutoUpdVis) document.removeEventListener('visibilitychange', nxAutoUpdVis); } catch (e) {}
+            nxAutoUpdVis = null;
+        }
+        function nxSilentReloadTry(tag) {
+            const S = nxAutoUpdLog();
+            let tried = [];
+            try { tried = String(sessionStorage.getItem('nxAutoUpdTried') || '').split(',').filter(Boolean); } catch (e) {}
+            if (tried.indexOf(tag) >= 0) { nxAutoUpdStop(); return; } // в этот тег уже заходили: сервер всё ещё отдаёт старое — не зацикливаемся
+            if (!nxReloadSafe()) return;                              // игрок занят — ждём тихий момент
+            try { sessionStorage.setItem('nxAutoUpdTried', tried.concat([tag]).join(',')); } catch (e) {}
+            S.reloadAt = Date.now(); S.reloads = (S.reloads || 0) + 1;
+            try { jpFlush(); } catch (e) {} // банк уходит в облако до перезагрузки
+            try { location.reload(); } catch (e) {}
         }
         // b404: страховка — если промис синха потерялся (аборт без reject, сон WebView),
         // jpBusy не должен держать банк заложником больше 40 секунд
@@ -17278,7 +17362,8 @@ function nxToggle3d() {
             // b183: уходим со страницы — срочно отправляем банк (jpFlush), вернулись — полная синхронизация
             try {
                 jpSyncNow(); setInterval(() => { if (!document.hidden) jpPullLight(); }, 15000); // b422: реальное время — лёгкий pull каждые 15 с (в фоне сеть не дёргаем)
-                setInterval(() => { try { if (!document.hidden) nxVersionNudge(); } catch (e) {} }, 180000); // b422: старая вкладка узнаёт, что она старая
+                setInterval(() => { try { nxAutoUpdCheck(); } catch (e) {} }, 180000); // b436: проверка и в фоне тоже — фон и есть шанс обновиться незаметно
+                document.addEventListener('visibilitychange', () => { try { if (document.hidden) nxAutoUpdCheck(); } catch (e) {} }); // b436: вкладку скрыли — запускаем тихое авто-обновление
                 document.addEventListener('visibilitychange', () => { if (!document.hidden) jpSyncSoon(); }); // b404
                 document.addEventListener('visibilitychange', () => { if (document.hidden) jpFlush(); else jpSyncNow(); });
                 window.addEventListener('pagehide', jpFlush);
