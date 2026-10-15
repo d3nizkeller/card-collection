@@ -15,7 +15,7 @@
    E. nxProgressiveAttach: src из t3 мгновенно показывает t2 и греет t3 фоном.
    F. inspectCard: src=mediaBig + data-nx-full=мастер + прогрев соседей ±2.
    G. Галерея/preload: artFn 'full' -> mediaBig; preloadImages tier 'big'.
-   H. Тег nxmob160 (index.html x8, sw.js, build.py), инструменты и CI.
+   H. Тег сборки (index.html x8, sw.js, build.py) — единый, берётся из sw.js, инструменты и CI.
 
    Запуск:  node tools/test-b438.js
 */
@@ -190,10 +190,15 @@ function boot() {
     const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     const bld = fs.readFileSync(path.join(ROOT, 'tools', 'build.py'), 'utf8');
-    eq((idx.match(/\?v=nxmob160/g) || []).length, 8, 'index.html: ?v=nxmob160 x8');
-    ok(sw.includes("const VERSION = 'nxmob160';"), 'sw.js: VERSION nxmob160');
-    ok(bld.includes("BUILD_TAG = 'nxmob160'"), 'build.py: BUILD_TAG nxmob160');
-    ok(!idx.includes('?v=nxmob159') && !sw.includes("'nxmob159'") && !bld.includes("BUILD_TAG = 'nxmob159'"), 'предыдущий тег nxmob159 вычищен из ?v=/VERSION/BUILD_TAG');
+    // b439: тег бампится каждой сборкой — не хардкодим его, а берём боевой
+    // тег из sw.js и проверяем ЕДИНООБРАЗИЕ во всех трёх файлах
+    const tagM = sw.match(/const VERSION = '(nxmob\d+)';/);
+    ok(!!tagM, 'sw.js: боевой тег VERSION парсится');
+    const TAG = tagM ? tagM[1] : 'nxmob0';
+    const vTags = idx.match(/\?v=nxmob\d+/g) || [];
+    eq(vTags.filter(s => s === '?v=' + TAG).length, 8, 'index.html: ?v=' + TAG + ' x8');
+    ok(!vTags.some(s => s !== '?v=' + TAG), 'index.html: чужих/устаревших тегов в ?v= нет');
+    ok(bld.includes("BUILD_TAG = '" + TAG + "'"), 'build.py: BUILD_TAG ' + TAG);
     const tfm = fs.readFileSync(path.join(ROOT, 'tools', 'thumbs_for_media.py'), 'utf8');
     ok(tfm.includes("BIGS = os.path.join(MEDIA, 't3')") && tfm.includes('BIG_W, BIG_Q = 1440, 80'), 'thumbs_for_media.py строит t3 (CI догонит новые арты)');
     const stm = fs.readFileSync(path.join(ROOT, 'tools', 'sync_thumb_maps.py'), 'utf8');

@@ -14821,6 +14821,31 @@ function nxToggle3d() {
             setInterval(() => { try { if (CardMusic.url) cardMusicSeekRender(); } catch (e) {} }, 500);
         }
         try { cardMusicSeekInit(); } catch (e) {}
+        // b439: сворачивание длинного описания в просмотре карты. Полное
+        // описание переполняло лицо карты; теперь текст длиннее порога
+        // показывается в 3 строки (CSS .nx-desc-wrap .nx-desc-text), а кнопка
+        // «Показать полностью / Свернуть» раскрывает его. Выбор живёт до
+        // закрытия модалки: свайп на соседнюю карту не сбрасывает раскрытие.
+        const NX_DESC_CLAMP_LEN = 150;
+        let nxDescOpen = false;
+        function nxDescBtnHtml(open) {
+            return open
+                ? '<i class="fa-solid fa-chevron-up mr-1"></i>Свернуть'
+                : '<i class="fa-solid fa-chevron-down mr-1"></i>Показать полностью';
+        }
+        function nxDescToggle(btn) {
+            try {
+                const wrap = btn && btn.closest ? btn.closest('.nx-desc-wrap') : null;
+                if (!wrap) return;
+                nxDescOpen = !wrap.classList.contains('nx-desc-open');
+                wrap.classList.toggle('nx-desc-open', nxDescOpen);
+                const b = wrap.querySelector('.nx-desc-btn');
+                if (b) {
+                    b.innerHTML = nxDescBtnHtml(nxDescOpen);
+                    b.setAttribute('aria-expanded', nxDescOpen ? 'true' : 'false');
+                }
+            } catch (e) {}
+        }
         function inspectCard(cardId, list) {
             const card = state.cards.find(c => c.id === cardId);
             if (!card) return;
@@ -14848,7 +14873,15 @@ function nxToggle3d() {
                     </span>
                 </div>`;
             const nameHtml = `<h4 class="w-full font-bold text-white text-lg drop-shadow-md break-words ${L.text}">${card.name}</h4>`;
-            const descHtml = `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${card.description || 'Коллекционная карта «Коллекционер карт»'}</p>`;
+            // b439: длинное описание — в 3 строки и кнопка раскрытия;
+            // короткое рендерится как раньше (без обёртки и кнопки)
+            const descTxt = card.description || 'Коллекционная карта «Коллекционер карт»';
+            const descHtml = String(descTxt).length > NX_DESC_CLAMP_LEN
+                ? `<div class="w-full nx-desc-wrap ${L.text}${nxDescOpen ? ' nx-desc-open' : ''}">
+                        <p class="w-full text-xs text-slate-300 drop-shadow nx-desc-text">${descTxt}</p>
+                        <button type="button" onclick="nxDescToggle(this)" aria-expanded="${nxDescOpen ? 'true' : 'false'}" class="nx-desc-btn mt-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-950/80 border border-slate-700 text-slate-300 backdrop-blur-sm transition active:scale-95">${nxDescBtnHtml(nxDescOpen)}</button>
+                    </div>`
+                : `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${descTxt}</p>`;
             const statsHtml = `<div class="flex items-center space-x-2 pt-1.5 w-full ${L.justify}">
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-amber-300 bg-slate-950/80 border border-amber-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-bolt"></i><span>${st.atk}</span></span>
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-rose-300 bg-slate-950/80 border border-rose-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-heart"></i><span>${st.hp}</span></span>
@@ -14975,6 +15008,7 @@ function nxToggle3d() {
 
         function closeInspectModal() {
             CardMusic.stop();
+            nxDescOpen = false; // b439: следующее открытие — описание снова свёрнуто
             try { document.body.classList.remove('nx-inspect-open'); } catch (e) {} // b429
             try { inspectRender.style.transform = ''; } catch (e) {} // b429: сброс tilt
             document.getElementById('modal-inspect').classList.add('hidden');
