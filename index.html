@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob161" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob161">
+    <script src="assets/three.min.js?v=nxmob162" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob162">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob161">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob162">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob161">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob162">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1997,6 +1997,13 @@ min-height:56vh}
                 <!-- Dynamically inspected card -->
             </div>
             </div>
+            <!-- b440: раскрытое описание целиком. Лицо карты (aspect-ratio 9/16
+                 + overflow:hidden) обрезало длинный текст, поэтому полный текст
+                 живёт здесь — под картой, в скроллящейся модалке просмотра -->
+            <div id="inspect-desc-full" class="hidden w-full mt-3 px-3 py-2.5 rounded-xl border border-slate-700 bg-slate-900/85 backdrop-blur-sm">
+                <div class="flex items-center gap-1.5 mb-1 text-[10px] font-black uppercase tracking-wider text-slate-400"><i class="fa-solid fa-scroll"></i><span>Описание целиком</span></div>
+                <div id="inspect-desc-full-text" class="text-xs leading-relaxed text-slate-200 whitespace-pre-wrap break-words"></div>
+            </div>
             <!-- b18: счётчик / листание альбома -->
             <div id="inspect-counter" class="hidden mt-3 text-[11px] font-mono tracking-wide text-slate-400 text-center"></div>
             <!-- b426: плей/стоп личной музыки карты -->
@@ -2416,8 +2423,20 @@ min-height:56vh}
     /* b439: длинное описание в просмотре карты по умолчанию свёрнуто в 3 строки,
        кнопка «Показать полностью» раскрывает (выбор помнится при свайпе карт) */
     .nx-desc-wrap .nx-desc-text{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
-    .nx-desc-wrap.nx-desc-open .nx-desc-text{ display:block; overflow:visible; }
+    /* b440: в раскрытом состоянии текст на лице карты скрывается — весь текст
+       показывается в панели #inspect-desc-full под картой (иначе aspect-ratio
+       9/16 + overflow:hidden обрезали бы его краем карты) */
+    .nx-desc-wrap.nx-desc-open .nx-desc-text{ display:none; }
     .nx-desc-btn{ cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    #inspect-desc-full-text{ white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; }
+    /* b440: модалка просмотра центрируется auto-полями, а не justify-center —
+       иначе высокий контент (раскрытое описание) обрезался бы сверху и не
+       прокручивался до самого начала */
+    #modal-inspect{ justify-content:flex-start; }
+    #modal-inspect > div{ margin-top:auto; margin-bottom:auto; }
+    @media (max-width:640px){
+        #inspect-desc-full{ max-width: min(24rem, calc(58vh * 0.5625)); }
+    }
     /* b217: стек уведомлений — сразу под меню вкладок; точный top выставляет JS по высоте шапки */
     #toast-container{ top: calc(env(safe-area-inset-top, 0px) + 64px); transform: translateX(-50%); }
     @media (max-width:640px){
@@ -2762,10 +2781,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob161"></script>
-    <script src="assets/stories.js?v=nxmob161"></script>
-    <script src="assets/qrcode.min.js?v=nxmob161"></script>
-    <script src="assets/qr-transfer.js?v=nxmob161"></script>
+    <script src="assets/app.js?v=nxmob162"></script>
+    <script src="assets/stories.js?v=nxmob162"></script>
+    <script src="assets/qrcode.min.js?v=nxmob162"></script>
+    <script src="assets/qr-transfer.js?v=nxmob162"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

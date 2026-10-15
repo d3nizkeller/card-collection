@@ -14844,7 +14844,43 @@ function nxToggle3d() {
                     b.innerHTML = nxDescBtnHtml(nxDescOpen);
                     b.setAttribute('aria-expanded', nxDescOpen ? 'true' : 'false');
                 }
+                nxDescPanelSync(true); // b440: полный текст — в панель под картой
             } catch (e) {}
+        }
+        // b440: «при раскрытом описании должен быть виден весь текст». Лицо
+        // карты (#inspect-card-render) имеет aspect-ratio 9/16 и overflow:hidden,
+        // а как flex-потомок с невидимым overflow оно не растёт по содержимому —
+        // раскрытый длинный текст обрезался краем карты. Поэтому полный текст
+        // показывается в панели #inspect-desc-full под картой (модалка
+        // #modal-inspect скроллится), а на лице карты остаётся кнопка «Свернуть».
+        function nxDescEsc(t) {
+            return String(t == null ? '' : t)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function nxDescTextOf(card) {
+            return String((card && card.description) || 'Коллекционная карта «Коллекционер карт»');
+        }
+        function nxDescPanelSync(scrollTo) {
+            const p = document.getElementById('inspect-desc-full');
+            if (!p) return;
+            let show = false, txt = '';
+            try {
+                const id = (inspectList || [])[inspectIdx];
+                const card = state.cards.find(c => c.id === id);
+                if (nxDescOpen && card) {
+                    txt = nxDescTextOf(card);
+                    show = txt.length > NX_DESC_CLAMP_LEN;
+                }
+            } catch (e) {}
+            const t = document.getElementById('inspect-desc-full-text');
+            if (t) t.textContent = show ? txt : '';
+            p.classList.toggle('hidden', !show);
+            if (show && scrollTo) {
+                try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {
+                    try { p.scrollIntoView(); } catch (e2) {}
+                }
+            }
         }
         function inspectCard(cardId, list) {
             const card = state.cards.find(c => c.id === cardId);
@@ -14875,13 +14911,16 @@ function nxToggle3d() {
             const nameHtml = `<h4 class="w-full font-bold text-white text-lg drop-shadow-md break-words ${L.text}">${card.name}</h4>`;
             // b439: длинное описание — в 3 строки и кнопка раскрытия;
             // короткое рендерится как раньше (без обёртки и кнопки)
-            const descTxt = card.description || 'Коллекционная карта «Коллекционер карт»';
+            // b440: текст берём из nxDescTextOf (тот же источник, что и у панели
+            // полного описания) и экранируем — описания приходят из общих
+            // облачных комнат, чужой HTML не должен попадать в разметку
+            const descTxt = nxDescTextOf(card);
             const descHtml = String(descTxt).length > NX_DESC_CLAMP_LEN
                 ? `<div class="w-full nx-desc-wrap ${L.text}${nxDescOpen ? ' nx-desc-open' : ''}">
-                        <p class="w-full text-xs text-slate-300 drop-shadow nx-desc-text">${descTxt}</p>
+                        <p class="w-full text-xs text-slate-300 drop-shadow nx-desc-text">${nxDescEsc(descTxt)}</p>
                         <button type="button" onclick="nxDescToggle(this)" aria-expanded="${nxDescOpen ? 'true' : 'false'}" class="nx-desc-btn mt-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-950/80 border border-slate-700 text-slate-300 backdrop-blur-sm transition active:scale-95">${nxDescBtnHtml(nxDescOpen)}</button>
                     </div>`
-                : `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${descTxt}</p>`;
+                : `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${nxDescEsc(descTxt)}</p>`;
             const statsHtml = `<div class="flex items-center space-x-2 pt-1.5 w-full ${L.justify}">
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-amber-300 bg-slate-950/80 border border-amber-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-bolt"></i><span>${st.atk}</span></span>
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-rose-300 bg-slate-950/80 border border-rose-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-heart"></i><span>${st.hp}</span></span>
@@ -14925,6 +14964,7 @@ function nxToggle3d() {
             updateInspectNav();
             updateInspectSlotsBtn();
             updateInspectMarketBtn();
+            nxDescPanelSync(false); // b440: панель полного описания — за текущей картой
             // b429: на время просмотра блокируем скролл тела — свайп не панит страницу
             try { document.body.classList.add('nx-inspect-open'); } catch (e) {}
             document.getElementById('modal-inspect').classList.remove('hidden');
@@ -15009,6 +15049,7 @@ function nxToggle3d() {
         function closeInspectModal() {
             CardMusic.stop();
             nxDescOpen = false; // b439: следующее открытие — описание снова свёрнуто
+            try { nxDescPanelSync(false); } catch (e) {} // b440: панель полного описания прячем и чистим
             try { document.body.classList.remove('nx-inspect-open'); } catch (e) {} // b429
             try { inspectRender.style.transform = ''; } catch (e) {} // b429: сброс tilt
             document.getElementById('modal-inspect').classList.add('hidden');
@@ -15039,6 +15080,10 @@ function nxToggle3d() {
         document.addEventListener('touchstart', (e) => {
             const m = document.getElementById('modal-inspect');
             if (!m || m.classList.contains('hidden')) { inspectTouchX = null; return; }
+            // b440: свайп по панели полного описания — это скролл текста, не листание карт
+            try {
+                if (e.target && e.target.closest && e.target.closest('#inspect-desc-full')) { inspectTouchX = null; return; }
+            } catch (err) {}
             inspectTouchX = (e.touches && e.touches[0]) ? e.touches[0].clientX : null;
         }, { passive: true });
         document.addEventListener('touchend', (e) => {

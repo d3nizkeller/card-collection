@@ -6,7 +6,8 @@
    C. Короткое описание (≤150) и пустое (фолбэк) — рендерятся как раньше, без кнопки.
    D. Граница порога: 150 символов — без кнопки, 151 — с кнопкой.
    E. Свайп на соседнюю карту (inspectStep) сохраняет раскрытие; closeInspectModal сбрасывает.
-   F. CSS в index.html: line-clamp 3 строки + правило раскрытия.
+   F. CSS в index.html: line-clamp 3 строки + правило раскрытия (с b440 раскрытый
+      текст показывается в панели под картой, а на лице карты скрывается).
    G. Теги nxmob161 (index ?v= x8, sw.js, build.py), исторический nxmob24 не тронут.
    H. Альбом не задет: line-clamp-2 у описаний карточек альбома на месте.
 
@@ -158,7 +159,10 @@ const SHORT = 'Короткое описание карты.';
         const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
         ok(html.includes('.nx-desc-wrap .nx-desc-text{ display:-webkit-box'), 'CSS: кламп через -webkit-box');
         ok(html.includes('-webkit-line-clamp:3'), 'CSS: свёрнуто до 3 строк');
-        ok(html.includes('.nx-desc-wrap.nx-desc-open .nx-desc-text{ display:block'), 'CSS: раскрытие снимает кламп');
+        // b440: раскрытый текст уехал в панель #inspect-desc-full под картой —
+        // на лице карты он в раскрытом состоянии скрывается (иначе длинный текст
+        // обрезался бы краем карты: aspect-ratio 9/16 + overflow:hidden)
+        ok(html.includes('.nx-desc-wrap.nx-desc-open .nx-desc-text{ display:none; }'), 'CSS: раскрытие прячет текст на лице карты (b440: весь текст — в панели под картой)');
         ok(html.includes('.nx-desc-btn{ cursor:pointer'), 'CSS: курсор-указатель на кнопке');
     }
 
