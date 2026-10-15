@@ -1,4 +1,4 @@
-/* nx-media-sw v2 (nxmob24): cache-first для media/ и assets/, network-first для HTML.
+/* nx-media-sw v2 (nxmob25): cache-first для media/ и assets/, network-first для HTML.
    Арты и скрипты скачиваются с сервера ОДИН раз на браузер; дальше отдаются из
    кэша мгновенно — в Telegram Mini App повторное открытие становится мгновенным
    и работает без сети. Тихая сверка с сервером — не чаще раза в 7 дней на файл. */

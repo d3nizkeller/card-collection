@@ -35,13 +35,17 @@ ASSETS = os.path.join(ROOT, 'assets')
 MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
+BIGS = os.path.join(MEDIA, 't3')   # b438: «большой» уровень — просмотр карты, галерея
 
-BUILD_TAG = 'nxmob159'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob25'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
 MID_Q = 78
 MID_MIN_SRC = 640             # средняя миниатюра нужна только если мастер шире этого
+BIG_W, BIG_Q = 1440, 80       # b438: «большой» webp: длинная сторона ≤1440px
+BIG_MIN_BYTES = 700 * 1024    # b438: мастер легче — t3 не нужен (и так грузится мгновенно)
+BIG_METHOD = 4                # b438: 4K-мастеров много, method=6 в CI медленный
 # ВАЖНО: миниатюры строятся для ВСЕХ файлов media/, а не только для упомянутых
 # в index.html. Каталог карт приходит из облака комнаты (textdb.dev) и ссылается
 # на media/card_*.png напрямую — в HTML этих имён нет, но файлы рабочие.
@@ -549,14 +553,16 @@ def all_media_images():
 
 
 def build_thumbs(files, force=False):
-    """Два уровня: media/t/ (256px) для списков и media/t2/ (512px) для сеток.
-       Полноразмерные мастера не трогаем — просмотр карты остаётся 1:1."""
+    """Три уровня: media/t/ (256px) для списков, media/t2/ (512px) для сеток
+       и media/t3/ (b438, ≤1440px) для просмотра карты и «галереи».
+       Полноразмерные мастера не трогаем — они остаются последним резервом."""
     from PIL import Image
     os.makedirs(THUMBS, exist_ok=True)
     os.makedirs(MIDS, exist_ok=True)
-    small, mid = {}, {}
+    os.makedirs(BIGS, exist_ok=True)
+    small, mid, big = {}, {}, {}
     made = skipped = 0
-    src_bytes = th_bytes = mid_bytes = 0
+    src_bytes = th_bytes = mid_bytes = big_bytes = 0
     src_px = th_px = mid_px = 0
 
     def encode(im, w, q, dst, mtime_ref):
@@ -567,6 +573,27 @@ def build_thumbs(files, force=False):
         th = max(1, round(hh * tw / ww))
         im.resize((tw, th), Image.LANCZOS).save(dst, 'WEBP', quality=q, method=6)
         return True, (tw, th)
+
+    def encode_big(im, dst, src_size, mtime_ref):
+        # b438: вписываем ДЛИННУЮ сторону в BIG_W (не увеличивая); если вышло
+        # почти как мастер (≥90%) — дубликат удаляем, карта останется на мастере
+        if os.path.exists(dst) and not force and os.path.getmtime(dst) > mtime_ref:
+            return False
+        ww, hh = im.size
+        ls = max(ww, hh)
+        if ls > BIG_W:
+            sc = BIG_W / float(ls)
+            out = im.resize((max(1, round(ww * sc)), max(1, round(hh * sc))), Image.LANCZOS)
+        else:
+            out = im
+        out.save(dst, 'WEBP', quality=BIG_Q, method=BIG_METHOD)
+        try:
+            if os.path.getsize(dst) >= src_size * 0.9:
+                os.remove(dst)
+                return False
+        except OSError:
+            pass
+        return True
 
     for f in files:
         src = os.path.join(MEDIA, f)
@@ -598,6 +625,15 @@ def build_thumbs(files, force=False):
             mid[f] = 'media/t2/' + base + '.webp'
             mid_bytes += os.path.getsize(d2)
             mid_px += sz2[0] * sz2[1] * 4
+
+        # b438: «большой» уровень — только для тяжёлых мастеров
+        h = im.size[1]
+        if max(w, h) > BIG_W or s1 > BIG_MIN_BYTES:
+            d3 = os.path.join(BIGS, base + '.webp')
+            encode_big(im, d3, s1, os.path.getmtime(src))
+            if os.path.exists(d3):
+                big[f] = 'media/t3/' + base + '.webp'
+                big_bytes += os.path.getsize(d3)
         im.close()
 
     say('миниатюры: создано %d, уже были %d' % (made, skipped))
@@ -607,7 +643,9 @@ def build_thumbs(files, force=False):
         (th_bytes / 1048576, th_px / 1048576, len(small)))
     say('  t2/512px: %6.1f МБ на диске, %5.0f МБ распакованных битмапов (%d шт.)' %
         (mid_bytes / 1048576, mid_px / 1048576, len(mid)))
-    return small, mid
+    say('  t3/1440px: %5.1f МБ на диске (%d шт.) — b438, просмотр карты и галерея' %
+        (big_bytes / 1048576, len(big)))
+    return small, mid, big
 
 
 # --------------------------------------------------------------------------- #
@@ -889,12 +927,14 @@ THUMB_HELPERS = '''
         // Теперь три уровня:
         //   media/t/  256px — списки, строки, компактные сетки  (~0.47 МБ в памяти)
         //   media/t2/ 512px — обычные сетки, вскрытие пака       (~1.9 МБ в памяти)
-        //   мастер        — просмотр карты и вид «галерея» (1:1, как было)
-        // Полноразмерные арты не пережаты и не изменены: там, где карта
-        // показывается крупной, картинка осталась ровно той же.
+        //   media/t3/ 1440px — просмотр карты, «галерея» (b438: ~0.1–0.3 МБ вместо мастера 10–16 МБ)
+        //   мастер        — последний резерв, если t3 ещё не построен (1:1, как было)
+        // Полноразмерные арты не пережаты и не изменены: мастер на диске
+        // остаётся ровно тем же, просто для показа на телефоне он больше не качается.
         /*NX_EMBED_THUMB_START*/
         const NX_EMBED_THUMB = __THUMB_MAP__;
         const NX_EMBED_THUMB_MID = __THUMB_MID_MAP__;
+        const NX_EMBED_BIG = __BIG_MAP__;
         /*NX_EMBED_THUMB_END*/
         function nxThumbFor(u, tier) {
             try {
@@ -939,12 +979,42 @@ THUMB_HELPERS = '''
         function mediaThumbMid(u) {                    // 512px, иначе мелкая, иначе мастер
             return nxThumbFor(u, 'mid') || nxThumbFor(u, 'small') || mediaUrl(u);
         }
+        // b438: «большой» уровень media/t3/ — просмотр карты и «галерея».
+        // Мастера 4K PNG по 10–16 МБ на телефоне не прогружались и не влезали
+        // в постоянный кэш; t3 (≤1440px, ~0.1–0.3 МБ) на экране неотличим.
+        // Ключа нет в NX_EMBED_BIG (лёгкий мастер / арт новее сборки) — мастер.
+        function nxBigFor(u) {
+            try {
+                const s = String(u == null ? '' : u);
+                if (!s) return '';
+                const full = mediaUrl(s);
+                if (!full) return '';
+                const key = nxMediaKey(full) || nxMediaKey(s);
+                const rel = NX_EMBED_BIG[key];
+                if (!rel) return '';
+                if (full.indexOf('http') !== 0) return rel;
+                const i = full.lastIndexOf('/media/');
+                if (i < 0) return rel;
+                return full.slice(0, i + 7) + rel.slice(6);
+            } catch (e) { return ''; }
+        }
+        function mediaBig(u) {                         // 1440px, иначе мастер
+            return nxBigFor(u) || mediaUrl(u);
+        }
+        function nxDownTierUrl(url) {                  // t3 -> t2 (мгновенный показ, пока «большой» грузится)
+            try {
+                const s = String(url || '');
+                if (s.indexOf('/media/t3/') >= 0) return s.replace('/media/t3/', '/media/t2/');
+                return '';
+            } catch (e) { return ''; }
+        }
 '''
 
-THUMB_ERROR_FALLBACK = '''                // миниатюра не отдалась (папки media/t/ или media/t2/ ещё не
-                // задеплоены, файл битый, арт добавили после сборки) — показываем
-                // полный арт: карта не должна оставаться заглушкой
-                if (!el.__nxThumbTried && /\\/media\\/t2?\\//.test(u)) {
+THUMB_ERROR_FALLBACK = '''                // производная не отдалась (папки media/t/, media/t2/ или media/t3/
+                // ещё не задеплоены, файл битый, арт добавили после сборки) —
+                // показываем полный арт (data-nx-full): карта не должна оставаться
+                // заглушкой. b438: t3 тоже в цепочке — с «большого» откат на мастер
+                if (!el.__nxThumbTried && /\\/media\\/t[23]?\\//.test(u)) {
                     el.__nxThumbTried = 1;
                     const full = el.getAttribute && el.getAttribute('data-nx-full');
                     if (full && full !== u) { el.onerror = null; el.style.display = ''; el.src = full; return true; }
@@ -1678,9 +1748,9 @@ def main():
     all_imgs = all_media_images()
     say('артов в media/: %d (в HTML упомянуто %d, остальные приходят из облака)'
         % (len(all_imgs), len(used_media(src_text))))
-    thumb_map, mid_map = {}, {}
+    thumb_map, mid_map, big_map = {}, {}, {}
     if not no_media:
-        thumb_map, mid_map = build_thumbs(all_imgs, force='--force-media' in argv)
+        thumb_map, mid_map, big_map = build_thumbs(all_imgs, force='--force-media' in argv)
     else:
         for f in all_imgs:
             b = os.path.splitext(f)[0]
@@ -1688,8 +1758,10 @@ def main():
                 thumb_map[f] = 'media/t/' + b + '.webp'
             if os.path.exists(os.path.join(MIDS, b + '.webp')):
                 mid_map[f] = 'media/t2/' + b + '.webp'
-        say('миниатюры: пропущено (--no-media), найдено %d мелких / %d средних'
-            % (len(thumb_map), len(mid_map)))
+            if os.path.exists(os.path.join(BIGS, b + '.webp')):
+                big_map[f] = 'media/t3/' + b + '.webp'
+        say('миниатюры: пропущено (--no-media), найдено %d мелких / %d средних / %d больших'
+            % (len(thumb_map), len(mid_map), len(big_map)))
 
     # --- Font Awesome ----------------------------------------------------- #
     fa_scan = '\r\n'.join(lines[:BLOCKS['fa'][0] - 1] + lines[BLOCKS['fa'][1]:])
@@ -1758,9 +1830,10 @@ def main():
     assert anchor in js, 'не найден маркер NX_EMBED_MEDIA_END'
     js = js.replace(anchor, anchor + THUMB_HELPERS
                     .replace('__THUMB_MAP__', json.dumps(thumb_map, ensure_ascii=False, sort_keys=True))
-                    .replace('__THUMB_MID_MAP__', json.dumps(mid_map, ensure_ascii=False, sort_keys=True)), 1)
-    say('  · добавлены mediaThumb()/mediaThumbMid(): %d мелких + %d средних миниатюр'
-        % (len(thumb_map), len(mid_map)))
+                    .replace('__THUMB_MID_MAP__', json.dumps(mid_map, ensure_ascii=False, sort_keys=True))
+                    .replace('__BIG_MAP__', json.dumps(big_map, ensure_ascii=False, sort_keys=True)), 1)
+    say('  · добавлены mediaThumb()/mediaThumbMid()/mediaBig(): %d мелких + %d средних + %d больших'
+        % (len(thumb_map), len(mid_map), len(big_map)))
 
     # b377: want по умолчанию 1 — любое расхождение с источником роняет сборку,
     # а не молча оставляет половину мест на мастерах.

@@ -53,6 +53,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
+BIGS = os.path.join(MEDIA, 't3')   # b438: «большой» уровень (просмотр карты, галерея)
 APP_JS = os.path.join(ROOT, 'assets', 'app.js')
 INDEX_HTML = os.path.join(ROOT, 'index.html')
 SW_JS = os.path.join(ROOT, 'sw.js')
@@ -63,6 +64,7 @@ EXT = ('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp',
 
 SMALL_DECL = 'const NX_EMBED_THUMB = '
 MID_DECL = 'const NX_EMBED_THUMB_MID = '
+BIG_DECL = 'const NX_EMBED_BIG = '  # b438
 
 
 def masters():
@@ -87,14 +89,17 @@ def build_maps():
     ms = masters()
     have_t = names_in(THUMBS)
     have_t2 = names_in(MIDS)
-    small, mid = {}, {}
+    have_t3 = names_in(BIGS)
+    small, mid, big = {}, {}, {}
     for f in ms:
         base = os.path.splitext(f)[0]
         if base + '.webp' in have_t:
             small[f] = 'media/t/' + base + '.webp'
         if base + '.webp' in have_t2:
             mid[f] = 'media/t2/' + base + '.webp'
-    return small, mid
+        if base + '.webp' in have_t3:   # b438
+            big[f] = 'media/t3/' + base + '.webp'
+    return small, mid, big
 
 
 def dumps(m):
@@ -188,7 +193,7 @@ def main(argv):
         print('нет assets/app.js — нечего синхронизировать')
         return 0
 
-    small, mid = build_maps()
+    small, mid, big = build_maps()
     if report:
         report_missing(small, mid)
         # голый --report — только диагностика, ничего не пишем
@@ -203,9 +208,15 @@ def main(argv):
 
     new_text = replace_decl(text, SMALL_DECL, dumps(small))
     new_text = replace_decl(new_text, MID_DECL, dumps(mid))
+    # b438: карта «больших» артов media/t3 — декларация появилась в b438;
+    # в старых app.js её нет, поэтому отсутствие не ошибка (экшен работает
+    # и с клиентами, которые ещё не обновились)
+    has_big = any(ln.lstrip().startswith(BIG_DECL) for ln in new_text.split('\n'))
+    if has_big:
+        new_text = replace_decl(new_text, BIG_DECL, dumps(big))
 
-    print('карты миниатюр: мелких %d, средних %d (мастеров в media/: %d)'
-          % (len(small), len(mid), len(masters())))
+    print('карты миниатюр: мелких %d, средних %d, больших %d (мастеров в media/: %d)'
+          % (len(small), len(mid), len(big), len(masters())))
 
     changed = new_text.encode('utf-8') != raw
     if bump:
