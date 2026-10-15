@@ -14876,11 +14876,36 @@ function nxToggle3d() {
             const t = document.getElementById('inspect-desc-full-text');
             if (t) t.textContent = show ? txt : '';
             p.classList.toggle('hidden', !show);
+            if (t) { try { t.scrollTop = 0; } catch (e) {} } // b441: при листании карт текст начинается сначала
+            nxDescScrollHint(); // b441: панель прокручивается — подсказка «низу ещё текст»
             if (show && scrollTo) {
                 try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {
                     try { p.scrollIntoView(); } catch (e2) {}
                 }
             }
+        }
+        // b441: «открытие описание можно пролистывать верх вниз, чтоб читать
+        // длинное описание». Текст панели (#inspect-desc-full-text) ограничен
+        // по высоте ~32vh и крутится внутри пальцем/колесом (CSS), а здесь
+        // живёт подсказка, что снизу ещё текст: nx-desc-scrollable включает
+        // фейд внизу панели, nx-desc-end гасит его, когда докрутили до конца.
+        function nxDescScrollHint() {
+            const p = document.getElementById('inspect-desc-full');
+            const t = document.getElementById('inspect-desc-full-text');
+            if (!p || !t) return;
+            const upd = () => {
+                try {
+                    if (p.classList.contains('hidden')) {
+                        p.classList.remove('nx-desc-scrollable', 'nx-desc-end');
+                        return;
+                    }
+                    const scrollable = t.scrollHeight > t.clientHeight + 4;
+                    p.classList.toggle('nx-desc-scrollable', scrollable);
+                    p.classList.toggle('nx-desc-end', scrollable && (t.scrollTop + t.clientHeight >= t.scrollHeight - 4));
+                } catch (e) {}
+            };
+            upd();
+            try { requestAnimationFrame(upd); } catch (e) {}
         }
         function inspectCard(cardId, list) {
             const card = state.cards.find(c => c.id === cardId);
@@ -15093,6 +15118,13 @@ function nxToggle3d() {
             if (x !== null && Math.abs(x - inspectTouchX) > 40) inspectStep(x < inspectTouchX ? 1 : -1);
             inspectTouchX = null;
         }, { passive: true });
+        // b441: собственный скролл панели описания — обновляем подсказку
+        // «долистали до конца»; при resize окна меняется и лимит 32vh
+        (function () {
+            const nxDescTxt = document.getElementById('inspect-desc-full-text');
+            if (nxDescTxt) nxDescTxt.addEventListener('scroll', () => { try { nxDescScrollHint(); } catch (e) {} }, { passive: true });
+            window.addEventListener('resize', () => { try { nxDescScrollHint(); } catch (e) {} });
+        })();
 
         // ============ ОБЛАКО: общий каталог паков и карт для всех пользователей сайта ============
         // Простой режим (по умолчанию): бесплатное хранилище textdb.dev — БЕЗ регистрации, ключей и кода.
