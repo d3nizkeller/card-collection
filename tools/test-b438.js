@@ -15,7 +15,7 @@
    E. nxProgressiveAttach: src из t3 мгновенно показывает t2 и греет t3 фоном.
    F. inspectCard: src=mediaBig + data-nx-full=мастер + прогрев соседей ±2.
    G. Галерея/preload: artFn 'full' -> mediaBig; preloadImages tier 'big'.
-   H. Тег nxmob25 (index.html x8, sw.js, build.py), инструменты и CI.
+   H. Тег nxmob160 (index.html x8, sw.js, build.py), инструменты и CI.
 
    Запуск:  node tools/test-b438.js
 */
@@ -190,10 +190,10 @@ function boot() {
     const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
     const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
     const bld = fs.readFileSync(path.join(ROOT, 'tools', 'build.py'), 'utf8');
-    eq((idx.match(/nxmob25/g) || []).length, 8, 'index.html: ?v=nxmob25 x8');
-    ok(sw.includes("const VERSION = 'nxmob25';"), 'sw.js: VERSION nxmob25');
-    ok(bld.includes("BUILD_TAG = 'nxmob25'"), 'build.py: BUILD_TAG nxmob25');
-    ok(!idx.includes('nxmob24') && !sw.includes('nxmob24') && !bld.includes('nxmob24'), 'старый тег nxmob24 вычищен');
+    eq((idx.match(/\?v=nxmob160/g) || []).length, 8, 'index.html: ?v=nxmob160 x8');
+    ok(sw.includes("const VERSION = 'nxmob160';"), 'sw.js: VERSION nxmob160');
+    ok(bld.includes("BUILD_TAG = 'nxmob160'"), 'build.py: BUILD_TAG nxmob160');
+    ok(!idx.includes('?v=nxmob159') && !sw.includes("'nxmob159'") && !bld.includes("BUILD_TAG = 'nxmob159'"), 'предыдущий тег nxmob159 вычищен из ?v=/VERSION/BUILD_TAG');
     const tfm = fs.readFileSync(path.join(ROOT, 'tools', 'thumbs_for_media.py'), 'utf8');
     ok(tfm.includes("BIGS = os.path.join(MEDIA, 't3')") && tfm.includes('BIG_W, BIG_Q = 1440, 80'), 'thumbs_for_media.py строит t3 (CI догонит новые арты)');
     const stm = fs.readFileSync(path.join(ROOT, 'tools', 'sync_thumb_maps.py'), 'utf8');

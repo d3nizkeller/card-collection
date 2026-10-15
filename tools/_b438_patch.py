@@ -30,7 +30,7 @@
   6. imgErrorChain: регулятор производных /media\\/t2?\\// -> /media\\/t[23]?\\//
      (t3 не прогрузился — откат на data-nx-full, как у t/t2);
   7. preloadImages: новый tier='big' (прогрев mediaBig).
-  8. Тег сборки nxmob157 -> nxmob158 (index.html ?v= x8, sw.js VERSION,
+  8. Тег сборки: bump на следующий свободный (боевой — nxmob160) (index.html ?v= x8, sw.js VERSION,
      tools/build.py BUILD_TAG).
 
 Проверка/применение:
@@ -204,8 +204,8 @@ PAIRS.append(('app.js: preloadImages big', """
                 else if (tier !== 'full') { const t = mediaThumb(raw); if (t) u = t; }
 """.lstrip('\n')))
 
-TAG_OLD = 'nxmob24'
-TAG_NEW = 'nxmob25'
+TAG_OLD = 'nxmob159'
+TAG_NEW = 'nxmob160'
 TAG_FILES = ['index.html', 'sw.js', 'tools/build.py']
 
 
@@ -264,13 +264,13 @@ def check():
     for rel in TAG_FILES:
         t = read(rel)
         if TAG_NEW not in t or TAG_OLD in t:
-            problems.append('%s: тег не nxmob154' % rel)
+            problems.append('%s: тег не nxmob160 (ожидается TAG_NEW)' % rel)
     if problems:
         print('b438 --check: ПРОБЛЕМЫ:')
         for p in problems:
             print('  -', p)
         raise SystemExit(1)
-    print('b438 --check: всё на месте (media/t3, mediaBig, progressive, тег nxmob158)')
+    print('b438 --check: всё на месте (media/t3, mediaBig, progressive, тег nxmob160)')
 
 
 if __name__ == '__main__':
