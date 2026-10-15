@@ -12983,12 +12983,12 @@ function nxToggle3d() {
                             <span class="shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg bg-violet-500/10 text-violet-300 border border-violet-500/30">${cardsInPack} карт</span>
                         </div>
 
-<div class="mt-3 flex flex-wrap items-center gap-1.5" id="nx-qty-row">
-                            <span class="text-[10px] font-bold text-slate-400 mr-0.5"><i class="fa-solid fa-layer-group mr-1 text-sky-300"></i>Открыть сразу:</span>
-                            ${NX_QTY_PRESETS.map(v => '<button onclick="nxSetPackQty(' + v + ')" class="px-2 py-1 rounded-lg text-[10px] font-black border ' + (nxPackQty === v ? 'bg-sky-500/20 border-sky-400/60 text-sky-200' : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + v + '</button>').join('')}
-                            <button onclick="nxSetPackQty(Math.floor(state.coins / ${salePrice}))" class="px-2 py-1 rounded-lg text-[10px] font-black border bg-slate-800/70 border-slate-700 text-amber-300 hover:bg-slate-700" title="Открыть максимум паков на текущий баланс">MAX</button>
-                            <input id="nx-qty-input" type="number" min="1" max="99" value="${nxPackQty}" onchange="nxSetPackQty(this.value)" class="w-14 px-1.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-[11px] font-black text-center text-slate-100" aria-label="Количество паков">
-                            <span class="text-[10px] font-bold text-amber-300">итого ${fmtCoins(salePrice * nxPackQty)}</span>
+<!-- b437: строка количества паков — всегда в одну строку: без переноса (flex-nowrap), на узких экранах компактнее, а в крайнем случае прокручивается по горизонтали без видимого скроллбара (no-scrollbar) --><div class="mt-3 flex flex-nowrap items-center gap-1 md:gap-1.5 overflow-x-auto no-scrollbar" id="nx-qty-row">
+                            <span class="shrink-0 text-[10px] font-bold text-slate-400 mr-0.5" title="Открыть сразу" aria-label="Открыть сразу"><i class="fa-solid fa-layer-group mr-0 md:mr-1 text-sky-300"></i><span class="hidden md:inline">Открыть сразу:</span></span>
+                            ${NX_QTY_PRESETS.map(v => '<button onclick="nxSetPackQty(' + v + ')" class="shrink-0 px-1.5 py-1 rounded-lg text-[10px] font-black border ' + (nxPackQty === v ? 'bg-sky-500/20 border-sky-400/60 text-sky-200' : 'bg-slate-800/70 border-slate-700 text-slate-300 hover:bg-slate-700') + '">' + v + '</button>').join('')}
+                            <button onclick="nxSetPackQty(Math.floor(state.coins / ${salePrice}))" class="shrink-0 px-1.5 py-1 rounded-lg text-[10px] font-black border bg-slate-800/70 border-slate-700 text-amber-300 hover:bg-slate-700" title="Открыть максимум паков на текущий баланс">MAX</button>
+                            <input id="nx-qty-input" type="number" min="1" max="99" value="${nxPackQty}" onchange="nxSetPackQty(this.value)" class="shrink-0 w-12 px-1 py-1 rounded-lg bg-slate-800/80 border border-slate-700 text-[11px] font-black text-center text-slate-100" aria-label="Количество паков">
+                            <span class="shrink-0 whitespace-nowrap text-[10px] font-bold text-amber-300">итого ${fmtCoins(salePrice * nxPackQty)}</span>
                         </div>
                                                 <p class="text-[11px] sm:text-xs text-slate-400 mt-1.5 line-clamp-3 leading-relaxed">${pack.description || ''}</p>
                         <div id="carousel-odds" class="mt-3">${renderPackOdds(pack)}</div>
