@@ -36,7 +36,7 @@ MEDIA = os.path.join(ROOT, 'media')
 THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 
-BUILD_TAG = 'nxmob130'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob131'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
