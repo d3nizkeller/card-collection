@@ -1275,7 +1275,13 @@ function nxToggle3d() {
                 '--pk-rim:linear-gradient(90deg, ' + pal.side[3] + ', ' + pal.side[1] + ', ' + pal.side[3] + ');' +
                 '--pk-wrinkle:' + pal.wrinkle + ';--pk-frame:' + pal.frame + ';' +
                 '--pk-holo:' + holo + ';--pk-holo-op:' + holoOp + ';--pk-gloss-op:' + glossOp + ';' +
-                '--pk-spark:' + spark + ';--pk-spark-op:' + sparkOp + ';';
+                '--pk-spark:' + spark + ';--pk-spark-op:' + sparkOp + ';' +
+                // b448: силуэт кромки приезжает на грань переменной --pk-clip.
+                // Для «Зубчиков» (zip) переменной НЕТ вовсе: грань остаётся с
+                // родным clip-path из assets/app.css — побайтово как раньше.
+                // (В app.css у грани 14 зубцов, а у PACK_CLIP_POLY для мини-паков
+                // 15 — историческая рассинхронизация, трогать её не будем.)
+                (packCrimpId(pack) === 'zip' ? '' : '--pk-clip:' + packCrimpPolyFor(pack) + ';');
         }
 
         // b15: имя пака целиком: ужимаем кегль по ширине, затем две строки.
@@ -12962,7 +12968,71 @@ function nxToggle3d() {
             return 'polygon(' + pts.join(',') + ')';
         })();
         // b80: силуэт зигзаг-пака доступен в CSS (мини-паки в Минах)
-        try { document.documentElement.style.setProperty('--packclip', PACK_CLIP_POLY); } catch (e) {}
+        // ===== b448: ФОРМА КРОМКИ (зубчики запайки) =====
+        // teeth — число зубцов на кромку, depth — глубина в % высоты, trap —
+        // площадка вместо острия (трапеция). flat = teeth 0.
+        const PACK_CRIMPS = {
+            zip: { name: 'Зубчики', teeth: 15, depth: 5.2, hint: 'Классическая запайка: 15 острых зубцов сверху и снизу' },
+            coarse: { name: 'Крупные', teeth: 8, depth: 7.5, hint: 'Крупный редкий зуб — брутальная запайка' },
+            fine: { name: 'Мелкие', teeth: 26, depth: 3.4, hint: 'Мелкая частая пила, как у фольги шоколадки' },
+            trap: { name: 'Трапеция', teeth: 10, depth: 6.0, trap: true, hint: 'Трапециевидные зубцы с площадкой вместо острия' },
+            flat: { name: 'Прямые', teeth: 0, depth: 0, hint: 'Ровный край без зубцов' }
+        };
+        function packCrimpPoly(teeth, depth, trap) {
+            const t = Math.max(0, Math.floor(Number(teeth) || 0));
+            const d = Math.min(12, Math.max(0, Number(depth) || 0));
+            if (!t || !d) return 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)';
+            const pts = [];
+            const step = 100 / t;
+            const put = (x, y) => pts.push(Math.max(0, Math.min(100, x)).toFixed(2) + '% ' + Math.max(0, Math.min(100, y)).toFixed(2) + '%');
+            for (let i = 0; i < t; i++) {
+                if (trap) { put(i * step, d); put(i * step + step * 0.3, 0); put(i * step + step * 0.7, 0); }
+                else { put(i * step, d); put(i * step + step / 2, 0); }
+            }
+            put(100, d);
+            put(100, 100 - d);
+            for (let i = t - 1; i >= 0; i--) {
+                if (trap) { put(i * step + step * 0.7, 100); put(i * step + step * 0.3, 100); put(i * step, 100 - d); }
+                else { put(i * step + step / 2, 100); put(i * step, 100 - d); }
+            }
+            put(0, 100 - d);
+            return 'polygon(' + pts.join(',') + ')';
+        }
+        function nxCrimpDefault() {
+            try { const v = LS.getItem('nx_pack_crimp') || ''; return PACK_CRIMPS[v] ? v : 'zip'; } catch (e) { return 'zip'; }
+        }
+        function packCrimpId(p) {
+            if (p && PACK_CRIMPS[p.crimp]) return p.crimp;
+            return nxCrimpDefault();
+        }
+        function packCrimpPolyFor(p) {
+            const c = PACK_CRIMPS[packCrimpId(p)] || PACK_CRIMPS.zip;
+            return packCrimpPoly(c.teeth, c.depth, c.trap);
+        }
+        function nxCrimpApplyRoot() {
+            // мини-паки (Мины) берут силуэт из --packclip на <html>.
+            // При zip оставляем прежний PACK_CLIP_POLY — мини-паки не меняются.
+            try {
+                document.documentElement.style.setProperty('--packclip',
+                    nxCrimpDefault() === 'zip' ? PACK_CLIP_POLY : packCrimpPolyFor(null));
+            } catch (e) {}
+        }
+        function pickPackCrimp(k) {           // своя кромка редактируемого пака
+            if (!PACK_CRIMPS[k]) return;
+            packFormCrimp = k;
+            try { renderPackFormPickers(); } catch (e) {}
+            try { renderPackStylePreview(); } catch (e) {}
+        }
+        function nxSetCrimpDefault(k) {       // общая кромка для паков без своей
+            if (!PACK_CRIMPS[k]) return;
+            try { LS.setItem('nx_pack_crimp', k); } catch (e) {}
+            nxCrimpApplyRoot();
+            try { refreshVisibleTabs(); } catch (e) {}
+            try { renderPackStylePreview(); } catch (e) {}
+            try { showToast('Зубчики по умолчанию: ' + PACK_CRIMPS[k].name, 'success'); } catch (e) {}
+        }
+        try { window.pickPackCrimp = pickPackCrimp; window.nxSetCrimpDefault = nxSetCrimpDefault; } catch (e) {}
+        nxCrimpApplyRoot(); // b448: мини-паки следуют за общим выбором сразу
 
         // ============ ВИТРИНА МАГАЗИНА: все паки плитками под каруселью ============
                         function renderStoreShowcase() {
@@ -16973,6 +17043,7 @@ function nxToggle3d() {
         let packFormColor = 'silver';
         let packFormShimmer = 'holo';
         let packFormSkin = 'foil'; // b446: форма упаковки редактируемого пака
+        let packFormCrimp = 'zip'; // b448: кромка (зубчики) редактируемого пака
 
         function renderPackFormPickers() {
             const cp = document.getElementById('pack-color-picker');
@@ -16987,6 +17058,26 @@ function nxToggle3d() {
                 }).join('');
             }
             // b446: форма упаковки — свой ряд кнопок + ряд «по умолчанию»
+            // b448: зубчики — свой ряд в редакторе и быстрый ряд в шапке секции
+            const crimpBtns = (fn) => {
+                const cur = fn === 'pack' ? packFormCrimp : nxCrimpDefault();
+                return Object.keys(PACK_CRIMPS).map(k => {
+                    const c = PACK_CRIMPS[k];
+                    const on = k === cur;
+                    const click = fn === 'pack' ? ('pickPackCrimp(\'' + k + '\')') : ('nxSetCrimpDefault(\'' + k + '\')');
+                    const hi = fn === 'pack' ? 'border-violet-400 bg-violet-500/10' : 'border-emerald-400 text-emerald-300 bg-emerald-500/10';
+                    return `<button type="button" onclick="${click}" title="${c.hint}" class="rounded-lg border p-1 transition text-center ${on ? hi : 'border-slate-700 bg-slate-950 hover:border-slate-500'}">
+                        <span class="block h-5 pk-mini-crimp pk-mini-crimp-${k}"></span>
+                        <span class="block text-[9px] leading-tight mt-0.5 font-semibold truncate ${on ? (fn === 'pack' ? 'text-violet-300' : 'text-emerald-300') : 'text-slate-400'}">${c.name}</span>
+                    </button>`;
+                }).join('');
+            };
+            const crp = document.getElementById('pack-crimp-picker');
+            if (crp) crp.innerHTML = crimpBtns('pack');
+            const crd = document.getElementById('pack-crimp-default');
+            if (crd) crd.innerHTML = crimpBtns('default');
+            const crq = document.getElementById('pack-crimp-quick');
+            if (crq) crq.innerHTML = crimpBtns('default');
             const kp = document.getElementById('pack-skin-picker');
             if (kp) {
                 kp.innerHTML = Object.keys(PACK_SKINS).map(k => {
@@ -17056,7 +17147,7 @@ function nxToggle3d() {
             const im = document.getElementById('pack-image');
             const title = String((t && t.value || '').trim() || 'Ваш пак').replace(/</g, '&lt;');
             const image = String((im && im.value || '').trim());
-            const p = { color: packFormColor, shimmer: packFormShimmer, skin: packFormSkin }; // b446
+            const p = { color: packFormColor, shimmer: packFormShimmer, skin: packFormSkin, crimp: packFormCrimp }; // b446+b448
             box.innerHTML = `
                 <div class="pack3d-face pack3d-front booster ${pkSkinCls(p)}" style="position:absolute;inset:0;${packCssVars(p)}">
                     <div class="booster-foil"></div>
@@ -17075,7 +17166,7 @@ function nxToggle3d() {
                 </div>`;
             requestAnimationFrame(() => { try { fitPackLabels(box); } catch (e) {} });
             const nm = document.getElementById('pack-style-name');
-            if (nm) nm.innerText = `${PACK_COLORS[packFormColor].name} • ${PACK_SHIMMERS[packFormShimmer].name} • ${PACK_SKINS[packFormSkin].name}`; // b446
+            if (nm) nm.innerText = `${PACK_COLORS[packFormColor].name} • ${PACK_SHIMMERS[packFormShimmer].name} • ${PACK_SKINS[packFormSkin].name} • ${PACK_CRIMPS[packFormCrimp].name}`; // b446+b448
         }
 
         function handleSavePack(e) {
@@ -17089,6 +17180,7 @@ function nxToggle3d() {
             const color = PACK_COLORS[packFormColor] ? packFormColor : 'silver';
             const shimmer = PACK_SHIMMERS[packFormShimmer] ? packFormShimmer : 'holo';
             const skin = PACK_SKINS[packFormSkin] ? packFormSkin : 'foil'; // b446
+            const crimp = PACK_CRIMPS[packFormCrimp] ? packFormCrimp : 'zip'; // b448
             // b19: музыка вскрытия — своя ссылка на mp3 + флаг «играть»
             const musicEl = document.getElementById('pack-music');
             const musicUseEl = document.getElementById('pack-music-use');
@@ -17109,6 +17201,7 @@ function nxToggle3d() {
                     pack.color = color;
                     pack.shimmer = shimmer;
                     pack.skin = skin; // b446: форма упаковки (уезжает в каталог комнаты)
+                    pack.crimp = crimp; // b448: кромка (зубчики) — тоже в каталог
                     pack.musicUrl = musicUrl;   // b19
                     pack.musicOff = !musicOn;   // b19
                     if (premTs) pack.premiereAt = premTs; else delete pack.premiereAt; // b165
@@ -17126,6 +17219,7 @@ function nxToggle3d() {
                     color,
                     shimmer,
                     skin,              // b446: форма упаковки
+                    crimp,             // b448: кромка (зубчики)
                     musicUrl,          // b19: свой трек вскрытия
                     musicOff: !musicOn, // b19: галочка «играть» снята
                     updatedAt: Date.now()
@@ -17402,6 +17496,7 @@ function nxToggle3d() {
             packFormColor = PACK_COLORS[pack.color] ? pack.color : 'silver';
             packFormShimmer = PACK_SHIMMERS[pack.shimmer] ? pack.shimmer : 'holo';
             packFormSkin = PACK_SKINS[pack.skin] ? pack.skin : nxPackSkinDefault(); // b446
+            packFormCrimp = PACK_CRIMPS[pack.crimp] ? pack.crimp : nxCrimpDefault(); // b448
             const mIn = document.getElementById('pack-music');      // b19
             if (mIn) mIn.value = pack.musicUrl || '';
             const mUse = document.getElementById('pack-music-use'); // b19

@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob177" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob177">
+    <script src="assets/three.min.js?v=nxmob178" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob178">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob177">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob178">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob177">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob178">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1009,6 +1009,8 @@
             <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 flex flex-wrap items-center gap-2">
                 <span class="text-[10px] font-bold uppercase tracking-wide text-slate-500"><i class="fa-solid fa-box-open text-violet-400 mr-1"></i>Вид паков:</span>
                 <div id="pack-skin-quick" class="flex flex-wrap gap-1"><!-- кнопки форм --></div>
+                <span class="text-[10px] font-bold uppercase tracking-wide text-slate-500 ml-2"><i class="fa-solid fa-scissors text-sky-400 mr-1"></i>Зубчики:</span>
+                <div id="pack-crimp-quick" class="flex flex-wrap gap-1"><!-- кнопки кромок --></div>
                 <span class="text-[10px] text-slate-600">форма по умолчанию для всех паков; у отдельного пака своя форма задаётся в редакторе ниже</span>
             </div>
             <div>
@@ -1060,6 +1062,11 @@
                         <div id="pack-skin-picker" class="grid grid-cols-5 gap-1 max-w-sm"><!-- свотчи форм --></div>
                         <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Форма по умолчанию <span class="normal-case font-normal text-slate-600">(для паков без своей формы)</span></div>
                         <div id="pack-skin-default" class="flex flex-wrap gap-1"><!-- кнопки общей формы --></div>
+                        <!-- b448: кромка запайки -->
+                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Зубчики упаковки</div>
+                        <div id="pack-crimp-picker" class="grid grid-cols-5 gap-1 max-w-sm"><!-- свотчи кромок --></div>
+                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Зубчики по умолчанию <span class="normal-case font-normal text-slate-600">(для паков без своей кромки; видны на «Фольге»)</span></div>
+                        <div id="pack-crimp-default" class="grid grid-cols-5 gap-1 max-w-sm"><!-- кнопки общей кромки --></div>
                         </div>
                         </div>
                         </div>
@@ -2469,6 +2476,21 @@ min-height:56vh}
     .nx-odds{ scrollbar-width:none; -ms-overflow-style:none; }
     .nx-odds::-webkit-scrollbar{ display:none; }
 
+    /* ===== b448: КРОМКА (зубчики) =====
+       Полигон приходит переменной --pk-clip из packCssVars(); без неё — прежние
+       15 зубцов, побайтово как в assets/app.css. Правило стоит ДО форм b446,
+       поэтому .pk-box/.pk-ticket/.pk-neon/.pk-retro со своим clip-path
+       перебивают его при равной специфичности (ниже по каскаду). */
+    .pack3d-face{ clip-path: var(--pk-clip, polygon(0.00% 5.2%, 3.57% 0.0%, 7.14% 5.2%, 10.71% 0.0%, 14.29% 5.2%, 17.86% 0.0%, 21.43% 5.2%, 25.00% 0.0%, 28.57% 5.2%, 32.14% 0.0%, 35.71% 5.2%, 39.29% 0.0%, 42.86% 5.2%, 46.43% 0.0%, 50.00% 5.2%, 53.57% 0.0%, 57.14% 5.2%, 60.71% 0.0%, 64.29% 5.2%, 67.86% 0.0%, 71.43% 5.2%, 75.00% 0.0%, 78.57% 5.2%, 82.14% 0.0%, 85.71% 5.2%, 89.29% 0.0%, 92.86% 5.2%, 96.43% 0.0%, 100.00% 5.2%, 100.00% 94.8%, 96.43% 100.0%, 92.86% 94.8%, 89.29% 100.0%, 85.71% 94.8%, 82.14% 100.0%, 78.57% 94.8%, 75.00% 100.0%, 71.43% 94.8%, 67.86% 100.0%, 64.29% 94.8%, 60.71% 100.0%, 57.14% 94.8%, 53.57% 100.0%, 50.00% 94.8%, 46.43% 100.0%, 42.86% 94.8%, 39.29% 100.0%, 35.71% 94.8%, 32.14% 100.0%, 28.57% 94.8%, 25.00% 100.0%, 21.43% 94.8%, 17.86% 100.0%, 14.29% 94.8%, 10.71% 100.0%, 7.14% 94.8%, 3.57% 100.0%, 0.00% 94.8%)); }
+    /* мини-превьюшки кромок в пикерах Студии */
+    .pk-mini-crimp{ border:1px solid rgba(255,255,255,.25);
+        background:linear-gradient(135deg,#eef1f7 0%,#9aa2b1 55%,#c7ccd8 100%); }
+    .pk-mini-crimp-zip{ clip-path:polygon(0 14%,12% 0,25% 14%,37% 0,50% 14%,63% 0,75% 14%,88% 0,100% 14%,100% 86%,88% 100%,75% 86%,63% 100%,50% 86%,37% 100%,25% 86%,12% 100%,0 86%); }
+    .pk-mini-crimp-coarse{ clip-path:polygon(0 22%,25% 0,50% 22%,75% 0,100% 22%,100% 78%,75% 100%,50% 78%,25% 100%,0 78%); }
+    .pk-mini-crimp-fine{ clip-path:polygon(0 10%,8% 0,16% 10%,25% 0,33% 10%,41% 0,50% 10%,58% 0,66% 10%,75% 0,83% 10%,91% 0,100% 10%,100% 90%,91% 100%,83% 90%,75% 100%,66% 90%,58% 100%,50% 90%,41% 100%,33% 90%,25% 100%,16% 90%,8% 100%,0 90%); }
+    .pk-mini-crimp-trap{ clip-path:polygon(0 18%,10% 0,20% 0,30% 18%,40% 0,50% 0,60% 18%,70% 0,80% 0,90% 18%,100% 0,100% 100%,0 100%); }
+    .pk-mini-crimp-flat{ clip-path:none; border-radius:2px; }
+
     /* ===== b446: ФОРМЫ УПАКОВКИ =====
        Класс pk-* стоит на грани пака (.pack3d-face/.booster). Меняется только
        внешность: силуэт (clip-path), швы, засечки, блеск. Цвет фольги (--pk-foil)
@@ -2887,10 +2909,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob177"></script>
-    <script src="assets/stories.js?v=nxmob177"></script>
-    <script src="assets/qrcode.min.js?v=nxmob177"></script>
-    <script src="assets/qr-transfer.js?v=nxmob177"></script>
+    <script src="assets/app.js?v=nxmob178"></script>
+    <script src="assets/stories.js?v=nxmob178"></script>
+    <script src="assets/qrcode.min.js?v=nxmob178"></script>
+    <script src="assets/qr-transfer.js?v=nxmob178"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
