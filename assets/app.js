@@ -3433,10 +3433,13 @@ function nxToggle3d() {
 
         function saveState() {
             try {
+                // b442: коллекция — ПЕРВОЙ. Если квота кончится на середине
+                // записи, главное («игрок чем-то владеет») уже сохранено.
+                LS.setItem('nexus_collection', JSON.stringify(state.collection));
+                nxColShadowMaybe(); // b442: теневая копия для возврата потерь
                 LS.setItem('nexus_coins', state.coins);
                 LS.setItem('nexus_packs', JSON.stringify(state.packs.map(lightPack)));
                 LS.setItem('nexus_cards', JSON.stringify(state.cards.map(lightCard)));
-                LS.setItem('nexus_collection', JSON.stringify(state.collection));
                 LS.setItem('nexus_stats', JSON.stringify(state.stats));
                 LS.setItem('nexus_daily', JSON.stringify(state.daily));
                 LS.setItem('nexus_missions', JSON.stringify(state.missions));
@@ -3448,12 +3451,26 @@ function nxToggle3d() {
                 LS.setItem('nexus_pack_stats', JSON.stringify(state.packStats || {})); // b277
                 LS.setItem('nexus_window_buys', JSON.stringify(state.windowBuys || {})); // b277
             } catch (err) {
-                // Квота localStorage или private-режим: игра НЕ должна падать
+                // Квота localStorage или private-режим: игра НЕ должна падать.
+                // b442: раньше здесь сохранялись coins/cards/packs, а
+                // nexus_collection — НЕТ. На переполненной квоте (base64-арты в
+                // nexus_cards) выходило: монеты списаны и записаны, а купленная
+                // карта — нет. После перезагрузки покупки просто не было.
+                // Теперь коллекция пишется первой, а тяжёлые арты урезаются.
+                try { LS.setItem('nexus_collection', JSON.stringify(state.collection)); } catch (e0) {}
                 try {
                     LS.setItem('nexus_coins', state.coins);
-                    LS.setItem('nexus_cards', JSON.stringify(state.cards.map(lightCard)));
                     LS.setItem('nexus_packs', JSON.stringify(state.packs.map(lightPack)));
-                } catch (err2) { /* работаем без сохранений */ }
+                    LS.setItem('nexus_cards', JSON.stringify(state.cards.map(c => {
+                        const l = lightCard(c);
+                        return (l && typeof l.image === 'string' && l.image.indexOf('data:') === 0)
+                            ? Object.assign({}, l, { image: '' }) : l;
+                    })));
+                } catch (err2) {
+                    try { LS.setItem('nexus_collection', JSON.stringify(state.collection)); } catch (e3) {}
+                    try { LS.setItem('nexus_coins', state.coins); } catch (e4) {}
+                    try { nxCrashLog('saveState: квота localStorage, коллекция сохранена отдельно'); } catch (e5) {}
+                }
             }
         }
 
@@ -4096,7 +4113,12 @@ function nxToggle3d() {
                 epic: 'border-purple-500/40 text-purple-400',
                 legendary: 'border-amber-500/40 text-amber-400'
             };
-            return `<div class="flex flex-wrap gap-1 mt-2">${odds.map(o => `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded border ${cls[o.r] || cls.common}">${RARITY_LABELS_RU[o.r]} ${o.pct}%</span>`).join('')}</div>`;
+            // b445: строго одна строка. flex-wrap переносил четвёртый чипс,
+            // как только ряд не влезал в карточку пака на телефоне. Теперь ряд
+            // не переносится: чипсы не рвутся (whitespace-nowrap) и не сжимаются
+            // (shrink-0), на мобильных чуть мельче шрифт и паддинг, а если экран
+            // совсем узкий — ряд прокручивается пальцем (overflow-x-auto).
+            return `<div class="nx-odds flex flex-nowrap items-center gap-0.5 sm:gap-1 mt-2 overflow-x-auto">${odds.map(o => `<span class="text-[9px] sm:text-[10px] font-semibold px-1 sm:px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 ${cls[o.r] || cls.common}">${RARITY_LABELS_RU[o.r]} ${o.pct}%</span>`).join('')}</div>`;
         }
 
         function updatePityIndicator() {
@@ -4746,6 +4768,67 @@ function nxToggle3d() {
                 window.__nxJpCompactAt = Date.now();
                 jpCompact(true, true);
             } catch (e) {}
+        }
+        // ============ b444: АТОМАРНЫЙ БАНК ============
+        // window.NXJ даёт assets/nx-cloud.js. available() — тот же флаг, что у
+        // биржи: true только после успешного ответа сервера, поэтому без
+        // задеплоенного воркера всё идёт прежним путём и ничего не тормозит.
+        function nxJp() {
+            try { const j = window.NXJ; return (j && j.available && j.available()) ? j : null; } catch (e) { return null; }
+        }
+        // Ключ операции: сервер гасит повторную доставку того же запроса
+        // (INSERT OR IGNORE в jp_ops), поэтому взнос не начислится дважды.
+        function nxJpOid(kind) {
+            return kind + '-' + JACKPOT_CID + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+        }
+        function nxJpCanAtomic(add) {
+            const j = nxJp();
+            if (!j) return null;
+            try {
+                // Атомарный эндпоинт пишет в ключ разряда 0 (JACKPOT_CID). Когда
+                // счётчик подходит к ёмкости разряда (1e13), клиент следующий взнос
+                // положит уже в JACKPOT_CID#1 — а MAX-слияние двух РАЗНЫХ ключей
+                // задвоило бы сумму. Поэтому на больших величинах остаётся документ.
+                if (jpLedNum(jackpot.led[JACKPOT_CID], 0) + (Number(add) || 0) > 1e12) return null;
+                if (jpLedNum(jackpot.won[JACKPOT_CID], 0) > 1e12) return null;
+            } catch (e) { return null; }
+            return j;
+        }
+        // b444: кнопка «Вернуть карты» в Студии. Доступна ВСЕМ игрокам (без
+        // jpcAdminGuard) — спасают они свою коллекцию, а не банк сайта.
+        function nxRescueCards() {
+            try {
+                const rep = nxRescueReport();
+                const arc = cloudGuestArchive();
+                const arcC = ((arc && arc.cards) || []).length;
+                const arcP = ((arc && arc.packs) || []).length;
+                if (!rep.lost && !arcC && !arcP) {
+                    showToast('Терять нечего: коллекция цела, архив зеркала пуст', 'info');
+                    return 0;
+                }
+                const parts = [];
+                if (rep.lost) parts.push(rep.lost + ' ' + pluralRu(rep.lost, 'копия', 'копии', 'копий') + ' карт');
+                if (arcC || arcP) parts.push((arcC + arcP) + ' ' + pluralRu(arcC + arcP, 'определение', 'определения', 'определений') + ' в архиве зеркала');
+                const msg = 'Вернуть пропавшие карты?\n\nНайдено: ' + parts.join(', ') + '.\n\n' +
+                    'Число копий восстановится по теневому снимку коллекции, определения карт и паков — ' +
+                    'из архива, куда их складывало «зеркало комнаты».\n\n' +
+                    'Честно проданные копии не воскреснут, если после продажи прошло больше 10 минут.';
+                if (typeof confirm === 'function' && !confirm(msg)) return 0;
+                const defs = nxRestoreArchive();
+                const back = nxRescueCollection(true);
+                try { saveState(); } catch (e) {}
+                try { refreshVisibleTabs(); } catch (e) {}
+                try { profSyncSoon(); } catch (e) {}
+                try { cloudPublishSoon(); } catch (e) {}
+                try { nxCrashLog('nxRescueCards: +' + back + ' копий, +' + defs + ' определений'); } catch (e) {}
+                showToast('🛟 Возвращено: ' + back + ' ' + pluralRu(back, 'копия', 'копии', 'копий') +
+                    (defs ? ', определений карт и паков: ' + defs : ''), back || defs ? 'success' : 'info');
+                return back;
+            } catch (e) {
+                try { nxCrashLog('nxRescueCards: ' + ((e && e.message) || e)); } catch (e2) {}
+                showToast('Не удалось вернуть карты: ' + ((e && e.message) || e), 'error');
+                return 0;
+            }
         }
         function jpRepairNow() {
             // кнопка «Починить банк» в Студии: то же самое, что автоматика, но сразу
@@ -5553,6 +5636,13 @@ function nxToggle3d() {
             const x = pct > 0 ? Math.max(1, Math.round((bet || 0) * JACKPOT_FEED * pct / 100)) : 0;
             if (x <= 0) return;
             jpLedAdd('led', JACKPOT_CID, x); // b416: запись через потолок — счётчик больше не улетает в 1e57
+            // b444: взнос уходит и на сервер — pot = pot + x одним выражением.
+            // amount передаём УЖЕ ПОСЧИТАННЫЙ (по своим jpc.feedBet), чтобы сервер
+            // прибавил ровно столько же: иначе MAX-слияние реестров разъезжается.
+            try {
+                const nxj = nxJpCanAtomic(x);
+                if (nxj) nxj.feed({ cid: JACKPOT_CID, name: getPlayerName() || '', amount: x, oid: nxJpOid('f') });
+            } catch (e) {}
             jackpotSave(); jackpotRender(); jpSyncSoon();
         }
         // b92: каждый проигрыш пополняет общий банк на процент потерянной суммы —
@@ -5564,6 +5654,12 @@ function nxToggle3d() {
             const add = pct > 0 ? Math.max(1, Math.round((loss || 0) * pct / 100)) : 0;
             if (add <= 0) return 0;
             const got = jpLedAdd('led', JACKPOT_CID, add); // b416: через потолок; возвращаем, сколько реально легло в банк
+            // b444: на сервер уходит ровно то, что легло в реестр (got), а не add:
+            // при переполнении разряда часть взноса уходит в старший разряд.
+            try {
+                const nxj = nxJpCanAtomic(got);
+                if (nxj && got > 0) nxj.feed({ cid: JACKPOT_CID, name: getPlayerName() || '', amount: got, oid: nxJpOid('f') });
+            } catch (e) {}
             jackpotSave(); jackpotRender(); jpSyncSoon();
             return got;
         }
@@ -5580,15 +5676,28 @@ function nxToggle3d() {
             // накоплена сверх несгораемого остатка. Раньше сюда падал весь prize, и срыв
             // банка, стоящего на полу, создавал «фантомный долг»: Σвыплат уезжала выше
             // Σвзносов, банк навсегда прижимался к floor и переставал расти.
-            jpLedAdd('won', JACKPOT_CID, Math.min(prize, jpExcess()));
+            // b416: в реестр выплат пишем только обеспеченную часть
+            const secured = Math.min(prize, jpExcess());
+            jpLedAdd('won', JACKPOT_CID, secured);
             jackpot.wins[JACKPOT_CID] = (jackpot.wins[JACKPOT_CID] || 0) + 1;
             // b91: фиксируем победителя по имени — зал славы увидят все игроки сайта
             // b432: флаг nm — попал ли срыв в топ сайта (только игроки с именем)
             const realName = getPlayerName();
             const wname = realName || ('Игрок-' + JACKPOT_CID.slice(1, 5));
             jackpot.names[JACKPOT_CID] = wname;
+            // b444: время срыва фиксируем ОДИН раз и отдаём то же значение серверу.
+            // Зал славы дедуплицируется по (cid, ts, amount): расхождение в
+            // миллисекунду между локальной записью и серверной дало бы ДВЕ записи.
+            const wonAt = Date.now();
             jackpot.hall = jackpot.hall || [];
-            jackpot.hall.unshift({ n: wname, a: prize, t: Date.now(), c: JACKPOT_CID, nm: realName ? 1 : 0 });
+            jackpot.hall.unshift({ n: wname, a: prize, t: wonAt, c: JACKPOT_CID, nm: realName ? 1 : 0 });
+            // b444: срыв атомарно — pot = MAX(floor, pot - prize) в транзакции.
+            // Два одновременных срыва больше не гасят друг друга, а 118 КБ
+            // документ летит только потом, обычным jpSyncNow().
+            try {
+                const nxj = nxJpCanAtomic();
+                if (nxj) nxj.win({ cid: JACKPOT_CID, name: wname, amount: prize, secured: secured, at: wonAt, oid: nxJpOid('w') });
+            } catch (e) {}
             jackpot.hall = jackpot.hall.slice(0, 40); // b431: окно зала 40
             try { LS.setItem('nexus_jp_seen', String(Date.now())); } catch (e) {}
             jackpotSave();
@@ -6445,7 +6554,14 @@ function nxToggle3d() {
             const colsnap = chainOk ? JSON.parse(LS.getItem('nx_prof_colsnap') || 'null') : null;
             const packsnap = chainOk ? JSON.parse(LS.getItem('nx_prof_packsnap') || 'null') : null;
             const curPackIds = (L.packs || []).map(p => p && p.id);
-            const myRemoved = packsnap ? packsnap.filter(id => curPackIds.indexOf(id) < 0) : [];
+            // b442: пак, из которого у этого устройства есть КУПЛЕННЫЕ карты, в
+            // надгробия не уходит. Раньше любое временное отсутствие пака в
+            // state.packs (квота localStorage, зеркало комнаты, откат документа
+            // textdb, импорт сейва) навсегда заносило пак в ptomb — а обратного
+            // хода у надгробия нет: пак вместе с картами исчезал на всех
+            // устройствах профиля.
+            const myRemoved = packsnap ? packsnap.filter(id => curPackIds.indexOf(id) < 0
+                && !(state.cards || []).some(c => c && c.packId === id && cardCopies(c.id) > 0)) : [];
             const myTomb = profCapList(((chainOk ? (JSON.parse(LS.getItem('nx_prof_ptomb') || '[]') || []) : [])).concat(myRemoved), 2000);
             let base_col = {}, colmov = {}, ptomb = myTomb;
             if (doc) {
@@ -7170,13 +7286,30 @@ function nxToggle3d() {
                 let addedM = 0;
                 for (const id in mcache) {
                     const e = mcache[id];
-                    if (!e || !e.l || nowM - (e.t || 0) > 600000) continue;
+                    if (!e || !e.l) continue;
+                    // b442: СВОЙ эскроу-лот ждём 72 часа, чужой — 10 минут, как было.
+                    // В эскроу копия уходит из коллекции (marketSetCollection),
+                    // поэтому потеря своего лота = потеря карты безвозвратно.
+                    if (nowM - (e.t || 0) > ((e.l.sid === cloudDeviceId()) ? 259200000 : 600000)) continue;
                     if (cur[id] || removedIds[id] || soldIds['sale-' + id]) continue;
                     cur[id] = e.l; addedM++;
                 }
                 if (addedM) { CLOUD.market = Object.values(cur); window.__nxMktSig = ''; try { console.log('market: восстановлено лотов из кэша — ' + addedM); } catch (e) {} }
+                // b442: кэш больше не пересобирается «только из того, что сейчас в
+                // облаке». Раньше лот, потерянный при гонке записей textdb, выпадал
+                // из кэша на той же синхронизации, и карта, ушедшая в эскроу, не
+                // возвращалась никогда (квитанция тоже могла не дойти: ledger
+                // режется до 60 записей). Свои лоты держим 72 часа.
                 const nc = {};
+                const myDeviceId = cloudDeviceId();
                 CLOUD.market.forEach(l => { if (l && l.id) nc[l.id] = { l: l, t: nowM }; });
+                for (const cid0 in mcache) {
+                    const e0 = mcache[cid0];
+                    if (!e0 || !e0.l || nc[cid0]) continue;
+                    if (removedIds[cid0] || soldIds['sale-' + cid0]) continue;
+                    const age = nowM - (e0.t || 0);
+                    if (e0.l.sid === myDeviceId ? age <= 259200000 : age <= 600000) nc[cid0] = e0;
+                }
                 LS.setItem('nexus_market_cache', JSON.stringify(nc));
             } catch (e) {}
             const led = {};
@@ -7185,6 +7318,7 @@ function nxToggle3d() {
             let arr = Object.values(led).sort((a, b) => (a.at || 0) - (b.at || 0));
             if (arr.length > 60) arr = arr.slice(-60);
             CLOUD.ledger = arr;
+            try { nxMktTopUp(); } catch (e) {} // b443: витрина шире, чем 80 лотов документа
         }
         function marketSetCollection(id, n) {
             if (n <= 0) delete state.collection[id]; else state.collection[id] = n;
@@ -7208,10 +7342,10 @@ function nxToggle3d() {
             }
             // b409: на бирже уже 4 лота этой карты — новый не пускаем, копию
             // мгновенно продаёт дом, иначе лишние лоты копились бы в облаке
-            if (marketLotsFor(cardId) >= MARKET_MAX_PER_CARD) {
+            if (marketLotsFor(cardId) >= marketMaxPerCard()) { // b443
                 const r = nxInstantSellDupes([{ id: cardId, count: 1 }]);
                 if (r.sold) {
-                    showToast('♻ На бирже уже ' + MARKET_MAX_PER_CARD + ' лота этой карты — копия продана автоматически за ' + fmtCoins(r.sum), 'success');
+                    showToast('♻ На бирже уже ' + marketMaxPerCard() + ' лота этой карты — копия продана автоматически за ' + fmtCoins(r.sum), 'success'); // b443
                     try { nxRefreshAfterSale(); } catch (e) {}
                     return true;
                 }
@@ -7228,6 +7362,7 @@ function nxToggle3d() {
                 price: price, at: Date.now(), card: snap
             };
             CLOUD.market = marketLots().concat([lot]);
+            try { const nxm = window.NXM; if (nxm && nxm.list) nxm.list([lot]); } catch (e) {} // b443: эскроу фиксируется на сервере
             saveState(); jpSyncNow(); jpSyncSoon(); renderMarket(); // b336: мгновенный пуш лота
             marketEnforceLimit(); // b142: вдруг это уже пятая такая карта в продаже
             if (!silent) showToast('🏷 Лот выставлен: ' + card.name + ' за ' + fmtCoins(price), 'success');
@@ -7261,6 +7396,10 @@ function nxToggle3d() {
         function marketCommitLots(lots) {
             if (!lots || !lots.length) return 0;
             CLOUD.market = marketLots().concat(lots);
+            // b443: копия УЖЕ снята с коллекции (эскроу), поэтому лот обязан дойти
+            // до базы. Пакетом, одним запросом; при офлайне NXM кладёт его в
+            // очередь IndexedDB и отправляет, как только связь вернётся.
+            try { const nxm = window.NXM; if (nxm && nxm.list) nxm.list(lots); } catch (e) {}
             saveState(); jpSyncNow(); jpSyncSoon(); renderMarket(); // ОДИН пуш на партию
             marketEnforceLimit(); // b142: один проход лимита на партию
             try { if (typeof nxRefreshAfterSale === 'function') nxRefreshAfterSale(); } catch (e) {} // b396: лимит мог выкупить часть лотов — копии вернулись
@@ -7274,9 +7413,9 @@ function nxToggle3d() {
             let exist = 0;
             const lots = marketLots();
             for (let i = 0; i < lots.length; i++) if (lots[i].card && lots[i].card.id === cardId) exist++;
-            return Math.max(0, MARKET_MAX_PER_CARD - exist);
+            return Math.max(0, marketMaxPerCard() - exist); // b443
         }
-        function marketSellRoom() { return Math.max(0, 80 - marketLots().length); }
+        function marketSellRoom() { return Math.max(0, marketCapRoom() - marketLots().length); } // b443: 80 → 400, если свой API жив
         // b406: если документ биржи забит под завязку (80 лотов), массовая
         // продажа молча не выставляла ничего — кнопка выглядела мёртвой.
         // Освобождаем место своими же старыми лотами: карты возвращаются в
@@ -7315,13 +7454,13 @@ function nxToggle3d() {
             // одну карту действует лимит MARKET_MAX_PER_CARD. Раньше партия в 800
             // лотов создавала их все, затем автовыкуп сносил ~700 с сотнями записей
             // в localStorage — телефон вис. Теперь партия строго в пределах места.
-            const room = Math.max(0, 80 - marketLots().length);
+            const room = marketSellRoom(); // b443
             const perCard = {};
             const lots = []; let sum = 0; let skipped = 0;
             for (let i = 0; i < items.length; i++) {
                 if (lots.length >= room) { skipped = items.length - i; break; }
                 const pc = perCard[items[i].id] || (perCard[items[i].id] = marketLots().filter(l => l.card && l.card.id === items[i].id).length);
-                if (pc >= MARKET_MAX_PER_CARD) { skipped++; continue; }
+                if (pc >= marketMaxPerCard()) { skipped++; continue; } // b443
                 perCard[items[i].id] = pc + 1;
                 const lot = marketMakeLot(items[i].id, String(items[i].price));
                 if (!lot) { skipped++; continue; }
@@ -7425,7 +7564,7 @@ function nxToggle3d() {
             const price = marketRecommendPrice(card);
             let listed = 0;
             if (dupes > 0 && CLOUD.connected()) {
-                listed = Math.min(dupes, Math.max(0, MARKET_MAX_PER_CARD - marketLotsFor(card.id)));
+                listed = Math.min(dupes, Math.max(0, marketMaxPerCard() - marketLotsFor(card.id))); // b443
             }
             const instant = dupes - listed;
             return { dupes: dupes, listed: listed, instant: instant, price: price, refund: refund, sum: instant * refund };
@@ -7497,6 +7636,9 @@ function nxToggle3d() {
         function marketCancel(lotId) {
             const lot = marketLots().find(l => l.id === lotId);
             if (!lot || !marketIsMine(lot)) return;
+            // b443: снятие фиксируем и на сервере. Иначе лот воскреснет из чужой
+            // копии документа, а копия карты уже вернулась в коллекцию — дубль.
+            try { const nxm = window.NXM; if (nxm && nxm.cancel) nxm.cancel(lotId, cloudDeviceId()); } catch (e) {}
             marketRemovedAdd(lotId);
             CLOUD.market = marketLots().filter(l => l.id !== lotId);
             marketSetCollection(lot.card.id, cardCopies(lot.card.id) + 1); // копия вернулась
@@ -7511,9 +7653,56 @@ function nxToggle3d() {
             if (!lot) { showToast('Лот уже куплен или снят', 'error'); renderMarket(); return; }
             if (marketIsMine(lot)) { showToast('Это ваш собственный лот', 'error'); return; }
             if (state.coins < lot.price) { showToast('Не хватает монет: нужно ' + fmtCoins(lot.price), 'error'); return; }
+            // b443: АТОМАРНАЯ ПОКУПКА. Решение принимает база:
+            //     UPDATE mk_lots SET status='sold' WHERE id=? AND status='open'
+            // Второй покупатель получит «лот уже куплен», а монеты списываются
+            // ТОЛЬКО после подтверждения — раньше каждый фильтровал лот у себя и
+            // пушил весь документ, поэтому при гонке карту получали оба.
+            const nxm = nxMkt();
+            if (nxm && nxm.buy) {
+                nxm.buy(lotId, cloudDeviceId(), getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4))).then(res => {
+                    if (res && res.ok) { marketApplyBuy(lot, res.receipt); return; }
+                    if (res && res.offline) { marketLegacyBuy(lot); return; } // сеть пропала — запасной путь
+                    try { marketRemovedAdd(lotId); } catch (e) {}
+                    try { CLOUD.market = marketLots().filter(l => l.id !== lotId); } catch (e) {}
+                    showToast(res && res.error ? '⚠️ ' + res.error : 'Лот уже куплен или снят', 'error');
+                    renderMarket();
+                }).catch(() => { marketLegacyBuy(lot); });
+                return;
+            }
+            marketLegacyBuy(lot);
+        }
+        // b443: общий хвост покупки — вызывается ТОЛЬКО после того, как сервер
+        // подтвердил, что лот достался нам (или когда сервера нет вовсе).
+        function marketApplyBuy(lot, receipt) {
+            if (!lot || !lot.card) return;
+            if (state.coins < lot.price) { showToast('Не хватает монет: нужно ' + fmtCoins(lot.price), 'error'); renderMarket(); return; }
             state.coins -= lot.price;
-            marketRemovedAdd(lotId);
-            CLOUD.market = marketLots().filter(l => l.id !== lotId);
+            marketRemovedAdd(lot.id);
+            CLOUD.market = marketLots().filter(l => l.id !== lot.id);
+            // квитанцию создал сервер (id = 'sale-'+лот, sid = ПРОДАВЕЦ). Кладём её
+            // и локально: если продавец на этом же устройстве — выплата видна сразу.
+            if (receipt && receipt.id) {
+                CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat([receipt]).slice(-60);
+            }
+            const isNewDef = !state.cards.some(c => c.id === lot.card.id);
+            if (isNewDef && lot.card) { state.cards.push(Object.assign({}, lot.card)); try { cardsSortNorm(); } catch (e) {} } // b375
+            marketSetCollection(lot.card.id, cardCopies(lot.card.id) + 1);
+            saveState(); updateCoinDisplay(); checkAchievements();
+            if (isNewDef) updateMissions('collect_new', 1);
+            jpSyncNow(); jpSyncSoon(); renderMarket();
+            try { preloadImages([lot.card.image]); } catch (e) {}
+            try { SoundFX.play('coin'); } catch (e) {}
+            showToast('🎉 Куплено: «' + (lot.card.name || 'карта') + '» в коллекции!', 'success');
+        }
+        // Прежний путь (фильтр у себя + пуш всего документа). Остаётся запасным на
+        // случай, когда свой API недоступен: лучше редкая гонка, чем мёртвая кнопка.
+        function marketLegacyBuy(lot) {
+            if (!lot || !lot.card) return;
+            if (state.coins < lot.price) { showToast('Не хватает монет: нужно ' + fmtCoins(lot.price), 'error'); return; }
+            state.coins -= lot.price;
+            marketRemovedAdd(lot.id);
+            CLOUD.market = marketLots().filter(l => l.id !== lot.id);
             CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat([{
                 id: 'sale-' + lot.id, sid: lot.sid, amount: lot.price, at: Date.now(),
                 bname: getPlayerName() || ('Игрок-' + cloudDeviceId().slice(-4))
@@ -7547,6 +7736,41 @@ function nxToggle3d() {
             showToast('🏛 Дом продал: «' + (card.name || 'карта') + '» — карта в коллекции!', 'success');
         }
         function marketCreditLedger() {
+            // b443: свои квитанции забираем с сервера (GET /api/market/ledger?cid=…).
+            // В общем документе ledger держит только 60 последних записей на ВЕСЬ
+            // сайт: при 40 лотах и автовыкупе каждые 6 ч (~160 выкупов в сутки)
+            // чья-то квитанция гарантированно выталкивалась раньше, чем продавец
+            // успевал её увидеть — карта уходила, деньги не приходили.
+            try {
+                const nxm = nxMkt();
+                if (nxm && nxm.ledger) {
+                    const t = Date.now();
+                    const lastPoll = Number(LS.getItem('nx_mkt_ledger_poll') || 0);
+                    if (t - lastPoll > 20000) {
+                        LS.setItem('nx_mkt_ledger_poll', String(t));
+                        const after = Number(LS.getItem('nx_mkt_ledger_at') || 0);
+                        nxm.ledger(cloudDeviceId(), after).then(res => {
+                            if (!res || !res.ok || !Array.isArray(res.ledger) || !res.ledger.length) return;
+                            const have = {};
+                            (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).forEach(x => { if (x && x.id) have[x.id] = 1; });
+                            const add = [];
+                            let maxAt = after;
+                            res.ledger.forEach(x => {
+                                if (!x || !x.id || have[x.id]) return;
+                                add.push(x);
+                                if (Number(x.at) > maxAt) maxAt = Number(x.at);
+                            });
+                            if (!add.length) return;
+                            CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat(add).slice(-60);
+                            try { LS.setItem('nx_mkt_ledger_at', String(maxAt)); } catch (e) {}
+                            marketCreditNow(); // начислить сразу, не дожидаясь следующего синка
+                        }).catch(() => {});
+                    }
+                }
+            } catch (e) {}
+            marketCreditNow();
+        }
+        function marketCreditNow() {
             const led = Array.isArray(CLOUD.ledger) ? CLOUD.ledger : [];
             if (!led.length) return;
             let credited = [];
@@ -7613,6 +7837,46 @@ function nxToggle3d() {
         // просрочка сокращается до 6 ч, а переполнение срезается до 40 лотов
         const MARKET_TTL_FULL = 6 * 3600 * 1000;
         const MARKET_HARD_TRIM = 40;
+        // ============ b443: БИРЖА НА СВОЁМ API ============
+        // window.NXM даёт assets/nx-cloud.js. available() становится true только
+        // ПОСЛЕ успешного ответа сервера, поэтому без задеплоенного воркера все
+        // лимиты и пути остаются прежними — ничего не ломается и не тормозит.
+        function nxMkt() {
+            try { const m = window.NXM; return (m && m.available && m.available()) ? m : null; } catch (e) { return null; }
+        }
+        function nxMarketApiOn() { return !!nxMkt(); }
+        function marketCapSoft() { return nxMarketApiOn() ? 400 : MARKET_SOFT_CAP; }
+        function marketCapHard() { return nxMarketApiOn() ? 300 : MARKET_HARD_TRIM; }
+        function marketCapRoom() { return nxMarketApiOn() ? 400 : 80; }
+        function marketMaxPerCard() { return nxMarketApiOn() ? 8 : MARKET_MAX_PER_CARD; }
+        // «Забита» больше не укорачивает жизнь лота до 6 часов, если есть свой API:
+        // лоты хранятся строками в базе, а не в общем документе на 150 КБ.
+        function marketTtlNow(full) { return (full && !nxMarketApiOn()) ? MARKET_TTL_FULL : MARKET_LOT_TTL; }
+        // Витрина добирает открытые лоты с сервера (не чаще раза в 30 с).
+        let nxMktTopAt = 0;
+        function nxMktTopUp() {
+            try {
+                const nxm = nxMkt();
+                if (!nxm) return;
+                const t = Date.now();
+                if (t - nxMktTopAt < 30000) return;
+                nxMktTopAt = t;
+                nxm.lots('', 400).then(res => {
+                    if (!res || !res.ok || !Array.isArray(res.lots)) return;
+                    const removed = marketRemoved();
+                    const cur = {};
+                    marketLots().forEach(l => { if (l && l.id) cur[l.id] = l; });
+                    let added = 0;
+                    res.lots.forEach(l => { if (l && l.id && !cur[l.id] && !removed[l.id]) { cur[l.id] = l; added++; } });
+                    if (added) {
+                        CLOUD.market = Object.values(cur);
+                        window.__nxMktSig = '';
+                        try { renderMarketIfVisible(); } catch (e) {}
+                        try { console.log('market: с сервера добавлено лотов — ' + added); } catch (e) {}
+                    }
+                }).catch(() => {});
+            } catch (e) {}
+        }
         function marketEnforceLimit() {
             const byCard = {};
             marketLots().forEach(l => {
@@ -7625,7 +7889,7 @@ function nxToggle3d() {
             const take = l => { if (!l || boughtIds[l.id]) return; boughtIds[l.id] = 1; bought.push(l); };
             Object.keys(byCard).forEach(k => {
                 const arr = byCard[k];
-                let excess = arr.length - MARKET_MAX_PER_CARD;
+                let excess = arr.length - marketMaxPerCard(); // b443
                 if (excess <= 0) return;
                 const pool = arr.slice();
                 while (excess-- > 0 && pool.length) {
@@ -7635,13 +7899,13 @@ function nxToggle3d() {
             });
             // b407: просроченные лоты дом выкупает всегда
             const nowTs = Date.now();
-            const full = marketLots().length >= MARKET_SOFT_CAP; // b411
-            const ttl = full ? MARKET_TTL_FULL : MARKET_LOT_TTL; // b411: забита — просрочка 6 ч
+            const full = marketLots().length >= marketCapSoft(); // b411; b443: 60 → 400 со своим API
+            const ttl = marketTtlNow(full); // b411; b443: со своим API агрессивный выкуп через 6 ч не нужен
             marketLots().forEach(l => { if ((nowTs - (l.at || nowTs)) > ttl) take(l); });
             // b407+b411: переполнение — докупает старейшие до мягкого потолка,
             // а если биржа была забита — срезает глубже, до MARKET_HARD_TRIM
             const left = marketLots().filter(l => !boughtIds[l.id]).sort((a, b) => (a.at || 0) - (b.at || 0));
-            let over = left.length + bought.length - (full ? MARKET_HARD_TRIM : MARKET_SOFT_CAP);
+            let over = left.length + bought.length - (full ? marketCapHard() : marketCapSoft()); // b443
             for (let i = 0; over > 0 && i < left.length; i++, over--) take(left[i]);
             if (!bought.length) return;
             const gone = {};
@@ -7659,6 +7923,17 @@ function nxToggle3d() {
             marketRemovedAddMany(rmIds); // b405: одна запись localStorage на всю партию
             CLOUD.market = marketLots().filter(l => !gone[l.id]);
             CLOUD.ledger = (Array.isArray(CLOUD.ledger) ? CLOUD.ledger : []).concat(receipts).slice(-60);
+            // b443: квитанция в общем документе живёт ровно до тех пор, пока её не
+            // вытолкнут следующие 60 записей. Дублируем на сервер — там она лежит
+            // строкой с PRIMARY KEY и продавец заберёт её отдельным запросом.
+            try {
+                const nxm = nxMkt();
+                if (nxm && nxm.refund) {
+                    receipts.forEach(rc => {
+                        try { nxm.refund(String(rc.id).replace(/^sys-/, ''), rc.sid, rc.amount, ''); } catch (e) {}
+                    });
+                }
+            } catch (e) {}
             jpSyncSoon();
             renderMarketIfVisible();
             // b145: механика выкупа скрыта от игроков — продавцы просто получают
@@ -12875,7 +13150,7 @@ function nxToggle3d() {
                     <div class="pack3d-shadow"></div>
                     <div class="pack3d-tilt">
                         <div class="pack3d-float">
-                            <div class="pack3d-face pack3d-front booster">
+                            <div class="pack3d-face pack3d-front booster ${pkSkinCls(pack)}">
                                 <div class="booster-foil"></div>
                                 <div class="booster-wrinkle fs${(pi % 3) + 1}"></div>
                                 <div class="booster-crimp booster-crimp-top"></div>
@@ -12893,7 +13168,7 @@ function nxToggle3d() {
                                 <div class="booster-sparkles"></div>
                                 <div class="booster-gloss"></div>
                             </div>
-                            <div class="pack3d-face pack3d-back">
+                            <div class="pack3d-face pack3d-back ${pkSkinCls(pack)}">
                                 <div class="booster-foil"></div>
                                 <div class="booster-wrinkle fs${((pi + 1) % 3) + 1}"></div>
                                 <div class="booster-crimp booster-crimp-top"></div>
@@ -13403,7 +13678,7 @@ function nxToggle3d() {
                 if (!card) return;
                 const excess = Math.min(en.count || 0, cardCopies(en.id) - 1);
                 if (excess <= 0) return;
-                const listable = Math.max(0, MARKET_MAX_PER_CARD - marketLotsFor(en.id));
+                const listable = Math.max(0, marketMaxPerCard() - marketLotsFor(en.id)); // b443
                 const take = Math.min(excess, listable);
                 if (take > 0) {
                     const price = marketRecommendPrice(card);
@@ -15630,6 +15905,97 @@ function nxToggle3d() {
         function cloudGuestArchiveSave(a) {
             try { LS.setItem('nexus_guest_archive', JSON.stringify({ packs: (a.packs || []).slice(-100), cards: (a.cards || []).slice(-300) })); } catch (e) {}
         }
+        // ------------------- b442: СПАСЕНИЕ КОЛЛЕКЦИИ -------------------
+        // Теневая копия коллекции (не чаще раза в 10 минут) и ручной возврат.
+        // Нужна, потому что потери копились месяцами и причинами были разные:
+        // зеркало комнаты, квота localStorage, эскроу биржи, вечные надгробия.
+        // Возврат ДЕЛАЕТСЯ ВРУЧНУЮ: автоматический MAX-мердж воскресил бы
+        // честно проданные карты.
+        let nxColShadowAt = 0;
+        function nxColShadowMaybe() {
+            try {
+                const t = Date.now();
+                if (t - nxColShadowAt < 600000) return;
+                nxColShadowAt = t;
+                const cur = state.collection || {};
+                const n = Object.keys(cur).length;
+                if (!n) return;
+                LS.setItem('nx_col_shadow', JSON.stringify({ t: t, n: n, c: cur }));
+            } catch (e) {}
+        }
+        function nxColShadow() {
+            try { return JSON.parse(LS.getItem('nx_col_shadow') || 'null'); } catch (e) { return null; }
+        }
+        /** Сколько карт исчезло относительно теневой копии (диагноз). */
+        function nxRescueReport() {
+            const sh = nxColShadow();
+            const cur = state.collection || {};
+            if (!sh || !sh.c) return { shadow: 0, current: Object.keys(cur).length, lost: 0 };
+            let lost = 0;
+            const lostIds = [];
+            for (const id in sh.c) {
+                const a = Math.floor(Number(sh.c[id]) || 0), b = Math.floor(Number(cur[id]) || 0);
+                if (a > b) { lost += (a - b); lostIds.push(id); }
+            }
+            return { shadow: Object.keys(sh.c).length, current: Object.keys(cur).length, lost: lost, lostIds: lostIds.slice(0, 40), at: sh.t };
+        }
+        /**
+         * Вернуть потерянные копии из теневой копии (MAX на ключ).
+         * Возвращает число восстановленных копий. Вызывать из консоли:
+         *     nxRescueReport()      — что пропало
+         *     nxRescueCollection()  — вернуть
+         */
+        function nxRescueCollection(silent) { // b444: silent — тост покажет вызывающий
+            const sh = nxColShadow();
+            if (!sh || !sh.c) { try { showToast('Теневая копия пуста — восстанавливать нечего', 'info'); } catch (e) {} return 0; }
+            let back = 0;
+            for (const id in sh.c) {
+                const a = Math.floor(Number(sh.c[id]) || 0);
+                const b = Math.floor(Number((state.collection || {})[id]) || 0);
+                if (a > b) { state.collection[id] = a; back += (a - b); }
+            }
+            // возвращённым картам нужны определения: достаём из архива зеркала
+            let defs = 0;
+            try {
+                const arc = cloudGuestArchive();
+                const have = {};
+                (state.cards || []).forEach(c => { if (c && c.id) have[c.id] = 1; });
+                const left = [];
+                (arc.cards || []).forEach(c => {
+                    if (c && c.id && !have[c.id] && state.collection[c.id]) { state.cards.push(c); have[c.id] = 1; defs++; }
+                    else left.push(c);
+                });
+                if (defs) { arc.cards = left; cloudGuestArchiveSave(arc); }
+            } catch (e) {}
+            if (back || defs) {
+                try { cardsSortNorm(); } catch (e) {}
+                saveState();
+                try { refreshVisibleTabs(); } catch (e) {}
+                try { profSyncSoon(); } catch (e) {}
+                try { if (!silent) showToast('🛟 Возвращено: ' + back + ' ' + (back === 1 ? 'копия' : 'копий') + (defs ? ', определений карт: ' + defs : ''), 'success'); } catch (e) {}
+            }
+            return back;
+        }
+        /** Вернуть в каталог ВСЁ, что зеркало сложило в архив (определения карт). */
+        function nxRestoreArchive() {
+            let defs = 0;
+            try {
+                const arc = cloudGuestArchive();
+                const have = {};
+                (state.cards || []).forEach(c => { if (c && c.id) have[c.id] = 1; });
+                (arc.cards || []).forEach(c => { if (c && c.id && !have[c.id]) { state.cards.push(c); have[c.id] = 1; defs++; } });
+                const haveP = {};
+                (state.packs || []).forEach(p => { if (p && p.id) haveP[p.id] = 1; });
+                (arc.packs || []).forEach(p => { if (p && p.id && !haveP[p.id]) { state.packs.push(p); haveP[p.id] = 1; defs++; } });
+                if (defs) { saveState(); try { refreshVisibleTabs(); } catch (e) {} }
+            } catch (e) {}
+            return defs;
+        }
+        try {
+            window.nxRescueReport = nxRescueReport;
+            window.nxRescueCollection = nxRescueCollection;
+            window.nxRestoreArchive = nxRestoreArchive;
+        } catch (e) {}
         // ------------------- b37: КУРИРОВАНИЕ СТАНДАРТНОГО НАБОРА -------------------
         // Стандартный набор встроен в игру и не возится в каталоге комнаты целиком, НО решения
         // создателя «убрать/вернуть» стандартный пак или карту обязаны синхронизироваться.
@@ -15826,11 +16192,28 @@ function nxToggle3d() {
                 (remote.cards || []).forEach(rc => { if (rc && rc.id) inRoomC[rc.id] = 1; });
                 state.packs.slice().forEach(p => {
                     if (!p || !p.id || STANDARD_IDS[p.id] || inRoomP[p.id]) return;
+                    // b442: dropPack() чистит и карты пака, и collection по ним,
+                    // поэтому пак, из которого у игрока что-то куплено, не трогаем
+                    try {
+                        if (state.cards.some(c => c && c.packId === p.id && cardCopies(c.id) > 0)) { sum.kept = (sum.kept || 0) + 1; return; }
+                    } catch (e) {}
                     archive.packs.push(p); archived = true;
                     dropPack(p.id); sum.mirror++; changed = true;
                 });
+                // b442: КУПЛЕННЫЕ КАРТЫ ЗЕРКАЛОМ НЕ УДАЛЯЮТСЯ.
+                // Зеркало (b35) придумано против расхождения КАТАЛОГА — «у создателя
+                // 1 пак, у игроков 5». Но вместе с определением карты оно вызывало
+                // dropCardRefs(id), который стирал state.collection[id]: участник,
+                // купивший карту на бирже (marketBuy добавляет определение локально)
+                // или вытащивший её из пака, терял карту на ближайшем cloudPull,
+                // а архив nexus_guest_archive не читал никто — возврата не было.
+                // Карта, которой игрок владеет или которая в его колоде, остаётся.
+                const ownedHere = id => {
+                    try { return cardCopies(id) > 0 || (state.deck || []).indexOf(id) >= 0; } catch (e) { return false; }
+                };
                 state.cards.slice().forEach(c => {
                     if (!c || !c.id || STANDARD_IDS[c.id] || inRoomC[c.id]) return;
+                    if (ownedHere(c.id)) { sum.kept = (sum.kept || 0) + 1; return; }
                     archive.cards.push(c); archived = true;
                     dropCardRefs(c.id);
                     const ci = state.cards.indexOf(c);
@@ -16551,9 +16934,45 @@ function nxToggle3d() {
             try { SoundFX.play('click'); } catch (e) {}
         }
 
+        // ===== b446: ФОРМА УПАКОВКИ — отдельно от цвета фольги и перелива =====
+        // Любая форма работает с любым цветом: скин меняет только внешность
+        // (силуэт, швы, засечки, блеск), палитра ложится поверх.
+        const PACK_SKINS = {
+            foil: { name: 'Фольга', hint: 'Запаянный пакет: зубчатый шов, боковые засечки, линия отрыва' },
+            box: { name: 'Бокс', hint: 'Прямые края и матовая крышка-полоса, как у бустер-бокса' },
+            ticket: { name: 'Билет', hint: 'Скруглённый конверт с перфорацией и пунктирной линией отрыва' },
+            neon: { name: 'Неон', hint: 'Тёмная плита со светящимся контуром в цвете рамки пака' },
+            retro: { name: 'Ретро', hint: 'Картон: приглушённые тона, двойная рамка, угловой штамп' }
+        };
+        function nxPackSkinDefault() {
+            try { const v = LS.getItem('nx_pack_skin') || ''; return PACK_SKINS[v] ? v : 'foil'; } catch (e) { return 'foil'; }
+        }
+        function packSkinId(p) {
+            if (p && PACK_SKINS[p.skin]) return p.skin;   // своя форма пака
+            return nxPackSkinDefault();                    // иначе общая
+        }
+        function pkSkinCls(p) { return 'pk-' + packSkinId(p); }
+        // выбор формы для редактируемого пака (кнопки в Студии)
+        function pickPackSkin(k) {
+            if (!PACK_SKINS[k]) return;
+            packFormSkin = k;
+            try { renderPackFormPickers(); } catch (e) {}
+            try { renderPackPreview(); } catch (e) {}
+        }
+        // общая форма для всех паков без своего skin
+        function nxSetPackSkinDefault(k) {
+            if (!PACK_SKINS[k]) return;
+            try { LS.setItem('nx_pack_skin', k); } catch (e) {}
+            try { refreshVisibleTabs(); } catch (e) {}
+            try { renderPackPreview(); } catch (e) {}
+            try { showToast('Форма паков по умолчанию: ' + PACK_SKINS[k].name, 'success'); } catch (e) {}
+        }
+        try { window.pickPackSkin = pickPackSkin; window.nxSetPackSkinDefault = nxSetPackSkinDefault; } catch (e) {}
+
         // ===== b13: внешний вид пака в Студии (цвет фольги + перелив) =====
         let packFormColor = 'silver';
         let packFormShimmer = 'holo';
+        let packFormSkin = 'foil'; // b446: форма упаковки редактируемого пака
 
         function renderPackFormPickers() {
             const cp = document.getElementById('pack-color-picker');
@@ -16567,6 +16986,32 @@ function nxToggle3d() {
                     </button>`;
                 }).join('');
             }
+            // b446: форма упаковки — свой ряд кнопок + ряд «по умолчанию»
+            const kp = document.getElementById('pack-skin-picker');
+            if (kp) {
+                kp.innerHTML = Object.keys(PACK_SKINS).map(k => {
+                    const sk = PACK_SKINS[k];
+                    const on = k === packFormSkin;
+                    return `<button type="button" onclick="pickPackSkin('${k}')" title="${sk.hint}" class="rounded-lg border p-1 transition text-center ${on ? 'border-violet-400 bg-violet-500/10' : 'border-slate-700 bg-slate-950 hover:border-slate-500'}">
+                        <span class="block h-6 pk-mini pk-mini-${k}"></span>
+                        <span class="block text-[9px] leading-tight mt-0.5 font-semibold truncate ${on ? 'text-violet-300' : 'text-slate-400'}">${sk.name}</span>
+                    </button>`;
+                }).join('');
+            }
+            // b447: один и тот же ряд кнопок рисуется и внутри редактора
+            // (pack-skin-default), и в шапке подраздела «Паки» (pack-skin-quick),
+            // чтобы переключатель находился без прокручивания формы.
+            const skinBtns = () => {
+                const cur = nxPackSkinDefault();
+                return Object.keys(PACK_SKINS).map(k => {
+                    const on = k === cur;
+                    return `<button type="button" onclick="nxSetPackSkinDefault('${k}')" title="${PACK_SKINS[k].hint}" class="rounded-lg border px-1.5 py-1 text-[9px] font-semibold transition ${on ? 'border-emerald-400 text-emerald-300 bg-emerald-500/10' : 'border-slate-700 text-slate-400 bg-slate-950 hover:border-slate-500'}">${PACK_SKINS[k].name}</button>`;
+                }).join('');
+            };
+            const dp = document.getElementById('pack-skin-default');
+            if (dp) dp.innerHTML = skinBtns();
+            const qp = document.getElementById('pack-skin-quick');
+            if (qp) qp.innerHTML = skinBtns();
             const sp = document.getElementById('pack-shimmer-picker');
             if (sp) {
                 sp.innerHTML = Object.keys(PACK_SHIMMERS).map(k => {
@@ -16611,9 +17056,9 @@ function nxToggle3d() {
             const im = document.getElementById('pack-image');
             const title = String((t && t.value || '').trim() || 'Ваш пак').replace(/</g, '&lt;');
             const image = String((im && im.value || '').trim());
-            const p = { color: packFormColor, shimmer: packFormShimmer };
+            const p = { color: packFormColor, shimmer: packFormShimmer, skin: packFormSkin }; // b446
             box.innerHTML = `
-                <div class="pack3d-face pack3d-front booster" style="position:absolute;inset:0;${packCssVars(p)}">
+                <div class="pack3d-face pack3d-front booster ${pkSkinCls(p)}" style="position:absolute;inset:0;${packCssVars(p)}">
                     <div class="booster-foil"></div>
                     <div class="booster-wrinkle fs1"></div>
                     <div class="booster-crimp booster-crimp-top"></div>
@@ -16630,7 +17075,7 @@ function nxToggle3d() {
                 </div>`;
             requestAnimationFrame(() => { try { fitPackLabels(box); } catch (e) {} });
             const nm = document.getElementById('pack-style-name');
-            if (nm) nm.innerText = `${PACK_COLORS[packFormColor].name} • ${PACK_SHIMMERS[packFormShimmer].name}`;
+            if (nm) nm.innerText = `${PACK_COLORS[packFormColor].name} • ${PACK_SHIMMERS[packFormShimmer].name} • ${PACK_SKINS[packFormSkin].name}`; // b446
         }
 
         function handleSavePack(e) {
@@ -16643,6 +17088,7 @@ function nxToggle3d() {
             const price = parseInt(document.getElementById('pack-price').value);
             const color = PACK_COLORS[packFormColor] ? packFormColor : 'silver';
             const shimmer = PACK_SHIMMERS[packFormShimmer] ? packFormShimmer : 'holo';
+            const skin = PACK_SKINS[packFormSkin] ? packFormSkin : 'foil'; // b446
             // b19: музыка вскрытия — своя ссылка на mp3 + флаг «играть»
             const musicEl = document.getElementById('pack-music');
             const musicUseEl = document.getElementById('pack-music-use');
@@ -16662,6 +17108,7 @@ function nxToggle3d() {
                     pack.price = price;
                     pack.color = color;
                     pack.shimmer = shimmer;
+                    pack.skin = skin; // b446: форма упаковки (уезжает в каталог комнаты)
                     pack.musicUrl = musicUrl;   // b19
                     pack.musicOff = !musicOn;   // b19
                     if (premTs) pack.premiereAt = premTs; else delete pack.premiereAt; // b165
@@ -16678,6 +17125,7 @@ function nxToggle3d() {
                     price,
                     color,
                     shimmer,
+                    skin,              // b446: форма упаковки
                     musicUrl,          // b19: свой трек вскрытия
                     musicOff: !musicOn, // b19: галочка «играть» снята
                     updatedAt: Date.now()
@@ -16953,6 +17401,7 @@ function nxToggle3d() {
             if (premIn) premIn.value = pack.premiereAt ? schedInputValue(pack.premiereAt) : '';
             packFormColor = PACK_COLORS[pack.color] ? pack.color : 'silver';
             packFormShimmer = PACK_SHIMMERS[pack.shimmer] ? pack.shimmer : 'holo';
+            packFormSkin = PACK_SKINS[pack.skin] ? pack.skin : nxPackSkinDefault(); // b446
             const mIn = document.getElementById('pack-music');      // b19
             if (mIn) mIn.value = pack.musicUrl || '';
             const mUse = document.getElementById('pack-music-use'); // b19

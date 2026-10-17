@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob172" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob172">
+    <script src="assets/three.min.js?v=nxmob177" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob177">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob172">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob177">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob172">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob177">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1003,6 +1003,14 @@
             </div>
             </div><!-- /studio-sec cloud -->
             <div class="studio-sec space-y-3" data-sec="packs">
+            <!-- b447: переключатель формы паков виден СРАЗУ при открытии подраздела
+                 «Паки», без входа в редактор пака. Кнопки — те же, что в ряду
+                 «Форма по умолчанию» (nxSetPackSkinDefault из b446). -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 flex flex-wrap items-center gap-2">
+                <span class="text-[10px] font-bold uppercase tracking-wide text-slate-500"><i class="fa-solid fa-box-open text-violet-400 mr-1"></i>Вид паков:</span>
+                <div id="pack-skin-quick" class="flex flex-wrap gap-1"><!-- кнопки форм --></div>
+                <span class="text-[10px] text-slate-600">форма по умолчанию для всех паков; у отдельного пака своя форма задаётся в редакторе ниже</span>
+            </div>
             <div>
                 <!-- Create/Edit Pack Form -->
                 <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
@@ -1047,6 +1055,11 @@
 <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Цвет упаковки</label>
                             <div id="pack-color-picker" class="grid grid-cols-4 gap-1 max-w-sm"><!-- b272: компакт --><!-- свотчи цветов --></div>
+                        <!-- b446: форма упаковки — свой ряд превьюшек и ряд «по умолчанию» -->
+                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Форма упаковки</div>
+                        <div id="pack-skin-picker" class="grid grid-cols-5 gap-1 max-w-sm"><!-- свотчи форм --></div>
+                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Форма по умолчанию <span class="normal-case font-normal text-slate-600">(для паков без своей формы)</span></div>
+                        <div id="pack-skin-default" class="flex flex-wrap gap-1"><!-- кнопки общей формы --></div>
                         </div>
                         </div>
                         </div>
@@ -1919,6 +1932,7 @@ min-height:56vh}
                     <button type="button" onclick="jpcNudgePool(-1000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">−1k</button>
                     <button type="button" onclick="jpcNudgePool(-10000)" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-200 transition">−10k</button>
                     <button type="button" onclick="jpcResetPoolFloor()" class="px-2.5 py-1.5 bg-slate-900 hover:bg-rose-950/60 border border-slate-800 rounded-lg text-[11px] font-bold text-slate-400 transition">Сбросить до минимума</button>
+                    <button type="button" onclick="nxRescueCards()" title="Вернуть копии карт по теневому снимку и определения из архива зеркала комнаты" class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-slate-950 rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-life-ring mr-1"></i>Вернуть карты</button>
                     <button type="button" onclick="jpRepairNow()" title="Выбросить испорченные счётчики реестра и погасить долг банка" class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-slate-950 rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-screwdriver-wrench mr-1"></i>Починить банк</button>
                     <button type="button" onclick="jpCompact()" title="Свести тысячи ключей-разрядов в минимальный каскад и опубликовать (эпоха +1): облачный документ станет легче, синхронизация — быстрее" class="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-[11px] font-black transition"><i class="fa-solid fa-boxes-stacked mr-1"></i>Уплотнить реестр</button>
                 </div>
@@ -2451,6 +2465,76 @@ min-height:56vh}
       background:linear-gradient(180deg, rgba(15,23,42,0), rgba(15,23,42,.9));
     }
     #inspect-desc-full.nx-desc-scrollable.nx-desc-end::after{ opacity:0; }
+    /* b445: чипсы шансов редкости — одна строка без серой полосы скроллбара */
+    .nx-odds{ scrollbar-width:none; -ms-overflow-style:none; }
+    .nx-odds::-webkit-scrollbar{ display:none; }
+
+    /* ===== b446: ФОРМЫ УПАКОВКИ =====
+       Класс pk-* стоит на грани пака (.pack3d-face/.booster). Меняется только
+       внешность: силуэт (clip-path), швы, засечки, блеск. Цвет фольги (--pk-foil)
+       и перелив (--pk-holo/--pk-spark) продолжают работать с любой формой.
+       specificity .booster.pk-* (0,2,0) выше, чем у .pack3d-face (0,1,0),
+       поэтому переопределения выигрывают без !important. */
+    .pk-foil{ }
+
+    /* Бокс: прямые края, крышка-полоса вместо зубчатого шва */
+    .pk-box{ clip-path:none; border-radius:10px;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), inset 0 12px 26px rgba(255,255,255,.10), inset 0 -16px 28px rgba(0,0,0,.36); }
+    .pk-box .booster-crimp{ height:9%; opacity:.92; border:0; box-shadow:none;
+        background: linear-gradient(180deg, rgba(0,0,0,.38), rgba(0,0,0,.10) 62%, rgba(255,255,255,.16)); }
+    .pk-box .booster-crimp-bottom{ background: linear-gradient(0deg, rgba(0,0,0,.42), rgba(0,0,0,.12) 62%, rgba(255,255,255,.10)); }
+    .pk-box .booster-notch, .pk-box .booster-tearline{ display:none; }
+    .pk-box .booster-wrinkle{ opacity:.35; }
+
+    /* Билет: скруглённый конверт, перфорация швов, пунктирный отрыв */
+    .pk-ticket{ clip-path:none; border-radius:6px; }
+    .pk-ticket .booster-crimp{ height:10%; opacity:.55; border:0; box-shadow:none;
+        background: repeating-linear-gradient(90deg, rgba(255,255,255,.30) 0 5px, transparent 5px 11px),
+                    linear-gradient(180deg, rgba(0,0,0,.30), transparent); }
+    .pk-ticket .booster-crimp-bottom{ background:
+        repeating-linear-gradient(90deg, rgba(255,255,255,.30) 0 5px, transparent 5px 11px),
+        linear-gradient(0deg, rgba(0,0,0,.30), transparent); }
+    .pk-ticket .booster-notch{ display:none; }
+    .pk-ticket .booster-tearline{ height:0; background:none; top:12%; opacity:.95;
+        border-top:2px dashed rgba(255,255,255,.55); box-shadow:none; }
+    .pk-ticket .booster-wrinkle{ opacity:.25; }
+
+    /* Неон: тёмная плита, контур и швы светятся цветом рамки пака (--pk-frame) */
+    .pk-neon{ clip-path:none; border-radius:12px; background:#05070d;
+        box-shadow: inset 0 0 0 2px var(--pk-frame, #22d3ee), inset 0 0 24px rgba(34,211,238,.22), 0 0 18px rgba(34,211,238,.30); }
+    .pk-neon .booster-foil{ opacity:.24; filter:saturate(1.25) contrast(1.1); }
+    .pk-neon .booster-crimp{ height:3px; opacity:1; border:0;
+        background: var(--pk-frame, #22d3ee); box-shadow:0 0 10px var(--pk-frame, #22d3ee); }
+    .pk-neon .booster-notch, .pk-neon .booster-tearline, .pk-neon .booster-wrinkle,
+    .pk-neon .booster-gloss{ display:none; }
+    .pk-neon .booster-holo{ opacity:.55; }
+
+    /* Ретро: картон, сепия, двойная рамка, угловой штамп */
+    .pk-retro{ clip-path:none; border-radius:4px; }
+    .pk-retro .booster-foil{ filter:sepia(.35) saturate(.72) contrast(.95); }
+    .pk-retro::before{ content:''; position:absolute; inset:6px; z-index:12; pointer-events:none;
+        border:1px solid rgba(255,255,255,.5); outline:1px solid rgba(0,0,0,.35); border-radius:2px; }
+    .pk-retro::after{ content:'\2605'; position:absolute; top:9px; right:9px; z-index:13;
+        width:26px; height:26px; border:2px solid rgba(255,255,255,.55); border-radius:50%;
+        color:rgba(255,255,255,.7); display:flex; align-items:center; justify-content:center;
+        font-size:13px; transform:rotate(-12deg); }
+    .pk-retro .booster-crimp{ height:8%; opacity:.8; border:0; box-shadow:none;
+        background: repeating-linear-gradient(90deg, rgba(0,0,0,.26) 0 3px, rgba(255,255,255,.16) 3px 6px); }
+    .pk-retro .booster-notch{ display:none; }
+    .pk-retro .booster-wrinkle{ opacity:.5; }
+
+    /* мини-превьюшки форм в пикере Студии */
+    .pk-mini{ border:1px solid rgba(255,255,255,.25);
+        background: linear-gradient(135deg,#eef1f7 0%,#9aa2b1 55%,#c7ccd8 100%); }
+    .pk-mini-foil{ clip-path: polygon(0 12%, 12% 0, 25% 12%, 38% 0, 50% 12%, 63% 0, 75% 12%, 88% 0, 100% 12%, 100% 88%, 88% 100%, 75% 88%, 63% 100%, 50% 88%, 38% 100%, 25% 88%, 12% 100%, 0 88%); }
+    .pk-mini-box{ border-radius:3px; box-shadow: inset 0 4px 0 rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.3); }
+    .pk-mini-ticket{ border-radius:2px;
+        background: linear-gradient(135deg,#eef1f7 0%,#9aa2b1 55%,#c7ccd8 100%),
+                    repeating-linear-gradient(90deg, rgba(0,0,0,.5) 0 2px, transparent 2px 5px);
+        background-blend-mode: multiply; border-style:dashed; }
+    .pk-mini-neon{ background:#05070d; border-color:#22d3ee; box-shadow:0 0 6px rgba(34,211,238,.8), inset 0 0 4px rgba(34,211,238,.6); border-radius:3px; }
+    .pk-mini-retro{ background:linear-gradient(135deg,#d9c39a 0%,#a5825a 55%,#c9ab7d 100%); border-radius:1px;
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,.45); }
     /* b440: модалка просмотра центрируется auto-полями, а не justify-center —
        иначе высокий контент (раскрытое описание) обрезался бы сверху и не
        прокручивался до самого начала */
@@ -2803,10 +2887,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob172"></script>
-    <script src="assets/stories.js?v=nxmob172"></script>
-    <script src="assets/qrcode.min.js?v=nxmob172"></script>
-    <script src="assets/qr-transfer.js?v=nxmob172"></script>
+    <script src="assets/app.js?v=nxmob177"></script>
+    <script src="assets/stories.js?v=nxmob177"></script>
+    <script src="assets/qrcode.min.js?v=nxmob177"></script>
+    <script src="assets/qr-transfer.js?v=nxmob177"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

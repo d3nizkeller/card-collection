@@ -37,7 +37,7 @@ THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 BIGS = os.path.join(MEDIA, 't3')   # b438: «большой» уровень — просмотр карты, галерея
 
-BUILD_TAG = 'nxmob172'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob177'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -1720,7 +1720,20 @@ async function trim(cache) {
 # --------------------------------------------------------------------------- #
 # main
 # --------------------------------------------------------------------------- #
+# --- GUARD_MONOLITH (tools/guard_monolith.py) ---
+def _nx_guard():
+    import subprocess
+    g = os.path.join(ROOT, "tools", "guard_monolith.py")
+    if not os.path.isfile(g) or os.environ.get("NX_SKIP_MONOLITH_GUARD") == "1":
+        return
+    r = subprocess.run([sys.executable, g], cwd=ROOT)
+    if r.returncode != 0:
+        raise SystemExit(r.returncode)
+# --- /GUARD_MONOLITH ---
+
+
 def main():
+    _nx_guard()
     argv = sys.argv[1:]
     no_media = '--no-media' in argv
 
