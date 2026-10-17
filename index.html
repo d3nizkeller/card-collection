@@ -1392,26 +1392,12 @@
                         <div class="grid sm:grid-cols-2 gap-3 items-start">
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на картинку (9:16)<span id="card-image-lamp" style="width:10px;height:10px;border-radius:9999px;display:inline-block;vertical-align:middle;margin-left:6px;background:#475569;box-shadow:0 0 8px rgba(71,85,105,.7);" title="Индикатор арта: зелёный — вшит в сборку сайта; жёлтый — скачан авто-кэшем в устройство; красный — не вшит, грузится по ссылке; серый — ссылки нет"></span></label>
-                            <input type="url" id="card-image" required oninput="renderCardPreview();nxEmbedLampRefresh('card-image')" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
-                            <div class="flex items-center gap-2 mt-1"><button type="button" onclick="nxPickFileFor('card-image')" class="px-2.5 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition" title="Выберите файл картинки на устройстве — сайт сам зальёт его в папку media/ репозитория GitHub и подставит готовую ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>Загрузить с устройства &rarr; GitHub</button><span id="card-image-upl" class="text-[10px] text-slate-500"></span></div>
-                            <!-- b456: масштаб арта и сдвиг по вертикали в живом предпросмотре:
-                                 картина ровно садится в рамку карты; значения сохраняются
-                                 в layout карты (artZoom/artPosY) и видны во всех рендерах -->
-                            <div class="grid grid-cols-3 gap-3 mt-2">
-                                <div class="flex flex-col">
-                                    <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-search text-violet-400 mr-1"></i>Масштаб арта <span id="card-artzoom-val" class="text-slate-300 font-bold">100%</span></label>
-                                    <input type="range" id="card-artzoom" min="100" max="220" step="5" value="100" oninput="renderCardPreview()" class="w-full accent-violet-500">
-                                </div>
-                                <div class="flex flex-col">
-                                    <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-image text-sky-400 mr-1"></i>Сдвиг по вертикали <span id="card-arty-val" class="text-slate-300 font-bold">0</span></label>
-                                    <input type="range" id="card-arty" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
-                                </div>
-                                <!-- b457: сдвиг по горизонтали — третий слайдер кадрирования -->
-                                <div class="flex flex-col">
-                                    <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-exchange-alt text-emerald-400 mr-1"></i>Сдвиг по горизонтали <span id="card-artx-val" class="text-slate-300 font-bold">0</span></label>
-                                    <input type="range" id="card-artx" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
-                                </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input type="url" id="card-image" required oninput="renderCardPreview();nxEmbedLampRefresh('card-image')" placeholder="https://images.unsplash.com/..." class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                                <button type="button" onclick="nxPickFileFor('card-image')" class="px-2.5 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Выберите файл картинки на устройстве — сайт сам зальёт его в папку media/ репозитория GitHub и подставит готовую ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>Загрузить с устройства &rarr; GitHub</button>
+                                <span id="card-image-upl" class="text-[10px] text-slate-500"></span>
                             </div>
+                            <p class="text-[10px] text-slate-500 mt-1">Арт 9:16; рамка подрезает края — кадрирование правьте слайдерами ниже.</p>
                         </div>
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-music text-fuchsia-400 mr-1"></i>Музыка карточки — ссылка на mp3 <span class="text-slate-600">(необязательно)</span></label>
@@ -1423,6 +1409,24 @@
                             </div>
                             <p class="text-[10px] text-slate-500 mt-1">Трек играет, пока карта открыта в просмотре альбома, и выключается при закрытии.</p>
                         </div>
+                        </div>
+                    <!-- b456/b458: слайдеры кадрирования арта — отдельная полноширинная
+                             строка: значения сохраняются в layout карты (artZoom/artPosY/artPosX)
+                             и видны во всех рендерах -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="flex flex-col">
+                                <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-search text-violet-400 mr-1"></i>Масштаб арта <span id="card-artzoom-val" class="text-slate-300 font-bold">100%</span></label>
+                                <input type="range" id="card-artzoom" min="100" max="220" step="5" value="100" oninput="renderCardPreview()" class="w-full accent-violet-500">
+                            </div>
+                            <div class="flex flex-col">
+                                <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-image text-sky-400 mr-1"></i>Сдвиг по вертикали <span id="card-arty-val" class="text-slate-300 font-bold">0</span></label>
+                                <input type="range" id="card-arty" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
+                            </div>
+                            <!-- b457: сдвиг по горизонтали — третий слайдер кадрирования -->
+                            <div class="flex flex-col">
+                                <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-exchange-alt text-emerald-400 mr-1"></i>Сдвиг по горизонтали <span id="card-artx-val" class="text-slate-300 font-bold">0</span></label>
+                                <input type="range" id="card-artx" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
+                            </div>
                         </div>
                         </div>
                         <div class="min-w-0 lg:sticky lg:top-20">

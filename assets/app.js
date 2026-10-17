@@ -12644,6 +12644,7 @@ function nxToggle3d() {
                 // b260: шесть кнопок в один ряд на всех экранах
                 if (btn) btn.className = 'w-full min-w-0 px-1 sm:px-2 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition flex items-center justify-center gap-1 sm:gap-1.5 whitespace-nowrap overflow-hidden ' + (s === name ? 'bg-violet-600 text-white shadow' : 'bg-slate-800 text-slate-300 border border-slate-700');
             });
+            if (name === 'cards') { try { renderCardPreview(); } catch (e) {} } // b458: предпросмотр рисуется сразу, а не только после первого ввода
             if (name === 'story' && window.s9OnShow) window.s9OnShow(); // b254: relayout встроенного резчика
             if (name === 'stats') { try { statsRender(); jpSyncNow(); } catch (e) {} } // b277: вкладка статистики — сразу тянем свежие данные из облака
             if (name === 'jackpot') { try { jpcAdminRender(); jpcSim(); jpSyncNow(); } catch (e) {} } // b414: панель управления джекпотом
