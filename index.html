@@ -1023,7 +1023,9 @@
                     <form id="form-create-pack" onsubmit="handleSavePack(event)" class="space-y-3">
                         <input type="hidden" id="edit-pack-id" value="">
                         <!-- b262: форма пака как форма карточки — поля слева, превью справа -->
-                        <div class="grid lg:grid-cols-[minmax(0,1fr)_250px] gap-4 items-start">
+                        <!-- b452: stretch по умолчанию — колонка превью тянется
+                             до высоты полей, дыра под превью исчезает -->
+                        <div class="grid lg:grid-cols-[minmax(0,1fr)_250px] gap-4">
                                                 <div class="space-y-3 min-w-0">
                         <!-- b451: форма без «дыр»: строки равной высоты
                              (название|описание, обложка|премьера, цена|цвет),
@@ -1107,23 +1109,35 @@
                             <div id="pack-crimp-default" class="grid grid-cols-5 gap-1 max-w-sm"><!-- кнопки общей кромки --></div>
                         </div>
                         </div>
+                        <!-- b453: «Перелив фольги» — последний блок колонки полей:
+                             лента формы идёт сплошняком, пустой полосы между
+                             карточками и переливом больше нет -->
+                        <div>
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Перелив фольги</label>
+                            <div id="pack-shimmer-picker" class="grid grid-cols-5 sm:grid-cols-9 lg:grid-cols-[repeat(15,minmax(0,1fr))] gap-1"><!-- b272: компакт — 15 колонок на десктопе --><!-- режимы перелива --></div>
                         </div>
-                        <div class="min-w-0 lg:sticky lg:top-20">
+                        </div>
+                        <!-- b452: колонка превью на всю высоту формы: превью + подсказки -->
+                        <div class="min-w-0 flex flex-col gap-3">
                             <!-- b451: до lg превью — узкая центрированная карточка, а не полоса во всю ширину -->
-                            <div class="flex flex-col items-center gap-2 bg-slate-950/70 border border-slate-800 rounded-xl p-3 max-w-md mx-auto">
+                            <div class="flex-1 justify-center flex flex-col items-center gap-2 bg-slate-950/70 border border-slate-800 rounded-xl p-3 max-w-md mx-auto">
                                 <div id="pack-style-preview" style="position:relative;width:120px;height:220px;flex:none;"></div>
                                 <p class="text-[11px] text-slate-500 font-medium mt-1">Живое превью пака</p>
                                 <p id="pack-style-name" class="text-xs font-bold text-white truncate mt-0.5 max-w-full"></p>
                                 <p class="text-[10px] text-slate-500 mt-1 text-center">Цвет и перелив применяются к паку в магазине и при вскрытии.</p>
                             </div>
+                            <!-- b452: «Подсказки» — полезный заполнитель колонки превью;
+                                 flex-1 растягивает карточку ровно до высоты колонки полей -->
+                            <!-- b455: подсказки — естественной высоты; всю растяжку
+                                 колонки забирает карточка превью (flex-1, пак по центру) -->
+                            <div class="flex flex-col gap-1.5 bg-slate-950/70 border border-slate-800 rounded-xl p-3 max-w-md mx-auto">
+                                <div class="text-[10px] font-bold uppercase tracking-wide text-slate-500"><i class="fa-solid fa-circle-info text-sky-400 mr-1"></i>Подсказки</div>
+                                <p class="text-[10px] text-slate-400 leading-relaxed"><i class="fa-solid fa-image text-violet-400 mr-1"></i>Обложка 9:16 — ссылкой или «Загрузить с устройства»: сайт сам зальёт файл в media/ и подставит ссылку.</p>
+                                <p class="text-[10px] text-slate-400 leading-relaxed"><i class="fa-solid fa-clapperboard text-amber-400 mr-1"></i>До премьеры пак виден как «Скоро» с отсчётом — купить нельзя.</p>
+                                <p class="text-[10px] text-slate-400 leading-relaxed"><i class="fa-solid fa-music text-fuchsia-400 mr-1"></i>mp3 вскрытия — превью 8 секунд; с чекбоксом трек играет при вскрытии пака.</p>
+                                <p class="text-[10px] text-slate-400 leading-relaxed"><i class="fa-solid fa-box text-emerald-400 mr-1"></i>Форма и зубчики — силуэт пака, цвет и перелив — фольга. «По умолчанию» — для паков без своих.</p>
+                            </div>
                         </div>
-                        </div>
-                        <!-- b265: «Перелив фольги» — полноширинная строка над кнопками
-                             «Создать Бустер Пак»: 25 режимов ложатся рядами по всей
-                             ширине формы, без дыр и узких колонок -->
-                        <div>
-                            <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Перелив фольги</label>
-                            <div id="pack-shimmer-picker" class="grid grid-cols-5 sm:grid-cols-9 lg:grid-cols-[repeat(15,minmax(0,1fr))] gap-1"><!-- b272: компакт — 15 колонок на десктопе --><!-- режимы перелива --></div>
                         </div>
 
 <div class="flex gap-2">
