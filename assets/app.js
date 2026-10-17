@@ -17853,6 +17853,72 @@ function nxToggle3d() {
             return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty'), artPosX: g('card-artx') }; // b456: + масштаб/сдвиг арта; b457: + сдвиг по горизонтали
         }
 
+        // b460: прямое управление кадрированием арта прямо в превью: колесо мыши —
+        // масштаб, перетаскивание — сдвиг по обеим осям (картина следует за курсором),
+        // двойной клик — сброс 100/0/0. Значения пишутся в те же слайдеры
+        // card-artzoom/arty/artx: источник истины один, сохранение в layout не меняется.
+        function nxCardPreviewBind() {
+            const wrap = document.getElementById('card-preview-wrap');
+            if (!wrap || wrap.__nxBound) return;
+            wrap.__nxBound = 1;
+            wrap.style.touchAction = 'none';
+            wrap.style.cursor = 'grab';
+            wrap.addEventListener('wheel', function (e) {
+                e.preventDefault();
+                const z = document.getElementById('card-artzoom');
+                if (!z) return;
+                let v = (Number(z.value) || 100) + (e.deltaY < 0 ? 5 : -5);
+                v = Math.max(100, Math.min(220, v));
+                if (String(v) !== z.value) { z.value = v; renderCardPreview(); }
+            }, { passive: false });
+            let drag = null;
+            wrap.addEventListener('pointerdown', function (e) {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                const z = document.getElementById('card-artzoom');
+                const Y = document.getElementById('card-arty');
+                const X = document.getElementById('card-artx');
+                if (!z || !Y || !X) return;
+                drag = {
+                    x: e.clientX, y: e.clientY,
+                    sx: Number(X.value) || 0, sy: Number(Y.value) || 0,
+                    s: (Number(z.value) || 100) / 100,
+                    h: wrap.clientHeight || 1, w: wrap.clientWidth || 1
+                };
+                try { wrap.setPointerCapture(e.pointerId); } catch (e2) {}
+                wrap.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+            wrap.addEventListener('pointermove', function (e) {
+                if (!drag) return;
+                const maxY = (drag.s - 1) * 50;
+                if (maxY <= 0) return; // масштаб 100%: панорамить нечего
+                const Y = document.getElementById('card-arty');
+                const X = document.getElementById('card-artx');
+                if (!Y || !X) return;
+                const dyPct = (e.clientY - drag.y) / drag.h * 100;
+                const dxPct = (e.clientX - drag.x) / drag.w * 100;
+                let uy = drag.sy + (dyPct / maxY) * 100;
+                let ux = drag.sx + (dxPct / maxY) * 100;
+                uy = Math.max(-100, Math.min(100, Math.round(uy / 5) * 5));
+                ux = Math.max(-100, Math.min(100, Math.round(ux / 5) * 5));
+                if (String(uy) !== Y.value || String(ux) !== X.value) {
+                    Y.value = uy; X.value = ux; renderCardPreview();
+                }
+            });
+            const up = function () { drag = null; wrap.style.cursor = 'grab'; };
+            wrap.addEventListener('pointerup', up);
+            wrap.addEventListener('pointercancel', up);
+            wrap.addEventListener('dblclick', function () {
+                const z = document.getElementById('card-artzoom');
+                const Y = document.getElementById('card-arty');
+                const X = document.getElementById('card-artx');
+                if (z) z.value = 100;
+                if (Y) Y.value = 0;
+                if (X) X.value = 0;
+                renderCardPreview();
+            });
+        }
+
         // живой предпросмотр карты в форме Студии
         function renderCardPreview() {
             const box = document.getElementById('card-preview');
@@ -17896,6 +17962,7 @@ function nxToggle3d() {
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
                 ${z.top}${z.bottom}${cardShineOverlay(fake, 25)}`;
             applyCardAura(document.getElementById('card-preview-aura'), fake, 'aura-preview');
+            try { nxCardPreviewBind(); } catch (e) {} // b460: колесо/драг/даблклик по превью
         }
 
         function deletePack(packId) {
