@@ -2061,7 +2061,7 @@ function nxToggle3d() {
                 g.fillStyle = 'rgba(2,6,23,.8)';
                 roundRectCanvas(g, 24, 268, W - 48, 76, 14); g.fill();
                 g.fillStyle = '#ffffff'; g.font = 'bold 26px Inter, sans-serif';
-                wrapCanvasText(g, card.name, W / 2, 292, W - 80, 28);
+                wrapCanvasText(g, cardDisplayName(card), W / 2, 292, W - 80, 28); // b461
                 g.fillStyle = '#fbbf24'; g.font = 'bold 15px Inter, sans-serif';
                 g.fillText('SCOOPY-DOO! WORLD OF MYSTERY', W / 2, 366);
                 out = cv.toDataURL('image/jpeg', 0.82);
@@ -2927,6 +2927,12 @@ function nxToggle3d() {
                 text: align === 'center' ? 'text-center' : (align === 'right' ? 'text-right' : 'text-left'),
                 justify: align === 'center' ? 'justify-center' : (align === 'right' ? 'justify-end' : 'justify-start')
             };
+        }
+        // b461: карта валидна с одной картиной: пустое имя подставляется
+        // только в отображении, храним пустую строку.
+        function cardDisplayName(card) {
+            const n = String((card && card.name) || '').trim();
+            return n || 'Без имени';
         }
         // b456+b457: inline-transform арта в рамке карты: масштаб + сдвиги по
         // вертикали и горизонтали, каждый ограниченный ±(S−1)*50% — края картины
@@ -7394,7 +7400,7 @@ function nxToggle3d() {
             try { const nxm = window.NXM; if (nxm && nxm.list) nxm.list([lot]); } catch (e) {} // b443: эскроу фиксируется на сервере
             saveState(); jpSyncNow(); jpSyncSoon(); renderMarket(); // b336: мгновенный пуш лота
             marketEnforceLimit(); // b142: вдруг это уже пятая такая карта в продаже
-            if (!silent) showToast('🏷 Лот выставлен: ' + card.name + ' за ' + fmtCoins(price), 'success');
+            if (!silent) showToast('🏷 Лот выставлен: ' + cardDisplayName(card) + ' за ' + fmtCoins(price), 'success'); // b461
             return true;
         }
         // ===== b394: массовая продажа без зависания =====
@@ -7511,7 +7517,7 @@ function nxToggle3d() {
             const card = id ? state.cards.find(c => c.id === id) : null;
             if (!card || cardCopies(id) < 1) { showToast('Этой карты нет в коллекции', 'error'); return; }
             const nm = document.getElementById('market-list-card-name');
-            if (nm) nm.innerHTML = 'Карта: <b class="text-slate-200">' + cloudEsc(card.name) + '</b> • копий у вас: <b class="text-slate-200">' + cardCopies(id) + '</b>';
+            if (nm) nm.innerHTML = 'Карта: <b class="text-slate-200">' + cloudEsc(cardDisplayName(card)) + '</b> • копий у вас: <b class="text-slate-200">' + cardCopies(id) + '</b>'; // b461
             const pi = document.getElementById('market-list-price');
             if (pi) pi.value = '';
             const m = document.getElementById('modal-market-list');
@@ -11570,7 +11576,7 @@ function nxToggle3d() {
                 if (win < bet) jackpotOnLoss(bet - win);
             } else if (sec.t === 'card') {
                 const card = wheelGrantCard();
-                if (card) showToast('🎡 Приз: карта «' + card.name + '»! (' + (RARITY_LABELS_RU[card.rarity] || card.rarity) + ')', 'success');
+                if (card) showToast('🎡 Приз: карта «' + cardDisplayName(card) + '»! (' + (RARITY_LABELS_RU[card.rarity] || card.rarity) + ')', 'success');
                 else win = bet; // нет паков с картами — возвращаем ставку
             } else if (sec.t === 'jackpot') {
                 // b75: колесо тоже борется за общий джекпот сайта — сектор срывает весь банк
@@ -13985,8 +13991,8 @@ function nxToggle3d() {
                         <span class="text-xs font-mono font-bold text-slate-200 bg-slate-950/70 px-2 py-0.5 rounded backdrop-blur-sm">#${getCardLocalNumber(card)}</span>
                         <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-slate-900/80 text-slate-200 border border-slate-700 backdrop-blur-sm">${card.rarity}</span>
                     </div>`;
-                const nameHtml = `<h4 class="w-full font-bold text-white text-base truncate drop-shadow-md ${L.text}">${card.name}</h4>`;
-                const descHtml = `<p class="w-full text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description || ''}</p>`;
+                const nameHtml = `<h4 class="w-full font-bold text-white text-base truncate drop-shadow-md ${L.text}">${cardDisplayName(card)}</h4>`; // b461
+                const descHtml = String(card.description || '').trim() ? `<p class="w-full text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description}</p>` : ''; // b461: нет описания — нет пустой строки
                 const extraHtml = `<div id="status-${idx}" class="mt-2 text-xs font-semibold w-full ${L.text}"></div>`;
                 const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, extraHtml);
                 return `
@@ -14314,14 +14320,14 @@ function nxToggle3d() {
                 // b412: кнопка повторки рисуется общим рендером статуса: честная
                 // подпись (биржа/сразу), работает офлайн, гаснет после продажи
                 statusEl.innerHTML = nxUnboxDupeStatusHTML(card, idx);
-                showToast(`Повторная карта ${card.name} продана за ${refund} монет!`, 'refund');
+                showToast(`Повторная карта ${cardDisplayName(card)} продана за ${refund} монет!`, 'refund');
                 SoundFX.play('coin');
                 updateMissions('sell_dupe', 1);
                 updateMissions('earn_dupe_coins', refund);
             } else {
                 state.collection[card.id] = 1; // b18: число копий вместо true
                 statusEl.innerHTML = `<span class="inline-flex items-center space-x-1 px-2 py-1 bg-violet-950/90 text-violet-300 rounded border border-violet-500/50 text-[11px] backdrop-blur-sm"><i class="fa-solid fa-wand-magic-sparkles"></i><span>✨ Новая!</span></span>`;
-                showToast(`Новая карта получена: ${card.name}!`, 'success');
+                showToast(`Новая карта получена: ${cardDisplayName(card)}!`, 'success');
                 updateMissions('collect_new', 1);
             }
 
@@ -14473,7 +14479,7 @@ function nxToggle3d() {
                             <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
                             ${copies > 1 ? `<span class="text-[8px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 backdrop-blur-sm">×${copies}</span>` : ''}
                         </div>
-                        <h4 class="relative z-10 w-full font-bold text-white text-[10px] truncate drop-shadow-md ${L.text}">${card.name}</h4>
+                        <h4 class="relative z-10 w-full font-bold text-white text-[10px] truncate drop-shadow-md ${L.text}">${cardDisplayName(card)}</h4>
                         ${cardShineOverlay(card)}
                     </div>
                 `;
@@ -14486,8 +14492,8 @@ function nxToggle3d() {
                             <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900/80 text-slate-200 border border-slate-700 backdrop-blur-sm" style="color:${rarColor}">${rarLabel}</span>
                         </span>
                     </div>`;
-            const nameHtml = `<h4 class="w-full font-bold text-white text-sm sm:text-base truncate drop-shadow-md ${L.text}">${card.name}</h4>`;
-            const descHtml = `<p class="w-full text-[11px] sm:text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description || ''}</p>`;
+            const nameHtml = `<h4 class="w-full font-bold text-white text-sm sm:text-base truncate drop-shadow-md ${L.text}">${cardDisplayName(card)}</h4>`; // b461
+            const descHtml = String(card.description || '').trim() ? `<p class="w-full text-[11px] sm:text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description}</p>` : ''; // b461
             const statsHtml = `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
                             <span class="text-[10px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${getCardStats(card).atk}</span>
                             <span class="text-[10px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${getCardStats(card).hp}</span>
@@ -14534,7 +14540,7 @@ function nxToggle3d() {
                     <span class="font-mono text-[10px] text-slate-500 w-9 sm:w-10 shrink-0">#${localNum}</span>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-1.5">
-                            <h4 class="font-bold text-sm text-white truncate group-hover:text-violet-300 transition-colors">${card.name}</h4>
+                            <h4 class="font-bold text-sm text-white truncate group-hover:text-violet-300 transition-colors">${cardDisplayName(card)}</h4>
                             ${card.musicUrl ? '<i class="fa-solid fa-music text-[9px] text-fuchsia-300" title="У карты своя музыка — включается кнопкой в просмотре"></i>' : ''}
                             ${copies > 1 ? `<span class="text-[9px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 shrink-0">×${copies}</span>` : ''}
                         </div>
@@ -15303,7 +15309,7 @@ function nxToggle3d() {
                         <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900/80 border border-slate-700 backdrop-blur-sm" style="color:${RAR_COLORS[card.rarity] || '#e2e8f0'}">${rarLabel}</span>
                     </span>
                 </div>`;
-            const nameHtml = `<h4 class="w-full font-bold text-white text-lg drop-shadow-md break-words ${L.text}">${card.name}</h4>`;
+            const nameHtml = `<h4 class="w-full font-bold text-white text-lg drop-shadow-md break-words ${L.text}">${cardDisplayName(card)}</h4>`; // b461
             // b439: длинное описание — в 3 строки и кнопка раскрытия;
             // короткое рендерится как раньше (без обёртки и кнопки)
             // b440: текст берём из nxDescTextOf (тот же источник, что и у панели
@@ -17924,8 +17930,8 @@ function nxToggle3d() {
             const box = document.getElementById('card-preview');
             if (!box) return;
             const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-            const name = String(gv('card-name') || '').trim() || 'Имя персонажа';
-            const desc = String(gv('card-desc') || '').trim() || 'Описание карты';
+            const name = String(gv('card-name') || '').trim() || 'Без имени'; // b461: превью совпадает с сохранённой картой
+            const desc = String(gv('card-desc') || '').trim(); // b461: нет описания — зона скрыта
             const rarity = gv('card-rarity') || 'common';
             const image = String(gv('card-image') || '').trim();
             const atk = parseInt(gv('card-atk'));
@@ -17951,7 +17957,7 @@ function nxToggle3d() {
                     <span class="text-[8px] uppercase font-bold px-1.5 py-0.5 rounded bg-slate-900/80 border border-slate-700" style="color:${RAR_COLORS[rarity] || '#e2e8f0'}">${RARITY_LABELS_RU[rarity] || rarity}</span>
                 </div>`;
             const nameHtml = `<h4 class="w-full font-bold text-white text-sm truncate drop-shadow-md ${L.text}">${esc(name)}</h4>`;
-            const descHtml = `<p class="w-full text-[10px] text-slate-300 line-clamp-2 drop-shadow ${L.text}">${esc(desc)}</p>`;
+            const descHtml = desc ? `<p class="w-full text-[10px] text-slate-300 line-clamp-2 drop-shadow ${L.text}">${esc(desc)}</p>` : ''; // b461
             const statsHtml = `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
                     <span class="text-[9px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${st.atk}</span>
                     <span class="text-[9px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${st.hp}</span>
