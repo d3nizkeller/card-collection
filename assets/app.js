@@ -2918,21 +2918,23 @@ function nxToggle3d() {
                 // значения из формы/облака нормализуются здесь)
                 artZoom: Math.max(100, Math.min(220, Number(L.artZoom) || 100)),
                 artPosY: Math.max(-100, Math.min(100, Number(L.artPosY) || 0)),
+                artPosX: Math.max(-100, Math.min(100, Number(L.artPosX) || 0)), // b457
                 text: align === 'center' ? 'text-center' : (align === 'right' ? 'text-right' : 'text-left'),
                 justify: align === 'center' ? 'justify-center' : (align === 'right' ? 'justify-end' : 'justify-start')
             };
         }
-        // b456: inline-transform арта в рамке карты: масштаб + вертикальный сдвиг,
-        // ограниченный ±(S−1)*50% — края картины не оголяются ни при каком зуме.
-        // При дефолте (100/0) возвращает пустую строку: hover-зум group-hover:scale-105
-        // на обычных картах не глушится inline-стилем.
+        // b456+b457: inline-transform арта в рамке карты: масштаб + сдвиги по
+        // вертикали и горизонтали, каждый ограниченный ±(S−1)*50% — края картины
+        // не оголяются ни при каком зуме. При дефолте (100/0/0) возвращает пустую
+        // строку: hover-зум group-hover:scale-105 на обычных картах не глушится.
         function cardArtStyle(card) {
             const L = cardLayoutOf(card);
-            if (L.artZoom === 100 && L.artPosY === 0) return '';
+            if (L.artZoom === 100 && L.artPosY === 0 && L.artPosX === 0) return '';
             const s = L.artZoom / 100;
-            const maxY = (s - 1) * 50;
-            const y = (L.artPosY / 100) * maxY;
-            return ' style="transform:translateY(' + y.toFixed(2) + '%) scale(' + s.toFixed(2) + ')"';
+            const max = (s - 1) * 50;
+            const y = (L.artPosY / 100) * max;
+            const x = (L.artPosX / 100) * max;
+            return ' style="transform:translate(' + x.toFixed(2) + '%, ' + y.toFixed(2) + '%) scale(' + s.toFixed(2) + ')"';
         }
         function cardHoloClass(card) {
             return cardLayoutOf(card).shine === 'auto' ? getHoloClass(card.rarity) : '';
@@ -17803,6 +17805,8 @@ function nxToggle3d() {
             if (azEl) azEl.value = L0.artZoom;
             const ayEl = document.getElementById('card-arty');
             if (ayEl) ayEl.value = L0.artPosY;
+            const axEl = document.getElementById('card-artx'); // b457
+            if (axEl) axEl.value = L0.artPosX;
             const auraSel = document.getElementById('card-aura');
             if (auraSel) auraSel.value = cardAuraOf(card);
             renderCardPreview();
@@ -17840,7 +17844,7 @@ function nxToggle3d() {
 
         // читает настройки композиции/эффекта из формы карточки
         function readCardLayoutForm() {            const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty') }; // b456: + масштаб/сдвиг арта
+            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty'), artPosX: g('card-artx') }; // b456: + масштаб/сдвиг арта; b457: + сдвиг по горизонтали
         }
 
         // живой предпросмотр карты в форме Студии
@@ -17865,6 +17869,8 @@ function nxToggle3d() {
             if (azv) azv.textContent = (Number(gv('card-artzoom')) || 100) + '%';
             const ayv = document.getElementById('card-arty-val');
             if (ayv) ayv.textContent = String(Number(gv('card-arty')) || 0);
+            const axv = document.getElementById('card-artx-val'); // b457
+            if (axv) axv.textContent = String(Number(gv('card-artx')) || 0);
             const L = cardLayoutOf(fake);
             const st = getCardStats(fake);
             const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

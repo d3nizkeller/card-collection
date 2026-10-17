@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob180" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob180">
+    <script src="assets/three.min.js?v=nxmob181" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob181">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob180">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob181">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob180">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob181">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1397,7 +1397,7 @@
                             <!-- b456: масштаб арта и сдвиг по вертикали в живом предпросмотре:
                                  картина ровно садится в рамку карты; значения сохраняются
                                  в layout карты (artZoom/artPosY) и видны во всех рендерах -->
-                            <div class="grid grid-cols-2 gap-3 mt-2">
+                            <div class="grid grid-cols-3 gap-3 mt-2">
                                 <div class="flex flex-col">
                                     <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-search text-violet-400 mr-1"></i>Масштаб арта <span id="card-artzoom-val" class="text-slate-300 font-bold">100%</span></label>
                                     <input type="range" id="card-artzoom" min="100" max="220" step="5" value="100" oninput="renderCardPreview()" class="w-full accent-violet-500">
@@ -1405,6 +1405,11 @@
                                 <div class="flex flex-col">
                                     <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-image text-sky-400 mr-1"></i>Сдвиг по вертикали <span id="card-arty-val" class="text-slate-300 font-bold">0</span></label>
                                     <input type="range" id="card-arty" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
+                                </div>
+                                <!-- b457: сдвиг по горизонтали — третий слайдер кадрирования -->
+                                <div class="flex flex-col">
+                                    <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-exchange-alt text-emerald-400 mr-1"></i>Сдвиг по горизонтали <span id="card-artx-val" class="text-slate-300 font-bold">0</span></label>
+                                    <input type="range" id="card-artx" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
                                 </div>
                             </div>
                         </div>
@@ -2979,10 +2984,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob180"></script>
-    <script src="assets/stories.js?v=nxmob180"></script>
-    <script src="assets/qrcode.min.js?v=nxmob180"></script>
-    <script src="assets/qr-transfer.js?v=nxmob180"></script>
+    <script src="assets/app.js?v=nxmob181"></script>
+    <script src="assets/stories.js?v=nxmob181"></script>
+    <script src="assets/qrcode.min.js?v=nxmob181"></script>
+    <script src="assets/qr-transfer.js?v=nxmob181"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
