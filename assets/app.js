@@ -2945,7 +2945,13 @@ function nxToggle3d() {
             const max = (s - 1) * 50;
             const y = (L.artPosY / 100) * max;
             const x = (L.artPosX / 100) * max;
-            return ' style="transform:translate(' + x.toFixed(2) + '%, ' + y.toFixed(2) + '%) scale(' + s.toFixed(2) + ')"';
+            // b462: object-position панорамирует окно кадрирования object-cover —
+            // широкая/высокая картина ездит даже при масштабе 100%, где translate
+            // ограничен нулевым избытком зума. Крайние значения 0%/100% не оголяют
+            // рамку: object-position не выходит за срез cover.
+            const ox = 50 + L.artPosX / 2;
+            const oy = 50 + L.artPosY / 2;
+            return ' style="object-position:' + ox.toFixed(1) + '% ' + oy.toFixed(1) + '%;transform:translate(' + x.toFixed(2) + '%, ' + y.toFixed(2) + '%) scale(' + s.toFixed(2) + ')"';
         }
         function cardHoloClass(card) {
             return cardLayoutOf(card).shine === 'auto' ? getHoloClass(card.rarity) : '';
@@ -17896,15 +17902,23 @@ function nxToggle3d() {
             });
             wrap.addEventListener('pointermove', function (e) {
                 if (!drag) return;
-                const maxY = (drag.s - 1) * 50;
-                if (maxY <= 0) return; // масштаб 100%: панорамить нечего
                 const Y = document.getElementById('card-arty');
                 const X = document.getElementById('card-artx');
                 if (!Y || !X) return;
+                // b462: ёмкость панорамы по осям = избыток зума + половина среза
+                // object-cover (широкая картина движется и при масштабе 100%)
+                let capX = (drag.s - 1) * 50, capY = (drag.s - 1) * 50;
+                const art = document.querySelector('#card-preview img');
+                if (art && art.naturalWidth > 0 && art.naturalHeight > 0) {
+                    const arI = art.naturalWidth / art.naturalHeight;
+                    const arB = (drag.w / drag.h) || arI;
+                    if (arI > arB) capX += (arI / arB - 1) * 50;
+                    else if (arI < arB) capY += (arB / arI - 1) * 50;
+                }
                 const dyPct = (e.clientY - drag.y) / drag.h * 100;
                 const dxPct = (e.clientX - drag.x) / drag.w * 100;
-                let uy = drag.sy + (dyPct / maxY) * 100;
-                let ux = drag.sx + (dxPct / maxY) * 100;
+                let uy = drag.sy + (capY > 0 ? (dyPct / capY) * 100 : 0);
+                let ux = drag.sx + (capX > 0 ? (dxPct / capX) * 100 : 0);
                 uy = Math.max(-100, Math.min(100, Math.round(uy / 5) * 5));
                 ux = Math.max(-100, Math.min(100, Math.round(ux / 5) * 5));
                 if (String(uy) !== Y.value || String(ux) !== X.value) {
