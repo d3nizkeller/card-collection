@@ -13252,8 +13252,9 @@ function nxToggle3d() {
                                 <div class="booster-holo"></div>
                                 <div class="booster-sparkles"></div>
                             </div>
-                            <div class="pack3d-rim rim-y"></div>
-                            <div class="pack3d-rim rim-x"></div>
+                            <!-- b450: реберные плоскости (.pack3d-rim rim-y/rim-x) удалены:
+                                 светлый металл var(--pk-rim) торчал над кромкой пака и светил
+                                 сквозь вырезы зубцов. Боковых торцов они не закрывали. -->
                         </div>
                     </div>
                 </div>
@@ -17149,7 +17150,7 @@ function nxToggle3d() {
             const image = String((im && im.value || '').trim());
             const p = { color: packFormColor, shimmer: packFormShimmer, skin: packFormSkin, crimp: packFormCrimp }; // b446+b448
             box.innerHTML = `
-                <div class="pack3d-face pack3d-front booster ${pkSkinCls(p)}" style="position:absolute;inset:2% 0;${packCssVars(p)}">
+                <div class="pack3d-face pack3d-front booster ${pkSkinCls(p)}" style="position:absolute;inset:0;${packCssVars(p)}">
                     <div class="booster-foil"></div>
                     <div class="booster-wrinkle fs1"></div>
                     <div class="booster-crimp booster-crimp-top"></div>
