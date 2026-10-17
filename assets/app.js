@@ -2914,9 +2914,25 @@ function nxToggle3d() {
                 descPos: (L.descPos === 'top' || L.descPos === 'hide') ? L.descPos : 'bottom',
                 align: align,
                 shine: (CARD_FX.indexOf(L.shine) >= 0 || L.shine === 'none') ? L.shine : 'auto',
+                // b456: масштаб арта 100–220% и сдвиг по вертикали −100…100 (сырые
+                // значения из формы/облака нормализуются здесь)
+                artZoom: Math.max(100, Math.min(220, Number(L.artZoom) || 100)),
+                artPosY: Math.max(-100, Math.min(100, Number(L.artPosY) || 0)),
                 text: align === 'center' ? 'text-center' : (align === 'right' ? 'text-right' : 'text-left'),
                 justify: align === 'center' ? 'justify-center' : (align === 'right' ? 'justify-end' : 'justify-start')
             };
+        }
+        // b456: inline-transform арта в рамке карты: масштаб + вертикальный сдвиг,
+        // ограниченный ±(S−1)*50% — края картины не оголяются ни при каком зуме.
+        // При дефолте (100/0) возвращает пустую строку: hover-зум group-hover:scale-105
+        // на обычных картах не глушится inline-стилем.
+        function cardArtStyle(card) {
+            const L = cardLayoutOf(card);
+            if (L.artZoom === 100 && L.artPosY === 0) return '';
+            const s = L.artZoom / 100;
+            const maxY = (s - 1) * 50;
+            const y = (L.artPosY / 100) * maxY;
+            return ' style="transform:translateY(' + y.toFixed(2) + '%) scale(' + s.toFixed(2) + ')"';
         }
         function cardHoloClass(card) {
             return cardLayoutOf(card).shine === 'auto' ? getHoloClass(card.rarity) : '';
@@ -13969,7 +13985,7 @@ function nxToggle3d() {
                 <div class="relative w-full card-aspect rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-700/70 bg-slate-900 flex flex-col justify-between p-4 group select-none" style="position:relative;overflow:hidden;">
                     <!-- b135: лицо карты скрыто (opacity 0), пока фольга не готова: никаких спойлеров и мигания -->
                     <div data-scratch-face="${idx}" data-rarcls="${getRarityClass(card.rarity)} ${cardHoloClass(card)}" class="absolute inset-0 z-20 flex flex-col justify-between p-4" style="opacity:0;transition:opacity .3s ease;">
-                        <img src="${mediaThumbMid(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">
+                        <img src="${mediaThumbMid(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);"${cardArtStyle(card)} class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/5 to-slate-950/15 z-10"></div>
                         ${Z.top}
                         ${Z.bottom}
@@ -14443,7 +14459,7 @@ function nxToggle3d() {
             if (compact) {
                 return `
                     <div onclick="inspectCard('${card.id}')" class="nx-cv relative w-full card-aspect rounded-xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-1.5 sm:p-2 flex flex-col justify-between cursor-pointer shadow-lg hover:scale-[1.03] transition overflow-hidden group">
-                        <img src="${artFn(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                        <img src="${artFn(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async"${cardArtStyle(card)} class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
                         <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
                         <div class="relative z-10 flex justify-between items-start gap-1">
                             <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
@@ -14471,7 +14487,7 @@ function nxToggle3d() {
             const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, statsHtml);
             return `
                 <div onclick="inspectCard('${card.id}')" class="nx-cv relative w-full card-aspect rounded-2xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-3 sm:p-4 flex flex-col justify-between cursor-pointer shadow-xl hover:scale-[1.02] transition overflow-hidden group">
-                    <img src="${artFn(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
+                    <img src="${artFn(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" loading="lazy" decoding="async"${cardArtStyle(card)} class="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500">
                     <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
 
                     ${Z.top}
@@ -15301,7 +15317,7 @@ function nxToggle3d() {
             renderEl.style.transform = '';
             renderEl.className = `w-full card-aspect rounded-2xl border-2 shadow-2xl relative flex flex-col justify-between p-4 overflow-hidden transition-transform duration-100 ${getRarityClass(card.rarity)} ${cardHoloClass(card)}`;
             renderEl.innerHTML = `
-                <img src="${mediaBig(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);" class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">
+                <img src="${mediaBig(card.image)}" data-nx-full="${mediaUrl(card.image)}" alt="${card.name}" data-card-id="${card.id}" onerror="imgErrorChain(this);"${cardArtStyle(card)} class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/5 to-slate-950/20 z-10"></div>
 
                 ${Z.top}
@@ -17782,6 +17798,11 @@ function nxToggle3d() {
             document.getElementById('card-desc-pos').value = L0.descPos;
             document.getElementById('card-align').value = L0.align;
             document.getElementById('card-shine').value = L0.shine;
+            // b456: слайдеры масштаба/сдвига арта — из сохранённого layout
+            const azEl = document.getElementById('card-artzoom');
+            if (azEl) azEl.value = L0.artZoom;
+            const ayEl = document.getElementById('card-arty');
+            if (ayEl) ayEl.value = L0.artPosY;
             const auraSel = document.getElementById('card-aura');
             if (auraSel) auraSel.value = cardAuraOf(card);
             renderCardPreview();
@@ -17819,7 +17840,7 @@ function nxToggle3d() {
 
         // читает настройки композиции/эффекта из формы карточки
         function readCardLayoutForm() {            const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), align: g('card-align'), shine: g('card-shine') };
+            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty') }; // b456: + масштаб/сдвиг арта
         }
 
         // живой предпросмотр карты в форме Студии
@@ -17839,6 +17860,11 @@ function nxToggle3d() {
                 layout: readCardLayoutForm(),
                 aura: gv('card-aura') || 'none'
             };
+            // b456: подписи значений слайдеров масштаба/сдвига
+            const azv = document.getElementById('card-artzoom-val');
+            if (azv) azv.textContent = (Number(gv('card-artzoom')) || 100) + '%';
+            const ayv = document.getElementById('card-arty-val');
+            if (ayv) ayv.textContent = String(Number(gv('card-arty')) || 0);
             const L = cardLayoutOf(fake);
             const st = getCardStats(fake);
             const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -17854,7 +17880,7 @@ function nxToggle3d() {
                 </div>`;
             const z = cardTextZones(L, badge, nameHtml, descHtml, statsHtml);
             box.className = `relative z-10 w-full card-aspect rounded-xl overflow-hidden border-2 shadow-xl flex flex-col justify-between p-2.5 ${getRarityClass(rarity)} ${cardHoloClass(fake)}`;
-            box.innerHTML = `${image ? `<img src="${mediaThumbMid(image)}" data-nx-full="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)" class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">` : ''}
+            box.innerHTML = `${image ? `<img src="${mediaThumbMid(image)}" data-nx-full="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)"${cardArtStyle(fake)} class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">` : ''}
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
                 ${z.top}${z.bottom}${cardShineOverlay(fake, 25)}`;
             applyCardAura(document.getElementById('card-preview-aura'), fake, 'aura-preview');
