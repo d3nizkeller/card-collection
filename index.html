@@ -1024,7 +1024,13 @@
                         <input type="hidden" id="edit-pack-id" value="">
                         <!-- b262: форма пака как форма карточки — поля слева, превью справа -->
                         <div class="grid lg:grid-cols-[minmax(0,1fr)_250px] gap-4 items-start">
-                        <div class="space-y-3 min-w-0">
+                                                <div class="space-y-3 min-w-0">
+                        <!-- b451: форма без «дыр»: строки равной высоты
+                             (название|описание, обложка|премьера, цена|цвет),
+                             музыка и перелив — полноширинные строки, форма и
+                             зубчики — две равновесные карточки. Кнопка загрузки
+                             стоит в одну строку с полем ссылки, чекбокс музыки —
+                             в строке её заголовка. Пустых колонок больше нет. -->
 <div class="grid sm:grid-cols-2 gap-3">
                         <div class="flex flex-col">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Название пака</label>
@@ -1035,59 +1041,76 @@
                             <input type="text" id="pack-desc" required placeholder="Эпичные технологии будущего" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                         </div>
                         </div>
-                        <!-- b263: цена — сразу под ссылкой на обложку; две независимые колонки без «дыр» от высоких соседей -->
-                        <div class="grid sm:grid-cols-2 gap-3 items-start">
-                        <div class="flex flex-col gap-3 min-w-0">
-<div class="flex flex-col">
+<div class="grid sm:grid-cols-2 gap-3">
+                        <div class="flex flex-col min-w-0">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на обложку (9:16)<span id="pack-image-lamp" style="width:10px;height:10px;border-radius:9999px;display:inline-block;vertical-align:middle;margin-left:6px;background:#475569;box-shadow:0 0 8px rgba(71,85,105,.7);" title="Индикатор арта: зелёный — вшит в сборку сайта; жёлтый — скачан авто-кэшем в устройство; красный — не вшит, грузится по ссылке; серый — ссылки нет"></span></label>
-                            <input type="url" id="pack-image" required oninput="renderPackStylePreview();nxEmbedLampRefresh('pack-image')" placeholder="https://images.unsplash.com/..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
-                            <div class="flex items-center gap-2 mt-1"><button type="button" onclick="nxPickFileFor('pack-image')" class="px-2.5 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition" title="Выберите файл картинки на устройстве — сайт сам зальёт его в папку media/ репозитория GitHub и подставит готовую ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>Загрузить с устройства &rarr; GitHub</button><span id="pack-image-upl" class="text-[10px] text-slate-500"></span></div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <input type="url" id="pack-image" required oninput="renderPackStylePreview();nxEmbedLampRefresh('pack-image')" placeholder="https://images.unsplash.com/..." class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                                <button type="button" onclick="nxPickFileFor('pack-image')" class="px-2.5 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Выберите файл картинки на устройстве — сайт сам зальёт его в папку media/ репозитория GitHub и подставит готовую ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>Загрузить с устройства &rarr; GitHub</button>
+                                <span id="pack-image-upl" class="text-[10px] text-slate-500"></span>
+                            </div>
                         </div>
-<div class="flex flex-col">
-                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Цена (монеты)</label>
-                            <input type="number" id="pack-price" required min="10" value="100" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
-                        </div>
-                        </div>
-                        <div class="flex flex-col gap-3 min-w-0">
                         <!-- b165: премьера пака — до этой даты/времени пак виден как «Скоро» с отсчётом, купить нельзя -->
                         <div class="flex flex-col">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-clapperboard text-amber-400 mr-1"></i>Премьера — старт продажи (необязательно)</label>
                             <input type="datetime-local" id="pack-premiere" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500">
                         </div>
-<div>
+                        </div>
+<div class="grid sm:grid-cols-2 gap-3">
+                        <div class="flex flex-col">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Цена (монеты)</label>
+                            <input type="number" id="pack-price" required min="10" value="100" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <p class="text-[10px] text-slate-500 mt-1">Монеты за один пак; минимальная цена — 10.</p>
+                        </div>
+                        <!-- b451: цвет упаковки встал в пару к цене — обе ячейки одной высоты -->
+                        <div class="flex flex-col min-w-0">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Цвет упаковки</label>
                             <div id="pack-color-picker" class="grid grid-cols-4 gap-1 max-w-sm"><!-- b272: компакт --><!-- свотчи цветов --></div>
-                        <!-- b446: форма упаковки — свой ряд превьюшек и ряд «по умолчанию» -->
-                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Форма упаковки</div>
-                        <div id="pack-skin-picker" class="grid grid-cols-5 gap-1 max-w-sm"><!-- свотчи форм --></div>
-                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Форма по умолчанию <span class="normal-case font-normal text-slate-600">(для паков без своей формы)</span></div>
-                        <div id="pack-skin-default" class="flex flex-wrap gap-1"><!-- кнопки общей формы --></div>
-                        <!-- b448: кромка запайки -->
-                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Зубчики упаковки</div>
-                        <div id="pack-crimp-picker" class="grid grid-cols-5 gap-1 max-w-sm"><!-- свотчи кромок --></div>
-                        <div class="mt-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">Зубчики по умолчанию <span class="normal-case font-normal text-slate-600">(для паков без своей кромки; видны на «Фольге»)</span></div>
-                        <div id="pack-crimp-default" class="grid grid-cols-5 gap-1 max-w-sm"><!-- кнопки общей кромки --></div>
                         </div>
                         </div>
-                        </div>
-                        <!-- b266: музыка вскрытия — растянута во всю ширину колонки полей (вне двухколоночной сетки) -->
-                        <div class="flex flex-col">
-                            <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-music text-fuchsia-400 mr-1"></i>Музыка вскрытия — ссылка на mp3</label>
-                            <div class="flex gap-2">
+                        <!-- b266: музыка вскрытия — полноширинная строка: заголовок и чекбокс на
+                             одной линии, поле с кнопками ниже, статус трека последней строкой -->
+                        <div class="flex flex-col min-w-0">
+                            <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-1">
+                                <label class="text-[11px] font-medium text-slate-400"><i class="fa-solid fa-music text-fuchsia-400 mr-1"></i>Музыка вскрытия — ссылка на mp3</label>
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" id="pack-music-use" checked onchange="updatePackMusicHint()" class="accent-fuchsia-500 w-3.5 h-3.5">
+                                    <span class="text-[10px] text-slate-400">Проигрывать при вскрытии этого пака</span>
+                                </label>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
                                 <input type="url" id="pack-music" oninput="updatePackMusicHint()" placeholder="https://.../track.mp3" class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-fuchsia-500">
                                 <button type="button" onclick="previewPackMusic()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition" title="Прослушать 8 секунд"><i class="fa-solid fa-play"></i></button>
                                 <button type="button" onclick="stopPackMusicPreview()" class="px-2.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-semibold text-slate-200 transition" title="Остановить"><i class="fa-solid fa-stop"></i></button>
-                                <button type="button" onclick="clearPackMusicField()" class="px-2.5 py-2 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-lg text-xs font-semibold text-slate-300 transition" title="Стереть ссылку mp3 этого пака"><i class="fa-solid fa-eraser"></i></button><button type="button" onclick="nxPickFileFor('pack-music','audio')" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-xs font-semibold text-white transition shrink-0" title="Выберите файл музыки на устройстве — сайт зальёт его в папку media/ репозитория GitHub и подставит ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>На GitHub</button><span id="pack-music-upl" class="text-[10px] text-slate-500 self-center"></span>
+                                <button type="button" onclick="clearPackMusicField()" class="px-2.5 py-2 bg-slate-800 hover:bg-red-900/50 border border-slate-700 hover:border-red-700 rounded-lg text-xs font-semibold text-slate-300 transition" title="Стереть ссылку mp3 этого пака"><i class="fa-solid fa-eraser"></i></button>
+                                <button type="button" onclick="nxPickFileFor('pack-music','audio')" class="px-2.5 py-2 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-xs font-semibold text-white transition shrink-0" title="Выберите файл музыки на устройстве — сайт зальёт его в папку media/ репозитория GitHub и подставит ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>На GitHub</button>
+                                <span id="pack-music-upl" class="text-[10px] text-slate-500 self-center"></span>
                             </div>
-                            <label class="flex items-center gap-2 mt-2 cursor-pointer select-none">
-                                <input type="checkbox" id="pack-music-use" checked onchange="updatePackMusicHint()" class="accent-fuchsia-500 w-4 h-4">
-                                <span class="text-[11px] text-slate-400">Проигрывать при вскрытии этого пака</span>
-                            </label>
-                            <p id="pack-music-state" class="text-[10px] text-fuchsia-300/80 mt-1.5">трек не задан</p>
+                            <p id="pack-music-state" class="text-[10px] text-fuchsia-300/80 mt-1">трек не задан</p>
+                        </div>
+                        <!-- b451: форма и зубчики упаковки — две равновесные карточки на половинки:
+                             свотчи и ряд «по умолчанию» в каждой; grid растягивает их до одной
+                             высоты, остаток растворяется в отступах карточки -->
+<div class="grid sm:grid-cols-2 gap-3">
+                        <!-- b446: форма упаковки — свой ряд превьюшек и ряд «по умолчанию» -->
+                        <div class="flex flex-col gap-2 min-w-0 bg-slate-950/40 border border-slate-800 rounded-xl p-2.5">
+                            <div class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Форма упаковки</div>
+                            <div id="pack-skin-picker" class="grid grid-cols-5 gap-1 max-w-sm"><!-- свотчи форм --></div>
+                            <div class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Форма по умолчанию <span class="normal-case font-normal text-slate-600">(для паков без своей формы)</span></div>
+                            <div id="pack-skin-default" class="flex flex-wrap gap-1"><!-- кнопки общей формы --></div>
+                        </div>
+                        <!-- b448: кромка запайки -->
+                        <div class="flex flex-col gap-2 min-w-0 bg-slate-950/40 border border-slate-800 rounded-xl p-2.5">
+                            <div class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Зубчики упаковки</div>
+                            <div id="pack-crimp-picker" class="grid grid-cols-5 gap-1 max-w-sm"><!-- свотчи кромок --></div>
+                            <div class="text-[10px] font-bold uppercase tracking-wide text-slate-500">Зубчики по умолчанию <span class="normal-case font-normal text-slate-600">(для паков без своей кромки; видны на «Фольге»)</span></div>
+                            <div id="pack-crimp-default" class="grid grid-cols-5 gap-1 max-w-sm"><!-- кнопки общей кромки --></div>
+                        </div>
                         </div>
                         </div>
                         <div class="min-w-0 lg:sticky lg:top-20">
-                            <div class="flex flex-col items-center gap-2 bg-slate-950/70 border border-slate-800 rounded-xl p-3">
+                            <!-- b451: до lg превью — узкая центрированная карточка, а не полоса во всю ширину -->
+                            <div class="flex flex-col items-center gap-2 bg-slate-950/70 border border-slate-800 rounded-xl p-3 max-w-md mx-auto">
                                 <div id="pack-style-preview" style="position:relative;width:120px;height:220px;flex:none;"></div>
                                 <p class="text-[11px] text-slate-500 font-medium mt-1">Живое превью пака</p>
                                 <p id="pack-style-name" class="text-xs font-bold text-white truncate mt-0.5 max-w-full"></p>
@@ -1095,11 +1118,14 @@
                             </div>
                         </div>
                         </div>
-                        <!-- b265: «Перелив фольги» — во всю ширину формы, прямо над кнопками «Создать Бустер Пак» -->
+                        <!-- b265: «Перелив фольги» — полноширинная строка над кнопками
+                             «Создать Бустер Пак»: 25 режимов ложатся рядами по всей
+                             ширине формы, без дыр и узких колонок -->
                         <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Перелив фольги</label>
                             <div id="pack-shimmer-picker" class="grid grid-cols-5 sm:grid-cols-9 lg:grid-cols-[repeat(15,minmax(0,1fr))] gap-1"><!-- b272: компакт — 15 колонок на десктопе --><!-- режимы перелива --></div>
                         </div>
+
 <div class="flex gap-2">
                             <button type="submit" id="pack-submit-btn" class="flex-grow py-2.5 text-sm bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition shadow-lg shadow-violet-600/20">
                                 Создать Бустер Пак
