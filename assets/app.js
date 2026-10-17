@@ -2141,7 +2141,12 @@ function nxToggle3d() {
                     + key.replace(/\.[^.]+$/, '') + '.webp';
                 if (full.indexOf('http') !== 0) return conv;
                 const j = full.lastIndexOf('/media/');
-                if (j < 0) return conv;
+                // b459: у внешней ссылки (unsplash и т.п.) без каталога /media/
+                // миниатюры на нашем сервере нет и быть не может: достроенный
+                // «по соглашению» путь media/t2/<имя>.webp давал 404, и живой
+                // предпросмотр стоял пустым. Возвращаем пустоту — mediaThumbMid()/
+                // mediaThumbFor() сразу откатятся на мастер-URL (mediaUrl).
+                if (j < 0) return '';
                 return full.slice(0, j + 7) + conv.slice(6);
             } catch (e) { return ''; }
         }
