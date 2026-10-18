@@ -1,9 +1,3 @@
 node_modules/
 tools/_tw_src.html
 tools/_fa_solid_full.woff2
-
-# b465: локальные ключи установки сервера (NX_SECRET / NX_SETUP_KEY) — в репозиторий нельзя
-server/.nexus.local.json
-server/worker/.dev.vars
-.wrangler/
-package-lock.json

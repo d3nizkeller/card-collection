@@ -4,11 +4,7 @@
   "description": "Инструменты сборки мобильно-оптимизированной версии. Самой игре node не нужен — assets/tailwind.css уже собран и лежит в репозитории.",
   "scripts": {
     "build": "python3 tools/build.py",
-    "tw": "python3 tools/build.py --tw",
-    "nexus": "node server/setup.mjs",
-    "nexus:test": "node server/test/economy.test.mjs",
-    "nexus:dev": "node server/dev/serve.mjs",
-    "nexus:migrate": "node server/migrate.mjs"
+    "tw": "python3 tools/build.py --tw"
   },
   "devDependencies": {
     "postcss": "^8.4.0",
