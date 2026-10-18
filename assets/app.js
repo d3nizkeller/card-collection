@@ -5421,7 +5421,11 @@ function nxToggle3d() {
         }
         function jpcRefresh() {
             // b463: данные игроков и банка тянем с сервера
-            try { if (nxServerMode() || nxAdminHasToken()) nxSrvPullUsers(); } catch (e) {}
+            // b464: без подключённого API показываем, чего не хватает, а не молчим
+            try {
+                if (nxServerMode() || nxAdminHasToken()) nxSrvPullUsers();
+                else if (!nxApiConfigured()) { nxStudioNoServerBanner(); showToast('⚠️ Сервер не подключён — реестр игроков и банк недоступны', 'info'); }
+            } catch (e) {}
             try { jpSyncNow(); } catch (e) {}
             try { siteStatsSelfUpdate(); } catch (e) {}
             try { jpcAdminRender(); } catch (e) {}
@@ -12796,7 +12800,28 @@ function nxToggle3d() {
             // Каждое действие админки принимается только с этим токеном.
             const ref = CLOUD.remoteAuth || cloudLocalAuth();
             if (!nxApiConfigured()) {
-                showErr('Сервер не подключён: укажите адрес API в разделе «Облако» — вход в Студию проверяет сервер');
+                // ============ b464: ПЕРЕХОДНЫЙ РЕЖИМ (сервер ещё не задеплоен) ======
+                // Проверять пароль НЕЧЕМ и не с чем: хэша пароля в клиентском коде
+                // больше нет (b463 его удалил), а сервера нет. Поэтому:
+                //   • никакого сравнения пароля здесь не появляется;
+                //   • Студия открывается как РЕДАКТОР КОНТЕНТА (паки, карты, сторис,
+                //     расписание) — ровно то, что и раньше было доступно владельцу;
+                //   • админка НЕ работает: каждое действие (обнулить/заблокировать/
+                //     поставить банк/выдать джекпот/настройки/каталог) идёт через
+                //     nxAdminAct() и требует серверный админ-токен. Без токена —
+                //     admin_required, ни здесь, ни на сервере действие не выполняется.
+                showErr('Сервер не подключён: баланс, банк и джекпот недоступны. Студия открыта как редактор контента');
+                studioUnlocked = true;
+                cloudRole = 'owner';
+                setTimeout(() => {
+                    try { closeStudioPassModal(); } catch (e2) {}
+                    try { switchTab('studio'); } catch (e2) {}
+                    try { nxStudioNoServerBanner(); } catch (e2) {}
+                    try {
+                        showToast('⚠️ Сервер не подключён: доступен только контент Студии. ' +
+                            'Балансы, банк и джекпот — после деплоя server/ (см. server/README.md)', 'info');
+                    } catch (e2) {}
+                }, 900);
                 return;
             }
             try {
@@ -18909,6 +18934,19 @@ function nxToggle3d() {
                     return r;
                 });
             } catch (e) { return Promise.resolve({ ok: false, error: String(e) }); }
+        }
+        // b464: понятная подпись, когда сервер ещё не подключён
+        function nxStudioNoServerBanner() {
+            const txt = '⚠️ Сервер не подключён — банк, выдачи и настройки джекпота недоступны. ' +
+                'Задеплойте server/ (server/README.md) и укажите адрес API в разделе «Облако».';
+            try {
+                const note = document.getElementById('jpc-note');
+                if (note) note.textContent = txt;
+            } catch (e) {}
+            try {
+                const box = document.getElementById('jpc-users');
+                if (box && !box.textContent.trim()) box.innerHTML = '<p class="text-[11px] text-amber-300/90">' + txt + '</p>';
+            } catch (e) {}
         }
         function nxOpenStudioPassFromAdmin() {
             try {
