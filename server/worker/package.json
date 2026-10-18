@@ -1,0 +1,17 @@
+{
+  "name": "nexus-card-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Серверная часть «Коллекционера карт»: баланс, спины, джекпот, админка (b463)",
+  "scripts": {
+    "dev": "node ../dev/serve.mjs",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "test": "node ../test/economy.test.mjs",
+    "schema": "wrangler d1 execute nexus-bank --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
