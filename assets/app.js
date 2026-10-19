@@ -5755,6 +5755,17 @@ function nxToggle3d() {
             jackpotRender(); jpSyncNow();
             return prize;
         }
+        // b468: запись innerHTML ТОЛЬКО если содержимое реально отличается.
+        // jpPullLight() дёргает jackpotRender() каждые 15 секунд «на всякий случай»
+        // (b431: «залипнуть на старом DOM невозможно»), и пересборка идентичного
+        // списка выглядела как мерцание: блок гаснет и появляется заново,
+        // сбрасываются скролл и наведение.
+        function nxSetHtml(el, html) {
+            if (!el) return false;
+            if (el.innerHTML === html) return false;
+            el.innerHTML = html;
+            return true;
+        }
         function jackpotRender() {
             const pool = jackpotPool();
             const a = document.getElementById('slots-jackpot');
@@ -5800,8 +5811,8 @@ function nxToggle3d() {
                     : '<li class="jp-empty">Джекпот ещё не срывали — станьте первым в топе!</li>'; // b432
             const la = document.getElementById('slots-jp-top-list');
             const lb = document.getElementById('grid-jp-top-list');
-            if (la) la.innerHTML = html;
-            if (lb) lb.innerHTML = html;
+            nxSetHtml(la, html);   // b468
+            nxSetHtml(lb, html);   // b468
             // b107: блок джекпота в Линиях обновляется тем же рендером
             const cv = document.getElementById('lines-jackpot');
             if (cv) cv.textContent = fmtCoins(pool);
@@ -5810,7 +5821,7 @@ function nxToggle3d() {
             const wv = document.getElementById('lines-jp-winner');
             if (wv) { wv.textContent = wtxt; wv.title = wtitle; }
             const lv = document.getElementById('lines-jp-top-list');
-            if (lv) lv.innerHTML = html;
+            nxSetHtml(lv, html);   // b468
             try { jpcLabelsRender(); } catch (e) {} // b415: надписи о процентах — вслед за настройками
         }
 
@@ -6010,25 +6021,60 @@ function nxToggle3d() {
             } catch (e) {}
             return false;
         }
+        // b468: есть ли на экране несохранённая работа. Проверяется ДО «вкладка в
+        // фоне» — раньше фоновая вкладка перезагружалась немедленно, и владелец,
+        // отошедший на минуту от заполненной формы карточки, возвращался к пустой:
+        // описание и выбранный пак пропадали, карточку приходилось создавать заново.
+        function nxFormDirty() {
+            try {
+                const ae = document.activeElement;
+                if (ae && ae.tagName && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && !ae.disabled) return true;
+                const st = document.getElementById('tab-studio');
+                if (!st || st.classList.contains('hidden')) return false;
+                const forms = st.querySelectorAll('form');
+                for (let i = 0; i < forms.length; i++) {
+                    const f = forms[i];
+                    if (f.classList.contains('hidden')) continue;
+                    const els = f.querySelectorAll('input, textarea, select');
+                    for (let j = 0; j < els.length; j++) {
+                        const el = els[j];
+                        const ty = String(el.type || '').toLowerCase();
+                        if (ty === 'hidden' || ty === 'submit' || ty === 'button' || el.disabled) continue;
+                        if (ty === 'checkbox' || ty === 'radio') { if (el.checked !== el.defaultChecked) return true; continue; }
+                        const v = String(el.value == null ? '' : el.value);
+                        const d = String(el.defaultValue == null ? '' : el.defaultValue);
+                        if (v !== '' && v !== d) return true;
+                    }
+                }
+            } catch (e) { return false; }
+            return false;
+        }
         function nxReloadSafe() {
             try {
                 if (nxAudioPlaying()) return false;  // не обрываем трек карты/пака
                 if (slots.spinning || lines.spinning || grid.spinning) return false; // не рвём спин
                 if (nxModalOpen()) return false;     // вскрытие, просмотр карты, ежедневка, пароль студии
+                if (nxFormDirty()) return false;     // b468: курсор в поле или форма заполнена — не перезагружаем
+                const st = document.getElementById('tab-studio');
+                if (st && !st.classList.contains('hidden')) return false; // b468: Студия — всегда, а не только в видимой вкладке
                 if (document.hidden) return true;    // вкладка в фоне — перезагрузку никто не видит
                 if (Date.now() - (window.__nxLastInputAt || 0) < NX_AUTOUPD_IDLE_MS) return false; // игрок трогает игру
-                const st = document.getElementById('tab-studio');
-                if (st && !st.classList.contains('hidden')) return false; // в студии могли остаться несохранённые формы
                 return true;
             } catch (e) { return false; }
         }
+        // b468: расхождение тега должно подтвердиться ДВАЖДЫ, прежде чем мы
+        // решимся на перезагрузку. Разовое расхождение — это обычно кэш CDN или
+        // отданный сервис-воркером старый index.html, а не новая сборка.
+        let nxUpdSeenTag = '', nxUpdSeenAt = 0;
         function nxAutoUpdCheck() {
             try {
                 const own = nxOwnTag();
                 if (!own) return;
                 fetch('index.html?nc=' + Date.now(), { cache: 'no-store' }).then(r => (r && r.ok) ? r.text() : '').then(t => {
                     const m = String(t || '').match(/assets\/app\.js\?v=(nxmob\d+)/);
-                    if (!m || m[1] === own) return;
+                    if (!m || m[1] === own) { nxUpdSeenTag = ''; nxUpdSeenAt = 0; return; }
+                    if (nxUpdSeenTag !== m[1]) { nxUpdSeenTag = m[1]; nxUpdSeenAt = Date.now(); return; }
+                    if (Date.now() - nxUpdSeenAt < 20000) return;   // ждём второго подтверждения
                     nxAutoUpdApply(m[1]);
                 }).catch(() => {});
             } catch (e) {}
@@ -6071,13 +6117,43 @@ function nxToggle3d() {
             try { if (nxAutoUpdVis) document.removeEventListener('visibilitychange', nxAutoUpdVis); } catch (e) {}
             nxAutoUpdVis = null;
         }
+        // b468: журнал тихих перезагрузок в localStorage.
+        // Прежняя защита от цикла жила ТОЛЬКО в sessionStorage: там, где он
+        // недоступен (WebView Телеграма, приватный режим, очистка хранилища),
+        // вкладка перезагружалась бесконечно — каждые 15 секунд, пока тег не
+        // сойдётся. Для игрока это и есть «игра постоянно моргает».
+        const NX_RELOAD_CAP = 3;                 // не больше трёх тихих перезагрузок…
+        const NX_RELOAD_CAP_MS = 6 * 3600000;    // …за шесть часов
+        function nxReloadLedger() {
+            let l = null;
+            try { l = JSON.parse(LS.getItem('nx_reload_log') || 'null'); } catch (e) {}
+            if (!l || typeof l !== 'object' || !Array.isArray(l.at)) l = { at: [], tags: {} };
+            if (!l.tags || typeof l.tags !== 'object') l.tags = {};
+            const cut = Date.now() - NX_RELOAD_CAP_MS;
+            l.at = l.at.filter(t => Number(t) > cut);
+            return l;
+        }
+        function nxReloadAllowed(tag) {
+            const l = nxReloadLedger();
+            if (l.at.length >= NX_RELOAD_CAP) return false;                            // потолок
+            if (Number(l.tags[tag] || 0) > Date.now() - NX_RELOAD_CAP_MS) return false; // в этот тег уже заходили
+            return true;
+        }
+        function nxReloadNote(tag) {
+            const l = nxReloadLedger();
+            l.at.push(Date.now());
+            l.tags[tag] = Date.now();
+            try { LS.setItem('nx_reload_log', JSON.stringify(l)); } catch (e) {}
+        }
         function nxSilentReloadTry(tag) {
             const S = nxAutoUpdLog();
             let tried = [];
             try { tried = String(sessionStorage.getItem('nxAutoUpdTried') || '').split(',').filter(Boolean); } catch (e) {}
             if (tried.indexOf(tag) >= 0) { nxAutoUpdStop(); return; } // в этот тег уже заходили: сервер всё ещё отдаёт старое — не зацикливаемся
+            if (!nxReloadAllowed(tag)) { nxAutoUpdStop(); S.capped = tag; return; } // b468: потолок — остаёмся на текущей сборке
             if (!nxReloadSafe()) return;                              // игрок занят — ждём тихий момент
             try { sessionStorage.setItem('nxAutoUpdTried', tried.concat([tag]).join(',')); } catch (e) {}
+            nxReloadNote(tag);                                        // b468: пишем ДО reload — иначе счётчик не успеет сохраниться
             S.reloadAt = Date.now(); S.reloads = (S.reloads || 0) + 1;
             try { jpFlush(); } catch (e) {} // банк уходит в облако до перезагрузки
             try { location.reload(); } catch (e) {}
@@ -16820,10 +16896,18 @@ function nxToggle3d() {
                 if (f && f.classList) { f.classList.toggle('opacity-40', locked); f.classList.toggle('pointer-events-none', locked); }
             });
             const select = document.getElementById('card-pack-id');
-            if (state.packs.length === 0) {
-                select.innerHTML = `<option value="">Сначала создайте пак</option>`;
-            } else {
-                select.innerHTML = state.packs.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+            if (select) {
+                // b468: выбор пака СОХРАНЯЕМ. Раньше список пересоздавался, и
+                // «категория» карточки сбрасывалась на первый пак — при поточном
+                // создании карточек они уезжали не в тот пак, их приходилось
+                // удалять и создавать заново. Соседний bulk-pack-id ниже так и делает.
+                const keepPack = select.value;
+                if (state.packs.length === 0) {
+                    select.innerHTML = `<option value="">Сначала создайте пак</option>`;
+                } else {
+                    select.innerHTML = state.packs.map(p => `<option value="${p.id}">${p.title}</option>`).join('');
+                }
+                if (keepPack && state.packs.some(p => p.id === keepPack)) select.value = keepPack;
             }
             // b132: select паков для массовой загрузки
             const bsel = document.getElementById('bulk-pack-id');
@@ -17953,6 +18037,15 @@ function nxToggle3d() {
             });
         }
 
+        // b468: превью перерисовывается НЕ на каждое нажатие клавиши, а через
+        // 180 мс после последнего. oninput="renderCardPreview()" стоял на 14 полях
+        // формы: каждый символ полностью пересобирал превью вместе с <img> арта,
+        // картинка вспыхивала, а набор текста на телефоне подтормаживал.
+        let cardPreviewT = 0;
+        function renderCardPreviewSoon() {
+            try { clearTimeout(cardPreviewT); } catch (e) {}
+            cardPreviewT = setTimeout(() => { cardPreviewT = 0; try { renderCardPreview(); } catch (e) {} }, 180);
+        }
         // живой предпросмотр карты в форме Студии
         function renderCardPreview() {
             const box = document.getElementById('card-preview');
@@ -17991,10 +18084,14 @@ function nxToggle3d() {
                     <span class="text-[9px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${st.hp}</span>
                 </div>`;
             const z = cardTextZones(L, badge, nameHtml, descHtml, statsHtml);
-            box.className = `relative z-10 w-full card-aspect rounded-xl overflow-hidden border-2 shadow-xl flex flex-col justify-between p-2.5 ${getRarityClass(rarity)} ${cardHoloClass(fake)}`;
-            box.innerHTML = `${image ? `<img src="${mediaThumbMid(image)}" data-nx-full="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)"${cardArtStyle(fake)} class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">` : ''}
+            // b468: className перезаписываем только если он изменился — иначе на
+            // каждый символ заново стартовали CSS-анимации голографии и ауры,
+            // и превью заметно вспыхивало. Сам DOM — тоже только при отличии.
+            const cls = `relative z-10 w-full card-aspect rounded-xl overflow-hidden border-2 shadow-xl flex flex-col justify-between p-2.5 ${getRarityClass(rarity)} ${cardHoloClass(fake)}`;
+            if (box.className !== cls) box.className = cls;
+            nxSetHtml(box, `${image ? `<img src="${mediaThumbMid(image)}" data-nx-full="${mediaUrl(image)}" alt="" onerror="imgErrorChain(this)"${cardArtStyle(fake)} class="absolute inset-0 w-full h-full object-cover z-0" loading="lazy" decoding="async">` : ''}
                 <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-slate-950/10 z-10"></div>
-                ${z.top}${z.bottom}${cardShineOverlay(fake, 25)}`;
+                ${z.top}${z.bottom}${cardShineOverlay(fake, 25)}`);
             applyCardAura(document.getElementById('card-preview-aura'), fake, 'aura-preview');
             try { nxCardPreviewBind(); } catch (e) {} // b460: колесо/драг/даблклик по превью
         }

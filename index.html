@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob213" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob213">
+    <script src="assets/three.min.js?v=nxmob214" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob214">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob213">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob214">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob213">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob214">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1186,7 +1186,7 @@
                         </div>
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Редкость</label>
-                            <select id="card-rarity" onchange="renderCardPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <select id="card-rarity" onchange="renderCardPreviewSoon()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                                 <option value="common">Common (Обычная)</option>
                                 <option value="rare">Rare (Редкая)</option>
                                 <option value="epic">Epic (Эпическая)</option>
@@ -1198,11 +1198,11 @@
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Имя персонажа <span class="text-slate-600">(необязательно)</span></label>
                             <!-- b461: карта живёт с одной картиной — required снят -->
-                            <input type="text" id="card-name" oninput="renderCardPreview()" placeholder="Например: Cyber Paladin" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <input type="text" id="card-name" oninput="renderCardPreviewSoon()" placeholder="Например: Cyber Paladin" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                         </div>
                         <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Описание карты <span class="text-slate-600">(необязательно)</span></label>
-                            <input type="text" id="card-desc" oninput="renderCardPreview()" placeholder="Специальные способности и лор" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                            <input type="text" id="card-desc" oninput="renderCardPreviewSoon()" placeholder="Специальные способности и лор" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                         </div>
                         </div>
                         <div>
@@ -1210,14 +1210,14 @@
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <span class="block text-[10px] text-slate-500 mb-1">Имя персонажа</span>
-                                    <select id="card-name-pos" onchange="renderCardPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
+                                    <select id="card-name-pos" onchange="renderCardPreviewSoon()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
                                         <option value="bottom">Внизу (классика)</option>
                                         <option value="top">Вверху</option>
                                     </select>
                                 </div>
                                 <div>
                                     <span class="block text-[10px] text-slate-500 mb-1">Описание</span>
-                                    <select id="card-desc-pos" onchange="renderCardPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
+                                    <select id="card-desc-pos" onchange="renderCardPreviewSoon()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
                                         <option value="bottom">Внизу</option>
                                         <option value="top">Вверху</option>
                                         <option value="hide">Скрыть</option>
@@ -1225,7 +1225,7 @@
                                 </div>
                                 <div>
                                     <span class="block text-[10px] text-slate-500 mb-1">Выравнивание текста</span>
-                                    <select id="card-align" onchange="renderCardPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
+                                    <select id="card-align" onchange="renderCardPreviewSoon()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
                                         <option value="left">По левому краю</option>
                                         <option value="center">По центру</option>
                                         <option value="right">По правому краю</option>
@@ -1233,7 +1233,7 @@
                                 </div>
                                 <div>
                                     <span class="block text-[10px] text-slate-500 mb-1">Эффект / блик</span>
-                                    <select id="card-shine" onchange="renderCardPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
+                                    <select id="card-shine" onchange="renderCardPreviewSoon()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
                                         <optgroup label="База">
                                             <option value="auto">По редкости</option>
                                             <option value="none">Без эффекта</option>
@@ -1307,7 +1307,7 @@
                                 </div>
                                 <div>
                                     <span class="block text-[10px] text-slate-500 mb-1"><i class="fa-solid fa-feather-pointed text-amber-300 mr-1"></i>Аура за картой</span>
-                                    <select id="card-aura" onchange="renderCardPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
+                                    <select id="card-aura" onchange="renderCardPreviewSoon()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
                                         <optgroup label="База">
                                             <option value="none">Без ауры</option>
                                         </optgroup>
@@ -1374,11 +1374,11 @@
                             <div class="grid grid-cols-2 gap-2">
                                 <div class="relative">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-amber-400 text-xs"><i class="fa-solid fa-bolt"></i></span>
-                                    <input type="number" id="card-atk" min="1" max="30" oninput="renderCardPreview()" placeholder="Атака" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                                    <input type="number" id="card-atk" min="1" max="30" oninput="renderCardPreviewSoon()" placeholder="Атака" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                                 </div>
                                 <div class="relative">
                                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-rose-400 text-xs"><i class="fa-solid fa-heart"></i></span>
-                                    <input type="number" id="card-hp" min="1" max="50" oninput="renderCardPreview()" placeholder="Здоровье" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                                    <input type="number" id="card-hp" min="1" max="50" oninput="renderCardPreviewSoon()" placeholder="Здоровье" class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                                 </div>
                             </div>
                         </div>
@@ -1394,7 +1394,7 @@
                             <div>
                             <label class="block text-[11px] font-medium text-slate-400 mb-1">Ссылка на картинку (9:16)<span id="card-image-lamp" style="width:10px;height:10px;border-radius:9999px;display:inline-block;vertical-align:middle;margin-left:6px;background:#475569;box-shadow:0 0 8px rgba(71,85,105,.7);" title="Индикатор арта: зелёный — вшит в сборку сайта; жёлтый — скачан авто-кэшем в устройство; красный — не вшит, грузится по ссылке; серый — ссылки нет"></span></label>
                             <div class="flex flex-wrap items-center gap-2">
-                                <input type="url" id="card-image" required oninput="renderCardPreview();nxEmbedLampRefresh('card-image')" placeholder="https://images.unsplash.com/..." class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
+                                <input type="url" id="card-image" required oninput="renderCardPreviewSoon();nxEmbedLampRefresh('card-image')" placeholder="https://images.unsplash.com/..." class="flex-1 min-w-0 bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-violet-500">
                                 <button type="button" onclick="nxPickFileFor('card-image')" class="px-2.5 py-1.5 bg-emerald-700/70 hover:bg-emerald-600 border border-emerald-500/40 rounded-lg text-[11px] font-semibold text-white transition shrink-0" title="Выберите файл картинки на устройстве — сайт сам зальёт его в папку media/ репозитория GitHub и подставит готовую ссылку в поле"><i class="fa-solid fa-upload mr-1"></i>Загрузить с устройства &rarr; GitHub</button>
                                 <span id="card-image-upl" class="text-[10px] text-slate-500"></span>
                             </div>
@@ -1420,16 +1420,16 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                             <div class="flex flex-col">
                                 <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-search text-violet-400 mr-1"></i>Масштаб арта <span id="card-artzoom-val" class="text-slate-300 font-bold">100%</span></label>
-                                <input type="range" id="card-artzoom" min="100" max="220" step="5" value="100" oninput="renderCardPreview()" class="w-full accent-violet-500">
+                                <input type="range" id="card-artzoom" min="100" max="220" step="5" value="100" oninput="renderCardPreviewSoon()" class="w-full accent-violet-500">
                             </div>
                             <div class="flex flex-col">
                                 <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-image text-sky-400 mr-1"></i>Сдвиг по вертикали <span id="card-arty-val" class="text-slate-300 font-bold">0</span></label>
-                                <input type="range" id="card-arty" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
+                                <input type="range" id="card-arty" min="-100" max="100" step="5" value="0" oninput="renderCardPreviewSoon()" class="w-full accent-violet-500">
                             </div>
                             <!-- b457: сдвиг по горизонтали — третий слайдер кадрирования -->
                             <div class="flex flex-col">
                                 <label class="block text-[11px] font-medium text-slate-400 mb-1"><i class="fa-solid fa-exchange-alt text-emerald-400 mr-1"></i>Сдвиг по горизонтали <span id="card-artx-val" class="text-slate-300 font-bold">0</span></label>
-                                <input type="range" id="card-artx" min="-100" max="100" step="5" value="0" oninput="renderCardPreview()" class="w-full accent-violet-500">
+                                <input type="range" id="card-artx" min="-100" max="100" step="5" value="0" oninput="renderCardPreviewSoon()" class="w-full accent-violet-500">
                             </div>
                         </div>
                         </div>
@@ -2994,10 +2994,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob213"></script>
-    <script src="assets/stories.js?v=nxmob213"></script>
-    <script src="assets/qrcode.min.js?v=nxmob213"></script>
-    <script src="assets/qr-transfer.js?v=nxmob213"></script>
+    <script src="assets/app.js?v=nxmob214"></script>
+    <script src="assets/stories.js?v=nxmob214"></script>
+    <script src="assets/qrcode.min.js?v=nxmob214"></script>
+    <script src="assets/qr-transfer.js?v=nxmob214"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
