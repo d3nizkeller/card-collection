@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob214" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob214">
+    <script src="assets/three.min.js?v=nxmob215" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob215">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob214">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob215">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob214">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob215">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -2049,6 +2049,75 @@ min-height:56vh}
                 </h3>
                 <div id="jpc-sim-out" class="text-[11px] text-slate-300"></div>
             </div>
+
+            <!-- b471: цены обмена «🏛 Дом коллекционера». Раньше все три таблицы
+                 были зашиты константами в assets/app.js; теперь это настройки
+                 владельца, лежат в jpc.mkt и уезжают всем игрокам вместе с
+                 конфигом джекпота. -->
+            <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-landmark text-amber-400"></i>
+                    <span>Дом коллекционера: цены обмена</span>
+                </h3>
+                <p class="text-[11px] text-slate-400 leading-snug">
+                    <b class="text-slate-200">Витрина Дома</b> — сколько игрок платит Дому за карту.
+                    <b class="text-slate-200">Выкуп лота</b> — сколько игрок получает, когда Дом забирает залежавшийся лот
+                    (специально низкая: защищает от накрутки).
+                    <b class="text-slate-200">Рекоменд.</b> — что подставляется, когда игрок сам выставляет дубликат.
+                    Вводить можно числом или с суффиксом: <span class="font-mono text-slate-200">35b</span> = 35 000 000 000,
+                    <span class="font-mono text-slate-200">4.5m</span> = 4 500 000, <span class="font-mono text-slate-200">900k</span> = 900 000.
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-[11px] border-separate" style="border-spacing:0 4px">
+                        <thead>
+                            <tr class="text-slate-500">
+                                <th class="font-bold pr-2 text-left">Редкость</th>
+                                <th class="font-bold px-1 text-left">Витрина Дома</th>
+                                <th class="font-bold px-1 text-left">Выкуп лота</th>
+                                <th class="font-bold px-1 text-left">Рекоменд.</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="pr-2 font-bold text-slate-300 whitespace-nowrap">Обычная</td>
+                                <td class="px-1"><input id="mkt-house-common" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-buy-common" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-suggest-common" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                            </tr>
+                            <tr>
+                                <td class="pr-2 font-bold text-slate-300 whitespace-nowrap">Редкая</td>
+                                <td class="px-1"><input id="mkt-house-rare" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-buy-rare" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-suggest-rare" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                            </tr>
+                            <tr>
+                                <td class="pr-2 font-bold text-slate-300 whitespace-nowrap">Эпическая</td>
+                                <td class="px-1"><input id="mkt-house-epic" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-buy-epic" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-suggest-epic" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                            </tr>
+                            <tr>
+                                <td class="pr-2 font-bold text-slate-300 whitespace-nowrap">Легендарная</td>
+                                <td class="px-1"><input id="mkt-house-legendary" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-buy-legendary" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                                <td class="px-1"><input id="mkt-suggest-legendary" type="text" inputmode="decimal" class="w-full min-w-[5.5rem] bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="mktPricesPublish()" class="px-3 py-2 bg-violet-600 hover:bg-violet-500 rounded-lg text-[11px] font-bold text-white transition"><i class="fa-solid fa-bullhorn mr-1"></i>Опубликовать цены</button>
+                    <button type="button" onclick="mktPricesReset()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-[11px] font-bold text-slate-300 transition"><i class="fa-solid fa-rotate-left mr-1"></i>Сбросить к заводским</button>
+                </div>
+                <p id="mkt-price-note" class="text-[10px] text-slate-500"></p>
+                <div class="border-t border-slate-800 pt-3 space-y-2">
+                    <p class="text-[11px] font-bold text-slate-300">Личная цена на карту</p>
+                    <p class="text-[10px] text-slate-500 leading-snug">Переопределяет цену <b>витрины Дома</b> для одной карты, независимо от редкости. На выкуп и рекомендованную цену не влияет. Ноль задать нельзя — чтобы вернуть цену по редкости, нажмите «Снять».</p>
+                    <input id="mkt-card-q" type="search" oninput="mktCardSearch()" placeholder="Название или id карты…" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[11px] font-bold text-white placeholder-slate-600">
+                    <div id="mkt-card-list" class="space-y-1 max-h-56 overflow-y-auto pr-1"></div>
+                    <div id="mkt-card-over" class="space-y-1"></div>
+                </div>
+            </div>
             </div><!-- /studio-sec jackpot -->
 
 
@@ -2994,10 +3063,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob214"></script>
-    <script src="assets/stories.js?v=nxmob214"></script>
-    <script src="assets/qrcode.min.js?v=nxmob214"></script>
-    <script src="assets/qr-transfer.js?v=nxmob214"></script>
+    <script src="assets/app.js?v=nxmob215"></script>
+    <script src="assets/stories.js?v=nxmob215"></script>
+    <script src="assets/qrcode.min.js?v=nxmob215"></script>
+    <script src="assets/qr-transfer.js?v=nxmob215"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

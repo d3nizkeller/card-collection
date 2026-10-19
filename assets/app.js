@@ -4900,6 +4900,100 @@ function nxToggle3d() {
         //   Слоты  3 / (5*10 + 3) = 5.66 %   Сетка 2 / (5*10 + 2) = 3.85 %
         //   Линии  1 / 25        = 4.00 %   Колесо 1 / 16        = 6.25 %
         const JPC_DEFAULT_P = { Slots: 5.66, Grid: 3.85, Lines: 4, Wheel: 6.25 };
+        // ============ b471: ЦЕНЫ ОБМЕНА «🏛 ДОМ КОЛЛЕКЦИОНЕРА» ============
+        // Три таблицы по редкости + личная цена на отдельную карту. Раньше все три
+        // были зашиты константами (MARKET_HOUSE_PRICE, MARKET_SYS_PRICE и база
+        // внутри marketRecommendPrice): чтобы поменять ценник, приходилось править
+        // app.js и поднимать тег сборки — то есть перезагружать всех игроков.
+        //
+        // Хранятся ВНУТРИ jpc — общего конфига сайта. Там уже есть готовый канал
+        // «владелец опубликовал → jpcMerge() у каждого клиента за 15 секунд»,
+        // защита от правки участником комнаты (jpcAdminGuard) и нормализация
+        // (jpcNorm). Отдельный документ и отдельный мердж не понадобились.
+        //
+        // Объявлено ДО `let jpc = jpcLoad()` намеренно: jpcLoad() вызывает
+        // jpcNorm() → jpcMktNorm() при загрузке страницы, а const, объявленный
+        // ниже, в этот момент ещё в temporal dead zone — был бы ReferenceError.
+        const MKT_RARITIES = ['common', 'rare', 'epic', 'legendary'];
+        const MKT_KINDS = [
+            { k: 'house',   ru: 'Витрина Дома',   col: 'Витрина' },
+            { k: 'buy',     ru: 'Выкуп лота',     col: 'Выкуп' },
+            { k: 'suggest', ru: 'Рекомендованная', col: 'Рекоменд.' }
+        ];
+        const MKT_DEFAULTS = {
+            // b435: ценники витрины «от миллиарда» — ровно те, что были в MARKET_HOUSE_PRICE
+            house:   { common: 1000000000, rare: 4000000000, epic: 10000000000, legendary: 35000000000 },
+            // b142: низкая фикс-цена автовыкупа защищает от мани-абуза — нельзя
+            // выставить свою карту за миллион и получить его от Дома
+            buy:     { common: 100, rare: 400, epic: 1000, legendary: 3500 },
+            // b139: рекомендованная цена дубликата (выше автовыкупа)
+            suggest: { common: 100, rare: 400, epic: 1000, legendary: 3500 }
+        };
+        const MKT_PRICE_MAX = 1e15;      // тот же потолок, что у jpc.floor
+        const MKT_CARD_OVER_MAX = 400;   // сколько личных цен на карты держим в конфиге
+        function jpcMktNorm(raw) {
+            raw = (raw && typeof raw === 'object') ? raw : {};
+            const out = {};
+            MKT_KINDS.forEach(kind => {
+                const src = (raw[kind.k] && typeof raw[kind.k] === 'object') ? raw[kind.k] : {};
+                const t = {};
+                MKT_RARITIES.forEach(r => {
+                    let v = Number(src[r]);
+                    if (!isFinite(v) || v < 0) v = MKT_DEFAULTS[kind.k][r];   // чужое/старое значение → заводское
+                    t[r] = Math.round(Math.min(MKT_PRICE_MAX, v));
+                });
+                out[kind.k] = t;
+            });
+            // личные цены: { cardId: { h: цена, t: метка } }; 0/мусор = переопределения нет
+            out.card = {};
+            const srcCard = (raw.card && typeof raw.card === 'object') ? raw.card : {};
+            Object.keys(srcCard).slice(0, MKT_CARD_OVER_MAX).forEach(id => {
+                const e = srcCard[id];
+                if (!e || typeof e !== 'object') return;
+                const h = Number(e.h);
+                if (!isFinite(h) || h <= 0) return;
+                out.card[String(id).slice(0, 64)] = { h: Math.round(Math.min(MKT_PRICE_MAX, h)), t: Number(e.t) || 0 };
+            });
+            return out;
+        }
+        // единая точка чтения цены: личная цена карты → таблица редкости → заводская.
+        // Через неё ходят все три прежние функции, поэтому поведение без конфига
+        // (старый jpc без mkt, участник без публикации) совпадает с прежним байт в байт.
+        function mktPriceOf(kind, card) {
+            const rar = MKT_RARITIES.indexOf((card || {}).rarity) >= 0 ? card.rarity : 'common';
+            try {
+                const m = (jpc && jpc.mkt) ? jpc.mkt : null;
+                if (m) {
+                    if (kind === 'house' && card && card.id && m.card && m.card[card.id]) {
+                        const h = Number(m.card[card.id].h);
+                        if (isFinite(h) && h > 0) return Math.round(h);
+                    }
+                    const t = m[kind] ? m[kind][rar] : undefined;
+                    if (t !== undefined && t !== null && isFinite(Number(t))) return Math.max(0, Math.round(Number(t)));
+                }
+            } catch (e) { /* конфиг ещё не инициализирован — заводские значения */ }
+            return MKT_DEFAULTS[kind][rar];
+        }
+        // отпечаток цен: биржа не должна залипать на старых ценниках (__nxMktSig)
+        function mktSig() {
+            try {
+                const m = (jpc && jpc.mkt) || {};
+                let s = '';
+                MKT_KINDS.forEach(k => MKT_RARITIES.forEach(r => { s += ((m[k.k] || {})[r] !== undefined ? m[k.k][r] : MKT_DEFAULTS[k.k][r]) + '.'; }));
+                const c = m.card || {};
+                return s + Object.keys(c).map(id => id + ':' + c[id].h).join(',');
+            } catch (e) { return ''; }
+        }
+        // ввод «35b» / «4.5m» / «1 000» / «1000» → число. Пробелы и запятая допустимы
+        function mktParseNum(v) {
+            const s = String(v == null ? '' : v).trim().toLowerCase().replace(/[\s ]/g, '').replace(',', '.');
+            if (!s) return NaN;
+            const m = s.match(/^(\d+(?:\.\d+)?)(k|m|b|t|q)?$/);
+            if (!m) return NaN;
+            const mult = { k: 1e3, m: 1e6, b: 1e9, t: 1e12, q: 1e15 }[m[2] || ''] || 1;
+            const n = Number(m[1]) * mult;
+            return isFinite(n) ? Math.round(Math.min(MKT_PRICE_MAX, Math.max(0, n))) : NaN;
+        }
         const JPC_DEFAULTS = {
             on: 1,          // 0 — джекпот выключен: символ JACKPOT не выпадает нигде
             feedBet: 100,   // % ставки уходит в общий банк
@@ -4931,6 +5025,7 @@ function nxToggle3d() {
                 n['p' + g] = num('p' + g, 0, 100, JPC_DEFAULT_P[g]);
                 n['pity' + g] = Math.round(num('pity' + g, 0, 1000000, 0));
             });
+            n.mkt = jpcMktNorm(o.mkt);   // b471: цены обмена «Дом коллекционера»
             n.grant = {};
             if (o.grant && typeof o.grant === 'object') {
                 for (const k in o.grant) {
@@ -4982,6 +5077,8 @@ function nxToggle3d() {
                 jpcSave();
                 try { jackpotRender(); } catch (e) {}
                 try { if (jpcVisible()) jpcAdminRender(); else jpcAdminPreview(); } catch (e) {}
+                // b471: цены обмена приехали в составе конфига — биржу и панель перерисовываем
+                try { renderMarketIfVisible(); } catch (e) {}
             }
             return ch;
         }
@@ -5168,6 +5265,130 @@ function nxToggle3d() {
             jpcGrantFromInput('*');
         }
         // ============ b414: ПАНЕЛЬ «ДЖЕКПОТ» В СТУДИИ ============
+        // ============ b471: ПАНЕЛЬ ЦЕН ОБМЕНА В СТУДИИ ============
+        // Всё читается/пишется через jpc.mkt, публикация — та же, что у настроек
+        // джекпота (jpc.at + jpcSave + jpSyncNow), доступ — тот же jpcAdminGuard.
+        function mktPricesRender() {
+            const m = (jpc && jpc.mkt) ? jpc.mkt : jpcMktNorm(null);
+            MKT_KINDS.forEach(kind => MKT_RARITIES.forEach(r => {
+                const el = document.getElementById('mkt-' + kind.k + '-' + r);
+                if (el && document.activeElement !== el) el.value = String(m[kind.k][r]);   // не вырываем ввод из-под курсора
+            }));
+            const note = document.getElementById('mkt-price-note');
+            if (note) {
+                const n = Object.keys(m.card || {}).length;
+                note.textContent = 'Цены применяются к витрине биржи у всех игроков сайта после публикации'
+                    + (jpc && jpc.at ? ' (конфиг опубликован ' + new Date(jpc.at).toLocaleString('ru-RU') + ')' : '')
+                    + '. Личных цен на карты задано: ' + n + '.';
+            }
+            mktCardOverRender();
+            mktCardSearch();
+        }
+        function mktPricesRead() {
+            const cfg = { house: {}, buy: {}, suggest: {} };
+            const bad = [];
+            MKT_KINDS.forEach(kind => MKT_RARITIES.forEach(r => {
+                const el = document.getElementById('mkt-' + kind.k + '-' + r);
+                const v = mktParseNum(el ? el.value : '');
+                if (isFinite(v)) cfg[kind.k][r] = v;
+                else { bad.push(kind.ru + ' / ' + (RARITY_LABELS_RU[r] || r)); cfg[kind.k][r] = MKT_DEFAULTS[kind.k][r]; }
+            }));
+            return { cfg: cfg, bad: bad };
+        }
+        function mktPublish(msg) {
+            jpc.at = Date.now(); jpc.by = JACKPOT_CID;
+            jpcSave();
+            try { jpSyncNow(); } catch (e) {}
+            try { mktPricesRender(); renderMarketIfVisible(); } catch (e) {}
+            if (msg) showToast(msg, 'success');
+        }
+        function mktPricesPublish() {
+            if (jpcAdminGuard()) return;
+            const r = mktPricesRead();
+            if (r.bad.length) {
+                showToast('Не понял значения: ' + r.bad.join(', ') + '. Введите число или значение с суффиксом: 35b = 35 000 000 000, 4.5m = 4 500 000', 'error');
+                return;
+            }
+            jpc.mkt = jpcMktNorm({ house: r.cfg.house, buy: r.cfg.buy, suggest: r.cfg.suggest, card: (jpc.mkt && jpc.mkt.card) || {} });
+            mktPublish('🏛 Цены обмена опубликованы для всех игроков сайта');
+        }
+        function mktPricesReset() {
+            if (jpcAdminGuard()) return;
+            jpc.mkt = jpcMktNorm(null);   // заводские таблицы; личные цены карт снимаются тоже
+            mktPublish('Цены обмена возвращены к заводским и опубликованы');
+        }
+        // --- личная цена на отдельную карту ---
+        let mktCardList = [], mktOverList = [];
+        function mktCardFind() {
+            const q = String((document.getElementById('mkt-card-q') || {}).value || '').trim().toLowerCase();
+            const all = (state.cards || []).filter(c => c && c.id);
+            const hit = q
+                ? all.filter(c => String(c.name || '').toLowerCase().indexOf(q) >= 0 || String(c.id).toLowerCase().indexOf(q) >= 0)
+                : all;
+            return hit.slice(0, 20);
+        }
+        function mktCardSearch() {
+            const box = document.getElementById('mkt-card-list');
+            if (!box) return;
+            mktCardList = mktCardFind();
+            if (!mktCardList.length) { nxSetHtml(box, '<p class="text-[11px] text-slate-500">Ничего не найдено</p>'); return; }
+            const card = (jpc.mkt && jpc.mkt.card) ? jpc.mkt.card : {};
+            nxSetHtml(box, mktCardList.map((c, i) => {
+                const over = card[c.id] ? Number(card[c.id].h) : 0;
+                const inp = '<input id="mkt-cp-' + i + '" type="text" inputmode="decimal" value="' + (over || '') +
+                    '" placeholder="цена" class="w-20 shrink-0 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] font-bold text-white">';
+                return '<div class="flex items-center gap-1.5 bg-slate-950/60 border border-slate-800 rounded-lg px-2 py-1.5">' +
+                    '<span class="flex-1 min-w-0 truncate text-[11px] font-bold text-slate-200">' + jpcEsc(c.name || 'Без имени') +
+                    ' <span class="text-slate-500 font-normal">' + jpcEsc(RARITY_LABELS_RU[c.rarity] || c.rarity || '') + '</span></span>' +
+                    '<span class="text-[9px] text-slate-500 whitespace-nowrap">' + (over ? 'лично' : 'сейчас') + ' ' + fmtCoins(over || marketHousePrice(c)) + '</span>' +
+                    inp +
+                    '<button type="button" onclick="mktCardSet(' + i + ')" class="shrink-0 px-2 py-1 bg-violet-600 hover:bg-violet-500 rounded text-[10px] font-bold text-white">Задать</button>' +
+                    (over ? '<button type="button" onclick="mktCardClearIdx(' + i + ')" class="shrink-0 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-[10px] font-bold text-slate-300">Снять</button>' : '') +
+                    '</div>';
+            }).join(''));
+        }
+        function mktCardSet(i) {
+            if (jpcAdminGuard()) return;
+            const c = mktCardList[i];
+            if (!c || !c.id) return;
+            const el = document.getElementById('mkt-cp-' + i);
+            const v = mktParseNum(el ? el.value : '');
+            if (!isFinite(v) || v <= 0) {
+                showToast('Введите цену числом или с суффиксом (35b, 4.5m). Ноль задать нельзя — чтобы вернуть цену по редкости, нажмите «Снять»', 'error');
+                return;
+            }
+            if (!jpc.mkt) jpc.mkt = jpcMktNorm(null);
+            if (!jpc.mkt.card) jpc.mkt.card = {};
+            jpc.mkt.card[c.id] = { h: v, t: Date.now() };
+            mktPublish('🏛 Личная цена «' + (c.name || c.id) + '» = ' + fmtCoins(v) + ' — опубликовано');
+        }
+        function mktCardDrop(id) {
+            if (jpcAdminGuard()) return;
+            if (!jpc.mkt || !jpc.mkt.card || !jpc.mkt.card[id]) return;
+            delete jpc.mkt.card[id];
+            const c = (state.cards || []).find(x => x && x.id === id);
+            mktPublish('Личная цена снята — «' + ((c && c.name) || id) + '» снова по редкости');
+        }
+        function mktCardClearIdx(i) { const c = mktCardList[i]; if (c && c.id) mktCardDrop(c.id); }
+        function mktCardClearId(i) { const id = mktOverList[i]; if (id) mktCardDrop(id); }
+        function mktCardOverRender() {
+            const box = document.getElementById('mkt-card-over');
+            if (!box) return;
+            const card = (jpc.mkt && jpc.mkt.card) ? jpc.mkt.card : {};
+            mktOverList = Object.keys(card);
+            if (!mktOverList.length) { nxSetHtml(box, ''); return; }
+            const byId = {};
+            (state.cards || []).forEach(c => { if (c && c.id) byId[c.id] = c; });
+            nxSetHtml(box, '<p class="text-[10px] font-bold text-slate-400">Заданные личные цены (' + mktOverList.length + '):</p>' +
+                mktOverList.map((id, i) => {
+                    const c = byId[id] || {};
+                    return '<div class="flex items-center gap-2 text-[11px]">' +
+                        '<span class="flex-1 min-w-0 truncate text-slate-300">' + jpcEsc(c.name || id) + '</span>' +
+                        '<span class="text-amber-300 font-bold whitespace-nowrap">' + fmtCoins(Number(card[id].h) || 0) + '</span>' +
+                        '<button type="button" onclick="mktCardClearId(' + i + ')" class="shrink-0 px-2 py-0.5 bg-slate-800 hover:bg-rose-950/70 border border-slate-700 rounded text-[10px] font-bold text-slate-300">Снять</button>' +
+                        '</div>';
+                }).join(''));
+        }
         function jpcVisible() {
             try {
                 const s = document.querySelector('.studio-sec[data-sec="jackpot"]');
@@ -5310,6 +5531,7 @@ function nxToggle3d() {
             if (prob) prob.innerHTML = jpcProbRows();
             jpcAdminPreview();
             jpcAdminUsers();
+            try { mktPricesRender(); } catch (e) {}   // b471: цены обмена — в той же панели
             const note = document.getElementById('jpc-note');
             if (note) {
                 note.textContent = jpc.at
@@ -7626,10 +7848,7 @@ function nxToggle3d() {
             b.classList.toggle('hidden', !owned);
         }
         // b139: рекомендованная цена дубликата на бирже (выше автовыкупа, по редкости)
-        function marketRecommendPrice(card) {
-            const base = { common: 100, rare: 400, epic: 1000, legendary: 3500 };
-            return base[(card && card.rarity) || 'common'] || 100;
-        }
+        function marketRecommendPrice(card) { return mktPriceOf('suggest', card); }   // b471: из конфига Студии
         // b143: какие карты текущего вскрытия оказались повторками и какие уже улетели на биржу
         let unboxDupeIdx = {};
         let unboxListedIdx = {};
@@ -7917,21 +8136,22 @@ function nxToggle3d() {
         // виртуальный лот с фикс-ценой редкости (= рекомендованная цена игрока).
         // Виртуальные лоты НЕ лежат в облачном документе: нет раздувания,
         // автовыкуп их не трогает, рисуются на лету из state.cards.
-        const MARKET_SYS_PRICE = { common: 100, rare: 400, epic: 1000, legendary: 3500 };
+        const MARKET_SYS_PRICE = MKT_DEFAULTS.buy;   // b471: заводские значения; рабочие — в jpc.mkt (Студия → Джекпот)
         // b435: ценники витрины «Дом коллекционера» — от 1 миллиарда (просьба
         // владельца). Это ОТДЕЛЬНЫЕ цены от MARKET_SYS_PRICE: низкая фикс-цена
         // там защищает автовыкуп от мани-абаза (нельзя выставить свою карту за
         // миллион и получить его от дома), а ценники витрины и цена покупки
         // лота Дома теперь миллиардные (tag = charge, marketBuySys берёт её же).
-        const MARKET_HOUSE_PRICE = { common: 1000000000, rare: 4000000000, epic: 10000000000, legendary: 35000000000 };
-        function marketHousePrice(card) { return MARKET_HOUSE_PRICE[(card || {}).rarity] || 1000000000; }
+        const MARKET_HOUSE_PRICE = MKT_DEFAULTS.house;   // b471: заводские значения; рабочие — в jpc.mkt
+        // b471: цену берём из конфига Студии — личная цена карты, иначе таблица редкости
+        function marketHousePrice(card) { return mktPriceOf('house', card); }
         // b413: полный каталог — 300+ лотов; одним innerHTML такой список
         // вешал мобильный WebKit. Рисуем чанками по MARKET_SHOWN_STEP,
         // кнопка «Показать ещё» додаёт следующий чанк.
         const MARKET_SHOWN_STEP = 120;
         let marketShownCap = MARKET_SHOWN_STEP;
         function marketShowMore() { marketShownCap += MARKET_SHOWN_STEP; renderMarket(); }
-        function marketSysPrice(card) { return MARKET_SYS_PRICE[(card || {}).rarity] || 100; }
+        function marketSysPrice(card) { return mktPriceOf('buy', card); }   // b471
         function marketSystemLots() {
             if (!CLOUD.connected()) return [];
             const cov = {};
@@ -8135,7 +8355,7 @@ function nxToggle3d() {
                 const rar0 = String((document.getElementById('market-rarity') || {}).value || '');
                 const sort0 = String((document.getElementById('market-sort') || {}).value || '');
                 const sig = 'M|' + marketViewMode + '|' + marketLots().map(l => l.id + ':' + l.price + ':' + ((l.card && l.card.image) ? 1 : 0)).join(',') + '|' + ps0 + '|' + as0 + '|' + q0 + '|' + rar0 + '|' + sort0 + '|' +
-                    state.cards.filter(c => cardCopies(c.id) > 0).map(c => c.id + cardCopies(c.id)).join(',') + '|S' + marketSystemLots().length + '|C' + marketShownCap;
+                    state.cards.filter(c => cardCopies(c.id) > 0).map(c => c.id + cardCopies(c.id)).join(',') + '|S' + marketSystemLots().length + '|C' + marketShownCap + '|H' + mktSig();   // b471: '|H' — цены Дома, иначе витрина залипла бы на старых ценниках
                 if (sig === window.__nxMktSig) return;
                 window.__nxMktSig = sig;
             } catch (e) {}
