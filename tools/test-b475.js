@@ -87,13 +87,16 @@ const visibleText = (doc, html) => {
         ok(!/<option value="top">/.test(statsSel), 'card-stats-pos: лишних вариантов нет (статы живут внизу)');
         ok(/<select id="card-name-pos"[^>]*onchange="renderCardPreviewSoon\(\)"/.test(html),
            '«Имя персонажа» по-прежнему перерисовывает предпросмотр');
-        ok(/«Скрыть» убирает блок с лица карты/.test(html), 'под формой — подсказка, что значит «Скрыть»');
+        ok(!/«Скрыть» убирает блок с лица карты/.test(html), 'b476: подсказка под формой убрана по просьбе владельца');
 
-        const tags = (html.match(/nxmob219/g) || []).length;
-        eq(tags, 8, 'index.html: тег nxmob219 во всех 8 ссылках на assets');
-        ok(!html.includes('nxmob218'), 'index.html: старого тега nxmob218 не осталось');
-        ok(sw.includes("const VERSION = 'nxmob219';"), 'sw.js: VERSION = nxmob219');
-        ok(bp.includes("BUILD_TAG = 'nxmob219'"), 'tools/build.py: BUILD_TAG = nxmob219');
+        // b476: номер тега не прибиваем к b475 — проверяем единство: боевой тег из
+        // sw.js повторён во всех 8 ссылках index.html и равен BUILD_TAG, и он не
+        // ниже nxmob219 (сборка, в которой скрытие имени/статов доехало до клиентов)
+        const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
+        ok(!!tag, 'sw.js: боевой тег на месте (' + tag + ')');
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 219, 'тег не ниже nxmob219');
     }
 
     console.log('\nB. Исходники assets/app.js');
