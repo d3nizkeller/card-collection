@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob216" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob216">
+    <script src="assets/three.min.js?v=nxmob217" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob217">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob216">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob217">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob216">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob217">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1068,6 +1068,19 @@
                         <div class="flex flex-col min-w-0">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Цвет упаковки</label>
                             <div id="pack-color-picker" class="grid grid-cols-4 gap-1 max-w-sm"><!-- b272: компакт --><!-- свотчи цветов --></div>
+                        </div>
+                        <!-- b473: свои шансы редкостей у пака. Это ВЕСА, а не
+                             проценты: крутка нормирует их сама, как и показ. -->
+                        <div class="flex flex-col min-w-0 sm:col-span-2">
+                            <label class="block text-[11px] font-medium text-slate-400 mb-1">Шансы редкостей (веса)</label>
+                            <div class="grid grid-cols-4 gap-2">
+                                <input type="number" id="pack-odds-common" value="60" min="0" max="1000000" step="1" oninput="packOddsPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-[12px] font-bold focus:outline-none focus:border-violet-500" placeholder="60" title="Обычная">
+                                <input type="number" id="pack-odds-rare" value="25" min="0" max="1000000" step="1" oninput="packOddsPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-[12px] font-bold focus:outline-none focus:border-violet-500" placeholder="25" title="Редкая">
+                                <input type="number" id="pack-odds-epic" value="12" min="0" max="1000000" step="1" oninput="packOddsPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-[12px] font-bold focus:outline-none focus:border-violet-500" placeholder="12" title="Эпическая">
+                                <input type="number" id="pack-odds-legendary" value="3" min="0" max="1000000" step="1" oninput="packOddsPreview()" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-[12px] font-bold focus:outline-none focus:border-violet-500" placeholder="3" title="Легендарная">
+                            </div>
+                            <p id="pack-odds-preview" class="text-[10px] text-slate-500 mt-1"></p>
+                            <p class="text-[10px] text-slate-600 mt-0.5">Веса, а не проценты: 60/25/12/3 — заводские. Ноль = редкости в паке не бывает. Оставьте все четыре поля пустыми — вернутся заводские. Чипы шансов на паке в магазине пересчитаются сами.</p>
                         </div>
                         </div>
                         <!-- b266: музыка вскрытия — полноширинная строка: заголовок и чекбокс на
@@ -3063,10 +3076,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob216"></script>
-    <script src="assets/stories.js?v=nxmob216"></script>
-    <script src="assets/qrcode.min.js?v=nxmob216"></script>
-    <script src="assets/qr-transfer.js?v=nxmob216"></script>
+    <script src="assets/app.js?v=nxmob217"></script>
+    <script src="assets/stories.js?v=nxmob217"></script>
+    <script src="assets/qrcode.min.js?v=nxmob217"></script>
+    <script src="assets/qr-transfer.js?v=nxmob217"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

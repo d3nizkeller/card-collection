@@ -3065,6 +3065,37 @@ function nxToggle3d() {
         // ============ ПРОГРЕССИЯ: КОНСТАНТЫ ============
         const RARITY_ORDER = ['common', 'rare', 'epic', 'legendary'];
         const RARITY_WEIGHTS = { common: 60, rare: 25, epic: 12, legendary: 3 };
+        // b473: СВОИ ШАНСЫ РЕДКОСТЕЙ У КАЖДОГО ПАКА. pack.odds — необязательное
+        // поле {common,rare,epic,legendary} с ВЕСАМИ (не процентами): крутка
+        // (rollCardFromPack) и показ (getPackOdds) читают его через packOddsOf(),
+        // а нет поля — работает общая таблица RARITY_WEIGHTS.
+        // Поле приходит из общего документа комнаты, куда пишет кто угодно,
+        // поэтому нормализуем здесь: целые числа >= 0, потолок MKT_ODDS_MAX,
+        // и хотя бы один вес > 0 — иначе молча возвращаемся к заводским.
+        const MKT_ODDS_MAX = 1000000;
+        function packOddsOf(pack) {
+            const o = pack && pack.odds;
+            if (o && typeof o === 'object') {
+                const n = {};
+                let sum = 0;
+                for (let i = 0; i < RARITY_ORDER.length; i++) {
+                    const r = RARITY_ORDER[i];
+                    let v = Number(o[r]);
+                    if (!isFinite(v) || v < 0) v = 0;
+                    v = Math.min(MKT_ODDS_MAX, Math.round(v));
+                    n[r] = v;
+                    sum += v;
+                }
+                if (sum > 0) return n;
+            }
+            return RARITY_WEIGHTS;
+        }
+        function packOddsSameAsDefault(o) {
+            for (let i = 0; i < RARITY_ORDER.length; i++) {
+                if (Number(o[RARITY_ORDER[i]]) !== RARITY_WEIGHTS[RARITY_ORDER[i]]) return false;
+            }
+            return true;
+        }
         const RARITY_LABELS_RU = { common: 'Обычная', rare: 'Редкая', epic: 'Эпическая', legendary: 'Легендарная' };
         const RAR_COLORS = { common: '#94a3b8', rare: '#38bdf8', epic: '#c084fc', legendary: '#fbbf24' }; // b18
         const DAILY_REWARDS = [100, 200, 350, 500, 750, 1000, 2000];
@@ -3229,7 +3260,7 @@ function nxToggle3d() {
         // b46: списки полей для patch-записей правок стандарта. Объявлены здесь (а не в облачном
         // разделе): загрузочная миграция работает раньше и иначе ловила бы TDZ-ошибку
         // b173: таймеры продажи, премьера, график и снятие с продажи стандартного пака — тоже часть комнаты
-        const STD_PACK_FIELDS = ['title', 'description', 'image', 'price', 'color', 'shimmer', 'musicUrl', 'musicOff', 'saleUntil', 'premiereAt', 'schedule', 'retired'];
+        const STD_PACK_FIELDS = ['title', 'description', 'image', 'price', 'color', 'shimmer', 'musicUrl', 'musicOff', 'saleUntil', 'premiereAt', 'schedule', 'retired', 'odds']; // b473: свои шансы редкостей стандартного пака уезжают в комнату тем же patch-механизмом
         const STD_CARD_FIELDS = ['name', 'description', 'rarity', 'image', 'layout', 'aura', 'atk', 'hp', 'musicUrl', 'ord', 'ordAt']; // b375: нумерация владельца доезжает до комнаты
 
         let state = {
@@ -4117,24 +4148,38 @@ function nxToggle3d() {
         }
 
         // ============ ВЗВЕШЕННЫЙ ДРОП ПО РЕДКОСТИ ============
-        function pickWeightedRarity(rarities) {
-            const total = rarities.reduce((s, r) => s + (RARITY_WEIGHTS[r] || 1), 0);
+        // b473: веса приезжают аргументом (веса конкретного пака). НУЛЕВОЙ вес
+        // значит «редкости в паке не бывает» — раньше «|| 1» превращал ноль в
+        // единицу и запрет молча не работал. Если нули стоят везде (битый
+        // конфиг), крутим равномерно, чтобы пак не перестал открываться.
+        function pickWeightedRarity(rarities, weights) {
+            const W = weights || RARITY_WEIGHTS;
+            let list = rarities.filter(r => (Number(W[r]) || 0) > 0);
+            let uniform = false;
+            if (!list.length) { list = rarities; uniform = true; }
+            const w = r => (uniform ? 1 : (Number(W[r]) || 0));
+            const total = list.reduce((s, r) => s + w(r), 0);
             let roll = Math.random() * total;
-            for (const r of rarities) {
-                roll -= (RARITY_WEIGHTS[r] || 1);
+            for (const r of list) {
+                roll -= w(r);
                 if (roll <= 0) return r;
             }
-            return rarities[rarities.length - 1];
+            return list[list.length - 1];
         }
 
-        function rollCardFromPack(packCards, forceEpicPlus = false) {
+        function rollCardFromPack(packCards, forceEpicPlus = false, pack) {
             let pool = packCards;
             if (forceEpicPlus) {
                 const ep = packCards.filter(c => c.rarity === 'epic' || c.rarity === 'legendary');
                 if (ep.length) pool = ep;
             }
-            const availRarities = RARITY_ORDER.filter(r => pool.some(c => c.rarity === r));
-            const rarity = pickWeightedRarity(availRarities);
+            // b473: свои веса пака. Пак мог не доехать третьим аргументом (колесо,
+            // старые вызовы) — находим его по packId первой карты.
+            const pk = pack || ((state.packs || []).find(p => p && p.id === ((packCards[0] || {}).packId)) || null);
+            const W = packOddsOf(pk);
+            let availRarities = RARITY_ORDER.filter(r => pool.some(c => c.rarity === r) && (Number(W[r]) || 0) > 0);
+            if (!availRarities.length) availRarities = RARITY_ORDER.filter(r => pool.some(c => c.rarity === r)); // гарант epic+ при нулевых весах всё равно даёт epic+
+            const rarity = pickWeightedRarity(availRarities, W);
             const ofRarity = pool.filter(c => c.rarity === rarity);
             return ofRarity[Math.floor(Math.random() * ofRarity.length)];
         }
@@ -4149,10 +4194,13 @@ function nxToggle3d() {
         // он показан в title чипа и в подписи под рядом.
         function getPackOdds(pack) {
             const cards = state.cards.filter(c => c.packId === pack.id);
-            const present = RARITY_ORDER.filter(r => cards.some(c => c.rarity === r));
-            const total = present.reduce((s, r) => s + RARITY_WEIGHTS[r], 0);
+            const W = packOddsOf(pack);   // b473: свои веса пака, иначе заводские
+            // редкости с нулевым весом не показываем: их в паке не бывает
+            let present = RARITY_ORDER.filter(r => cards.some(c => c.rarity === r) && (Number(W[r]) || 0) > 0);
+            if (!present.length) present = RARITY_ORDER.filter(r => cards.some(c => c.rarity === r));
+            const total = present.reduce((s, r) => s + (Number(W[r]) || 1), 0);
             return present.map(r => {
-                const p = RARITY_WEIGHTS[r] / total;
+                const p = (Number(W[r]) || 1) / total;
                 return { r, pct: Math.round((1 - Math.pow(1 - p, PACK_CARDS)) * 100), one: Math.round(p * 100) };
             });
         }
@@ -11873,7 +11921,7 @@ function nxToggle3d() {
             if (!packs.length) return null;
             const pack = packs[Math.floor(Math.random() * packs.length)];
             const packCards = state.cards.filter(c => c.packId === pack.id);
-            const card = rollCardFromPack(packCards);
+            const card = rollCardFromPack(packCards, false, pack);   // b473: веса этого пака
             if (!card) return null;
             state.collection[card.id] = (state.collection[card.id] || 0) + 1;
             updateMissions('collect_new', 1);
@@ -14259,13 +14307,13 @@ function nxToggle3d() {
             }
 
             const rolled = [];
-            for (let i = 0; i < PACK_CARDS; i++) rolled.push(rollCardFromPack(packCards));   // b472
+            for (let i = 0; i < PACK_CARDS; i++) rolled.push(rollCardFromPack(packCards, false, pack));   // b472+b473
 
             // Гарант: каждый PITY_LIMIT-й пак без epic+ даёт гарантированный epic+
             const hasEpicPlusInPack = packCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             const gotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             if (state.pity.packsSinceEpic >= PITY_LIMIT - 1 && hasEpicPlusInPack && !gotEpicPlus) {
-                rolled[PACK_CARDS - 1] = rollCardFromPack(packCards, true);   // b472
+                rolled[PACK_CARDS - 1] = rollCardFromPack(packCards, true, pack);   // b472+b473
             }
             const finalGotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             state.pity.packsSinceEpic = finalGotEpicPlus ? 0 : state.pity.packsSinceEpic + 1;
@@ -17550,6 +17598,10 @@ function nxToggle3d() {
             const shimmer = PACK_SHIMMERS[packFormShimmer] ? packFormShimmer : 'holo';
             const skin = PACK_SKINS[packFormSkin] ? packFormSkin : 'foil'; // b446
             const crimp = PACK_CRIMPS[packFormCrimp] ? packFormCrimp : 'zip'; // b448
+            // b473: свои веса редкостей. null = заводские (поле не создаём),
+            // undefined = ввод испорчен и сохранение отменяется
+            const oddsRaw = packOddsReadForm();
+            if (oddsRaw === undefined) return;
             // b19: музыка вскрытия — своя ссылка на mp3 + флаг «играть»
             const musicEl = document.getElementById('pack-music');
             const musicUseEl = document.getElementById('pack-music-use');
@@ -17571,6 +17623,7 @@ function nxToggle3d() {
                     pack.shimmer = shimmer;
                     pack.skin = skin; // b446: форма упаковки (уезжает в каталог комнаты)
                     pack.crimp = crimp; // b448: кромка (зубчики) — тоже в каталог
+                    if (oddsRaw) pack.odds = oddsRaw; else delete pack.odds; // b473
                     pack.musicUrl = musicUrl;   // b19
                     pack.musicOff = !musicOn;   // b19
                     if (premTs) pack.premiereAt = premTs; else delete pack.premiereAt; // b165
@@ -17594,6 +17647,7 @@ function nxToggle3d() {
                     updatedAt: Date.now()
                 };
                 if (premTs) newPack.premiereAt = premTs; // b165: до премьеры пак виден как «Скоро»
+                if (oddsRaw) newPack.odds = oddsRaw;     // b473: свои шансы редкостей
                 state.packs.push(newPack);
                 showToast('Бустер пак успешно создан!' + (premTs ? ' 🎬 Премьера: ' + new Date(premTs).toLocaleString('ru-RU') + ' — до неё пак виден как «Скоро»' : ''), 'success');
             }
@@ -17860,6 +17914,7 @@ function nxToggle3d() {
             document.getElementById('pack-image').value = pack.image;
             try { nxEmbedLampRefresh('pack-image'); } catch (e) {}
             document.getElementById('pack-price').value = pack.price;
+            packOddsFill(pack.odds || null); // b473: свои шансы редкостей пака
             const premIn = document.getElementById('pack-premiere'); // b165
             if (premIn) premIn.value = pack.premiereAt ? schedInputValue(pack.premiereAt) : '';
             packFormColor = PACK_COLORS[pack.color] ? pack.color : 'silver';
@@ -17879,6 +17934,65 @@ function nxToggle3d() {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // ============ b473: СВОИ ШАНСЫ РЕДКОСТЕЙ У ПАКА (форма Студии) ============
+        function packOddsInputs() {
+            return RARITY_ORDER.map(r => document.getElementById('pack-odds-' + r));
+        }
+        // null  — все поля пустые или значения совпадают с заводскими (поле не создаём)
+        // undefined — ввод испорчен, тост уже показан, сохранение отменяется
+        function packOddsReadForm() {
+            const els = packOddsInputs();
+            const vals = els.map(el => String(el ? el.value : '').trim());
+            if (vals.every(v => v === '')) return null;
+            const out = {};
+            let any = false;
+            for (let i = 0; i < RARITY_ORDER.length; i++) {
+                const raw = vals[i];
+                const v = raw === '' ? 0 : Number(raw);
+                if (!isFinite(v) || v < 0 || v > MKT_ODDS_MAX) {
+                    showToast('Шансы редкостей: нужно целое число от 0 до ' + MKT_ODDS_MAX + ' (или оставьте поле пустым)', 'error');
+                    return undefined;
+                }
+                out[RARITY_ORDER[i]] = Math.round(v);
+                if (out[RARITY_ORDER[i]] > 0) any = true;
+            }
+            if (!any) {
+                showToast('Шансы редкостей: хотя бы один вес должен быть больше нуля — иначе пак не сможет крутиться. Или оставьте все четыре поля пустыми', 'error');
+                return undefined;
+            }
+            return packOddsSameAsDefault(out) ? null : out;
+        }
+        function packOddsFill(odds) {
+            RARITY_ORDER.forEach(r => {
+                const el = document.getElementById('pack-odds-' + r);
+                if (el) el.value = String(odds ? (odds[r] === undefined ? 0 : odds[r]) : RARITY_WEIGHTS[r]);
+            });
+            packOddsPreview();
+        }
+        function packOddsPreview() {
+            const el = document.getElementById('pack-odds-preview');
+            if (!el) return;
+            const els = packOddsInputs();
+            const o = {};
+            let any = false, ok = true;
+            RARITY_ORDER.forEach((r, i) => {
+                const v = String(els[i] ? els[i].value : '').trim();
+                if (v === '') { o[r] = 0; return; }
+                const n = Number(v);
+                if (!isFinite(n) || n < 0) { ok = false; o[r] = 0; return; }
+                o[r] = n;
+                if (n > 0) any = true;
+            });
+            if (!ok || !any) { el.textContent = ''; return; }
+            const W = packOddsSameAsDefault(o) ? RARITY_WEIGHTS : o;
+            const present = RARITY_ORDER.filter(r => (Number(W[r]) || 0) > 0);
+            const total = present.reduce((s, r) => s + Number(W[r]), 0);
+            el.textContent = present.map(r => {
+                const p = Number(W[r]) / total;
+                return RARITY_LABELS_RU[r] + ' ' + Math.round(p * 100) + '% на карту / ' +
+                    Math.round((1 - Math.pow(1 - p, PACK_CARDS)) * 100) + '% в паке';
+            }).join(' • ');
+        }
         function resetPackForm() {
             document.getElementById('form-create-pack').reset();
             document.getElementById('edit-pack-id').value = '';
@@ -17895,6 +18009,7 @@ function nxToggle3d() {
             if (premIn) premIn.value = '';
             updatePackMusicHint(); // b20
             renderPackFormPickers();
+            packOddsFill(null);   // b473: веса возвращаются к заводским вместе с остальной формой
         }
 
         // ============ b132: МАССОВОЕ СОЗДАНИЕ КАРТОЧЕК ПО ССЫЛКАМ НА КАРТИНКИ ============
