@@ -3073,6 +3073,23 @@ function nxToggle3d() {
         // поэтому нормализуем здесь: целые числа >= 0, потолок MKT_ODDS_MAX,
         // и хотя бы один вес > 0 — иначе молча возвращаемся к заводским.
         const MKT_ODDS_MAX = 1000000;
+        // b474: СВОИ ШАНСЫ У ПАКА ПОЯВЛЯЮТСЯ САМИ — владелец ничего не выставляет.
+        // Веса выводятся детерминированно из id пака тем же FNV-хэшем schedHash,
+        // что у флеш-сейлов (b161, «одинаково у всех игроков»): каждый пак получает
+        // свою процентность, все клиенты считают её одинаково, публиковать и
+        // синхронизировать нечего. Диапазоны держат экономику в разумных рамках:
+        // легендарная 1-8 %, эпическая 6-18 %, редкая 15-35 %, обычная — остаток
+        // (39-78 %). Сумма всегда 100, поэтому «на одну карту» читается напрямую.
+        // Ручные веса из формы (pack.odds) по-прежнему важнее авто-значений.
+        const MKT_AUTO_ODDS = { legendary: [1, 8], epic: [6, 18], rare: [15, 35] };
+        function packAutoOdds(packId) {
+            const id = String(packId || '');
+            const take = (salt, lo, hi) => lo + (schedHash(id + '|' + salt) % (hi - lo + 1));
+            const legendary = take('leg', MKT_AUTO_ODDS.legendary[0], MKT_AUTO_ODDS.legendary[1]);
+            const epic = take('epic', MKT_AUTO_ODDS.epic[0], MKT_AUTO_ODDS.epic[1]);
+            const rare = take('rare', MKT_AUTO_ODDS.rare[0], MKT_AUTO_ODDS.rare[1]);
+            return { common: 100 - legendary - epic - rare, rare: rare, epic: epic, legendary: legendary };
+        }
         function packOddsOf(pack) {
             const o = pack && pack.odds;
             if (o && typeof o === 'object') {
@@ -3088,6 +3105,7 @@ function nxToggle3d() {
                 }
                 if (sum > 0) return n;
             }
+            if (pack && pack.id) return packAutoOdds(pack.id);   // b474: своих весов нет — процентность пака от игры
             return RARITY_WEIGHTS;
         }
         function packOddsSameAsDefault(o) {
@@ -17963,9 +17981,12 @@ function nxToggle3d() {
             return packOddsSameAsDefault(out) ? null : out;
         }
         function packOddsFill(odds) {
+            // b474: пустые поля = процентность сгенерировала игра (у каждого пака
+            // своя), а не «заводские 60/25/12/3». Заводские теперь частный случай
+            // ручных весов: впишите их и сохраните.
             RARITY_ORDER.forEach(r => {
                 const el = document.getElementById('pack-odds-' + r);
-                if (el) el.value = String(odds ? (odds[r] === undefined ? 0 : odds[r]) : RARITY_WEIGHTS[r]);
+                if (el) el.value = odds ? String(odds[r] === undefined ? 0 : odds[r]) : '';
             });
             packOddsPreview();
         }
@@ -17973,25 +17994,43 @@ function nxToggle3d() {
             const el = document.getElementById('pack-odds-preview');
             if (!el) return;
             const els = packOddsInputs();
-            const o = {};
+            const typed = {};
             let any = false, ok = true;
             RARITY_ORDER.forEach((r, i) => {
                 const v = String(els[i] ? els[i].value : '').trim();
-                if (v === '') { o[r] = 0; return; }
+                if (v === '') { typed[r] = 0; return; }
                 const n = Number(v);
-                if (!isFinite(n) || n < 0) { ok = false; o[r] = 0; return; }
-                o[r] = n;
+                if (!isFinite(n) || n < 0) { ok = false; typed[r] = 0; return; }
+                typed[r] = n;
                 if (n > 0) any = true;
             });
-            if (!ok || !any) { el.textContent = ''; return; }
-            const W = packOddsSameAsDefault(o) ? RARITY_WEIGHTS : o;
+            if (!ok || (any && RARITY_ORDER.every(r => typed[r] === 0))) { el.textContent = ''; return; }
+            const editId = String((document.getElementById('edit-pack-id') || {}).value || '');
+            let W = null, src = '';
+            if (any) { W = typed; src = 'Ваши веса: '; }
+            else if (editId) { W = packAutoOdds(editId); src = 'Шансы пака (сгенерированы игрой): '; }
+            if (!W) {
+                el.textContent = 'У нового пака процентность появится сама при создании — своя у каждого пака.';
+                return;
+            }
             const present = RARITY_ORDER.filter(r => (Number(W[r]) || 0) > 0);
             const total = present.reduce((s, r) => s + Number(W[r]), 0);
-            el.textContent = present.map(r => {
+            el.textContent = src + present.map(r => {
                 const p = Number(W[r]) / total;
                 return RARITY_LABELS_RU[r] + ' ' + Math.round(p * 100) + '% на карту / ' +
                     Math.round((1 - Math.pow(1 - p, PACK_CARDS)) * 100) + '% в паке';
             }).join(' • ');
+        }
+        // b474: «Сгенерировать» — новый случайный набор в поля (закрепится как
+        // ручной после сохранения). Авто-значения пака при этом не меняются,
+        // пока поля не сохранены: перегенерировать их «на месте» нельзя и не
+        // нужно — иначе процентность пака плясала бы между клиентами.
+        function packOddsReroll() {
+            const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
+            const legendary = rnd(MKT_AUTO_ODDS.legendary[0], MKT_AUTO_ODDS.legendary[1]);
+            const epic = rnd(MKT_AUTO_ODDS.epic[0], MKT_AUTO_ODDS.epic[1]);
+            const rare = rnd(MKT_AUTO_ODDS.rare[0], MKT_AUTO_ODDS.rare[1]);
+            packOddsFill({ common: 100 - legendary - epic - rare, rare: rare, epic: epic, legendary: legendary });
         }
         function resetPackForm() {
             document.getElementById('form-create-pack').reset();
