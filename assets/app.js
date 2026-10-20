@@ -3069,6 +3069,7 @@ function nxToggle3d() {
         const RAR_COLORS = { common: '#94a3b8', rare: '#38bdf8', epic: '#c084fc', legendary: '#fbbf24' }; // b18
         const DAILY_REWARDS = [100, 200, 350, 500, 750, 1000, 2000];
         const PITY_LIMIT = 10; // каждый 10-й пак без epic+ гарантирует epic+
+        const PACK_CARDS = 4;  // b472: карт в одном вскрытии (раньше было зашито «i < 4» в rollPackCards)
 
         function pluralRu(n, one, few, many) {
             const mod10 = n % 10, mod100 = n % 100;
@@ -4138,11 +4139,22 @@ function nxToggle3d() {
             return ofRarity[Math.floor(Math.random() * ofRarity.length)];
         }
 
+        // b472: процент на чипе — шанс встретить редкость В ПАКЕ (хотя бы одну из
+        // PACK_CARDS карт), а не на одну карту. Игрок открывает пак, а не карту:
+        // при весах 60/25/12/3 легендарная приходила хотя бы одна в 11,5 % паков,
+        // а чип обещал «3 %» — игроки справедливо жаловались, что проценты
+        // неправильные. Формула для независимых карт: 1 - (1 - p)^PACK_CARDS.
+        // Гарант epic+ на цифру почти не влияет (<0,1 % паков до него доживают),
+        // поэтому в формулу он не входит. Шанс на одну карту остаётся в поле one:
+        // он показан в title чипа и в подписи под рядом.
         function getPackOdds(pack) {
             const cards = state.cards.filter(c => c.packId === pack.id);
             const present = RARITY_ORDER.filter(r => cards.some(c => c.rarity === r));
             const total = present.reduce((s, r) => s + RARITY_WEIGHTS[r], 0);
-            return present.map(r => ({ r, pct: Math.round(RARITY_WEIGHTS[r] / total * 100) }));
+            return present.map(r => {
+                const p = RARITY_WEIGHTS[r] / total;
+                return { r, pct: Math.round((1 - Math.pow(1 - p, PACK_CARDS)) * 100), one: Math.round(p * 100) };
+            });
         }
 
         function renderPackOdds(pack) {
@@ -4159,7 +4171,9 @@ function nxToggle3d() {
             // не переносится: чипсы не рвутся (whitespace-nowrap) и не сжимаются
             // (shrink-0), на мобильных чуть мельче шрифт и паддинг, а если экран
             // совсем узкий — ряд прокручивается пальцем (overflow-x-auto).
-            return `<div class="nx-odds flex flex-nowrap items-center gap-0.5 sm:gap-1 mt-2 overflow-x-auto">${odds.map(o => `<span class="text-[9px] sm:text-[10px] font-semibold px-1 sm:px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 ${cls[o.r] || cls.common}">${RARITY_LABELS_RU[o.r]} ${o.pct}%</span>`).join('')}</div>`;
+            const chips = odds.map(o => `<span class="text-[9px] sm:text-[10px] font-semibold px-1 sm:px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 ${cls[o.r] || cls.common}" title="на одну карту: ${o.one}% • в паке из ${PACK_CARDS}: ${o.pct}%">${RARITY_LABELS_RU[o.r]} ${o.pct}%</span>`).join('');
+            return `<div class="nx-odds flex flex-nowrap items-center gap-0.5 sm:gap-1 mt-2 overflow-x-auto">${chips}</div>` +
+                `<p class="text-[9px] text-slate-600 mt-1 leading-snug">шанс хотя бы одной карты редкости в паке из ${PACK_CARDS} • на одну карту: ${odds.map(o => o.one + '%').join(' / ')}</p>`;
         }
 
         function updatePityIndicator() {
@@ -14245,13 +14259,13 @@ function nxToggle3d() {
             }
 
             const rolled = [];
-            for (let i = 0; i < 4; i++) rolled.push(rollCardFromPack(packCards));
+            for (let i = 0; i < PACK_CARDS; i++) rolled.push(rollCardFromPack(packCards));   // b472
 
             // Гарант: каждый PITY_LIMIT-й пак без epic+ даёт гарантированный epic+
             const hasEpicPlusInPack = packCards.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             const gotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             if (state.pity.packsSinceEpic >= PITY_LIMIT - 1 && hasEpicPlusInPack && !gotEpicPlus) {
-                rolled[3] = rollCardFromPack(packCards, true);
+                rolled[PACK_CARDS - 1] = rollCardFromPack(packCards, true);   // b472
             }
             const finalGotEpicPlus = rolled.some(c => c.rarity === 'epic' || c.rarity === 'legendary');
             state.pity.packsSinceEpic = finalGotEpicPlus ? 0 : state.pity.packsSinceEpic + 1;
