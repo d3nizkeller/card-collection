@@ -2915,8 +2915,9 @@ function nxToggle3d() {
             const L = (card && card.layout) || {};
             const align = (L.align === 'center' || L.align === 'right') ? L.align : 'left';
             return {
-                namePos: L.namePos === 'top' ? 'top' : 'bottom',
+                namePos: (L.namePos === 'top' || L.namePos === 'hide') ? L.namePos : 'bottom', // b475: имя можно скрыть с лица карты
                 descPos: (L.descPos === 'top' || L.descPos === 'hide') ? L.descPos : 'bottom',
+                statsPos: L.statsPos === 'hide' ? 'hide' : 'bottom', // b475: боевые статы (⚔/❤) на карте можно скрыть
                 align: align,
                 shine: (CARD_FX.indexOf(L.shine) >= 0 || L.shine === 'none') ? L.shine : 'auto',
                 // b456: масштаб арта 100–220% и сдвиг по вертикали −100…100 (сырые
@@ -2928,6 +2929,17 @@ function nxToggle3d() {
                 justify: align === 'center' ? 'justify-center' : (align === 'right' ? 'justify-end' : 'justify-start')
             };
         }
+        // b475: ВИДИМОСТЬ ИМЕНИ И БОЕВЫХ СТАТОВ НА ЛИЦЕ КАРТЫ — настройка карты
+        // из Студии («Композиция и эффект карты» → «Скрыть»). Живёт в card.layout
+        // (namePos:'hide' / statsPos:'hide'), поэтому уезжает в облако комнаты тем
+        // же полем 'layout' (STD_CARD_FIELDS) и действует у всех игроков: лицо
+        // карты собирают одним cardTextZones и просмотр карты, и сетка альбома,
+        // и вскрытие пака, и предпросмотр Студии.
+        // Значения при этом НЕ удаляются: card.atk/card.hp остаются в каталоге,
+        // getCardStats считает их для боя, силы колоды, строк альбома и списков
+        // Студии — скрывается только отрисовка на самой карте.
+        function cardNameShown(L) { return !L || L.namePos !== 'hide'; }
+        function cardStatsShown(L) { return !L || L.statsPos !== 'hide'; }
         // b461: карта валидна с одной картиной: пустое имя подставляется
         // только в отображении, храним пустую строку.
         function cardDisplayName(card) {
@@ -3052,7 +3064,8 @@ function nxToggle3d() {
         function cardTextZones(L, badgeHtml, nameHtml, descHtml, extraHtml) {
             const top = [badgeHtml];
             const bottom = [];
-            if (L.namePos === 'top') top.push(nameHtml); else bottom.push(nameHtml);
+            if (L.namePos === 'top') top.push(nameHtml);
+            else if (L.namePos !== 'hide') bottom.push(nameHtml); // b475: имя скрыто настройкой карты — в зонах его нет
             if (L.descPos === 'top') top.push(descHtml);
             else if (L.descPos === 'bottom') bottom.push(descHtml);
             bottom.push(extraHtml);
@@ -14875,7 +14888,7 @@ function nxToggle3d() {
                             <span class="text-[9px] font-mono font-bold text-slate-200 bg-slate-950/70 px-1 py-0.5 rounded backdrop-blur-sm">#${localNum}</span>
                             ${copies > 1 ? `<span class="text-[8px] font-black px-1 py-0.5 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40 backdrop-blur-sm">×${copies}</span>` : ''}
                         </div>
-                        <h4 class="relative z-10 w-full font-bold text-white text-[10px] truncate drop-shadow-md ${L.text}">${cardDisplayName(card)}</h4>
+                        ${cardNameShown(L) ? `<h4 class="relative z-10 w-full font-bold text-white text-[10px] truncate drop-shadow-md ${L.text}">${cardDisplayName(card)}</h4>` : ''}
                         ${cardShineOverlay(card)}
                     </div>
                 `;
@@ -14890,10 +14903,10 @@ function nxToggle3d() {
                     </div>`;
             const nameHtml = `<h4 class="w-full font-bold text-white text-sm sm:text-base truncate drop-shadow-md ${L.text}">${cardDisplayName(card)}</h4>`; // b461
             const descHtml = String(card.description || '').trim() ? `<p class="w-full text-[11px] sm:text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description}</p>` : ''; // b461
-            const statsHtml = `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
+            const statsHtml = cardStatsShown(L) ? `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
                             <span class="text-[10px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${getCardStats(card).atk}</span>
                             <span class="text-[10px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${getCardStats(card).hp}</span>
-                        </div>`;
+                        </div>` : ''; // b475: статы скрыты настройкой карты
             const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, statsHtml);
             return `
                 <div onclick="inspectCard('${card.id}')" class="nx-cv relative w-full card-aspect rounded-2xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-3 sm:p-4 flex flex-col justify-between cursor-pointer shadow-xl hover:scale-[1.02] transition overflow-hidden group">
@@ -15718,10 +15731,10 @@ function nxToggle3d() {
                         <button type="button" onclick="nxDescToggle(this)" aria-expanded="${nxDescOpen ? 'true' : 'false'}" class="nx-desc-btn mt-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-950/80 border border-slate-700 text-slate-300 backdrop-blur-sm transition active:scale-95">${nxDescBtnHtml(nxDescOpen)}</button>
                     </div>`
                 : `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${nxDescEsc(descTxt)}</p>`;
-            const statsHtml = `<div class="flex items-center space-x-2 pt-1.5 w-full ${L.justify}">
+            const statsHtml = cardStatsShown(L) ? `<div class="flex items-center space-x-2 pt-1.5 w-full ${L.justify}">
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-amber-300 bg-slate-950/80 border border-amber-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-bolt"></i><span>${st.atk}</span></span>
                     <span class="inline-flex items-center space-x-1 text-[11px] font-bold text-rose-300 bg-slate-950/80 border border-rose-500/30 px-2 py-0.5 rounded-lg backdrop-blur-sm"><i class="fa-solid fa-heart"></i><span>${st.hp}</span></span>
-                </div>`;
+                </div>` : ''; // b475: статы скрыты настройкой карты
             const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, statsHtml);
             const renderEl = document.getElementById('inspect-card-render');
             renderEl.style.transform = '';
@@ -18302,6 +18315,8 @@ function nxToggle3d() {
             const L0 = cardLayoutOf(card);
             document.getElementById('card-name-pos').value = L0.namePos;
             document.getElementById('card-desc-pos').value = L0.descPos;
+            const statsPosEl = document.getElementById('card-stats-pos'); // b475: видимость боевых статов
+            if (statsPosEl) statsPosEl.value = L0.statsPos;
             document.getElementById('card-align').value = L0.align;
             document.getElementById('card-shine').value = L0.shine;
             // b456: слайдеры масштаба/сдвига арта — из сохранённого layout
@@ -18348,7 +18363,7 @@ function nxToggle3d() {
 
         // читает настройки композиции/эффекта из формы карточки
         function readCardLayoutForm() {            const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty'), artPosX: g('card-artx') }; // b456: + масштаб/сдвиг арта; b457: + сдвиг по горизонтали
+            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), statsPos: g('card-stats-pos'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty'), artPosX: g('card-artx') }; // b456: + масштаб/сдвиг арта; b457: + сдвиг по горизонтали; b475: + видимость боевых статов
         }
 
         // b460: прямое управление кадрированием арта прямо в превью: колесо мыши —
@@ -18467,10 +18482,10 @@ function nxToggle3d() {
                 </div>`;
             const nameHtml = `<h4 class="w-full font-bold text-white text-sm truncate drop-shadow-md ${L.text}">${esc(name)}</h4>`;
             const descHtml = desc ? `<p class="w-full text-[10px] text-slate-300 line-clamp-2 drop-shadow ${L.text}">${esc(desc)}</p>` : ''; // b461
-            const statsHtml = `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
+            const statsHtml = cardStatsShown(L) ? `<div class="flex items-center space-x-1.5 pt-0.5 w-full ${L.justify}">
                     <span class="text-[9px] font-bold text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded">⚔ ${st.atk}</span>
                     <span class="text-[9px] font-bold text-rose-300 bg-slate-950/80 px-1.5 py-0.5 rounded">❤ ${st.hp}</span>
-                </div>`;
+                </div>` : ''; // b475: предпросмотр показывает ровно то, что увидит игрок
             const z = cardTextZones(L, badge, nameHtml, descHtml, statsHtml);
             // b468: className перезаписываем только если он изменился — иначе на
             // каждый символ заново стартовали CSS-анимации голографии и ауры,
