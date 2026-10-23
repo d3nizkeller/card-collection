@@ -83,10 +83,13 @@ const visibleText = (doc, html) => {
         ok(/<select id="card-stats-pos"/.test(html), 'селектор «Боевые статы на карте» (b475) на месте');
         ok(/<select id="card-name-pos"[^>]*>[\s\S]{0,400}?<option value="hide">/.test(html), '«Скрыть» у имени (b475) на месте');
 
-        eq((html.match(/nxmob220/g) || []).length, 8, 'index.html: тег nxmob220 во всех 8 ссылках на assets');
-        ok(!html.includes('nxmob219'), 'index.html: старого тега nxmob219 не осталось');
-        ok(sw.includes("const VERSION = 'nxmob220';"), 'sw.js: VERSION = nxmob220');
-        ok(bp.includes("BUILD_TAG = 'nxmob220'"), 'tools/build.py: BUILD_TAG = nxmob220');
+        // b477: номер тега не прибиваем к b476 — проверяем единство: боевой тег из
+        // sw.js повторён во всех 8 ссылках index.html и равен BUILD_TAG, не ниже nxmob220
+        const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
+        ok(!!tag, 'sw.js: боевой тег на месте (' + tag + ')');
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 220, 'тег не ниже nxmob220');
     }
 
     const G = boot();
@@ -138,7 +141,7 @@ const visibleText = (doc, html) => {
         ok(!visibleText(doc, h2).includes(NAME) && !/fa-bolt|fa-heart/.test(h2), 'просмотр: скрытая карта без имени и статов');
         ev('closeInspectModal()');
         const grid = ev(`albumCardHTML(state.cards.find(c => c.id === ${JSON.stringify(ids[1])}), { art: 'mid' })`);
-        ok(!visibleText(doc, grid).includes(NAME) && !grid.includes('⚔'), 'сетка альбома: скрытая карта без имени и статов');
+        ok(!visibleText(doc, grid).includes(NAME) && !grid.includes('fa-bolt'), 'сетка альбома: скрытая карта без имени и статов');
     }
     {
         const setForm = (namePos, statsPos) => ev(`(function(){
@@ -152,7 +155,7 @@ const visibleText = (doc, html) => {
             return document.getElementById('card-preview').innerHTML;
         })()`);
         ok(!visibleText(doc, setForm('hide', 'hide')).includes(NAME), 'предпросмотр: имя скрыто');
-        ok(!setForm('hide', 'hide').includes('⚔'), 'предпросмотр: статы скрыты');
+        ok(!setForm('hide', 'hide').includes('fa-bolt'), 'предпросмотр: статы скрыты');
         ok(visibleText(doc, setForm('bottom', 'bottom')).includes(NAME), 'предпросмотр: имя видно при «Внизу»');
     }
     {

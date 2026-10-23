@@ -84,7 +84,7 @@ const visibleText = (doc, html) => {
         const statsSel = (html.match(/<select id="card-stats-pos"[\s\S]*?<\/select>/) || [''])[0];
         ok(/<option value="bottom">/.test(statsSel), 'card-stats-pos: вариант «Внизу (классика)»');
         ok(/<option value="hide">/.test(statsSel), 'card-stats-pos: вариант «Скрыть»');
-        ok(!/<option value="top">/.test(statsSel), 'card-stats-pos: лишних вариантов нет (статы живут внизу)');
+        ok(/<option value="top">/.test(statsSel) && /<option value="left">/.test(statsSel) && /<option value="right">/.test(statsSel), 'card-stats-pos: b477 добавил места сверху/слева/справа');
         ok(/<select id="card-name-pos"[^>]*onchange="renderCardPreviewSoon\(\)"/.test(html),
            '«Имя персонажа» по-прежнему перерисовывает предпросмотр');
         ok(!/«Скрыть» убирает блок с лица карты/.test(html), 'b476: подсказка под формой убрана по просьбе владельца');
@@ -105,14 +105,14 @@ const visibleText = (doc, html) => {
         const count = (re) => (app.match(re) || []).length;
         ok(app.includes("namePos: (L.namePos === 'top' || L.namePos === 'hide') ? L.namePos : 'bottom'"),
            'cardLayoutOf: namePos пропускает «hide»');
-        ok(app.includes("statsPos: L.statsPos === 'hide' ? 'hide' : 'bottom'"),
-           'cardLayoutOf: новое поле statsPos (мусор и отсутствие = «bottom»)');
+        ok(/statsPos: \(L\.statsPos === 'hide' \|\| L\.statsPos === 'top' \|\| L\.statsPos === 'left' \|\| L\.statsPos === 'right'\)/.test(app),
+           'cardLayoutOf: поле statsPos нормируется (b477: низ/верх/лево/право/скрыть)');
         eq(count(/function cardNameShown\(/g), 1, 'cardNameShown() объявлена один раз');
         eq(count(/function cardStatsShown\(/g), 1, 'cardStatsShown() объявлена один раз');
         ok(/else if \(L\.namePos !== 'hide'\) bottom\.push\(nameHtml\);/.test(app),
            'cardTextZones: скрытое имя не попадает ни в верхнюю, ни в нижнюю зону');
-        eq(count(/cardStatsShown\(L\) \? `<div class="flex items-center/g), 3,
-           'статы закрыты гардом во всех трёх рендерах (альбом, просмотр, предпросмотр Студии)');
+        eq(count(/cardStatsHtml\((card|fake), L, \{/g), 3,
+           'статы рисует единый cardStatsHtml во всех трёх рендерах (альбом, просмотр, предпросмотр Студии; b477)');
         ok(/\$\{cardNameShown\(L\) \? `<h4 class="relative z-10/.test(app),
            'компактная карточка альбома: имя под гардом');
         ok(app.includes("statsPos: g('card-stats-pos')"), 'readCardLayoutForm() читает statsPos из формы');
@@ -130,7 +130,7 @@ const visibleText = (doc, html) => {
     eq(ev(`cardLayoutOf({}).namePos`), 'bottom', 'пустой layout → имя внизу (прежнее поведение)');
     eq(ev(`cardLayoutOf({ layout: { statsPos: 'hide' } }).statsPos`), 'hide', 'statsPos:"hide" проходит');
     eq(ev(`cardLayoutOf({ layout: { statsPos: 'HIDE' } }).statsPos`), 'bottom', 'мусор в statsPos → «bottom»');
-    eq(ev(`cardLayoutOf({ layout: { statsPos: 'top' } }).statsPos`), 'bottom', 'неизвестное значение statsPos → «bottom»');
+    eq(ev(`cardLayoutOf({ layout: { statsPos: 'sideways' } }).statsPos`), 'bottom', 'неизвестное значение statsPos → «bottom»');
     eq(ev(`cardLayoutOf({ layout: { namePos: 'hide' } }).namePos`), 'hide', 'namePos:"hide" проходит');
     eq(ev(`cardLayoutOf({ layout: { namePos: 'top' } }).namePos`), 'top', 'namePos:"top" не сломан');
     eq(ev(`cardLayoutOf({ layout: { namePos: 'hide', descPos: 'top', align: 'center', shine: 'foil' } }).descPos`), 'top',
@@ -209,9 +209,9 @@ const visibleText = (doc, html) => {
         const full = (id) => ev(`albumCardHTML(state.cards.find(c => c.id === ${JSON.stringify(id)}), { art: 'mid' })`);
         const compact = (id) => ev(`albumCardHTML(state.cards.find(c => c.id === ${JSON.stringify(id)}), { compact: true })`);
         ok(visibleText(doc, full(ID_SHOW)).includes(NAME), 'обычная карточка альбома: имя видно');
-        ok(full(ID_SHOW).includes('⚔') && full(ID_SHOW).includes('❤'), 'обычная карточка альбома: статы видны');
+        ok(full(ID_SHOW).includes('fa-bolt') && full(ID_SHOW).includes('fa-heart'), 'обычная карточка альбома: статы видны (b477: fa-иконки в чипах)');
         ok(!visibleText(doc, full(ID_HIDE)).includes(NAME), 'скрытая карточка альбома: имени нет');
-        ok(!full(ID_HIDE).includes('⚔') && !full(ID_HIDE).includes('❤'), 'скрытая карточка альбома: статов нет');
+        ok(!full(ID_HIDE).includes('fa-bolt') && !full(ID_HIDE).includes('fa-heart'), 'скрытая карточка альбома: статов нет');
         ok(/<img /.test(full(ID_HIDE)) && full(ID_HIDE).includes('inspectCard'), 'арт и клик по карточке остались');
         ok(!visibleText(doc, compact(ID_HIDE)).includes(NAME), 'компактная сетка: имени нет');
         ok(visibleText(doc, compact(ID_SHOW)).includes(NAME), 'компактная сетка: обычная карта с именем');
@@ -251,14 +251,14 @@ const visibleText = (doc, html) => {
         })()`);
         const p1 = setForm('bottom', 'bottom');
         ok(p1.includes(NAME), 'предпросмотр: имя видно при «Внизу»');
-        ok(p1.includes('⚔') && p1.includes('❤'), 'предпросмотр: статы видны при «Внизу»');
+        ok(p1.includes('fa-bolt') && p1.includes('fa-heart'), 'предпросмотр: статы видны при «Внизу»');
         const p2 = setForm('hide', 'hide');
         ok(!visibleText(doc, p2).includes(NAME), 'предпросмотр: имени нет при «Скрыть»');
-        ok(!p2.includes('⚔') && !p2.includes('❤'), 'предпросмотр: статов нет при «Скрыть»');
+        ok(!p2.includes('fa-bolt') && !p2.includes('fa-heart'), 'предпросмотр: статов нет при «Скрыть»');
         ok(/<img /.test(p2), 'предпросмотр не развалился (арт на месте)');
         ok(/card-aspect/.test(doc.getElementById('card-preview').className), 'рамка предпросмотра (card-aspect) на месте');
         const p3 = setForm('top', 'bottom');
-        ok(visibleText(doc, p3).includes(NAME) && p3.includes('⚔'), 'предпросмотр: «Вверху» + статы — всё видно');
+        ok(visibleText(doc, p3).includes(NAME) && p3.includes('fa-bolt'), 'предпросмотр: «Вверху» + статы — всё видно');
 
         eq(ev(`JSON.stringify(readCardLayoutForm().statsPos)`).replace(/"/g, ''), 'bottom',
            'readCardLayoutForm(): statsPos читается из формы');
