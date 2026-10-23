@@ -18563,13 +18563,52 @@ function nxToggle3d() {
             const nm = String(card.name || '').replace(/[^\wа-яёА-ЯЁ\- ]/g, '').trim().replace(/\s+/g, '_').slice(0, 40);
             return 'card_' + n + (nm ? '_' + nm : '') + '.png';
         }
-        function nxArtBlobUrl(url) {
-            // fetch→blob→objectURL: canvas не tainted даже с внешним хостом (если
-            // тот отдаёт CORS), а_same-origin media/ прилетает из кэша мгновенно
-            return fetch(url, { mode: 'cors' }).then(r => {
-                if (!r.ok) throw new Error('арт не ответил (' + r.status + ')');
-                return r.blob();
-            }).then(b => URL.createObjectURL(b));
+        // b481: цепочка копий арта для экспорта: мастер (same-origin/зеркало) →
+        // миниатюры media/t3/t2/t → вшитый в сборку арт (NX_EMBED_MEDIA, data:-URL)
+        // → апгрейд http://→https:// (mixed-content: <img> такую картинку
+        // показывает, а fetch браузер запрещает) → исходная ссылка напрямую
+        // (если вдруг отдаёт CORS). Первый ответ с байтами побеждает.
+        async function nxExportArtBlob(card) {
+            const tried = [];
+            const grab = async (url, src) => {
+                if (!url || tried.indexOf(url) >= 0) return null;
+                tried.push(url);
+                try {
+                    const r = await fetch(url, { mode: 'cors' });
+                    if (!r.ok) return null;
+                    const b = await r.blob();
+                    return (b && b.size) ? { blob: b, src: src } : null;
+                } catch (e) { return null; }
+            };
+            const main = mediaUrl(card.image) || card.image;
+            let hit = await grab(main, 'master');
+            if (hit) return hit;
+            const tiers = [];
+            try { tiers.push([nxBigFor(card.image), 'thumb-t3']); } catch (e) {}
+            try { tiers.push([nxThumbFor(card.image, 'mid'), 'thumb-t2']); } catch (e) {}
+            try { tiers.push([nxThumbFor(card.image, 'small'), 'thumb-t']); } catch (e) {}
+            for (const t of tiers) {
+                hit = await grab(t[0], t[1]);
+                if (hit) return hit;
+            }
+            try {
+                const key = nxMediaKey(main) || nxMediaKey(card.image);
+                const emb = key && typeof NX_EMBED_MEDIA !== 'undefined' ? NX_EMBED_MEDIA[key] : '';
+                hit = await grab(emb, 'embed');
+                if (hit) return hit;
+            } catch (e) {}
+            if (String(main).indexOf('http://') === 0) {
+                hit = await grab('https://' + main.slice(7), 'https-upgrade');
+                if (hit) return hit;
+            }
+            if (main !== card.image) {
+                hit = await grab(card.image, 'raw');
+                if (hit) return hit;
+            }
+            throw new Error('арт недоступен ни в одной копии (мастер, миниатюры, вшитый, https, напрямую; попыток: ' + tried.length + ')');
+        }
+        function nxArtBlobUrl(url) { // совместимость: objectURL из первой добытой копии
+            return nxExportArtBlob({ image: url }).then(a => URL.createObjectURL(a.blob));
         }
         function nxPolyPath(g, x, y, w, h, pts, inset) {
             g.beginPath();
@@ -18763,7 +18802,33 @@ function nxToggle3d() {
             if (!card) { showToast('Карточка не найдена', 'error'); return; }
             let objUrl = '';
             try {
-                objUrl = await nxArtBlobUrl(mediaUrl(card.image) || card.image);
+                const art = await nxExportArtBlob(card);
+                // b481: АВТОСОХРАНЕНИЕ АРТА НА GITHUB. Байты добыты не из мастера
+                // media/ (вшитый арт, https-апгрейд, внешняя ссылка с CORS) и в
+                // Студии сохранён токен — кладём копию в media/ тем же механизмом,
+                // что кнопка «Загрузить с устройства → GitHub» (nxGhPushMedia),
+                // и перезаписываем ссылку карты: следующий экспорт и все игроки
+                // берут арт с GitHub, а не с чужого хоста. Миниатюры (thumb-*)
+                // мастером не сохраняем нарочно — не понижаем качество в репо.
+                if (['embed', 'https-upgrade', 'raw'].indexOf(art.src) >= 0) {
+                    let saved = '';
+                    try {
+                        if (typeof nxGhToken === 'function' && nxGhToken() && typeof nxGhPushMedia === 'function') {
+                            const bt = String(art.blob.type || '');
+                            const ext = bt === 'image/webp' ? '.webp' : bt === 'image/png' ? '.png' : bt === 'image/gif' ? '.gif' : '.jpg';
+                            const name = 'card_' + Date.now().toString(36) + '_auto' + ext;
+                            await new Promise((res, rej) => nxGhPushMedia(nxGhRepoName(), [{ name: name, blob: art.blob }], res, m => rej(new Error(m))));
+                            card.image = nxMediaPublicUrl(name);
+                            try { NX_EMBED_MEDIA[name] = 'media/' + name; } catch (e) {}
+                            try { const s = nxMediaPushedSet(); s.add(name); nxMediaSavePushed(s); } catch (e) {}
+                            saveState();
+                            try { cloudPublishSoon(); } catch (e) {}
+                            saved = name;
+                        }
+                    } catch (e) { saved = ''; } // без токена/без прав — тихо: экспорт продолжится из добытых байтов
+                    if (saved) showToast('📦 Арт автоматически сохранён на GitHub: media/' + saved + ' — ссылка карты обновлена', 'success');
+                }
+                objUrl = URL.createObjectURL(art.blob);
                 const img = new Image();
                 await new Promise((res, rej) => {
                     img.onload = res;
@@ -18780,7 +18845,7 @@ function nxToggle3d() {
                 setTimeout(() => URL.revokeObjectURL(a.href), 5000);
                 showToast('✅ Карточка #' + getCardLocalNumber(card) + ' скачана PNG-файлом', 'success');
             } catch (e) {
-                showToast('Не удалось скачать карточку: ' + (e && e.message ? e.message : e) + '. Если арт по внешней ссылке без CORS — залейте картинку на GitHub кнопкой «Загрузить с устройства»', 'error');
+                showToast('Не удалось скачать карточку: ' + (e && e.message ? e.message : e) + '. Частые причины: внешняя ссылка без CORS или http:// на https-странице. Залейте картинку на GitHub кнопкой «Загрузить с устройства → GitHub» — и экспорт заработает', 'error');
             } finally {
                 if (objUrl) setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
             }
