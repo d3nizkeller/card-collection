@@ -612,14 +612,32 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
                 var done = false;
                 var t = setTimeout(function () {
                     if (done) return; done = true;
-                    if (!good[it.name]) problems.push(where + ': нет кэша, ссылка молчит');
+                    // b482: ссылка молчит — сперва спрашиваем копии на сайте
+                    // (media/, миниатюры): копия есть → карточка рабочая, её
+                    // восстановит автоотправка; пугаем только безнадёжными
+                    if (!good[it.name]) {
+                        nxFetchArtBytes(eff).then(function (hit) {
+                            if (hit) { try { imgCachePut(eff, hit.blob); } catch (e2) {} good[it.name] = 1; fin(); return; }
+                            problems.push(where + ': нет кэша, ссылка молчит, копии на сайте нет');
+                            fin();
+                        }, function () { problems.push(where + ': нет кэша, ссылка молчит, копии на сайте нет'); fin(); });
+                        return;
+                    }
                     fin();
                 }, 12000);
                 var im2 = new Image();
                 im2.onload = function () { if (done) return; done = true; clearTimeout(t); fin(); };
                 im2.onerror = function () {
                     if (done) return; done = true; clearTimeout(t);
-                    if (!good[it.name]) problems.push(where + ': ссылка не работает и нет кэша');
+                    // b482: ссылка не работает — но копия на сайте спасает карточку
+                    if (!good[it.name]) {
+                        nxFetchArtBytes(eff).then(function (hit) {
+                            if (hit) { try { imgCachePut(eff, hit.blob); } catch (e2) {} good[it.name] = 1; fin(); return; }
+                            problems.push(where + ': ссылка не работает, кэша и копии на сайте нет');
+                            fin();
+                        }, function () { problems.push(where + ': ссылка не работает, кэша и копии на сайте нет'); fin(); });
+                        return;
+                    }
                     fin();
                 };
                 im2.src = eff;
@@ -905,6 +923,33 @@ function nxGhRepoName() {
         (function () { try { return String(LS.getItem('nx_gh_repo') || '').trim(); } catch (e) { return ''; } })() ||
         'd3nizkeller/card-collection';
 }
+// b482: байты арта из ЛЮБОЙ копии, доступной с сайта: мастер mediaUrl
+// (same-origin/зеркало) → мастер media/<имя> на этом сайте → миниатюры
+// t3/t2/t → https-апгрейд http-ссылки (mixed-content) → исходная ссылка.
+// Владелец: «должно автоматически скачивать картинки на гитхаб с сайта» —
+// этого хватателя байтов не хватало конвейеру отправки (b344/b359), который
+// умел брать байты только из кэша устройства.
+function nxFetchArtBytes(url) {
+    var tries = [];
+    var get = function (u) {
+        if (!u || tries.indexOf(u) >= 0) return Promise.resolve(null);
+        tries.push(u);
+        return fetch(u, { mode: 'cors' }).then(function (r) {
+            if (!r.ok) return null;
+            return r.blob().then(function (b) { return (b && b.size) ? { blob: b, url: u } : null; });
+        }).catch(function () { return null; });
+    };
+    var cands = [];
+    try { cands.push(mediaUrl(url)); } catch (e) { cands.push(url); }
+    try { cands.push('media/' + nxMediaKey(url)); } catch (e) {}
+    try { var t3 = nxBigFor(url); if (t3) cands.push(t3); } catch (e) {}
+    try { var t2 = nxThumbFor(url, 'mid'); if (t2) cands.push(t2); } catch (e) {}
+    try { var t1 = nxThumbFor(url, 'small'); if (t1) cands.push(t1); } catch (e) {}
+    cands.slice().forEach(function (c) { if (String(c).indexOf('http://') === 0) cands.push('https://' + c.slice(7)); });
+    var chain = Promise.resolve(null);
+    cands.forEach(function (c) { chain = chain.then(function (hit) { return hit || get(c); }); });
+    return chain;
+}
 function nxPendingMediaList() { // b359: только СПИСОК (имя + ссылка), ничего не грузим в память
     var set = nxMediaPushedSet(), pairs = [];
     try {
@@ -959,7 +1004,17 @@ function nxGhPushMedia(repo, items, ok, fail) { // один коммит: все
     function blobOf(it) {
         return (it.blob
             ? Promise.resolve(it.blob)
-            : imgCacheGetBlob(it.url).then(function (b) { if (!b || !b.size) throw new Error('нет в кэше: ' + it.name); return b; })
+            : imgCacheGetBlob(it.url).then(function (b) {
+                if (b && b.size) return b;
+                // b482: кэша нет — ищем байты среди копий на сайте (мастер media/,
+                // миниатюры t3/t2/t, https-версия ссылки): «Шаг 3» и автоотправка
+                // шлют арт на GitHub даже с пустым кэшем устройства
+                return nxFetchArtBytes(it.url).then(function (hit) {
+                    if (!hit) throw new Error('нет в кэше и нет копии на сайте: ' + it.name);
+                    try { imgCachePut(it.url, hit.blob); } catch (e) {} // следующий пройдёт без сети
+                    return hit.blob;
+                });
+            })
         ).then(function (b) {
             return b.arrayBuffer().then(function (ab) { return nxBytesToB64(new Uint8Array(ab)); });
         }).then(function (b64) {
@@ -1026,8 +1081,15 @@ function nxAutoMediaPushRun(manual, done) {
     var pendingAll = [];
     try { pendingAll = nxPendingMediaList(); } catch (e) {}
     nxCollectPendingMedia(cap).then(function (items) {
+        if (!items.length && pendingAll.length) {
+            // b482: кэш пуст — не повод отказывать: байты дотянутся из копий на
+            // сайте прямо в nxGhPushMedia (blobOf). Владелец: «должно
+            // автоматически скачивать картинки на гитхаб с сайта».
+            items = pendingAll.slice(0, cap).map(function (p) { return { name: p.name, url: p.url }; });
+            nxProgress(0.1, 'Кэш пуст — тяну арты из копий на сайте: ' + items.length + ' из ' + pendingAll.length);
+        }
         if (!items.length) {
-            if (manual) { nxStatus('Отправлять нечего: новых картинок в кэше нет. Нажмите «Шаг 1. Скачать все картинки»', 'err'); try { nxOwnerToast('В кэше нет новых картинок для отправки', 'error'); } catch (e) {} }
+            if (manual) { nxStatus('Отправлять нечего: новых картинок в кэше нет и копий на сайте не нашлось. Нажмите «Шаг 1. Скачать все картинки»', 'err'); try { nxOwnerToast('В кэше нет новых картинок для отправки', 'error'); } catch (e) {} }
             else nxStatus('');
             unblock(); finish(0); return;
         }
@@ -1728,7 +1790,14 @@ function nxCacheAll() { // фоном тянет всю коллекцию в п
         const j = jobs[ptr++];
         imgCacheObjUrl(j.eff).then(hit => {
             if (hit) { tick(); return; } // уже в кэше — сеть не трогаем
-            imgCacheStoreFromNetwork(j.eff).then(ou => { if (ou) fresh++; tick(); }, () => tick());
+            imgCacheStoreFromNetwork(j.eff).then(ou => { if (ou) fresh++; tick(); }, () => {
+                // b482: ссылка молчит/без CORS — пробуем копии на сайте (мастер
+                // media/, миниатюры, https-версия) и кладём их байты в кэш
+                nxFetchArtBytes(j.eff).then(hit => {
+                    if (hit) { try { imgCachePut(j.eff, hit.blob); } catch (e) {} fresh++; }
+                    tick();
+                }, () => tick());
+            });
         }, () => tick());
     };
     nxOwnerToast('Старт: ' + total + ' артов в очереди на закачку в кэш', 'success');

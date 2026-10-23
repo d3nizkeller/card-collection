@@ -72,9 +72,11 @@ function boot() {
         ok(app.includes('внешняя ссылка без CORS или http:// на https-странице'), 'тост ошибки объясняет обе частые причины');
 
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob225', 'sw.js: боевой тег nxmob225');
-        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках на assets');
-        ok(bp.includes("BUILD_TAG = 'nxmob225'"), 'tools/build.py: BUILD_TAG = nxmob225');
+        // b482: номер тега не прибиваем к b481 — проверяем единство: боевой тег из
+        // sw.js повторён во всех 8 ссылках index.html и равен BUILD_TAG, не ниже nxmob225
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 225, 'тег не ниже nxmob225 (' + tag + ')');
     }
 
     const G = boot();
