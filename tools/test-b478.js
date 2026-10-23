@@ -76,10 +76,13 @@ const NAME = 'ТЕСТОВОЕ_ИМЯ_XYZ';
         ok(/\.nx-st-diamond\{padding:calc\(8px \* var\(--k\)\)/.test(css), 'app.css: паддинги форм (ромб) тоже растут с --k');
         ok(/\.nx-st-star\{padding:calc\(9px \* var\(--k\)\)/.test(css), 'app.css: паддинги форм (звезда) тоже растут с --k');
 
-        eq((html.match(/nxmob222/g) || []).length, 8, 'index.html: тег nxmob222 во всех 8 ссылках на assets');
-        ok(!html.includes('nxmob221'), 'index.html: старого тега nxmob221 не осталось');
-        ok(sw.includes("const VERSION = 'nxmob222';"), 'sw.js: VERSION = nxmob222');
-        ok(bp.includes("BUILD_TAG = 'nxmob222'"), 'tools/build.py: BUILD_TAG = nxmob222');
+        // b479: номер тега не прибиваем к b478 — проверяем единство: боевой тег из
+        // sw.js повторён во всех 8 ссылках index.html и равен BUILD_TAG, не ниже nxmob222
+        const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
+        ok(!!tag, 'sw.js: боевой тег на месте (' + tag + ')');
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 222, 'тег не ниже nxmob222');
     }
 
     console.log('\nB. Исходники assets/app.js');
