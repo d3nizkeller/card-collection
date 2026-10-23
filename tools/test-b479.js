@@ -70,10 +70,13 @@ function boot() {
         ok(/title="[^"]*номер #N/.test(btn), 'в title кнопки перечислено, что попадёт в файл');
         ok(fa.includes('fa-download'), 'глиф fa-download есть в сабсете fa.css');
 
-        eq((html.match(/nxmob223/g) || []).length, 8, 'index.html: тег nxmob223 во всех 8 ссылках на assets');
-        ok(!html.includes('nxmob222'), 'index.html: старого тега nxmob222 не осталось');
-        ok(sw.includes("const VERSION = 'nxmob223';"), 'sw.js: VERSION = nxmob223');
-        ok(bp.includes("BUILD_TAG = 'nxmob223'"), 'tools/build.py: BUILD_TAG = nxmob223');
+        // b480: номер тега не прибиваем к b479 — проверяем единство: боевой тег из
+        // sw.js повторён во всех 8 ссылках index.html и равен BUILD_TAG, не ниже nxmob223
+        const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
+        ok(!!tag, 'sw.js: боевой тег на месте (' + tag + ')');
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 223, 'тег не ниже nxmob223');
     }
 
     console.log('\nB. Исходники assets/app.js');
