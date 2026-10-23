@@ -2925,6 +2925,7 @@ function nxToggle3d() {
                 statsPos: (L.statsPos === 'hide' || L.statsPos === 'top' || L.statsPos === 'left' || L.statsPos === 'right') ? L.statsPos : 'bottom', // b477: место статов: низ/верх/лево/право/скрыть
                 statsDir: L.statsDir === 'col' ? 'col' : 'row', // b477: горизонтально или столбиком
                 statsShape: CARD_STATS_SHAPES.indexOf(L.statsShape) >= 0 ? L.statsShape : 'rect', // b477: форма чипов
+                statsSize: (L.statsSize === 'md' || L.statsSize === 'lg') ? L.statsSize : 'sm', // b478: размер чипов (мелкий/средний/крупный)
                 align: align,
                 shine: (CARD_FX.indexOf(L.shine) >= 0 || L.shine === 'none') ? L.shine : 'auto',
                 // b456: масштаб арта 100–220% и сдвиг по вертикали −100…100 (сырые
@@ -2954,25 +2955,24 @@ function nxToggle3d() {
         // Место — по statsPos: bottom/top отдаются в текстовые зоны через
         // cardTextZones, left/right возвращаются абсолютным слоем у кромки
         // (вертикально по центру), чтобы числа не лезли в поток имени/описания.
-        function cardStatsHtml(card, L, o) {
+        function cardStatsHtml(card, L) {
             if (!cardStatsShown(L)) return '';
             const st = getCardStats(card);
-            const opt = o || {};
             const shape = 'nx-st-' + L.statsShape;
             const chip = (color, icon, val) =>
-                `<span class="nx-st ${shape} ${color}"><i class="nx-st-bg"></i><span class="nx-st-tx ${opt.txt || 'text-[10px]'}">${icon}<span>${val}</span></span></span>`; // b477: цвет на самом чипе — силуэт подложки тонируется им через currentColor
+                `<span class="nx-st ${shape} ${color}"><i class="nx-st-bg"></i><span class="nx-st-tx">${icon}<span>${val}</span></span></span>`; // b477: цвет на самом чипе; b478: кегль и паддинги растут через --k обёртки
             const chips = chip('text-amber-300', '<i class="fa-solid fa-bolt"></i>', st.atk) +
                 chip('text-rose-300', '<i class="fa-solid fa-heart"></i>', st.hp);
-            const gap = opt.gap || 'gap-1';
+            const sz = L.statsSize === 'lg' ? ' nx-st-lg' : (L.statsSize === 'md' ? ' nx-st-md' : ''); // b478: средний/крупный размер
             if (L.statsPos === 'left' || L.statsPos === 'right') {
                 const edge = L.statsPos === 'left' ? 'left-1.5 items-start' : 'right-1.5 items-end';
                 const dir = L.statsDir === 'col' ? 'flex-col' : 'flex-row';
-                return `<div class="absolute z-20 top-1/2 -translate-y-1/2 ${edge} flex ${dir} ${gap} pointer-events-none">${chips}</div>`;
+                return `<div class="nx-st-wrap${sz} absolute z-20 top-1/2 -translate-y-1/2 ${edge} flex ${dir} pointer-events-none">${chips}</div>`;
             }
             const dir = L.statsDir === 'col'
                 ? `flex-col ${L.align === 'center' ? 'items-center' : (L.align === 'right' ? 'items-end' : 'items-start')}`
                 : `flex-row ${L.justify}`;
-            return `<div class="flex w-full ${dir} ${gap} pt-0.5">${chips}</div>`;
+            return `<div class="nx-st-wrap${sz} flex w-full ${dir} pt-0.5">${chips}</div>`;
         }
         // b461: карта валидна с одной картиной: пустое имя подставляется
         // только в отображении, храним пустую строку.
@@ -14948,7 +14948,7 @@ function nxToggle3d() {
                     </div>`;
             const nameHtml = `<h4 class="w-full font-bold text-white text-sm sm:text-base truncate drop-shadow-md ${L.text}">${cardDisplayName(card)}</h4>`; // b461
             const descHtml = String(card.description || '').trim() ? `<p class="w-full text-[11px] sm:text-xs text-slate-300 line-clamp-2 drop-shadow ${L.text}">${card.description}</p>` : ''; // b461
-            const statsHtml = cardStatsHtml(card, L, { txt: 'text-[10px]' }); // b477: место/расположение/форма из настроек карты
+            const statsHtml = cardStatsHtml(card, L); // b477+b478: сетка альбома — место/расположение/форма/размер из настроек карты
             const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, '', statsHtml);
             return `
                 <div onclick="inspectCard('${card.id}')" class="nx-cv relative w-full card-aspect rounded-2xl border-2 ${getRarityClass(card.rarity)} ${cardHoloClass(card)} p-3 sm:p-4 flex flex-col justify-between cursor-pointer shadow-xl hover:scale-[1.02] transition overflow-hidden group">
@@ -15774,7 +15774,7 @@ function nxToggle3d() {
                         <button type="button" onclick="nxDescToggle(this)" aria-expanded="${nxDescOpen ? 'true' : 'false'}" class="nx-desc-btn mt-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-slate-950/80 border border-slate-700 text-slate-300 backdrop-blur-sm transition active:scale-95">${nxDescBtnHtml(nxDescOpen)}</button>
                     </div>`
                 : `<p class="w-full text-xs text-slate-300 drop-shadow ${L.text}">${nxDescEsc(descTxt)}</p>`;
-            const statsHtml = cardStatsHtml(card, L, { txt: 'text-[11px]', gap: 'gap-1.5' }); // b477: место/расположение/форма из настроек карты
+            const statsHtml = cardStatsHtml(card, L); // b477+b478: просмотр карты — место/расположение/форма/размер из настроек карты
             const Z = cardTextZones(L, badgeHtml, nameHtml, descHtml, '', statsHtml);
             const renderEl = document.getElementById('inspect-card-render');
             renderEl.style.transform = '';
@@ -18362,6 +18362,8 @@ function nxToggle3d() {
             if (statsDirEl) statsDirEl.value = L0.statsDir;
             const statsShapeEl = document.getElementById('card-stats-shape'); // b477: форма чипов статов
             if (statsShapeEl) statsShapeEl.value = L0.statsShape;
+            const statsSizeEl = document.getElementById('card-stats-size'); // b478: размер чипов статов
+            if (statsSizeEl) statsSizeEl.value = L0.statsSize;
             document.getElementById('card-align').value = L0.align;
             document.getElementById('card-shine').value = L0.shine;
             // b456: слайдеры масштаба/сдвига арта — из сохранённого layout
@@ -18408,7 +18410,7 @@ function nxToggle3d() {
 
         // читает настройки композиции/эффекта из формы карточки
         function readCardLayoutForm() {            const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), statsPos: g('card-stats-pos'), statsDir: g('card-stats-dir'), statsShape: g('card-stats-shape'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty'), artPosX: g('card-artx') }; // b456: + масштаб/сдвиг арта; b457: + сдвиг по горизонтали; b475: + видимость боевых статов; b477: + место/расположение/форма статов
+            return { namePos: g('card-name-pos'), descPos: g('card-desc-pos'), statsPos: g('card-stats-pos'), statsDir: g('card-stats-dir'), statsShape: g('card-stats-shape'), statsSize: g('card-stats-size'), align: g('card-align'), shine: g('card-shine'), artZoom: g('card-artzoom'), artPosY: g('card-arty'), artPosX: g('card-artx') }; // b456: + масштаб/сдвиг арта; b457: + сдвиг по горизонтали; b475: + видимость боевых статов; b477: + место/расположение/форма статов
         }
 
         // b460: прямое управление кадрированием арта прямо в превью: колесо мыши —
@@ -18527,7 +18529,7 @@ function nxToggle3d() {
                 </div>`;
             const nameHtml = `<h4 class="w-full font-bold text-white text-sm truncate drop-shadow-md ${L.text}">${esc(name)}</h4>`;
             const descHtml = desc ? `<p class="w-full text-[10px] text-slate-300 line-clamp-2 drop-shadow ${L.text}">${esc(desc)}</p>` : ''; // b461
-            const statsHtml = cardStatsHtml(fake, L, { txt: 'text-[9px]' }); // b477: предпросмотр показывает ровно то, что увидит игрок
+            const statsHtml = cardStatsHtml(fake, L); // b477+b478: предпросмотр Студии показывает ровно то, что увидит игрок
             const z = cardTextZones(L, badge, nameHtml, descHtml, '', statsHtml);
             // b468: className перезаписываем только если он изменился — иначе на
             // каждый символ заново стартовали CSS-анимации голографии и ауры,

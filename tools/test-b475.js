@@ -111,7 +111,7 @@ const visibleText = (doc, html) => {
         eq(count(/function cardStatsShown\(/g), 1, 'cardStatsShown() объявлена один раз');
         ok(/else if \(L\.namePos !== 'hide'\) bottom\.push\(nameHtml\);/.test(app),
            'cardTextZones: скрытое имя не попадает ни в верхнюю, ни в нижнюю зону');
-        eq(count(/cardStatsHtml\((card|fake), L, \{/g), 3,
+        eq(count(/= cardStatsHtml\((card|fake), L\);/g), 3,
            'статы рисует единый cardStatsHtml во всех трёх рендерах (альбом, просмотр, предпросмотр Студии; b477)');
         ok(/\$\{cardNameShown\(L\) \? `<h4 class="relative z-10/.test(app),
            'компактная карточка альбома: имя под гардом');

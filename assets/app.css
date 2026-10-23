@@ -1111,18 +1111,21 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
    атаки, роза у здоровья) поверх него тёмная подложка .nx-st-bg со сдвигом
    2px — так «бриллиант»/звезда/щит читаются и на светлом, и на тёмном арте,
    а иконка с числом (.nx-st-tx) лежит над фоном и клипом не режется. */
-.nx-st{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:3px 8px;line-height:1.1;flex:none}
-.nx-st::before{content:'';position:absolute;inset:0;background:currentColor;opacity:.45;border-radius:7px;pointer-events:none}
-.nx-st-bg{position:absolute;inset:2px;background:rgba(2,6,23,.9);border-radius:5px;pointer-events:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.nx-st-tx{position:relative;display:inline-flex;align-items:center;gap:4px;font-weight:700;white-space:nowrap}
-.nx-st-circle{padding:4px 11px}
+.nx-st-wrap{--k:1;gap:calc(4px * var(--k))}          /* b478: мелкий (как в b477) */
+.nx-st-wrap.nx-st-md{--k:1.3}                       /* b478: средний */
+.nx-st-wrap.nx-st-lg{--k:1.65}                      /* b478: крупный */
+.nx-st{position:relative;display:inline-flex;align-items:center;justify-content:center;padding:calc(3px * var(--k)) calc(8px * var(--k));line-height:1.1;flex:none}
+.nx-st::before{content:'';position:absolute;inset:0;background:currentColor;opacity:.45;border-radius:calc(7px * var(--k));pointer-events:none}
+.nx-st-bg{position:absolute;inset:calc(2px * var(--k));background:rgba(2,6,23,.9);border-radius:calc(5px * var(--k));pointer-events:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.nx-st-tx{position:relative;display:inline-flex;align-items:center;gap:calc(4px * var(--k));font-weight:700;white-space:nowrap;font-size:calc(10px * var(--k))}
+.nx-st-circle{padding:calc(4px * var(--k)) calc(11px * var(--k))}
 .nx-st-circle::before{border-radius:9999px}
 .nx-st-circle .nx-st-bg{border-radius:9999px}
-.nx-st-diamond{padding:8px 17px}
+.nx-st-diamond{padding:calc(8px * var(--k)) calc(17px * var(--k))}
 .nx-st-diamond::before,.nx-st-diamond .nx-st-bg{border-radius:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
-.nx-st-star{padding:9px 16px}
+.nx-st-star{padding:calc(9px * var(--k)) calc(16px * var(--k))}
 .nx-st-star::before,.nx-st-star .nx-st-bg{border-radius:0;clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
-.nx-st-hex{padding:5px 13px}
+.nx-st-hex{padding:calc(5px * var(--k)) calc(13px * var(--k))}
 .nx-st-hex::before,.nx-st-hex .nx-st-bg{border-radius:0;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%)}
-.nx-st-shield{padding:5px 12px 8px}
+.nx-st-shield{padding:calc(5px * var(--k)) calc(12px * var(--k)) calc(8px * var(--k))}
 .nx-st-shield::before,.nx-st-shield .nx-st-bg{border-radius:0;clip-path:polygon(0 0,100% 0,100% 68%,50% 100%,0 68%)}

@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob221" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob221">
+    <script src="assets/three.min.js?v=nxmob222" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob222">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob221">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob222">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob221">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob222">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1269,6 +1269,15 @@
                                         <option value="star">Звёздочка</option>
                                         <option value="hex">Шестиугольник</option>
                                         <option value="shield">Щит</option>
+                                    </select>
+                                </div>
+                                <!-- b478: размер чипов статов на карте -->
+                                <div>
+                                    <span class="block text-[10px] text-slate-500 mb-1">Размер статов</span>
+                                    <select id="card-stats-size" onchange="renderCardPreviewSoon()" title="Размер чипов ⚔ и ❤ на карте: мелкий как раньше, средний или крупный" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] focus:outline-none focus:border-fuchsia-500">
+                                        <option value="sm">Мелкий (классика)</option>
+                                        <option value="md">Средний</option>
+                                        <option value="lg">Крупный</option>
                                     </select>
                                 </div>
                                 <div>
@@ -3115,10 +3124,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob221"></script>
-    <script src="assets/stories.js?v=nxmob221"></script>
-    <script src="assets/qrcode.min.js?v=nxmob221"></script>
-    <script src="assets/qr-transfer.js?v=nxmob221"></script>
+    <script src="assets/app.js?v=nxmob222"></script>
+    <script src="assets/stories.js?v=nxmob222"></script>
+    <script src="assets/qrcode.min.js?v=nxmob222"></script>
+    <script src="assets/qr-transfer.js?v=nxmob222"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

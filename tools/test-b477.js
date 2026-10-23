@@ -95,12 +95,15 @@ const visibleText = (doc, html) => {
         ok(/\.nx-st-circle[^{]*\{[^}]*border-radius:9999px/.test(css), 'app.css: кружок — скругление');
         ok(/\.nx-st-tx\{[^}]*position:relative/.test(css), 'app.css: текст чипа НАД фоном (клип его не режет)');
         ok(/\.nx-st::before\{[^}]*background:currentColor/.test(css), 'app.css: цветной кант силуэта — currentColor стата');
-        ok(/\.nx-st-bg\{[^}]*inset:2px/.test(css), 'app.css: тёмная подложка со сдвигом 2px внутри канта');
+        ok(/\.nx-st-bg\{[^}]*inset:calc\(2px/.test(css), 'app.css: тёмная подложка со сдвигом 2px внутри канта (b478: масштабируется через --k)');
 
-        eq((html.match(/nxmob221/g) || []).length, 8, 'index.html: тег nxmob221 во всех 8 ссылках на assets');
-        ok(!html.includes('nxmob220'), 'index.html: старого тега nxmob220 не осталось');
-        ok(sw.includes("const VERSION = 'nxmob221';"), 'sw.js: VERSION = nxmob221');
-        ok(bp.includes("BUILD_TAG = 'nxmob221'"), 'tools/build.py: BUILD_TAG = nxmob221');
+        // b478: номер тега не прибиваем к b477 — проверяем единство: боевой тег из
+        // sw.js повторён во всех 8 ссылках index.html и равен BUILD_TAG, не ниже nxmob221
+        const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
+        ok(!!tag, 'sw.js: боевой тег на месте (' + tag + ')');
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 221, 'тег не ниже nxmob221');
     }
 
     console.log('\nB. Исходники assets/app.js');
@@ -112,7 +115,7 @@ const visibleText = (doc, html) => {
         ok(app.includes("statsShape: CARD_STATS_SHAPES.indexOf(L.statsShape) >= 0 ? L.statsShape : 'rect'"), 'cardLayoutOf: нормализация statsShape');
         ok(/statsPos: \(L\.statsPos === 'hide' \|\| L\.statsPos === 'top' \|\| L\.statsPos === 'left' \|\| L\.statsPos === 'right'\)/.test(app), 'cardLayoutOf: statsPos пропускает верх/лево/право/скрыть');
         eq(count(/function cardStatsHtml\(/g), 1, 'cardStatsHtml() объявлена один раз');
-        eq(count(/cardStatsHtml\((card|fake), L, \{/g), 3, 'единый рендерер вызывается в трёх рендерах лица');
+        eq(count(/= cardStatsHtml\((card|fake), L\);/g), 3, 'единый рендерер вызывается в трёх рендерах лица');
         ok(app.includes('function cardTextZones(L, badgeHtml, nameHtml, descHtml, extraHtml, statsHtml)'), 'cardTextZones: статы — шестой аргумент');
         eq(count(/\$\{Z\.side\}|\$\{z\.side\}/g), 4, 'боковой слой side вставляется во всех четырёх рендерах лица');
         ok(/const side = \(statsHtml && L\.statsPos !== 'hide' && \(L\.statsPos === 'left' \|\| L\.statsPos === 'right'\)\) \? statsHtml : '';/.test(app), 'side отдаётся только для лево/право и только когда статы не скрыты');
