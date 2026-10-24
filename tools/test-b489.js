@@ -60,9 +60,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         ok(/@media \(max-width:640px\)\{\s*\.rl-grid\{grid-template-columns:26px/.test(css), 'мобильный стол ужимается под 390px');
         ok(/\.rl-chip-100\{[^}]*conic-gradient\(#b45309/.test(css), 'фишка 100 — янтарные конические полосы');
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob233', 'sw.js: боевой тег nxmob233');
+        // сквозная проверка тега: единый тег из sw.js повторяется 8 раз в index.html,
+        // совпадает с BUILD_TAG и не ниже тега своего батча (nxmob233 для b489)
+        ok(!!tag, 'sw.js: боевой тег присутствует');
+        ok(Number(tag && tag.replace('nxmob', '')) >= 233, 'sw.js: тег не ниже nxmob233 (факт ' + tag + ')');
         eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках');
-        ok(bp.includes("BUILD_TAG = 'nxmob233'"), 'tools/build.py: BUILD_TAG = nxmob233');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG совпадает с тегом sw.js');
         ok(html.includes('rl-wheelhouse') && html.includes('width="420"'), 'canvas колеса 420px в доме с тенью');
     }
 

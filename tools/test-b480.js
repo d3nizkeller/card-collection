@@ -57,9 +57,12 @@ function boot() {
         ok(/style="grid-column:1 \/ -1"/.test(html.slice(html.indexOf('id="card-name-pos"'), html.indexOf('id="card-image-lamp"'))), 'растянутая ячейка задана инлайн-стилем grid-column');
 
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob224', 'sw.js: боевой тег nxmob224');
+        // сквозная проверка тега: единый тег из sw.js повторяется 8 раз в index.html,
+        // совпадает с BUILD_TAG и не ниже тега своего батча (nxmob224 для b480)
+        ok(!!tag, 'sw.js: боевой тег присутствует');
+        ok(Number(tag && tag.replace('nxmob', '')) >= 224, 'sw.js: тег не ниже nxmob224 (факт ' + tag + ')');
         eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках на assets');
-        ok(bp.includes("BUILD_TAG = 'nxmob224'"), 'tools/build.py: BUILD_TAG = nxmob224');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG совпадает с тегом sw.js');
         ['card-name-pos', 'card-desc-pos', 'card-stats-pos', 'card-stats-dir', 'card-stats-shape', 'card-stats-size', 'card-align', 'card-shine', 'card-aura'].forEach(id =>
             ok(html.includes('id="' + id + '"'), 'селектор ' + id + ' на месте'));
     }

@@ -4451,9 +4451,14 @@ function nxToggle3d() {
             if (!cv || !cv.getContext) { setTimeout(done, 0); return; }
             const sector = 360 / 37;
             const idx = ROULETTE_ORDER.indexOf(win);
-            // сектор win должен встать под указатель сверху (угол -90°)
-            const target = 360 * 5 + (360 - (idx * sector + sector / 2)) - 90;
+            // b490: центр клина win в координатах колеса = idx*sector, указатель
+            // сверху = экранный угол -90°, значит колесо должно встать на
+            // desired = -90 - idx*sector. В b488/b489 формула давала пол-сектора
+            // мимо: шарик вставал на границу двух секторов и «история не
+            // совпадала с колесом».
             const from = rouletteAngle % 360;
+            const desired = ((-90 - idx * sector) % 360 + 360) % 360;
+            const target = from + 360 * 5 + ((desired - from) % 360 + 360) % 360;
             const t0 = performance.now();
             ROULETTE_BALL.spin = 560 + Math.random() * 240; // b489: сколько градусов шарик пролетит против колеса
             const step = now => {
@@ -4507,12 +4512,19 @@ function nxToggle3d() {
                 g.lineWidth = 0.8;
                 g.stroke();
                 g.save();
+                // b490: номер СТРОГО в своём секторе: поворот на центр клина,
+                // вынос на радиус и доворот на 90°, чтобы цифра стояла вдоль
+                // радиуса «головой» к ободу. В b489 номер уезжал на 90° мимо
+                // своего клина и у первых девяти секторов закрашивался соседями
+                // (те самые «пустые сектора» со скриншота владельца).
                 g.rotate(i * sector);
+                g.translate(RS * 0.85, 0);
+                g.rotate(Math.PI / 2);
                 g.fillStyle = '#f8fafc';
                 g.font = '700 ' + Math.round(R / 15) + 'px Inter, sans-serif';
                 g.textAlign = 'center';
                 g.textBaseline = 'middle';
-                g.fillText(String(n), 0, -RS * 0.85);
+                g.fillText(String(n), 0, 0);
                 g.restore();
             }
             // конус со спицами и золотая ступица
