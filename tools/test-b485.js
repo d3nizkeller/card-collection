@@ -63,9 +63,10 @@ function boot() {
         ok(/\.tama-btn:hover\{transform:translateY\(-1px\)\}/.test(css) && /\.tama-btn:active\{transform:scale\(\.94\)\}/.test(css), 'кнопки действий: hover-подъём и active-сжатие');
         ok(/\.tama-pet\{[^}]*animation:tama-bob 3s ease-in-out infinite/.test(css), 'питомец дышит в простое');
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob229', 'sw.js: боевой тег nxmob229');
-        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках на assets');
-        ok(bp.includes("BUILD_TAG = 'nxmob229'"), 'tools/build.py: BUILD_TAG = nxmob229');
+        // b486: номер тега не прибиваем к b485 — единство и не ниже nxmob229
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 229, 'тег не ниже nxmob229 (' + tag + ')');
     }
 
     const G = boot();

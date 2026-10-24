@@ -16852,7 +16852,7 @@ function nxToggle3d() {
             refreshVisibleTabs();
             cloudPublishSoon();
             cloudPushUrgent();
-            showToast('Возвращено в стандартный набор и опубликовано в комнату', 'success');
+            nxOwnerToast('Возвращено в стандартный набор и опубликовано в комнату', 'success'); // b486: только в Студии
         }
         function cloudRemoteTombsCache() {
             try { return cloudTombPrune(JSON.parse(LS.getItem('nexus_cloud_remote_tombs') || '[]')); } catch (e) { return []; }
@@ -17116,7 +17116,7 @@ function nxToggle3d() {
             if (!CLOUD.connected() || cloudGuest()) return; // b23: участники не публикуют
             cloudDirtySet(); // b25: изменение записано, но ещё не в облаке
             cloudStatus();   // b33: сразу показываем, что есть неопубликованные изменения
-            if (!cloudAuto()) { showToast('⚠️ Автопубликация выключена — нажмите «Опубликовать», чтобы отправить изменения в комнату', 'refund'); return; }
+            if (!cloudAuto()) { nxOwnerToast('⚠️ Автопубликация выключена — нажмите «Опубликовать», чтобы отправить изменения в комнату', 'refund'); return; } // b486: подсказка у кнопки публикации — только в Студии
             clearTimeout(cloudPushT);
             cloudPushT = setTimeout(() => { cloudPushT = null; cloudPushNow(); }, 1500);
         }
@@ -17256,8 +17256,8 @@ function nxToggle3d() {
                             fit.dropped.slice(0, 3).join(', ') + (fit.dropped.length > 3 ? ' и ещё ' + (fit.dropped.length - 3) : '') +
                             ' — вставьте вместо них ссылки на картинки', 'refund');
                     } else {
-                        showToast((quiet ? '☁️ ' : '') + 'Опубликовано в комнату ' + CLOUD.room + ': ' +
-                            fit.cat.packs.length + ' паков, ' + fit.cat.cards.length + ' карт', 'success');
+                        nxOwnerToast((quiet ? '☁️ ' : '') + 'Опубликовано в комнату ' + CLOUD.room + ': ' +
+                            fit.cat.packs.length + ' паков, ' + fit.cat.cards.length + ' карт', 'success'); // b486: рапорт о публикации — только в Студии, не посреди партии
                     }
                 }));
             });
