@@ -71,7 +71,7 @@ function boot() {
         ok(/if \(rlExactHdr\(\)\) s = nxCoinsExact\(state\.coins\);/.test(app), 'app.js: шапка показывает точный баланс в рулетке');
 
         const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-        ['class="rl-wallet shrink-0"', 'id="rl-balance"', 'id="rl-delta"', 'id="rl-table-sum"', 'id="rl-spins"',
+        ['class="rl-wallet"', 'id="rl-balance"', 'id="rl-delta"', 'id="rl-table-sum"', 'id="rl-spins"',
             'id="rl-wins"', 'id="rl-jp-odds"', 'id="roulette-jackpot"', 'id="roulette-jackpot-note"',
             'id="roulette-jp-winner"', 'id="roulette-jp-top-list"', 'data-jpc="odds-roulette"',
             'сразу списываются с баланса', 'Рулетка (золотое зеро) 1 из 37'].forEach(s => ok(idx.includes(s), 'index.html: ' + s));
@@ -80,7 +80,7 @@ function boot() {
         ['.rl-wallet{', '.rl-w-cap{', '.rl-w-bal{', '.rl-w-rows{', '.rl-w-jp{', '.rl-delta{', '.rl-d-up{',
             '.rl-d-down{', '@keyframes rlDelta', '.nx-bump{', '@keyframes nxBump', '.rl-jp-note{'].forEach(s =>
             ok(css.includes(s), 'app.css: ' + s));
-        ok(/@media \(max-width:640px\)\{\s*\.rl-wallet\{flex:1 1 100%/.test(css), 'app.css: кошелёк на всю ширину на телефоне');
+        ok(/@media \(max-width:640px\)\{\s*\.rl-wallet\{/.test(css), 'app.css: кошелёк-строка подстраивается на телефоне');
     }
 
     const w = boot();

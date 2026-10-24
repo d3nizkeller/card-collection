@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob236" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob236">
+    <script src="assets/three.min.js?v=nxmob237" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob237">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob236">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob237">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob236">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob237">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -237,14 +237,15 @@
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-circle-dot text-rose-400 mr-2"></i>Рулетка 2D</h2>
                                 <p class="text-sm text-slate-400 mt-1">Европейская (0–36): выберите фишку и кликните по клеткам стола — фишки <b class="text-amber-200">сразу списываются с баланса</b>, «Сброс» возвращает их обратно. Число ×36, колонка и дюжина ×3, равные шансы ×2. Золотое зеро срывает общий джекпот сайта.</p>
                             </div>
-                            <!-- b491: кошелёк стола — баланс точно до монеты, сумма на столе, живой плюс/минус -->
-                            <div class="rl-wallet shrink-0">
-                                <p class="rl-w-cap"><i class="fa-solid fa-wallet"></i>Кошелёк стола</p>
-                                <p class="rl-w-bal"><span id="rl-balance">0</span><i id="rl-delta" class="rl-delta"></i></p>
-                                <p class="rl-w-rows"><span>На столе</span><b id="rl-table-sum">0</b></p>
-                                <p class="rl-w-rows"><span>Спинов / побед</span><b><span id="rl-spins">0</span> / <span id="rl-wins">0</span></b></p>
-                                <p class="rl-w-jp"><i class="fa-solid fa-crown"></i><span id="rl-jp-odds">золотое зеро: —</span></p>
-                            </div>
+                        </div>
+                        <!-- b493: кошелёк стола — ОДНА строка на всю ширину лобби (b491/b492):
+                             подпись, точный баланс, «На столе», «Спинов / побед», золотое зеро -->
+                        <div class="rl-wallet">
+                            <span class="rl-w-cap"><i class="fa-solid fa-wallet"></i>Кошелёк стола</span>
+                            <span class="rl-w-bal"><span id="rl-balance">0</span><i id="rl-delta" class="rl-delta"></i></span>
+                            <span class="rl-w-rows"><span>На столе</span><b id="rl-table-sum">0</b></span>
+                            <span class="rl-w-rows"><span>Спинов / побед</span><b><span id="rl-spins">0</span> / <span id="rl-wins">0</span></b></span>
+                            <span class="rl-w-jp"><i class="fa-solid fa-crown"></i><span id="rl-jp-odds">золотое зеро: —</span></span>
                         </div>
                         <div class="flex flex-col lg:flex-row gap-4 items-start mt-4">
                             <div class="relative shrink-0 mx-auto rl-wheelhouse"><!-- b489: дом колеса с тенью-свечением -->
@@ -3194,10 +3195,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob236"></script>
-    <script src="assets/stories.js?v=nxmob236"></script>
-    <script src="assets/qrcode.min.js?v=nxmob236"></script>
-    <script src="assets/qr-transfer.js?v=nxmob236"></script>
+    <script src="assets/app.js?v=nxmob237"></script>
+    <script src="assets/stories.js?v=nxmob237"></script>
+    <script src="assets/qrcode.min.js?v=nxmob237"></script>
+    <script src="assets/qr-transfer.js?v=nxmob237"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

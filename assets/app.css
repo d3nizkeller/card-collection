@@ -1223,13 +1223,16 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 /* b491: кошелёк стола рулетки — баланс точно до монеты, живой плюс/минус,
    подсказка про общий джекпот. fmtCoins() в шапке округляет до букв, поэтому
    ставка 25 и выигрыш 900 выглядели как «баланс не двигается». */
-.rl-wallet{flex:0 1 250px;min-width:196px;margin-left:auto;border-radius:14px;border:1px solid rgba(251,191,36,.35);background:linear-gradient(160deg,rgba(2,6,23,.88),rgba(15,23,42,.62));padding:9px 11px;box-shadow:inset 0 0 22px rgba(251,191,36,.07)}
-.rl-w-cap{font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(252,211,77,.92)}
+/* b493: кошелёк стола — одна строка на всю ширину лобби: подпись, точный
+   баланс, «На столе», «Спинов / побед» и золотое зеро стоят в ряд, зеркало
+   зеро прижато к правому краю за пунктирным разделителем. */
+.rl-wallet{display:flex;align-items:center;flex-wrap:wrap;gap:6px 20px;width:100%;margin-top:12px;padding:8px 16px;border-radius:14px;border:1px solid rgba(251,191,36,.35);background:linear-gradient(90deg,rgba(2,6,23,.9),rgba(15,23,42,.55));box-shadow:inset 0 0 22px rgba(251,191,36,.07)}
+.rl-w-cap{display:flex;align-items:center;font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(252,211,77,.92);white-space:nowrap}
 .rl-w-cap i{margin-right:5px}
-.rl-w-bal{display:flex;align-items:baseline;gap:8px;margin-top:4px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:25px;line-height:1;font-weight:900;color:#fde68a;text-shadow:0 0 18px rgba(251,191,36,.28)}
-.rl-w-rows{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-top:6px;font-size:10px;font-weight:700;color:#94a3b8}
+.rl-w-bal{display:flex;align-items:baseline;gap:8px;font-family:ui-monospace,SFMono-Regular,monospace;font-size:21px;line-height:1;font-weight:900;color:#fde68a;text-shadow:0 0 18px rgba(251,191,36,.28);white-space:nowrap}
+.rl-w-rows{display:flex;align-items:baseline;gap:6px;font-size:10px;font-weight:700;color:#94a3b8;white-space:nowrap}
 .rl-w-rows b{font-family:ui-monospace,SFMono-Regular,monospace;font-size:12px;font-weight:900;color:#e2e8f0}
-.rl-w-jp{margin-top:7px;padding-top:6px;border-top:1px dashed rgba(251,191,36,.25);font-size:10px;font-weight:800;color:#fcd34d}
+.rl-w-jp{display:flex;align-items:baseline;margin-left:auto;padding-left:20px;border-left:1px dashed rgba(251,191,36,.25);font-size:10px;font-weight:800;color:#fcd34d;white-space:nowrap}
 .rl-w-jp i{margin-right:5px}
 .rl-delta{font-style:normal;font-family:ui-monospace,SFMono-Regular,monospace;font-size:14px;font-weight:900;opacity:0;transform:translateY(5px);white-space:nowrap}
 .rl-delta.rl-d-go{animation:rlDelta 1.5s ease-out forwards}
@@ -1242,7 +1245,8 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 .rl-jp-note i{color:#fbbf24;margin-right:5px}
 .rl-jp-note b{color:#fcd34d}
 @media (max-width:640px){
-    .rl-wallet{flex:1 1 100%;min-width:0}
-    .rl-w-bal{font-size:21px}
+    .rl-wallet{gap:5px 12px;padding:8px 12px}
+    .rl-w-bal{font-size:19px}
     .rl-delta{font-size:12px}
+    .rl-w-jp{margin-left:0;padding-left:0;border-left:0}
 }
