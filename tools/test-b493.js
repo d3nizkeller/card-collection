@@ -20,7 +20,6 @@ function ok(cond, name) {
 }
 function eq(a, b, name) { ok(a === b, name + ' (факт ' + JSON.stringify(a) + ', ждём ' + JSON.stringify(b) + ')'); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const TS = '\u2009'; // тонкий пробел nxCoinsExact
 
 function rule(css, sel) {
     const i = css.indexOf(sel);
@@ -96,13 +95,13 @@ function boot() {
     console.log('\nC. Поведение b491/b492 в новой полосе');
     ev('window.__toasts = []; var __st = showToast; showToast = function(t, k){ window.__toasts.push(String(t) + "|" + (k || "")); return __st.apply(null, arguments); };');
     ev('jpcSet({ pRoulette: 0 }); state.coins = 1000; rouletteBets = {}; updateCoinDisplay(); renderRoulette(); rlSync();');
-    eq(ev('return document.getElementById("rl-balance").textContent;'), '1' + TS + '000', 'точный баланс в строке полосы');
+    eq(ev('return document.getElementById("rl-balance").textContent;'), '1k', 'баланс в строке полосы буквами (b494)');
     ev('rouletteChip = 25; rouletteBet("red");');
     eq(ev('return document.getElementById("rl-balance").textContent;'), '975', 'баланс строки сразу упал до 975');
     eq(ev('return document.getElementById("rl-table-sum").textContent;'), '25', '«На столе» в строке: 25');
     ok(/−25/.test(ev('return document.getElementById("rl-delta").textContent;')), 'живой минус −25 в строке баланса');
     ev('rouletteClear();');
-    eq(ev('return document.getElementById("rl-balance").textContent;'), '1' + TS + '000', '«Сброс» вернул баланс в строке');
+    eq(ev('return document.getElementById("rl-balance").textContent;'), '1k', '«Сброс» вернул баланс в строке буквами (b494)');
     ok(/\+25/.test(ev('return document.getElementById("rl-delta").textContent;')), 'живой плюс +25');
     ev('rouletteBets = { n1: 409600 }; rlSync();');
     eq(ev('return document.getElementById("rl-table-sum").textContent;'), '409k', '«На столе» буквами: 409k');

@@ -5,7 +5,7 @@
 //     рулетка — пятая игра джекпота (JPC_GAMES + Roulette 2.7 %), золотое зеро;
 //  2) разметка/CSS: .rl-wallet, #rl-balance, #rl-delta, jp-banner с roulette-*;
 //  3) поведение: фишка списывается СРАЗУ, «×2» докупает, «Сброс» возвращает,
-//     недостача — отказ; выигрыш и проигрыш меняют баланс и шапку точно;
+//     недостача — отказ; выигрыш и проигрыш меняют баланс и шапку буквами (b494);
 //  4) джекпот: ставка кормит банк, проигрыш докидывает, золотое зеро срывает банк
 //     (jackpotWin), гарантия по спинам работает, ползунок «Рулетка» есть в Студии;
 //  5) сквозной тег: nxmob235 в sw.js, 8 раз в index.html, BUILD_TAG в tools/build.py.
@@ -21,7 +21,6 @@ function ok(cond, name) {
 }
 function eq(a, b, name) { ok(a === b, name + ' (факт ' + JSON.stringify(a) + ', ждём ' + JSON.stringify(b) + ')'); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const TS = '\u2009'; // тонкий пробел nxCoinsExact
 
 function boot() {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -47,7 +46,7 @@ function boot() {
     console.log('A. Исходники');
     {
         const app = fs.readFileSync(path.join(ROOT, 'assets', 'app.js'), 'utf8');
-        ['function nxCoinsExact(', 'function rlLobbyOpen(', 'function rlExactHdr(', 'function rlSync(',
+        ['function rlSync(',
             'function rlFlash(', 'function rouletteSpend(', 'function rouletteRefund(',
             'function rouletteJpArmed(', 'function rouletteJpRoll(', 'let rouletteGoldZero = false;'].forEach(s =>
             ok(app.includes(s), 'app.js: ' + s));
@@ -68,7 +67,8 @@ function boot() {
         ok(app.includes("document.getElementById('roulette-jackpot')"), 'app.js: jackpotRender обновляет банк в лобби рулетки');
         ok(!app.includes("state.coins -= total;\n            updateCoinDisplay();"), 'app.js: спин больше не списывает второй раз');
         ok(!app.includes("showToast('Не хватает монет: ставок на '"), 'app.js: старой проверки «не хватает на спин» нет');
-        ok(/if \(rlExactHdr\(\)\) s = nxCoinsExact\(state\.coins\);/.test(app), 'app.js: шапка показывает точный баланс в рулетке');
+        ok(!app.includes('function nxCoinsExact(') && !app.includes('function rlExactHdr(') && !app.includes('function rlLobbyOpen('), 'app.js: определений точного формата b491 не осталось (b494)');
+        ok(app.includes("const t = fmtCoins(state.coins); if (bal.textContent !== t) bal.textContent = t;"), 'app.js: кошелёк стола пишет баланс буквами (b494)');
 
         const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
         ['class="rl-wallet"', 'id="rl-balance"', 'id="rl-delta"', 'id="rl-table-sum"', 'id="rl-spins"',
@@ -92,8 +92,8 @@ function boot() {
 
     console.log('\nB. Кошелёк стола: фишка списывается сразу');
     ev('jpcSet({ pRoulette: 0 }); state.coins = 1000; rouletteBets = {}; updateCoinDisplay(); renderRoulette();');
-    eq(ev('return document.getElementById("rl-balance").textContent;'), '1' + TS + '000', 'баланс в кошельке стола точный');
-    eq(ev('return document.getElementById("coin-balance").innerText;'), '1' + TS + '000', 'шапка в лобби рулетки тоже точная (не «1k»)');
+    eq(ev('return document.getElementById("rl-balance").textContent;'), '1k', 'баланс в кошельке стола буквами (b494)');
+    eq(ev('return document.getElementById("coin-balance").innerText;'), '1k', 'шапка в лобби рулетки тоже буквами (b494)');
     ev('rouletteChip = 25; rouletteBet("red");');
     eq(ev('return state.coins;'), 975, 'клик по клетке списал 25 с баланса');
     eq(ev('return rouletteTotal();'), 25, 'на столе 25');
@@ -131,7 +131,7 @@ function boot() {
     ev('Math.random = function(){ return (5 + 0.5) / 37; }; rouletteSpin();');
     await sleep(200);
     eq(ev('return state.coins;'), c0 + 50, 'красное ×2: выигрыш 50 упал в баланс');
-    eq(ev('return document.getElementById("rl-balance").textContent;'), nx(c0 + 50), 'кошелёк стола показал новый баланс');
+    eq(ev('return document.getElementById("rl-balance").textContent;'), ev('return fmtCoins(' + (c0 + 50) + ')'), 'кошелёк стола показал новый баланс буквами (b494)');
     ok(/\+50/.test(ev('return document.getElementById("rl-delta").textContent;')), 'живой плюс +50');
     ok(ev('return document.getElementById("rl-delta").className;').includes('rl-d-up'), 'плюс окрашен как приход');
     eq(ev('return rouletteTotal();'), 0, 'после спина стол пуст');
@@ -192,16 +192,16 @@ function boot() {
     eq(ev('return jpcOdds(2.7);'), '1 из 37', '2.7 % читаются как «1 из 37»');
     ev('jpcSet({ pRoulette: 0, feedBet: 100, feedLoss: 100 });');
 
-    console.log('\nH. Точный баланс в шапке только в рулетке');
+    console.log('\nH. Баланс буквами везде (b494)');
     ev('state.coins = 1234567; updateCoinDisplay();');
     eq(ev('return document.getElementById("coin-balance").innerText;'), '1.2m', 'большие суммы в шапке по-прежнему буквами');
-    eq(ev('return document.getElementById("rl-balance").textContent;'), '1' + TS + '234' + TS + '567', 'кошелёк стола точный всегда');
+    eq(ev('return document.getElementById("rl-balance").textContent;'), '1.2m', 'кошелёк стола тоже буквами (b494)');
     ev('state.coins = 999999; updateCoinDisplay();');
-    eq(ev('return document.getElementById("coin-balance").innerText;'), '999' + TS + '999', 'до миллиона шапка точная');
+    eq(ev('return document.getElementById("coin-balance").innerText;'), '999k', 'до миллиона шапка тоже буквами (b494)');
     ev('document.getElementById("lobby-roulette").classList.add("hidden"); state.coins = 5000; updateCoinDisplay();');
     eq(ev('return document.getElementById("coin-balance").innerText;'), '5k', 'вне лобби рулетки шапка как раньше');
     ev('document.getElementById("lobby-roulette").classList.remove("hidden"); updateCoinDisplay();');
-    eq(ev('return document.getElementById("coin-balance").innerText;'), '5' + TS + '000', 'вернулись в рулетку — снова точно');
+    eq(ev('return document.getElementById("coin-balance").innerText;'), '5k', 'вернулись в рулетку — те же буквы (b494)');
 
     console.log('\nI. Сквозной тег');
     {
@@ -220,7 +220,3 @@ function boot() {
     process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('b491: CRASH', e.message, e.stack); process.exit(1); });
 
-function nx(n) {
-    n = Math.floor(Number(n) || 0);
-    return (n < 0 ? '−' : '') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, TS);
-}

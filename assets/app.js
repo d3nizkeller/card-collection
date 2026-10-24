@@ -4402,30 +4402,19 @@ function nxToggle3d() {
         }
         function rouletteSetChip(v) { rouletteChip = v; renderRoulette(); }
         // ---- b491: кошелёк стола ----
-        // fmtCoins() в шапке сайта округляет до букв (1000 -> «1k», 1234567 ->
-        // «1.2m»), поэтому ставка 25 и выигрыш 900 выглядели как «баланс не
-        // двигается». Здесь баланс показывается ТОЧНО, до монеты.
-        function nxCoinsExact(n) {
-            n = Math.floor(Number(n) || 0);
-            const s = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u2009');
-            return (n < 0 ? '−' : '') + s;
-        }
-        function rlLobbyOpen() {
-            try {
-                const lr = document.getElementById('lobby-roulette');
-                const tb = document.getElementById('tab-battle');
-                return !!(lr && tb && !lr.classList.contains('hidden') && !tb.classList.contains('hidden'));
-            } catch (e) { return false; }
-        }
+        // b494: просьба владельца со скрином пилюли («сумма должна быть 1k»):
+        // баланс кошелька стола показывается БУКВАМИ, как все остальные суммы
+        // сайта — fmtCoins: 1000 -> «1k», 110307 -> «110k». До 1000 монет сумма
+        // пишется как есть, а движение баланса по-прежнему видно по живому
+        // «+900 / −25» (rlFlash) и толчку пилюли. Точный формат с пробелами
+        // (nxCoinsExact) и точная надбавка шапки (rlExactHdr) убраны.
         // b492: суммы НА СТОЛЕ (бейджи на клетках, «На столе», «Крутить», кошелёк
         // стола, живой +/−) показываются буквами — fmtCoins: 1000 -> «1k»,
         // 9834496 -> «9.8m». Сырые числа вроде 3690496 не влезали в мини-фишку
-        // и читались как каша. Баланс остаётся точным до монеты (b491).
-        // в лобби рулетки шапка показывает точную сумму (пока она влезает в пилюлю)
-        function rlExactHdr() { return rlLobbyOpen() && (Math.floor(Number(state.coins) || 0) < 1000000); }
+        // и читались как каша.
         function rlSync() {
             const bal = document.getElementById('rl-balance');
-            if (bal) { const t = nxCoinsExact(state.coins); if (bal.textContent !== t) bal.textContent = t; }
+            if (bal) { const t = fmtCoins(state.coins); if (bal.textContent !== t) bal.textContent = t; } // b494: кошелёк буквами
             const ts = document.getElementById('rl-table-sum');
             if (ts) { let t = '0'; try { t = fmtCoins(rouletteTotal()); } catch (e) {} if (ts.textContent !== t) ts.textContent = t; } // b492: сумма стола — буквами
             const sp = document.getElementById('rl-spins');
@@ -13495,11 +13484,10 @@ function nxToggle3d() {
         }
         function updateCoinDisplay() {
             // b373: счётчик монет перезаписывался каждую секунду даже без изменений
-            // b491: в лобби рулетки шапка показывает баланс ТОЧНО (до монеты):
-            // fmtCoins() округляет до букв, и ставка 25 / выигрыш 900 не меняли
-            // «1k» — владелец видел это как «баланс не двигается».
+            // b494: баланс буквами ВЕЗДЕ, включая лобби рулетки (просьба
+            // владельца: «сумма должна быть 1k»); кошелёк стола и шапка
+            // показывают одну и ту же сумму в одном формате.
             let s = fmtCoins(state.coins);
-            try { if (rlExactHdr()) s = nxCoinsExact(state.coins); } catch (e) {}
             const cb = document.getElementById('coin-balance');
             if (cb && cb.innerText !== s) cb.innerText = s;
             const sc = document.getElementById('store-stat-coins');

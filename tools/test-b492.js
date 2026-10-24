@@ -3,7 +3,7 @@
 // сумму, потому что сумма написана белым на белом».
 // Проверки:
 //  1) исходники: бейджи/«На столе»/«Крутить»/#rl-table-sum/rlFlash через fmtCoins,
-//     лицо фишки — span.rl-chip-val, баланс ПО-ПРЕЖНЕМУ точный (nxCoinsExact);
+//     лицо фишки — span.rl-chip-val; b494: баланс буквами, как весь сайт;
 //  2) CSS: таблетка .rl-chip-val сплошным цветом фишки + мобильный размер;
 //  3) поведение: ставки и удвоения дают «1.6k» на столе и в бейдже, сырое число
 //     со стола исчезает, «Сброс» мигает «+1.6k», спин рапортует буквами,
@@ -21,7 +21,6 @@ function ok(cond, name) {
 }
 function eq(a, b, name) { ok(a === b, name + ' (факт ' + JSON.stringify(a) + ', ждём ' + JSON.stringify(b) + ')'); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const TS = '\u2009'; // тонкий пробел nxCoinsExact
 
 function boot() {
     const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -56,9 +55,9 @@ function boot() {
             "(d > 0 ? '+' : '−') + fmtCoins(Math.abs(d));"].forEach(s =>
             ok(app.includes(s), 'app.js: ' + s.slice(0, 64)));
         ok(/\/\/ b492: суммы НА СТОЛЕ/.test(app), 'app.js: комментарий b492 у кошелька стола');
-        // b491 не сломан: баланс точный
-        ok(app.includes("const t = nxCoinsExact(state.coins); if (bal.textContent !== t) bal.textContent = t;"), 'app.js: баланс стола по-прежнему точный (b491)');
-        ok(/if \(rlExactHdr\(\)\) s = nxCoinsExact\(state\.coins\);/.test(app), 'app.js: шапка по-прежнему точная в лобби (b491)');
+        // b494: баланс буквами везде
+        ok(app.includes("const t = fmtCoins(state.coins); if (bal.textContent !== t) bal.textContent = t;"), 'app.js: кошелёк стола буквами (b494)');
+        ok(!app.includes('function rlExactHdr('), 'app.js: определения точной надбавки шапки b491 не осталось (b494)');
         ok(!/>`\$\{bet\}</.test(app) && !app.includes('rl-chipmini">${bet}</i>'), 'app.js: сырой суммы в бейдже не осталось');
 
         const css = fs.readFileSync(path.join(ROOT, 'assets', 'app.css'), 'utf8');
@@ -93,7 +92,7 @@ function boot() {
     eq(ev('return document.querySelector("#roulette-table .text-amber-300").textContent;'), '1.6k', '«На столе:» — буквами');
     ok(/Крутить · 1\.6k/.test(ev('return document.querySelector("#roulette-table button.bg-rose-600").textContent;')), 'кнопка «Крутить · 1.6k»');
     eq(ev('return document.getElementById("rl-table-sum").textContent;'), '1.6k', 'кошелёк стола: сумма буквами');
-    eq(ev('return document.getElementById("rl-balance").textContent;'), '9' + TS + '998' + TS + '400', 'баланс стола ТОЧНЫЙ (b491 жив)');
+    eq(ev('return document.getElementById("rl-balance").textContent;'), '9.9m', 'баланс стола буквами (b494)');
     eq(ev('return document.querySelector(".rl-chip-100 .rl-chip-val").textContent;'), '100', 'лицо фишки 100 — в таблетке');
     eq(ev('return document.querySelectorAll("#roulette-table .rl-chip .rl-chip-val").length;'), 4, 'таблетка у каждой из четырёх фишек');
     eq(ev('return document.querySelector(".rl-chip-5").title;'), 'Фишка 5 монет', 'title фишки 5 без букв');
