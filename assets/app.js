@@ -4419,8 +4419,11 @@ function nxToggle3d() {
             if (!tamaSpend(TAMA_COST.adopt, 'купить яйцо')) return;
             state.tamagotchi = { name: 'Тоша', level: 1, xp: 0, hunger: 80, mood: 80, energy: 80, clean: 80, sick: false, lastTs: Date.now(), adoptedAt: Date.now() };
             saveState();
-            showToast('🐣 Тоша вылупился! Действия тратят монеты, а за уровни питомец приносит карты альбома', 'success');
+            TAMA_ANIM = 'adopt'; // b485: появление — пружинный pop
             renderTamagotchi();
+            TAMA_ANIM = '';
+            tamaSpawnFx('adopt');
+            showToast('🐣 Тоша вылупился! Действия тратят монеты, а за уровни питомец приносит карты альбома', 'success');
         }
         function tamaAct(kind) {
             const t = state.tamagotchi;
@@ -4442,14 +4445,40 @@ function nxToggle3d() {
             t.lastTs = Date.now();
             saveState();
             try { cloudPublishSoon(); } catch (e) {}
+            TAMA_ANIM = kind; // b485: одноразовая реакция морды на действие
             renderTamagotchi();
+            TAMA_ANIM = '';
+            tamaSpawnFx(kind); // b485: сноп частиц над питомцем
+            if (gifted) { tamaSpawnFx('level'); try { launchConfetti(60); } catch (e) {} } // b485: уровень = праздник
             if (gifted) showToast('🎁 Уровень ' + t.level + '! Тоша принёс карту «' + gifted + '»', 'success');
+        }
+        // b485: реакция морды и частицы. TAMA_ANIM живёт один рендер
+        // (иначе реакция зациклилась бы при каждой перерисовке панели), частицы
+        // сыплются отдельно и переживают перерисовку (сами удаляются по таймеру).
+        let TAMA_ANIM = '';
+        const TAMA_FX_EMOJI = {
+            feed: ['🍗', '🍖', '✨'], play: ['🎮', '⭐', '✨'], wash: ['🫧', '', '🧼'],
+            sleep: ['💤', '😴', '✨'], heal: ['💊', '❤', '✨'], adopt: ['🎉', '✨', '🐣'], level: ['🎉', '🎁', '⭐'],
+        };
+        function tamaSpawnFx(kind) {
+            const host = document.getElementById('tama-fx');
+            if (!host) return;
+            const set = TAMA_FX_EMOJI[kind] || ['✨'];
+            for (let i = 0; i < 7; i++) {
+                const s = document.createElement('span');
+                s.textContent = set[i % set.length];
+                s.style.left = (8 + Math.random() * 84) + '%';
+                s.style.animationDelay = (Math.random() * 0.5).toFixed(2) + 's';
+                s.style.fontSize = (14 + Math.round(Math.random() * 10)) + 'px';
+                host.appendChild(s);
+                setTimeout(() => { try { s.remove(); } catch (e) {} }, 2300);
+            }
         }
         function tamaBar(label, icon, val) {
             const col = val > 50 ? 'bg-emerald-500' : (val > 25 ? 'bg-amber-400' : 'bg-rose-500');
             return `<div class="min-w-0">
                 <div class="flex justify-between text-[10px] text-slate-400 mb-0.5"><span>${icon} ${label}</span><b class="text-slate-200">${Math.round(val)}</b></div>
-                <div class="h-2 rounded-full bg-slate-800 overflow-hidden"><div class="h-full ${col} rounded-full" style="width:${Math.max(0, Math.min(100, val))}%"></div></div>
+                <div class="tama-bar"><div class="tama-bar-fill ${col}" style="width:${Math.max(0, Math.min(100, val))}%"></div></div>
             </div>`;
         }
         function renderTamagotchi() {
@@ -4458,7 +4487,7 @@ function nxToggle3d() {
             const t = state.tamagotchi;
             if (!t) {
                 box.innerHTML = `<div class="text-center py-6 space-y-3">
-                    <div class="text-5xl">🥚</div>
+                    <div class="tama-pet">🥚</div><!-- b485: яйцо тоже покачивается -->
                     <p class="text-sm text-slate-300 font-bold">Пока никто не живёт</p>
                     <p class="text-[11px] text-slate-500 max-w-md mx-auto leading-snug">Купите яйцо за ${TAMA_COST.adopt} монет — питомец вылупится и будет расти. Каждое действие (покормить, поиграть, помыть, уложить, лечить) тратит монеты из баланса, а за новые уровни питомец приносит карты альбома.</p>
                     <button type="button" onclick="tamaAdopt()" class="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold transition shadow-lg"><i class="fa-solid fa-egg mr-1.5"></i>Купить яйцо · <i class="fa-solid fa-coins mr-1"></i>${TAMA_COST.adopt}</button>
@@ -4469,16 +4498,21 @@ function nxToggle3d() {
             const need = tamaXpNeed(t.level);
             const btns = TAMA_ACTIONS.map(a => {
                 const off = (a.id === 'heal' && !t.sick);
-                return `<button type="button" onclick="tamaAct('${a.id}')" title="${a.hint}" class="px-3 py-2 rounded-xl ${off ? 'bg-slate-900 text-slate-600 border border-slate-800' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200'} text-[11px] font-bold transition flex flex-col items-center gap-0.5">
+                return `<button type="button" onclick="tamaAct('${a.id}')" title="${a.hint}" class="px-3 py-2 rounded-xl ${off ? 'bg-slate-900 text-slate-600 border border-slate-800' : 'bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200'} text-[11px] font-bold tama-btn flex flex-col items-center gap-0.5">
                     <span class="text-base leading-none">${a.icon}</span><span>${a.label} · <i class="fa-solid fa-coins text-amber-300"></i>${a.cost}</span>
                 </button>`;
             }).join('');
             box.innerHTML = `<div class="flex flex-col lg:flex-row gap-4 items-start">
                 <div class="text-center lg:text-left shrink-0">
-                    <div class="text-5xl leading-none">${tamaFace(t)}</div>
+                    <div class="tama-stage"><!-- b485: сцена питомца: свечение, морда, тень, частицы -->
+                        <i class="tama-glow"></i>
+                        <div id="tama-pet" class="tama-pet${t.sick ? ' tama-sick' : ''}${TAMA_ANIM ? ' tama-act-' + TAMA_ANIM : ''}">${tamaFace(t)}</div>
+                        <i class="tama-shadow"></i>
+                        <div id="tama-fx" class="tama-fx"></div>
+                    </div>
                     <p class="mt-2 text-sm font-black text-white">${t.name || 'Тоша'}${t.sick ? ' <span class="text-rose-300">· болен</span>' : ''}</p>
                     <p class="text-[10px] text-slate-400">уровень <b class="text-violet-300">${t.level}</b> · рост ${Math.round(t.xp || 0)}/${need}</p>
-                    <div class="mt-1 h-2 w-32 mx-auto lg:mx-0 rounded-full bg-slate-800 overflow-hidden"><div class="h-full bg-violet-500 rounded-full" style="width:${Math.min(100, Math.round((t.xp || 0) / need * 100))}%"></div></div>
+                    <div class="mt-1 h-2 w-32 mx-auto lg:mx-0 rounded-full bg-slate-800 overflow-hidden"><div class="tama-xp-fill h-full bg-violet-500 rounded-full" style="width:${Math.min(100, Math.round((t.xp || 0) / need * 100))}%"></div></div>
                 </div>
                 <div class="space-y-2.5 min-w-0 w-full">
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">

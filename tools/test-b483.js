@@ -184,7 +184,7 @@ function boot() {
     {
         ev('renderTamagotchi()');
         const panel = doc.getElementById('tama-panel').innerHTML;
-        ok(/text-5xl/.test(panel), 'морда питомца на панели');
+        ok(/tama-pet/.test(panel), 'морда питомца на панели (b485: в сцене с дыханием и частицами)');
         ok(panel.includes('Покормить') && panel.includes('15'), 'кнопка «Покормить» с ценой 15');
         ok(panel.includes('Лечить') && panel.includes('40'), 'кнопка «Лечить» с ценой 40');
         ok(panel.includes('Сытость') && panel.includes('Чистота'), 'полоски характеристик на панели');

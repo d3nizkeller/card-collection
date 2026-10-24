@@ -59,9 +59,10 @@ function boot() {
         ok(/#mode-lines-btn:active, #mode-tama-btn:active, #miner-btn:active\{ transform: scale\(\.97\); \}/.test(html), 'нажатие плитки «Тамагочи» пружинит в общем списке :active');
 
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob228', 'sw.js: боевой тег nxmob228');
-        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках на assets');
-        ok(bp.includes("BUILD_TAG = 'nxmob228'"), 'tools/build.py: BUILD_TAG = nxmob228');
+        // b485: номер тега не прибиваем к b484 — единство и не ниже nxmob228
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 228, 'тег не ниже nxmob228 (' + tag + ')');
         ok(row.length > 0, 'плитка арены по-прежнему первая в контейнере');
     }
 
