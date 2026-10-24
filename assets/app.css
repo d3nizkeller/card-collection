@@ -1199,6 +1199,14 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 .rl-chip-25{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.4),rgba(255,255,255,0) 46%),conic-gradient(#047857 0 12.5%,#f8fafc 12.5% 25%,#047857 25% 37.5%,#f8fafc 37.5% 50%,#047857 50% 62.5%,#f8fafc 62.5% 75%,#047857 75% 87.5%,#f8fafc 87.5%)}
 .rl-chip-100{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.4),rgba(255,255,255,0) 46%),conic-gradient(#b45309 0 12.5%,#f8fafc 12.5% 25%,#b45309 25% 37.5%,#f8fafc 37.5% 50%,#b45309 50% 62.5%,#f8fafc 62.5% 75%,#b45309 75% 87.5%,#f8fafc 87.5%)}
 .rl-chip-on{opacity:1;transform:scale(1.12);box-shadow:0 0 0 3px rgba(251,191,36,.85),0 6px 14px rgba(2,6,23,.7),inset 0 0 0 3px rgba(248,250,252,.85)}
+/* b492: лицо фишки — контрастная сплошная таблетка в центре: белая цифра
+   терялась на белых секторах конического градиента (белым по белому, скрин
+   владельца). Цвет таблетки = цвет фишки, текст всегда читается. */
+.rl-chip-val{width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;background:#0b1220;color:#f8fafc;font-size:11px;font-weight:900;line-height:1;box-shadow:0 0 0 2px rgba(248,250,252,.8),inset 0 1px 3px rgba(255,255,255,.28);text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.rl-chip-1 .rl-chip-val{background:#475569}
+.rl-chip-5 .rl-chip-val{background:#b91c1c}
+.rl-chip-25 .rl-chip-val{background:#047857}
+.rl-chip-100 .rl-chip-val{background:#b45309}
 .rl-histn{width:26px;height:26px;border-radius:9999px;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 6px rgba(2,6,23,.5)}
 .rl-hist-zero{background:#059669}
 .rl-hist-red{background:#be123c}
@@ -1209,6 +1217,7 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
     .rl-zero-v{font-size:11px}
     .rl-out{font-size:8px}
     .rl-chip{width:38px;height:38px;font-size:11px}
+    .rl-chip-val{width:24px;height:24px;font-size:10px}
 }
 
 /* b491: кошелёк стола рулетки — баланс точно до монеты, живой плюс/минус,

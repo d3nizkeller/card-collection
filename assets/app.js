@@ -4417,13 +4417,17 @@ function nxToggle3d() {
                 return !!(lr && tb && !lr.classList.contains('hidden') && !tb.classList.contains('hidden'));
             } catch (e) { return false; }
         }
+        // b492: суммы НА СТОЛЕ (бейджи на клетках, «На столе», «Крутить», кошелёк
+        // стола, живой +/−) показываются буквами — fmtCoins: 1000 -> «1k»,
+        // 9834496 -> «9.8m». Сырые числа вроде 3690496 не влезали в мини-фишку
+        // и читались как каша. Баланс остаётся точным до монеты (b491).
         // в лобби рулетки шапка показывает точную сумму (пока она влезает в пилюлю)
         function rlExactHdr() { return rlLobbyOpen() && (Math.floor(Number(state.coins) || 0) < 1000000); }
         function rlSync() {
             const bal = document.getElementById('rl-balance');
             if (bal) { const t = nxCoinsExact(state.coins); if (bal.textContent !== t) bal.textContent = t; }
             const ts = document.getElementById('rl-table-sum');
-            if (ts) { let t = '0'; try { t = nxCoinsExact(rouletteTotal()); } catch (e) {} if (ts.textContent !== t) ts.textContent = t; }
+            if (ts) { let t = '0'; try { t = fmtCoins(rouletteTotal()); } catch (e) {} if (ts.textContent !== t) ts.textContent = t; } // b492: сумма стола — буквами
             const sp = document.getElementById('rl-spins');
             if (sp) { const t = String((state.stats && state.stats.rouletteSpins) || 0); if (sp.textContent !== t) sp.textContent = t; }
             const wn = document.getElementById('rl-wins');
@@ -4442,7 +4446,7 @@ function nxToggle3d() {
             const d = Math.round(Number(delta) || 0);
             const el = document.getElementById('rl-delta');
             if (el && d) {
-                el.textContent = (d > 0 ? '+' : '−') + nxCoinsExact(Math.abs(d));
+                el.textContent = (d > 0 ? '+' : '−') + fmtCoins(Math.abs(d)); // b492: живой +/− буквами
                 el.classList.remove('rl-d-go');
                 void el.offsetWidth; // перезапуск анимации
                 el.className = 'rl-delta ' + (d > 0 ? 'rl-d-up' : 'rl-d-down') + ' rl-d-go';
@@ -4705,7 +4709,7 @@ function nxToggle3d() {
             const col = d.kind === 'num'
                 ? (ROULETTE_REDS.indexOf(Number(d.label)) >= 0 ? 'rl-red' : 'rl-black')
                 : (d.kind === 'dozen' || d.kind === 'col' ? 'rl-out' : 'rl-out');
-            return `<button type="button" onclick="rouletteBet('${d.id}')"${style || ''} class="rl-cell ${col} ${extra || ''}">${d.label}${bet ? `<i class="rl-chipmini">${bet}</i>` : ''}</button>`;
+            return `<button type="button" onclick="rouletteBet('${d.id}')"${style || ''} class="rl-cell ${col} ${extra || ''}">${d.label}${bet ? `<i class="rl-chipmini">${fmtCoins(bet)}</i>` : ''}</button>`;
         }
         function renderRoulette() {
             const box = document.getElementById('roulette-table');
@@ -4717,10 +4721,10 @@ function nxToggle3d() {
             const hist = (rs.hist || []).slice().reverse();
             // b489: фишки — казино-кругляши с коническими полосами своего цвета
             const CHIP_CLS = { 1: 'rl-chip-1', 5: 'rl-chip-5', 25: 'rl-chip-25', 100: 'rl-chip-100' };
-            const chips = ROULETTE_CHIPS.map(c => `<button type="button" onclick="rouletteSetChip(${c})" class="rl-chip ${CHIP_CLS[c] || ''} ${rouletteChip === c ? 'rl-chip-on' : ''}" title="Фишка ${c} монет">${c}</button>`).join('');
+            const chips = ROULETTE_CHIPS.map(c => `<button type="button" onclick="rouletteSetChip(${c})" class="rl-chip ${CHIP_CLS[c] || ''} ${rouletteChip === c ? 'rl-chip-on' : ''}" title="Фишка ${fmtCoins(c)} монет"><span class="rl-chip-val">${fmtCoins(c)}</span></button>`).join('');
             // b489: классический стол: зеро слева на 3 ряда, 3 ряда × 12 чисел,
             // справа «2:1», ниже дюжины (по 4 колонки) и равные шансы (по 2)
-            const betBadge = id => (rouletteBets[id] || 0) ? `<i class="rl-chipmini">${rouletteBets[id]}</i>` : '';
+            const betBadge = id => (rouletteBets[id] || 0) ? `<i class="rl-chipmini">${fmtCoins(rouletteBets[id])}</i>` : ''; // b492: буквами
             let cells = `<button type="button" onclick="rouletteBet('n0')" class="rl-cell rl-zero rl-zero-v">0${betBadge('n0')}</button>`;
             const colIds = ['c3', 'c2', 'c1'];
             for (let row = 0; row < 3; row++) {
@@ -4739,7 +4743,7 @@ function nxToggle3d() {
             box.innerHTML = `
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                     <span class="text-[10px] text-slate-400 font-bold mr-1">Фишка:</span>${chips}
-                    <span class="ml-auto text-[11px] text-slate-300">На столе: <b class="text-amber-300">${nxCoinsExact(total)}</b></span>
+                    <span class="ml-auto text-[11px] text-slate-300">На столе: <b class="text-amber-300">${fmtCoins(total)}</b></span>
                 </div>
                 <div class="rl-felt">
                     <div class="rl-grid">${cells}</div>
@@ -4747,7 +4751,7 @@ function nxToggle3d() {
                 <div class="flex flex-wrap items-center gap-2 mt-3">
                     <button type="button" onclick="rouletteDouble()" class="tama-btn px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200 transition">×2</button>
                     <button type="button" onclick="rouletteClear()" class="tama-btn px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200 transition">Сброс</button>
-                    <button type="button" onclick="rouletteSpin()" class="tama-btn flex-1 min-w-[140px] px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[12px] font-black transition shadow-lg"><i class="fa-solid fa-circle-dot mr-1.5"></i>Крутить · ${total || '—'}</button>
+                    <button type="button" onclick="rouletteSpin()" class="tama-btn flex-1 min-w-[140px] px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[12px] font-black transition shadow-lg"><i class="fa-solid fa-circle-dot mr-1.5"></i>Крутить · ${total ? fmtCoins(total) : '—'}</button>
                 </div>
                 <div class="flex flex-wrap items-center gap-1 mt-3">
                     <span class="text-[10px] text-slate-500 font-bold mr-1">История:</span>
