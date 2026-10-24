@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob226" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob226">
+    <script src="assets/three.min.js?v=nxmob227" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob227">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob226">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob227">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob226">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob227">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -215,7 +215,7 @@
         <!-- BATTLE TAB -->
         <section id="tab-battle" class="space-y-6 hidden">
             <!-- b239: переключатель режимов живёт вне лобби — виден всегда -->
-                <div class="grid grid-cols-8 gap-1 sm:gap-2 w-full py-0.5">
+                <div class="grid grid-cols-9 gap-1 sm:gap-2 w-full py-0.5"><!-- b483: девятая плитка — Тамагочи -->
                     <button onclick="setBattleMode('arena')" id="mode-arena-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-rose-600 text-white shadow"><i class="fa-solid fa-hand-fist mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Арена</span></button>
                     <button onclick="setBattleMode('durak')" id="mode-durak-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-diamond mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Дурак</span></button>
                     <button onclick="setBattleMode('miner')" id="mode-miner-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-helmet-safety mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Шахта</span></button>
@@ -224,9 +224,22 @@
                 <button onclick="setBattleMode('lines')" id="mode-lines-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-table-cells mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Линии</span></button>
                 <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Мины</span></button>
                 <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Колесо</span></button>
+                <button onclick="setBattleMode('tama')" id="mode-tama-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Тамагочи: питомец тратит ваш баланс на еду, игры и уход, а за уровни дарит карты"><i class="fa-solid fa-paw mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Тамагочи</span></button>
                 </div>
             <!-- Battle Lobby -->
             <div id="battle-lobby" class="space-y-6">
+                <!-- b483: лобби режима «Тамагочи» — содержимое рисует renderTamagotchi() -->
+                <div id="lobby-tama" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-paw text-amber-300 mr-2"></i>Тамагочи</h2>
+                                <p class="text-sm text-slate-400 mt-1">Питомец на балансе игры: каждое действие тратит монеты, питомец растёт и приносит карты альбома.</p>
+                            </div>
+                        </div>
+                        <div id="tama-panel" class="mt-4"></div>
+                    </div>
+                </div>
                 <!-- b49: 3D-игровой автомат: на барабанах крутятся карты сайта -->
                 <div id="lobby-slots" class="space-y-6 hidden">
                     <!-- b182: стат-блоки БАЛАНС/СПИНОВ/ПОБЕД убраны из шапок лобби (slots/grid/wheel/mines/lines/miner) -->
@@ -3131,10 +3144,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob226"></script>
-    <script src="assets/stories.js?v=nxmob226"></script>
-    <script src="assets/qrcode.min.js?v=nxmob226"></script>
-    <script src="assets/qr-transfer.js?v=nxmob226"></script>
+    <script src="assets/app.js?v=nxmob227"></script>
+    <script src="assets/stories.js?v=nxmob227"></script>
+    <script src="assets/qrcode.min.js?v=nxmob227"></script>
+    <script src="assets/qr-transfer.js?v=nxmob227"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
