@@ -58,6 +58,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         ['.rl-felt{', '.rl-grid{display:grid;grid-template-columns:44px repeat(12,minmax(0,1fr)) 40px', '.rl-cell{', '.rl-red{', '.rl-black{', '.rl-zero{', '.rl-zero-v{', '.rl-out{', '.rl-chipmini{', '.rl-chip{', '.rl-chip-5{', '.rl-chip-on{', '.rl-histn{', '.rl-wheelhouse{'].forEach(s =>
             ok(css.includes(s), 'css: ' + s.slice(0, 40)));
         ok(/@media \(max-width:640px\)\{\s*\.rl-grid\{grid-template-columns:26px/.test(css), 'мобильный стол ужимается под 390px');
+        ok(!css.includes('writing-mode:vertical-rl'), 'b495: зеро и колонки 2:1 без вертикального текста');
+        ok(!/\.rl-(zero-v|colbet)\{[^}]*rotate\(/.test(css), 'b495: rotate() у зеро и колонок нет');
         ok(/\.rl-chip-100\{[^}]*conic-gradient\(#b45309/.test(css), 'фишка 100 — янтарные конические полосы');
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
         // сквозная проверка тега: единый тег из sw.js повторяется 8 раз в index.html,
@@ -97,7 +99,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     {
         ev(`state.coins = 5000; renderRoulette();`);
         const t = table();
-        ok(t.includes('rl-zero-v'), 'зеро — вертикальная плашка слева');
+        ok(t.includes('rl-zero-v'), 'зеро — плашка слева, подпись без поворота (b495)');
         eq((t.match(/rl-cell rl-red|rl-cell rl-black/g) || []).length, 36, '36 чисел красными/чёрными клетками');
         eq((t.match(/2:1/g) || []).length, 3, 'три коробки 2:1 справа');
         ok(t.includes('1–12') && t.includes('13–24') && t.includes('25–36'), 'дюжины под числами');
