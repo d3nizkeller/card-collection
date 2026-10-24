@@ -3205,7 +3205,8 @@ function nxToggle3d() {
             duplicatesSold: 0, coinsFromDupes: 0, cardsCreated: 0, bestStreak: 0,
             battlesWon: 0, battlesLost: 0, flawlessWins: 0, championWins: 0, oppWins: {},
             battleStreak: 0, bestBattleStreak: 0,
-            durakWins: 0, durakLosses: 0, durakStreak: 0, bestDurakStreak: 0
+            durakWins: 0, durakLosses: 0, durakStreak: 0, bestDurakStreak: 0,
+            rouletteSpins: 0, rouletteWins: 0, rouletteBest: 0 // b491: статистика рулетки
         };
 
         // Пул ежедневных заданий
@@ -4356,17 +4357,23 @@ function nxToggle3d() {
         let battleMode = 'arena';
 
         // ============ b488: РУЛЕТКА 2D (европейская, 0–36) ============
-        // Ставки копятся кликами по клеткам стола (фишка = выбранное
-        // достоинство), «Крутить» списывает сумму ставок с общего баланса,
-        // колесо крутится и останавливает выигрышный сектор под указателем.
-        // Выплаты: число ×36, дюжина ×3, равные шансы ×2.
+        // Фишка покупается из кошелька СРАЗУ (b491): клик по клетке списывает
+        // достоинство фишки с общего баланса, «×2» докупает удвоение, «Сброс»
+        // возвращает всё со стола обратно. «Крутить» только кормит общий банк
+        // джекпота и крутит колесо до выигрышного сектора под указателем.
+        // Выплаты: число ×36, колонка/дюжина ×3, равные шансы ×2.
+        // b491: рулетка привязана к общему джекпоту сайта — % ставки и % чистого
+        // проигрыша кормят банк (jackpotFeed/jackpotOnLoss), а «золотое зеро»
+        // (шанс и гарантия настраиваются в Студии, JPC_GAMES → 'Roulette')
+        // срывает весь банк через jackpotWin().
         const ROULETTE_REDS = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
         const ROULETTE_ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
         const ROULETTE_CHIPS = [1, 5, 25, 100];
-        let rouletteBets = {};      // spotId -> сумма (живёт до перезагрузки: стол, не кошелёк)
+        let rouletteBets = {};      // spotId -> сумма; с b491 эти деньги УЖЕ списаны с баланса
         let rouletteChip = 5;
         let rouletteSpinning = false;
         let rouletteAngle = 0;      // текущий поворот колеса, градусы
+        let rouletteGoldZero = false; // b491: зеро золотое — этот спин сорвал общий джекпот
         const ROULETTE_BALL = { angle: -90, r: 0.94, on: false, spin: 0 }; // b489: шарик: экранный угол, радиус (доля R), видимость
         function rouletteColor(n) { return n === 0 ? 'green' : (ROULETTE_REDS.indexOf(n) >= 0 ? 'red' : 'black'); }
         function rouletteState() { if (!state.roulette) state.roulette = { hist: [] }; return state.roulette; }
@@ -4394,10 +4401,92 @@ function nxToggle3d() {
             return s;
         }
         function rouletteSetChip(v) { rouletteChip = v; renderRoulette(); }
+        // ---- b491: кошелёк стола ----
+        // fmtCoins() в шапке сайта округляет до букв (1000 -> «1k», 1234567 ->
+        // «1.2m»), поэтому ставка 25 и выигрыш 900 выглядели как «баланс не
+        // двигается». Здесь баланс показывается ТОЧНО, до монеты.
+        function nxCoinsExact(n) {
+            n = Math.floor(Number(n) || 0);
+            const s = String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u2009');
+            return (n < 0 ? '−' : '') + s;
+        }
+        function rlLobbyOpen() {
+            try {
+                const lr = document.getElementById('lobby-roulette');
+                const tb = document.getElementById('tab-battle');
+                return !!(lr && tb && !lr.classList.contains('hidden') && !tb.classList.contains('hidden'));
+            } catch (e) { return false; }
+        }
+        // в лобби рулетки шапка показывает точную сумму (пока она влезает в пилюлю)
+        function rlExactHdr() { return rlLobbyOpen() && (Math.floor(Number(state.coins) || 0) < 1000000); }
+        function rlSync() {
+            const bal = document.getElementById('rl-balance');
+            if (bal) { const t = nxCoinsExact(state.coins); if (bal.textContent !== t) bal.textContent = t; }
+            const ts = document.getElementById('rl-table-sum');
+            if (ts) { let t = '0'; try { t = nxCoinsExact(rouletteTotal()); } catch (e) {} if (ts.textContent !== t) ts.textContent = t; }
+            const sp = document.getElementById('rl-spins');
+            if (sp) { const t = String((state.stats && state.stats.rouletteSpins) || 0); if (sp.textContent !== t) sp.textContent = t; }
+            const wn = document.getElementById('rl-wins');
+            if (wn) { const t = String((state.stats && state.stats.rouletteWins) || 0); if (wn.textContent !== t) wn.textContent = t; }
+            const jp = document.getElementById('rl-jp-odds');
+            if (jp) {
+                let t = 'золотое зеро: —';
+                try { t = jpcOff() ? 'джекпот выключен в Студии' : ('золотое зеро: ' + jpcPhrase('odds-roulette')); } catch (e) {}
+                if (jp.textContent !== t) jp.textContent = t;
+            }
+        }
+        let rlFlashT = null;
+        // живой «+900» / «−25» рядом с балансом и толчок пилюли в шапке
+        function rlFlash(delta) {
+            try { rlSync(); } catch (e) {}
+            const d = Math.round(Number(delta) || 0);
+            const el = document.getElementById('rl-delta');
+            if (el && d) {
+                el.textContent = (d > 0 ? '+' : '−') + nxCoinsExact(Math.abs(d));
+                el.classList.remove('rl-d-go');
+                void el.offsetWidth; // перезапуск анимации
+                el.className = 'rl-delta ' + (d > 0 ? 'rl-d-up' : 'rl-d-down') + ' rl-d-go';
+                clearTimeout(rlFlashT);
+                rlFlashT = setTimeout(() => { try { el.classList.remove('rl-d-go'); } catch (e) {} }, 1500);
+            }
+            try {
+                const cb = document.getElementById('coin-balance');
+                const pill = cb && cb.parentElement;
+                if (pill && d) {
+                    pill.classList.remove('nx-bump');
+                    void pill.offsetWidth;
+                    pill.classList.add('nx-bump');
+                    setTimeout(() => { try { pill.classList.remove('nx-bump'); } catch (e) {} }, 600);
+                }
+            } catch (e) {}
+        }
+        // покупка фишки из кошелька: деньги уходят СРАЗУ, как на настоящем столе
+        function rouletteSpend(n, what) {
+            n = Math.round(Number(n) || 0);
+            if (n <= 0) return false;
+            if ((Math.floor(Number(state.coins) || 0)) < n) {
+                showToast('Не хватает монет: ' + what + ' — ' + fmtCoins(n) + ', у вас ' + fmtCoins(state.coins) + nxLackNote(n), 'error');
+                return false;
+            }
+            state.coins -= n;
+            saveState(); updateCoinDisplay();
+            rlFlash(-n);
+            try { SoundFX.play('coin'); } catch (e) {}
+            return true;
+        }
+        // возврат фишек со стола в кошелёк («Сброс»)
+        function rouletteRefund(n) {
+            n = Math.round(Number(n) || 0);
+            if (n <= 0) return;
+            state.coins += n;
+            saveState(); updateCoinDisplay();
+            rlFlash(n);
+        }
         function rouletteBet(spotId) {
             if (rouletteSpinning) return;
-            const total = rouletteTotal();
-            if (total + rouletteChip > state.coins) { showToast('Не хватает монет на ставку: нужно ' + (total + rouletteChip) + ', у вас ' + state.coins, 'error'); return; }
+            if (statsBlockGuard('ставки в рулетке')) return; // b277: заблокированным ставки запрещены
+            // b491: фишка списывается с баланса в момент клика по клетке
+            if (!rouletteSpend(rouletteChip, 'фишка ' + rouletteChip)) return;
             rouletteBets[spotId] = (rouletteBets[spotId] || 0) + rouletteChip;
             renderRoulette();
         }
@@ -4405,44 +4494,84 @@ function nxToggle3d() {
             if (rouletteSpinning) return;
             const total = rouletteTotal();
             if (!total) { showToast('Сначала поставьте фишки на стол', 'error'); return; }
-            if (total * 2 > state.coins) { showToast('Не хватает монет на удвоение: нужно ' + (total * 2) + ', у вас ' + state.coins, 'error'); return; }
+            // b491: удвоение докупается из кошелька — на столе становится вдвое больше
+            if (!rouletteSpend(total, 'удвоение ставок')) return;
             for (const k in rouletteBets) rouletteBets[k] *= 2;
             renderRoulette();
         }
         function rouletteClear() {
             if (rouletteSpinning) return;
+            const total = rouletteTotal();
             rouletteBets = {};
+            // b491: всё, что лежало на сукне, возвращается в баланс
+            if (total > 0) {
+                rouletteRefund(total);
+                showToast('↩ Фишки со стола возвращены в баланс: +' + fmtCoins(total), 'info');
+            }
             renderRoulette();
+        }
+        // ---- b491: золотое зеро = срыв общего джекпота сайта ----
+        function rouletteJpArmed() {
+            try { return !jpcOff() && jpcSpinPct('Roulette') > 0; } catch (e) { return false; }
+        }
+        function rouletteJpRoll() {
+            try {
+                if (jpcOff()) return false;
+                const p = jpcSpinPct('Roulette');   // базовый шанс из Студии или 100 % по гарантии
+                return p > 0 && Math.random() * 100 < p;
+            } catch (e) { return false; }
         }
         function rouletteSpin() {
             if (rouletteSpinning) return;
             const total = rouletteTotal();
             if (!total) { showToast('Сначала поставьте фишки на стол', 'error'); return; }
-            if (total > state.coins) { showToast('Не хватает монет: ставок на ' + total + ', у вас ' + state.coins, 'error'); return; }
+            if (statsBlockGuard('рулетка')) return; // b277
             rouletteSpinning = true;
-            state.coins -= total;
-            updateCoinDisplay();
+            // b491: монеты УЖЕ списаны при постановке фишек — здесь только банк игры
+            try { jackpotFeed(total); } catch (e) {} // % ставки кормит общий джекпот сайта
+            state.stats.rouletteSpins = (state.stats.rouletteSpins || 0) + 1;
             saveState();
-            const win = Math.floor(Math.random() * 37);
+            // b491: золотое зеро — шанс сорвать общий банк (настройки в Студии)
+            const jpHit = rouletteJpRoll();
+            const win = jpHit ? 0 : Math.floor(Math.random() * 37);
             const defs = rouletteSpotDefs();
             let pay = 0;
             defs.forEach(d => { if (rouletteBets[d.id] && d.hit(win)) pay += rouletteBets[d.id] * d.pay; });
+            try { SoundFX.play('whoosh'); } catch (e) {}
             rouletteAnimate(win, () => {
                 rouletteSpinning = false;
+                rouletteGoldZero = jpHit; // b491: зеро золотое — видно на колесе после остановки
                 if (pay > 0) {
                     state.coins += pay;
+                    rlFlash(pay);
                     updateCoinDisplay();
+                }
+                let prize = 0;
+                try { jpcPityNote('Roulette', jpHit); } catch (e) {} // b414: счётчик гарантии
+                if (jpHit) {
+                    // jackpotWin() сама начисляет монеты, пишет зал славы и показывает тост
+                    try { prize = jackpotWin() || 0; } catch (e) {}
+                } else if (pay < total) {
+                    try { jackpotOnLoss(total - pay); } catch (e) {} // чистый проигрыш докидывает банк
+                }
+                const got = pay + prize;
+                if (got > 0) {
+                    state.stats.rouletteWins = (state.stats.rouletteWins || 0) + 1;
+                    if (got > (state.stats.rouletteBest || 0)) state.stats.rouletteBest = got;
                 }
                 const rs = rouletteState();
                 rs.hist = (rs.hist || []).concat([win]).slice(-12);
                 rouletteBets = {};
                 saveState();
                 renderRoulette();
+                updateCoinDisplay();
+                try { rouletteDraw(); } catch (e) {} // b491: зеро красится золотом (или гаснет)
                 const col = rouletteColor(win);
                 const colRu = col === 'red' ? 'красное' : (col === 'black' ? 'чёрное' : 'зеро');
-                if (pay > 0) showToast('🎯 Выпало ' + win + ' (' + colRu + '): выигрыш +' + pay + ' монет', 'success');
-                else showToast('🎯 Выпало ' + win + ' (' + colRu + '): ставки сгорели (−' + total + ')', 'error');
-                if (pay >= total * 10) { try { launchConfetti(80); } catch (e) {} }
+                if (jpHit) showToast('🎯 Выпало ' + win + ' (' + colRu + ') — ЗОЛОТОЕ ЗЕРО: банк сайта ваш' + (pay > 0 ? ', плюс +' + fmtCoins(pay) + ' со стола' : ''), 'success');
+                else if (pay > 0) showToast('🎯 Выпало ' + win + ' (' + colRu + '): выигрыш +' + fmtCoins(pay) + ' монет', 'success');
+                else showToast('🎯 Выпало ' + win + ' (' + colRu + '): ставки сгорели (−' + fmtCoins(total) + '), банк джекпота стал больше', 'error');
+                if (!jpHit && pay >= total * 10) { try { launchConfetti(80); } catch (e) {} }
             });
         }
         function rouletteAnimate(win, done) {
@@ -4500,16 +4629,24 @@ function nxToggle3d() {
             g.translate(cx, cy);
             g.rotate(rouletteAngle * Math.PI / 180);
             const sector = Math.PI * 2 / 37;
+            const jpArm = rouletteJpArmed(); // b491: пока джекпот включён, зеро обведено золотом
             for (let i = 0; i < 37; i++) {
                 const n = ROULETTE_ORDER[i];
                 g.beginPath();
                 g.moveTo(0, 0);
                 g.arc(0, 0, RS, i * sector - sector / 2, i * sector + sector / 2);
                 g.closePath();
-                g.fillStyle = n === 0 ? '#059669' : (ROULETTE_REDS.indexOf(n) >= 0 ? '#c81e3f' : '#111827');
+                // b491: золотое зеро — этот спин срывает общий джекпот сайта
+                if (n === 0 && rouletteGoldZero) {
+                    const gz = g.createRadialGradient(0, 0, RS * 0.15, 0, 0, RS);
+                    gz.addColorStop(0, '#fef3c7'); gz.addColorStop(0.55, '#f59e0b'); gz.addColorStop(1, '#92400e');
+                    g.fillStyle = gz;
+                } else {
+                    g.fillStyle = n === 0 ? '#059669' : (ROULETTE_REDS.indexOf(n) >= 0 ? '#c81e3f' : '#111827');
+                }
                 g.fill();
-                g.strokeStyle = 'rgba(251,191,36,.35)';
-                g.lineWidth = 0.8;
+                g.strokeStyle = (n === 0 && jpArm) ? 'rgba(253,224,71,.95)' : 'rgba(251,191,36,.35)';
+                g.lineWidth = (n === 0 && jpArm) ? 1.8 : 0.8;
                 g.stroke();
                 g.save();
                 // b490: номер СТРОГО в своём секторе: поворот на центр клина,
@@ -4602,7 +4739,7 @@ function nxToggle3d() {
             box.innerHTML = `
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                     <span class="text-[10px] text-slate-400 font-bold mr-1">Фишка:</span>${chips}
-                    <span class="ml-auto text-[11px] text-slate-300">На столе: <b class="text-amber-300">${total}</b></span>
+                    <span class="ml-auto text-[11px] text-slate-300">На столе: <b class="text-amber-300">${nxCoinsExact(total)}</b></span>
                 </div>
                 <div class="rl-felt">
                     <div class="rl-grid">${cells}</div>
@@ -4615,7 +4752,10 @@ function nxToggle3d() {
                 <div class="flex flex-wrap items-center gap-1 mt-3">
                     <span class="text-[10px] text-slate-500 font-bold mr-1">История:</span>
                     ${hist.length ? hist.map(n => `<span class="rl-histn ${n === 0 ? 'rl-hist-zero' : (ROULETTE_REDS.indexOf(n) >= 0 ? 'rl-hist-red' : 'rl-hist-black')}">${n}</span>`).join('') : '<span class="text-[10px] text-slate-600">пока пусто</span>'}
-                </div>`;
+                </div>
+                <p class="rl-jp-note"><i class="fa-solid fa-crown"></i>Фишки списываются с баланса сразу, «Сброс» возвращает их обратно. Золотое зеро срывает общий джекпот сайта — <b data-jpc="odds-roulette">шанс из Студии</b>; <b data-jpc="feed">100%</b> ставки и <b data-jpc="loss">100%</b> проигрыша кормят банк.</p>`;
+            rlSync();                              // b491: кошелёк стола живёт вне этой разметки
+            try { jpcLabelsRender(); } catch (e) {} // b491: проценты и шанс — из настроек Студии
         }
         // ============ /b488 рулетка ============
 
@@ -4840,7 +4980,7 @@ function nxToggle3d() {
             setModeBtn('mode-roulette-btn', m === 'roulette', 'lq-on'); // b488
             if (m === 'miner') renderMiner();
             if (m === 'tama') renderTamagotchi(); // b483
-            if (m === 'roulette') { renderRoulette(); rouletteDraw(); } // b488
+            if (m === 'roulette') { renderRoulette(); rouletteDraw(); try { jackpotRender(); } catch (e) {} updateCoinDisplay(); } // b488; b491: банк джекпота и точный баланс сразу
             // b250: ушли в другую игру — автостарт предыдущей гасим сразу
             // (раньше «Линии» при смене игры продолжали крутиться в фоне)
             if (m !== 'slots' && slots.auto) slotsAutoStop(false, 'смена игры');
@@ -5487,13 +5627,14 @@ function nxToggle3d() {
         // (grant) — своя метка t на каждого игрока, как у счётчиков led/won.
         const JPC_KEY = 'nexus_jackpot_cfg';
         const JPC_PITY_KEY = 'nexus_jp_pity';
-        const JPC_GAMES = ['Slots', 'Grid', 'Lines', 'Wheel'];
-        const JPC_GAME_RU = { Slots: 'Слоты', Grid: 'Сетка', Lines: 'Линии', Wheel: 'Колесо' };
-        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор' };
+        const JPC_GAMES = ['Slots', 'Grid', 'Lines', 'Wheel', 'Roulette']; // b491: рулетка тоже кормит банк
+        const JPC_GAME_RU = { Slots: 'Слоты', Grid: 'Сетка', Lines: 'Линии', Wheel: 'Колесо', Roulette: 'Рулетка' };
+        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор', Roulette: 'золотое зеро' };
         // Заводские вероятности = ровно прежние константы b220:
         //   Слоты  3 / (5*10 + 3) = 5.66 %   Сетка 2 / (5*10 + 2) = 3.85 %
         //   Линии  1 / 25        = 4.00 %   Колесо 1 / 16        = 6.25 %
-        const JPC_DEFAULT_P = { Slots: 5.66, Grid: 3.85, Lines: 4, Wheel: 6.25 };
+        // b491: Рулетка 1 / 37     = 2.70 %  — золотое зеро (ровно шанс зеро на столе)
+        const JPC_DEFAULT_P = { Slots: 5.66, Grid: 3.85, Lines: 4, Wheel: 6.25, Roulette: 2.7 };
         // ============ b471: ЦЕНЫ ОБМЕНА «🏛 ДОМ КОЛЛЕКЦИОНЕРА» ============
         // Три таблицы по редкости + личная цена на отдельную карту. Раньше все три
         // были зашиты константами (MARKET_HOUSE_PRICE, MARKET_SYS_PRICE и база
@@ -5597,7 +5738,8 @@ function nxToggle3d() {
             cap: 0,         // потолок одной выплаты, 0 — без потолка
             pSlots: JPC_DEFAULT_P.Slots, pGrid: JPC_DEFAULT_P.Grid,
             pLines: JPC_DEFAULT_P.Lines, pWheel: JPC_DEFAULT_P.Wheel,
-            pitySlots: 0, pityGrid: 0, pityLines: 0, pityWheel: 0, // гарантия: 0 = выкл
+            pRoulette: JPC_DEFAULT_P.Roulette, // b491
+            pitySlots: 0, pityGrid: 0, pityLines: 0, pityWheel: 0, pityRoulette: 0, // гарантия: 0 = выкл
             grant: {},      // { cid: { a: сумма (0 = весь банк, -1 = отменено), t: метка } }
             at: 0, by: ''
         };
@@ -6168,10 +6310,19 @@ function nxToggle3d() {
                     const n = 100 / pp;
                     return '1 из ' + (n >= 100 ? Math.round(n).toLocaleString('ru-RU') : (Math.round(n * 10) / 10)) + ' спинов';
                 }
+                // b491: шанс золотого зеро в рулетке
+                case 'odds-roulette': {
+                    if (jpcOff()) return 'не выпадает';
+                    const pr = jpcP('Roulette');
+                    if (pr >= 100) return 'каждый спин';
+                    if (pr <= 0) return 'не выпадает';
+                    const nr = 100 / pr;
+                    return '1 из ' + (nr >= 100 ? Math.round(nr).toLocaleString('ru-RU') : (Math.round(nr * 10) / 10)) + ' спинов';
+                }
             }
             return '';
         }
-        const JPC_LABEL_KEYS = ['feed', 'loss', 'pay', 'pay2', 'pay2v', 'pay3', 'paynum', 'odds-wheel'];
+        const JPC_LABEL_KEYS = ['feed', 'loss', 'pay', 'pay2', 'pay2v', 'pay3', 'paynum', 'odds-wheel', 'odds-roulette'];
         function jpcLabelsRender() {
             for (let i = 0; i < JPC_LABEL_KEYS.length; i++) {
                 const key = JPC_LABEL_KEYS[i];
@@ -6638,6 +6789,15 @@ function nxToggle3d() {
             if (wv) { wv.textContent = wtxt; wv.title = wtitle; }
             const lv = document.getElementById('lines-jp-top-list');
             nxSetHtml(lv, html);   // b468
+            // b491: тот же банк виден в лобби рулетки (золотое зеро срывает его)
+            const rv = document.getElementById('roulette-jackpot');
+            if (rv) rv.textContent = fmtCoins(pool);
+            const rn = document.getElementById('roulette-jackpot-note');
+            if (rn) rn.textContent = note;
+            const rw = document.getElementById('roulette-jp-winner');
+            if (rw) { rw.textContent = wtxt; rw.title = wtitle; }
+            nxSetHtml(document.getElementById('roulette-jp-top-list'), html); // b468
+            try { rlSync(); } catch (e) {} // b491: шанс золотого зеро — из настроек
             try { jpcLabelsRender(); } catch (e) {} // b415: надписи о процентах — вслед за настройками
         }
 
@@ -13331,11 +13491,16 @@ function nxToggle3d() {
         }
         function updateCoinDisplay() {
             // b373: счётчик монет перезаписывался каждую секунду даже без изменений
-            const s = fmtCoins(state.coins);
+            // b491: в лобби рулетки шапка показывает баланс ТОЧНО (до монеты):
+            // fmtCoins() округляет до букв, и ставка 25 / выигрыш 900 не меняли
+            // «1k» — владелец видел это как «баланс не двигается».
+            let s = fmtCoins(state.coins);
+            try { if (rlExactHdr()) s = nxCoinsExact(state.coins); } catch (e) {}
             const cb = document.getElementById('coin-balance');
             if (cb && cb.innerText !== s) cb.innerText = s;
             const sc = document.getElementById('store-stat-coins');
             if (sc && sc.textContent !== s) sc.textContent = s;
+            try { rlSync(); } catch (e) {} // b491: кошелёк стола рулетки
             renderMiner(); // b47: баланс виден и в шахте
         }
 

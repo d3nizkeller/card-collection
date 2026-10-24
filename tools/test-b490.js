@@ -7,7 +7,7 @@
 //     шарик и первыйchip истории указывают на тот же номер;
 //  3) история красится по цвету числа (красные/чёрные/зеро);
 //  4) регресс b488/b489: споты, фетр, фишки на месте;
-//  5) сквозной тег: nxmob234 в sw.js, 8 раз в index.html, BUILD_TAG в tools/build.py.
+//  5) сквозной тег: единый тег из sw.js (не ниже nxmob234), 8 раз в index.html, BUILD_TAG.
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
@@ -93,9 +93,12 @@ function boot() {
     const bld = fs.readFileSync(path.join(ROOT, 'tools', 'build.py'), 'utf8');
     const m = sw.match(/VERSION\s*=\s*'([^']+)'/);
     const tag = m && m[1];
-    ok(tag === 'nxmob234', 'sw.js VERSION = nxmob234');
-    ok((idx.match(/nxmob234/g) || []).length === 8, 'index.html: тег 8 раз');
-    ok(/BUILD_TAG\s*=\s*'nxmob234'/.test(bld), 'tools/build.py BUILD_TAG = nxmob234');
+    // сквозная проверка тега: единый тег из sw.js повторяется 8 раз в index.html,
+    // совпадает с BUILD_TAG и не ниже тега своего батча (nxmob234 для b490)
+    ok(!!tag, 'sw.js: боевой тег присутствует');
+    ok(Number(tag && tag.replace('nxmob', '')) >= 234, 'sw.js: тег не ниже nxmob234 (факт ' + tag + ')');
+    ok((idx.match(new RegExp(tag, 'g')) || []).length === 8, 'index.html: тег во всех 8 ссылках');
+    ok(bld.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG совпадает с тегом sw.js');
     ok(tag && idx.indexOf('assets/app.js?v=' + tag) !== -1, 'index.html тянет app.js с тегом');
 
     console.log(fails ? 'b490: FAIL (' + fails + '/' + checks + ')' : 'b490: OK (' + checks + ' проверок)');

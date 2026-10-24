@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob234" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob234">
+    <script src="assets/three.min.js?v=nxmob235" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob235">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob234">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob235">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob234">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob235">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -235,7 +235,15 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-circle-dot text-rose-400 mr-2"></i>Рулетка 2D</h2>
-                                <p class="text-sm text-slate-400 mt-1">Европейская (0–36): выберите фишку, кликните по клеткам стола и крутите. Число ×36, дюжина ×3, равные шансы ×2. Ставки списываются с баланса.</p>
+                                <p class="text-sm text-slate-400 mt-1">Европейская (0–36): выберите фишку и кликните по клеткам стола — фишки <b class="text-amber-200">сразу списываются с баланса</b>, «Сброс» возвращает их обратно. Число ×36, колонка и дюжина ×3, равные шансы ×2. Золотое зеро срывает общий джекпот сайта.</p>
+                            </div>
+                            <!-- b491: кошелёк стола — баланс точно до монеты, сумма на столе, живой плюс/минус -->
+                            <div class="rl-wallet shrink-0">
+                                <p class="rl-w-cap"><i class="fa-solid fa-wallet"></i>Кошелёк стола</p>
+                                <p class="rl-w-bal"><span id="rl-balance">0</span><i id="rl-delta" class="rl-delta"></i></p>
+                                <p class="rl-w-rows"><span>На столе</span><b id="rl-table-sum">0</b></p>
+                                <p class="rl-w-rows"><span>Спинов / побед</span><b><span id="rl-spins">0</span> / <span id="rl-wins">0</span></b></p>
+                                <p class="rl-w-jp"><i class="fa-solid fa-crown"></i><span id="rl-jp-odds">золотое зеро: —</span></p>
                             </div>
                         </div>
                         <div class="flex flex-col lg:flex-row gap-4 items-start mt-4">
@@ -243,6 +251,25 @@
                                 <canvas id="roulette-wheel" width="420" height="420" class="block max-w-full"></canvas>
                             </div>
                             <div id="roulette-table" class="min-w-0 w-full"></div>
+                        </div>
+                        <!-- b491: банк джекпота в лобби рулетки -->
+                        <div class="jp-banner mt-4">
+                            <div class="jp-shine" aria-hidden="true"></div>
+                            <div class="jp-flex">
+                            <div class="jp-main">
+                            <div class="jp-head">
+                                <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
+                                <span id="roulette-jackpot" class="jp-value">0</span>
+                            </div>
+                            <p class="jp-desc">золотое зеро (0) срывает <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки на столе и <b data-jpc="loss">100%</b> чистого проигрыша — шанс: <b data-jpc="odds-roulette">1 из 37 спинов</b></p>
+                            <p id="roulette-jackpot-note" class="jp-note"></p>
+                            <p id="roulette-jp-winner" class="jp-winner"></p>
+                            </div>
+                            <div id="roulette-jp-top" class="jp-top">
+                                <p class="jp-top-title"><i class="fa-solid fa-trophy"></i>Топ-3 джекпота сайта · 24 ч<i class="fa-solid fa-circle text-emerald-400 animate-pulse ml-1.5" style="font-size:6px;vertical-align:2px" title="крупнейшие срывы за сутки, обновляется в реальном времени"></i></p>
+                                <ol id="roulette-jp-top-list" class="jp-top-list"></ol>
+                            </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2121,7 +2148,7 @@ min-height:56vh}
                     <span>Вероятность JACKPOT и гарантия</span>
                 </h3>
                 <div id="jpc-prob" class="space-y-2"></div>
-                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16.</p>
+                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16, Рулетка (золотое зеро) 1 из 37.</p>
             </div>
 
             <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
@@ -3167,10 +3194,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob234"></script>
-    <script src="assets/stories.js?v=nxmob234"></script>
-    <script src="assets/qrcode.min.js?v=nxmob234"></script>
-    <script src="assets/qr-transfer.js?v=nxmob234"></script>
+    <script src="assets/app.js?v=nxmob235"></script>
+    <script src="assets/stories.js?v=nxmob235"></script>
+    <script src="assets/qrcode.min.js?v=nxmob235"></script>
+    <script src="assets/qr-transfer.js?v=nxmob235"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

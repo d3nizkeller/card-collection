@@ -103,7 +103,7 @@ const resp = obj => Promise.resolve({ ok: true, status: 200, text: () => Promise
     console.log('\nE. Заголовок блока');
     const E = boot();
     const heads = E.doc.querySelectorAll('.jp-top-title');
-    eq(heads.length, 3, 'три баннера (Слоты/Сетка/Линии)');
+    eq(heads.length, 4, 'четыре баннера (Слоты/Сетка/Линии/Рулетка — b491)');
     ok(Array.from(heads).every(h => /Топ-3 джекпота сайта/.test(h.textContent)), 'b433: заголовок: «Топ-3 джекпота сайта · 24 ч»');
     ok(Array.from(heads).every(h => h.querySelector('.animate-pulse')), 'live-точка пульсирует');
 

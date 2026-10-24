@@ -106,13 +106,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         ok(t.includes('rl-chip-100'), 'фишка 100 янтарная');
     }
     {
+        ev(`jpcSet({ pRoulette: 0 });`); // b491: золотое зеро не мешает детерминированным выплатам
         ev(`rouletteSetChip(25); rouletteBet('c2'); rouletteBet('c2');`);
         ok(table().includes('>50<'), 'бейдж ставки на колонку — мини-фишка 50');
         ev(`window.__nxRouletteMs = 20; Math.random = function () { return 0.14; };`); // win = floor(0.14*37) = 5 → 5%3==2 → бьёт ставка на колонку c2
         const c0 = ev('state.coins');
         ev(`rouletteSpin()`);
         await sleep(400);
-        eq(ev('state.coins'), c0 - 50 + 150, 'колонка 2:1 платит ×3 по числу 5');
+        eq(ev('state.coins'), c0 + 150, 'колонка 2:1 платит ×3 по числу 5 (b491: 50 уже списаны при постановке)');
         eq(ev(`rouletteState().hist.slice(-1)[0]`), 5, 'число 5 в истории');
         ok(ev(`ROULETTE_BALL.on`) === true && ev(`ROULETTE_BALL.angle`) === -90, 'шарик после спина сидит под указателем');
     }
@@ -124,7 +125,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         const c1 = ev('state.coins');
         ev(`rouletteSpin()`);
         await sleep(400);
-        eq(ev('state.coins'), c1 - 10 + 20, 'красное ×2 работает после редизайна');
+        eq(ev('state.coins'), c1 + 20, 'красное ×2 работает после редизайна (b491: 10 уже списаны при постановке)');
         ok(table().includes('Крутить'), 'кнопка «Крутить» на месте');
         ok(doc.getElementById('roulette-table').querySelectorAll('.rl-histn').length >= 2, 'история кругляшами rl-histn');
     }

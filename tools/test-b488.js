@@ -102,25 +102,33 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         ev(`rouletteSetChip(25); rouletteBet('n7'); rouletteBet('n7');`);
         eq(total(), 50, 'две фишки по 25 на число = 50 на столе');
         ok(table().includes('>50<'), 'бейдж ставки 50 виден на клетке');
-        ev(`state.coins = 30;`);
+        // b491: фишка покупается из кошелька В МОМЕНТ КЛИКА, поэтому проверяем
+        // недостачу на реально пустом балансе (10 монет при фишке 25)
+        ev(`state.coins = 10;`);
         clearToasts();
         ev(`rouletteBet('red')`);
         eq(total(), 50, 'ставка сверх баланса не встала');
-        ok(toasts().includes('Не хватает монет на ставку'), 'тост о нехватке монет на ставку');
+        eq(coins(), 10, 'b491: без денег баланс не тронут');
+        ok(toasts().includes('Не хватает монет'), 'тост о нехватке монет на ставку');
         ev(`state.coins = 1000; rouletteDouble();`);
         eq(total(), 100, '×2 удвоил стол');
+        eq(coins(), 950, 'b491: удвоение докуплено из кошелька (1000 − 50)');
         ev(`rouletteClear();`);
         eq(total(), 0, 'сброс чистит стол');
+        eq(coins(), 1050, 'b491: «Сброс» вернул 100 со стола в баланс');
     }
 
     console.log('\nD. Спины и выплаты (рандом и тайминг под контролем)');
     {
         ev(`window.__nxRouletteMs = 20; rouletteClear(); state.coins = 1000; updateCoinDisplay();`);
+        // b491: золотое зеро (шанс срыва общего джекпота) выключаем, чтобы
+        // детерминированные проверки выплат не зависели от банка сайта
+        ev(`jpcSet({ pRoulette: 0 });`);
         ev(`Math.random = function () { return 0.2; };`); // win = floor(0.2*37) = 7 (красное)
         ev(`rouletteSetChip(5); rouletteBet('red'); rouletteBet('red');`); // 10 на красное
         clearToasts();
         ev(`rouletteSpin()`);
-        eq(coins(), 990, 'спин списал сумму ставок сразу');
+        eq(coins(), 990, 'b491: ставки списаны ещё при постановке фишек');
         await sleep(400);
         eq(coins(), 1010, 'красное ×2: вернулось 20 (990+20)');
         ok(toasts().includes('Выпало 7 (красное): выигрыш +20'), 'тост с номером, цветом и суммой');
@@ -147,10 +155,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
         ev(`Math.random = function () { return 0.0; };`); // win = 0
         ev(`rouletteClear(); rouletteSetChip(5); rouletteBet('even'); rouletteBet('red');`);
         clearToasts();
-        const c0 = coins();
+        const c0 = coins(); // b491: 10 монет уже ушли из кошелька на стол
         ev(`rouletteSpin()`);
         await sleep(400);
-        eq(coins(), c0 - 10, 'зеро: равные шансы сгорели');
+        eq(coins(), c0, 'зеро: равные шансы сгорели (списаны заранее)');
         eq(ev(`rouletteState().hist.slice(-1)[0]`), 0, 'зеро в истории');
         ev(`Math.random = Math.__origRandom || Math.random;`);
     }
