@@ -2,7 +2,7 @@
    Арты и скрипты скачиваются с сервера ОДИН раз на браузер; дальше отдаются из
    кэша мгновенно — в Telegram Mini App повторное открытие становится мгновенным
    и работает без сети. Тихая сверка с сервером — не чаще раза в 7 дней на файл. */
-const VERSION = 'nxmob240';
+const VERSION = 'nxmob241';
 const CACHE_MEDIA = 'nx-media-v2';
 const CACHE_ASSETS = 'nx-assets-' + VERSION;
 const CACHE_PAGES = 'nx-pages-' + VERSION;
@@ -62,11 +62,13 @@ async function mediaFirst(e, url, cacheName) {
     }
 }
 
-/* HTML: сначала сеть (иначе игрок застрянет на старой версии), кэш — запасной выход */
+/* HTML: сначала сеть (иначе игрок застрянет на старой версии), кэш — запасной выход.
+   b497: cache:'no-store' — HTTP-кэш браузера не подсовывает старый index.html
+   сразу после деплоя (владелец видел заголовки до b496). */
 async function pageFirst(e, req) {
     const cache = await caches.open(CACHE_PAGES);
     try {
-        const resp = await fetch(req);
+        const resp = await fetch(req, { cache: 'no-store' });
         if (resp.ok) e.waitUntil(cache.put(req, resp.clone()));
         return resp;
     } catch (err) {
