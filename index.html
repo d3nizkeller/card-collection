@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob239" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob239">
+    <script src="assets/three.min.js?v=nxmob240" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob240">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob239">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob240">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob239">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob240">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -225,7 +225,7 @@
                 <button onclick="setBattleMode('mines')" id="mode-mines-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-bomb mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Мины</span></button>
                 <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Колесо</span></button>
                 <button onclick="setBattleMode('tama')" id="mode-tama-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Тамагочи: питомец тратит ваш баланс на еду, игры и уход, а за уровни дарит карты"><i class="fa-solid fa-paw mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Тамагочи</span></button>
-                <button onclick="setBattleMode('roulette')" id="mode-roulette-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Рулетка 2D: ставки фишками из баланса, число ×36, дюжина ×3, равные шансы ×2"><i class="fa-solid fa-circle-dot mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Рулетка</span></button>
+                <button onclick="setBattleMode('roulette')" id="mode-roulette-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Рулетка: ставки фишками из баланса, число ×36, дюжина ×3, равные шансы ×2"><i class="fa-solid fa-circle-dot mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Рулетка</span></button>
                 </div>
             <!-- Battle Lobby -->
             <div id="battle-lobby" class="space-y-6">
@@ -234,7 +234,7 @@
                     <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-circle-dot text-rose-400 mr-2"></i>Рулетка 2D</h2>
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-circle-dot text-rose-400 mr-2"></i>Рулетка</h2>
                                 <p class="text-sm text-slate-400 mt-1">Европейская (0–36): выберите фишку и кликните по клеткам стола — фишки <b class="text-amber-200">сразу списываются с баланса</b>, «Сброс» возвращает их обратно. Число ×36, колонка и дюжина ×3, равные шансы ×2. Золотое зеро срывает общий джекпот сайта.</p>
                             </div>
                         </div>
@@ -348,7 +348,7 @@
                         <div class="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-violet-500/20 to-transparent"></div>
                         <div class="relative flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-border-all text-violet-400 mr-2"></i>Сеточный слот: Коллекция карт</h2>
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-border-all text-violet-400 mr-2"></i>Слоты</h2>
                                 <p class="text-[11px] text-violet-200/90 mt-1 font-black uppercase tracking-wider">Выиграйте до ×360 от ставки: 8+ одинаковых карт где угодно на поле</p>
                                 <p class="text-xs text-slate-400 mt-1">Выигрышные ячейки взрываются и досыпаются каскадом — каждая цепь усиливает выплату: ×1.5, ×2, ×3, ×5, ×8.</p>
                                                     </div>
@@ -483,7 +483,7 @@
                     <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
-                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-table-cells text-sky-300 mr-2"></i>Сеточный слот: Линии</h2>
+                                <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-table-cells text-sky-300 mr-2"></i>Сеточные Линии</h2>
                                 <p class="text-sm text-slate-400 mt-1">Классический автомат: <b class="text-sky-300">5 барабанов × 3 ряда</b> и <b>10 цветных линий оплаты</b> (номера линий — по бокам поля). Одинаковые карты <b>слева направо</b> по линии: 3, 4 или 5 штук — выплата по редкости и длине. Линия из JACKPOT — <b data-jpc="pay2v">весь общий банк сайта ваш</b>!</p>
                             </div>
                         </div>
@@ -3195,10 +3195,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob239"></script>
-    <script src="assets/stories.js?v=nxmob239"></script>
-    <script src="assets/qrcode.min.js?v=nxmob239"></script>
-    <script src="assets/qr-transfer.js?v=nxmob239"></script>
+    <script src="assets/app.js?v=nxmob240"></script>
+    <script src="assets/stories.js?v=nxmob240"></script>
+    <script src="assets/qrcode.min.js?v=nxmob240"></script>
+    <script src="assets/qr-transfer.js?v=nxmob240"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
