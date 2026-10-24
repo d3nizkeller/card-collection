@@ -58,12 +58,13 @@ function boot() {
         const bp = fs.readFileSync(path.join(ROOT, 'tools', 'build.py'), 'utf8');
         ok(/<button onclick="setBattleMode\('tama'\)" id="mode-tama-btn"/.test(html), 'плитка режима «Тамагочи» в переключателе игр');
         ok(/id="mode-tama-btn"[\s\S]{0,400}?fa-paw/.test(html), 'плитка с иконкой fa-paw');
-        ok(/<div class="grid grid-cols-9 gap-1 sm:gap-2 w-full py-0.5">/.test(html), 'сетка переключателей стала 9 колонок');
+        ok(/<div class=\"grid grid-cols-5 sm:grid-cols-9 gap-1 sm:gap-2 w-full py-0.5\">/.test(html), 'сетка переключателей: 5 колонок на телефоне, 9 от sm (b484)');
         ok(html.includes('id="lobby-tama"') && html.includes('id="tama-panel"'), 'лобби #lobby-tama с панелью #tama-panel');
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob227', 'sw.js: боевой тег nxmob227');
-        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках на assets');
-        ok(bp.includes("BUILD_TAG = 'nxmob227'"), 'tools/build.py: BUILD_TAG = nxmob227');
+        // b484: номер тега не прибиваем к b483 — проверяем единство и что он не ниже nxmob227
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 227, 'тег не ниже nxmob227 (' + tag + ')');
     }
 
     console.log('\nB. Исходники app.js');
