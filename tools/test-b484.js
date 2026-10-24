@@ -49,14 +49,14 @@ function boot() {
         const bp = fs.readFileSync(path.join(ROOT, 'tools', 'build.py'), 'utf8');
 
         const row = (html.match(/<div class="grid[^>]*mode-arena-btn[\s\S]{0,40}?/) || [''])[0] + html.slice(html.indexOf('id="mode-arena-btn"') - 400, html.indexOf('id="mode-arena-btn"'));
-        ok(/<div class="grid grid-cols-5 sm:grid-cols-9 gap-1 sm:gap-2 w-full py-0\.5">/.test(html), 'контейнер плиток: grid-cols-5 sm:grid-cols-9');
+        ok(/<div class=\"grid nx-modes gap-1 sm:gap-2 w-full py-0.5\">/.test(html), 'контейнер плиток: nx-modes (b488: 5 на телефоне, 10 от sm)');
         ok(!/class="grid grid-cols-9 /.test(html), 'голового grid-cols-9 (которого нет в tailwind.css) больше нет');
         ok(tw.includes('.grid-cols-5'), 'утилита grid-cols-5 есть в прекомпилированном tailwind.css');
         ok(tw.includes('.sm\\:grid-cols-9'), 'утилита sm:grid-cols-9 есть в прекомпилированном tailwind.css');
         ok(/#mode-tama-btn\.lq-on\{ --lq-tint: rgba\(52,211,153,\.26\)/.test(html), 'подсветка активной плитки «Тамагочи» (--lq-tint) добавлена');
-        ok(/#mode-lines-btn, #mode-tama-btn, #miner-btn\{/.test(html), 'базовое «стекло» плиток: #mode-tama-btn в списке id (b484)');
+        ok(/#mode-lines-btn, #mode-tama-btn, #mode-roulette-btn, #miner-btn\{/.test(html), 'базовое «стекло»: #mode-tama-btn и #mode-roulette-btn в списке id (b484/b488)');
         ok(/#mode-tama-btn:hover/.test(html) && /#mode-tama-btn:active/.test(html), 'hover/active у плитки «Тамагочи» как у соседей');
-        ok(/#mode-lines-btn:active, #mode-tama-btn:active, #miner-btn:active\{ transform: scale\(\.97\); \}/.test(html), 'нажатие плитки «Тамагочи» пружинит в общем списке :active');
+        ok(/#mode-tama-btn:active, #mode-roulette-btn:active, #miner-btn:active\{ transform: scale\(\.97\); \}/.test(html), 'нажатия плиток «Тамагочи» и «Рулетка» пружинят в общем :active');
 
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
         // b485: номер тега не прибиваем к b484 — единство и не ниже nxmob228
@@ -72,7 +72,7 @@ function boot() {
     console.log('\nB. Поведение переключателя');
     {
         const n = ev(`document.getElementById('mode-arena-btn').parentElement.children.length`);
-        eq(n, 9, 'в переключателе девять плиток');
+        eq(n, 10, 'в переключателе десять плиток (b488: + Рулетка)');
         ev(`setBattleMode('tama')`);
         ok(doc.getElementById('mode-tama-btn').className.includes('lq-on'), 'активная «Тамагочи» получает lq-on (стекло подсветки)');
         ok(!doc.getElementById('mode-arena-btn').className.includes('lq-on'), 'с арены подсветка снята');

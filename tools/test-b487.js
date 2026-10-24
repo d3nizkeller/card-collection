@@ -62,9 +62,10 @@ function boot() {
         ok(!app.includes('flex flex-wrap gap-2 pt-1'), 'лесенки flex-wrap у кнопок не осталось');
 
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob231', 'sw.js: боевой тег nxmob231');
-        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках на assets');
-        ok(bp.includes("BUILD_TAG = 'nxmob231'"), 'tools/build.py: BUILD_TAG = nxmob231');
+        // b488: номер тега не прибиваем к b487 — единство и не ниже nxmob231
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 231, 'тег не ниже nxmob231 (' + tag + ')');
     }
 
     const G = boot();

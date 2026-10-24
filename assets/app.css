@@ -1174,3 +1174,8 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 @media (min-width:640px){.tama-actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:1024px){.tama-actions{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (max-width:639px){.tama-actions > :last-child{grid-column:1/-1}}
+
+/* b488: переключатель режимов «Игры» на десять плиток: на телефоне 5+5,
+   от sm — одна строка из десяти (в tailwind.css нет sm:grid-cols-10) */
+.nx-modes{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (min-width:640px){.nx-modes{grid-template-columns:repeat(10,minmax(0,1fr))}}
