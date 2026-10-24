@@ -60,9 +60,10 @@ function boot() {
         ok(/if \(!quiet\) showToast\('Сначала введите код комнаты/.test(app) || app.includes("if (!quiet) showToast('Сначала введите код комнаты"), 'ошибка «нет комнаты» при ручном действии осталась громкой');
 
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];
-        eq(tag, 'nxmob230', 'sw.js: боевой тег nxmob230');
-        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег во всех 8 ссылках на assets');
-        ok(bp.includes("BUILD_TAG = 'nxmob230'"), 'tools/build.py: BUILD_TAG = nxmob230');
+        // b487: номер тега не прибиваем к b486 — единство и не ниже nxmob230
+        eq((html.match(new RegExp(tag, 'g')) || []).length, 8, 'index.html: тег из sw.js во всех 8 ссылках на assets');
+        ok(bp.includes("BUILD_TAG = '" + tag + "'"), 'tools/build.py: BUILD_TAG равен тегу из sw.js');
+        ok(Number((tag || '0').replace('nxmob', '')) >= 230, 'тег не ниже nxmob230 (' + tag + ')');
     }
 
     const G = boot();

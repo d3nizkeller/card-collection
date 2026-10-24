@@ -4503,16 +4503,18 @@ function nxToggle3d() {
                 </button>`;
             }).join('');
             box.innerHTML = `<div class="flex flex-col lg:flex-row gap-4 items-start">
-                <div class="text-center lg:text-left shrink-0">
+                <div class="flex items-center gap-3 shrink-0 lg:block"><!-- b487: на телефоне питомец рядом с подписью, а не во всю ширину -->
                     <div class="tama-stage"><!-- b485: сцена питомца: свечение, морда, тень, частицы -->
                         <i class="tama-glow"></i>
                         <div id="tama-pet" class="tama-pet${t.sick ? ' tama-sick' : ''}${TAMA_ANIM ? ' tama-act-' + TAMA_ANIM : ''}">${tamaFace(t)}</div>
                         <i class="tama-shadow"></i>
                         <div id="tama-fx" class="tama-fx"></div>
                     </div>
-                    <p class="mt-2 text-sm font-black text-white">${t.name || 'Тоша'}${t.sick ? ' <span class="text-rose-300">· болен</span>' : ''}</p>
-                    <p class="text-[10px] text-slate-400">уровень <b class="text-violet-300">${t.level}</b> · рост ${Math.round(t.xp || 0)}/${need}</p>
-                    <div class="mt-1 h-2 w-32 mx-auto lg:mx-0 rounded-full bg-slate-800 overflow-hidden"><div class="tama-xp-fill h-full bg-violet-500 rounded-full" style="width:${Math.min(100, Math.round((t.xp || 0) / need * 100))}%"></div></div>
+                    <div class="min-w-0"><!-- b487: подпись сбоку от морды на мобильном -->
+                        <p class="text-sm font-black text-white">${t.name || 'Тоша'}${t.sick ? ' <span class="text-rose-300">· болен</span>' : ''}</p>
+                        <p class="text-[10px] text-slate-400">уровень <b class="text-violet-300">${t.level}</b> · рост ${Math.round(t.xp || 0)}/${need}</p>
+                        <div class="mt-1 h-2 w-32 rounded-full bg-slate-800 overflow-hidden"><div class="tama-xp-fill h-full bg-violet-500 rounded-full" style="width:${Math.min(100, Math.round((t.xp || 0) / need * 100))}%"></div></div>
+                    </div>
                 </div>
                 <div class="space-y-2.5 min-w-0 w-full">
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -4521,7 +4523,7 @@ function nxToggle3d() {
                         ${tamaBar('Энергия', '⚡', t.energy)}
                         ${tamaBar('Чистота', '🫧', t.clean)}
                     </div>
-                    <div class="flex flex-wrap gap-2 pt-1">${btns}</div>
+                    <div class="tama-actions pt-1">${btns}</div><!-- b487: ровная сетка кнопок вместо лесенки flex-wrap -->
                     <p class="text-[10px] text-slate-600 leading-snug">Характеристики тают со временем (офлайн — до 12 часов). Среднее ниже 25 — питомец заболевает, доступно только лечение. За уровень питомец приносит случайную карту альбома.</p>
                 </div>
             </div>`;

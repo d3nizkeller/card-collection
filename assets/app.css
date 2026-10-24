@@ -1166,3 +1166,11 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 .tama-btn{transition:transform .12s ease,background .2s ease,border-color .2s ease}
 .tama-btn:hover{transform:translateY(-1px)}
 .tama-btn:active{transform:scale(.94)}
+
+/* b487: ровная сетка кнопок действий тамагочи: 2 колонки на телефоне (пятая
+   кнопка тянется на всю строку — никакой лесенки из flex-wrap), 3 от sm,
+   5 от lg. Ячейки одинаковой ширины, кнопки в них растягиваются. */
+.tama-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (min-width:640px){.tama-actions{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1024px){.tama-actions{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:639px){.tama-actions > :last-child{grid-column:1/-1}}
