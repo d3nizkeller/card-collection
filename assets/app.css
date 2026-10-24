@@ -1179,3 +1179,34 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
    от sm — одна строка из десяти (в tailwind.css нет sm:grid-cols-10) */
 .nx-modes{grid-template-columns:repeat(5,minmax(0,1fr))}
 @media (min-width:640px){.nx-modes{grid-template-columns:repeat(10,minmax(0,1fr))}}
+
+/* b489: рулетка-казино: сукно, клетки стола, казино-фишки, история, дом колеса */
+.rl-wheelhouse{filter:drop-shadow(0 12px 34px rgba(2,6,23,.7))}
+.rl-felt{background:radial-gradient(120% 90% at 50% 0%,#065f46 0%,#064e3b 45%,#022c22 100%);border:1px solid rgba(251,191,36,.35);border-radius:16px;padding:10px;box-shadow:inset 0 0 46px rgba(2,6,23,.55)}
+.rl-grid{display:grid;grid-template-columns:44px repeat(12,minmax(0,1fr)) 40px;gap:4px}
+.rl-cell{position:relative;display:flex;align-items:center;justify-content:center;border-radius:6px;border:1px solid rgba(251,191,36,.28);font-weight:800;font-size:12px;color:#fff;padding:8px 2px;cursor:pointer;transition:transform .1s ease,box-shadow .2s ease}
+.rl-cell:hover{transform:translateY(-1px);box-shadow:0 0 0 1px rgba(251,191,36,.65),0 4px 12px rgba(2,6,23,.5)}
+.rl-red{background:linear-gradient(160deg,#e11d48,#9f1239)}
+.rl-black{background:linear-gradient(160deg,#1f2937,#0b1220)}
+.rl-zero{background:linear-gradient(160deg,#059669,#065f46)}
+.rl-zero-v{grid-column:1;grid-row:1 / span 3;writing-mode:vertical-rl;transform:rotate(180deg);font-size:14px;letter-spacing:.1em}
+.rl-out{background:linear-gradient(160deg,rgba(6,78,59,.9),rgba(2,44,34,.95));font-size:10px;letter-spacing:.05em}
+.rl-colbet{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px}
+.rl-chipmini{position:absolute;top:-7px;right:-6px;min-width:20px;height:20px;padding:0 4px;border-radius:9999px;background:radial-gradient(circle at 35% 30%,#fde68a,#f59e0b 60%,#b45309);color:#1c1917;font-style:normal;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(2,6,23,.6),inset 0 0 0 2px rgba(255,255,255,.55)}
+.rl-chip{width:44px;height:44px;border-radius:9999px;font-weight:900;font-size:12px;color:#fff;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(2,6,23,.6),inset 0 0 0 3px rgba(248,250,252,.7);opacity:.72;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease}
+.rl-chip-1{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.4),rgba(255,255,255,0) 46%),conic-gradient(#475569 0 12.5%,#f8fafc 12.5% 25%,#475569 25% 37.5%,#f8fafc 37.5% 50%,#475569 50% 62.5%,#f8fafc 62.5% 75%,#475569 75% 87.5%,#f8fafc 87.5%)}
+.rl-chip-5{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.4),rgba(255,255,255,0) 46%),conic-gradient(#b91c1c 0 12.5%,#f8fafc 12.5% 25%,#b91c1c 25% 37.5%,#f8fafc 37.5% 50%,#b91c1c 50% 62.5%,#f8fafc 62.5% 75%,#b91c1c 75% 87.5%,#f8fafc 87.5%)}
+.rl-chip-25{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.4),rgba(255,255,255,0) 46%),conic-gradient(#047857 0 12.5%,#f8fafc 12.5% 25%,#047857 25% 37.5%,#f8fafc 37.5% 50%,#047857 50% 62.5%,#f8fafc 62.5% 75%,#047857 75% 87.5%,#f8fafc 87.5%)}
+.rl-chip-100{background:radial-gradient(circle at 35% 30%,rgba(255,255,255,.4),rgba(255,255,255,0) 46%),conic-gradient(#b45309 0 12.5%,#f8fafc 12.5% 25%,#b45309 25% 37.5%,#f8fafc 37.5% 50%,#b45309 50% 62.5%,#f8fafc 62.5% 75%,#b45309 75% 87.5%,#f8fafc 87.5%)}
+.rl-chip-on{opacity:1;transform:scale(1.12);box-shadow:0 0 0 3px rgba(251,191,36,.85),0 6px 14px rgba(2,6,23,.7),inset 0 0 0 3px rgba(248,250,252,.85)}
+.rl-histn{width:26px;height:26px;border-radius:9999px;font-size:10px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 6px rgba(2,6,23,.5)}
+.rl-hist-zero{background:#059669}
+.rl-hist-red{background:#be123c}
+.rl-hist-black{background:#1e293b;border:1px solid #475569}
+@media (max-width:640px){
+    .rl-grid{grid-template-columns:26px repeat(12,minmax(0,1fr)) 22px;gap:2px}
+    .rl-cell{font-size:9px;padding:6px 0;border-radius:4px}
+    .rl-zero-v{font-size:11px}
+    .rl-out{font-size:8px}
+    .rl-chip{width:38px;height:38px;font-size:11px}
+}

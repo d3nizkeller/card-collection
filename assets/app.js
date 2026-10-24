@@ -4367,6 +4367,7 @@ function nxToggle3d() {
         let rouletteChip = 5;
         let rouletteSpinning = false;
         let rouletteAngle = 0;      // текущий поворот колеса, градусы
+        const ROULETTE_BALL = { angle: -90, r: 0.94, on: false, spin: 0 }; // b489: шарик: экранный угол, радиус (доля R), видимость
         function rouletteColor(n) { return n === 0 ? 'green' : (ROULETTE_REDS.indexOf(n) >= 0 ? 'red' : 'black'); }
         function rouletteState() { if (!state.roulette) state.roulette = { hist: [] }; return state.roulette; }
         function rouletteSpotDefs() {
@@ -4375,6 +4376,10 @@ function nxToggle3d() {
             defs.push({ id: 'd1', label: '1–12', kind: 'dozen', pay: 3, hit: x => x >= 1 && x <= 12 });
             defs.push({ id: 'd2', label: '13–24', kind: 'dozen', pay: 3, hit: x => x >= 13 && x <= 24 });
             defs.push({ id: 'd3', label: '25–36', kind: 'dozen', pay: 3, hit: x => x >= 25 && x <= 36 });
+            // b489: ставки на вертикальную колонку чисел (2:1), как на настоящем столе
+            defs.push({ id: 'c3', label: '2:1', kind: 'col', pay: 3, hit: x => x !== 0 && x % 3 === 0 });
+            defs.push({ id: 'c2', label: '2:1', kind: 'col', pay: 3, hit: x => x !== 0 && x % 3 === 2 });
+            defs.push({ id: 'c1', label: '2:1', kind: 'col', pay: 3, hit: x => x !== 0 && x % 3 === 1 });
             defs.push({ id: 'low', label: '1–18', kind: 'even', pay: 2, hit: x => x >= 1 && x <= 18 });
             defs.push({ id: 'high', label: '19–36', kind: 'even', pay: 2, hit: x => x >= 19 && x <= 36 });
             defs.push({ id: 'even', label: 'ЧЁТ', kind: 'even', pay: 2, hit: x => x !== 0 && x % 2 === 0 });
@@ -4450,12 +4455,19 @@ function nxToggle3d() {
             const target = 360 * 5 + (360 - (idx * sector + sector / 2)) - 90;
             const from = rouletteAngle % 360;
             const t0 = performance.now();
+            ROULETTE_BALL.spin = 560 + Math.random() * 240; // b489: сколько градусов шарик пролетит против колеса
             const step = now => {
                 const p = Math.min(1, (now - t0) / ms);
                 const e = 1 - Math.pow(1 - p, 3);
                 rouletteAngle = from + (target - from) * e;
+                // b489: шарик крутится против колеса и по спирали садится в карман
+                // выигрышного сектора (тот стоит под указателем = экранный угол -90°)
+                ROULETTE_BALL.angle = -90 - (1 - e) * ROULETTE_BALL.spin;
+                ROULETTE_BALL.r = 0.94 - 0.16 * e;
+                ROULETTE_BALL.on = true;
                 rouletteDraw();
-                if (p < 1) requestAnimationFrame(step); else done();
+                if (p < 1) requestAnimationFrame(step);
+                else { ROULETTE_BALL.angle = -90; ROULETTE_BALL.r = 0.78; rouletteDraw(); done(); }
             };
             requestAnimationFrame(step);
         }
@@ -4464,8 +4476,21 @@ function nxToggle3d() {
             if (!cv) return;
             const g = cv.getContext('2d');
             if (!g) return;
-            const W = cv.width, H = cv.height, R = Math.min(W, H) / 2 - 4, cx = W / 2, cy = H / 2;
+            const W = cv.width, H = cv.height, cx = W / 2, cy = H / 2;
+            const R = Math.min(W, H) / 2 - 8;
             g.clearRect(0, 0, W, H);
+            // b489: обод — тёмное дерево с золотыми кольцами и пинами
+            const rim = g.createRadialGradient(cx, cy, R * 0.8, cx, cy, R);
+            rim.addColorStop(0, '#3b2417'); rim.addColorStop(0.55, '#5a3a22'); rim.addColorStop(1, '#241209');
+            g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fillStyle = rim; g.fill();
+            g.lineWidth = 3; g.strokeStyle = 'rgba(251,191,36,.8)'; g.stroke();
+            g.beginPath(); g.arc(cx, cy, R * 0.8, 0, Math.PI * 2); g.strokeStyle = 'rgba(251,191,36,.45)'; g.lineWidth = 1.5; g.stroke();
+            for (let i = 0; i < 8; i++) {
+                const a = i * Math.PI / 4 + Math.PI / 8;
+                g.beginPath(); g.arc(cx + Math.cos(a) * R * 0.9, cy + Math.sin(a) * R * 0.9, Math.max(2, R * 0.018), 0, Math.PI * 2);
+                g.fillStyle = '#fcd34d'; g.fill();
+            }
+            const RS = R * 0.8;
             g.save();
             g.translate(cx, cy);
             g.rotate(rouletteAngle * Math.PI / 180);
@@ -4474,66 +4499,101 @@ function nxToggle3d() {
                 const n = ROULETTE_ORDER[i];
                 g.beginPath();
                 g.moveTo(0, 0);
-                g.arc(0, 0, R, i * sector - sector / 2, i * sector + sector / 2);
+                g.arc(0, 0, RS, i * sector - sector / 2, i * sector + sector / 2);
                 g.closePath();
-                g.fillStyle = n === 0 ? '#059669' : (ROULETTE_REDS.indexOf(n) >= 0 ? '#be123c' : '#0f172a');
+                g.fillStyle = n === 0 ? '#059669' : (ROULETTE_REDS.indexOf(n) >= 0 ? '#c81e3f' : '#111827');
                 g.fill();
-                g.strokeStyle = 'rgba(248,250,252,.25)';
-                g.lineWidth = 1;
+                g.strokeStyle = 'rgba(251,191,36,.35)';
+                g.lineWidth = 0.8;
                 g.stroke();
                 g.save();
                 g.rotate(i * sector);
                 g.fillStyle = '#f8fafc';
-                g.font = '700 ' + Math.round(R / 16) + 'px Inter, sans-serif';
+                g.font = '700 ' + Math.round(R / 15) + 'px Inter, sans-serif';
                 g.textAlign = 'center';
                 g.textBaseline = 'middle';
-                g.fillText(String(n), 0, -R * 0.82);
+                g.fillText(String(n), 0, -RS * 0.85);
                 g.restore();
             }
-            g.beginPath(); g.arc(0, 0, R * 0.34, 0, Math.PI * 2);
-            g.fillStyle = '#1e293b'; g.fill();
-            g.strokeStyle = 'rgba(248,250,252,.3)'; g.lineWidth = 2; g.stroke();
+            // конус со спицами и золотая ступица
+            const cone = g.createRadialGradient(0, 0, R * 0.04, 0, 0, R * 0.5);
+            cone.addColorStop(0, '#475569'); cone.addColorStop(0.6, '#1e293b'); cone.addColorStop(1, '#0b1220');
+            g.beginPath(); g.arc(0, 0, R * 0.5, 0, Math.PI * 2); g.fillStyle = cone; g.fill();
+            g.strokeStyle = 'rgba(251,191,36,.5)'; g.lineWidth = 1.5; g.stroke();
+            for (let i = 0; i < 4; i++) {
+                g.save(); g.rotate(i * Math.PI / 2 + Math.PI / 4);
+                g.fillStyle = 'rgba(251,191,36,.55)';
+                g.fillRect(-R * 0.02, -R * 0.48, R * 0.04, R * 0.44);
+                g.restore();
+            }
+            g.beginPath(); g.arc(0, 0, R * 0.12, 0, Math.PI * 2);
+            const hub = g.createRadialGradient(-R * 0.04, -R * 0.04, R * 0.02, 0, 0, R * 0.12);
+            hub.addColorStop(0, '#fde68a'); hub.addColorStop(1, '#b45309');
+            g.fillStyle = hub; g.fill();
             g.restore();
-            // указатель сверху
+            // b489: шарик — белая сфера с бликом, на своей траектории
+            if (ROULETTE_BALL.on) {
+                const ba = ROULETTE_BALL.angle * Math.PI / 180;
+                const br = R * ROULETTE_BALL.r;
+                const bx = cx + Math.cos(ba) * br, by = cy + Math.sin(ba) * br;
+                g.beginPath(); g.arc(bx + 2, by + 3, R * 0.032, 0, Math.PI * 2);
+                g.fillStyle = 'rgba(2,6,23,.45)'; g.fill();
+                g.beginPath(); g.arc(bx, by, R * 0.03, 0, Math.PI * 2);
+                const bl = g.createRadialGradient(bx - R * 0.012, by - R * 0.012, R * 0.004, bx, by, R * 0.03);
+                bl.addColorStop(0, '#ffffff'); bl.addColorStop(1, '#94a3b8');
+                g.fillStyle = bl; g.fill();
+            }
+            // указатель: золотой ромб над ободом
             g.beginPath();
-            g.moveTo(cx - 8, 2); g.lineTo(cx + 8, 2); g.lineTo(cx, 16);
+            g.moveTo(cx, cy - R - 6); g.lineTo(cx + 9, cy - R + 12); g.lineTo(cx, cy - R + 20); g.lineTo(cx - 9, cy - R + 12);
             g.closePath();
             g.fillStyle = '#fbbf24'; g.fill();
+            g.strokeStyle = 'rgba(2,6,23,.6)'; g.lineWidth = 1; g.stroke();
         }
-        function rouletteSpotBtn(d, cls, style) {
+        function rouletteSpotBtn(d, extra, style) {
             const bet = rouletteBets[d.id] || 0;
-            const bg = d.kind === 'num'
-                ? (d.label === '0' ? 'bg-emerald-600 hover:bg-emerald-500' : (ROULETTE_REDS.indexOf(Number(d.label)) >= 0 ? 'bg-rose-600 hover:bg-rose-500' : 'bg-slate-900 hover:bg-slate-800 border border-slate-700'))
-                : 'bg-slate-800 hover:bg-slate-700 border border-slate-700';
-            return `<button type="button" onclick="rouletteBet('${d.id}')"${style || ''} class="relative ${cls} ${bg} rounded-lg px-1 py-2 text-[11px] sm:text-[12px] font-bold text-white transition tama-btn">
-                ${d.label}${bet ? `<i class="not-italic absolute -top-1.5 -right-1.5 text-[9px] leading-none bg-amber-400 text-slate-900 rounded-full px-1.5 py-1 font-black shadow">${bet}</i>` : ''}
-            </button>`;
+            // b489: клетки стола — сукно-градиенты по типу ставки
+            const col = d.kind === 'num'
+                ? (ROULETTE_REDS.indexOf(Number(d.label)) >= 0 ? 'rl-red' : 'rl-black')
+                : (d.kind === 'dozen' || d.kind === 'col' ? 'rl-out' : 'rl-out');
+            return `<button type="button" onclick="rouletteBet('${d.id}')"${style || ''} class="rl-cell ${col} ${extra || ''}">${d.label}${bet ? `<i class="rl-chipmini">${bet}</i>` : ''}</button>`;
         }
         function renderRoulette() {
             const box = document.getElementById('roulette-table');
             if (!box) return;
             const defs = rouletteSpotDefs();
-            const nums = defs.filter(d => d.kind === 'num');
-            const dozens = defs.filter(d => d.kind === 'dozen');
-            const evens = defs.filter(d => d.kind === 'even' || d.kind === 'color');
+            const num = n => defs.find(d => d.id === 'n' + n);
             const total = rouletteTotal();
             const rs = rouletteState();
             const hist = (rs.hist || []).slice().reverse();
-            const chips = ROULETTE_CHIPS.map(c => `<button type="button" onclick="rouletteSetChip(${c})" class="tama-btn px-3 py-1.5 rounded-full text-[11px] font-black border-2 ${rouletteChip === c ? 'bg-amber-400 text-slate-900 border-amber-200' : 'bg-slate-800 text-slate-200 border-slate-600'}">${c}</button>`).join('');
+            // b489: фишки — казино-кругляши с коническими полосами своего цвета
+            const CHIP_CLS = { 1: 'rl-chip-1', 5: 'rl-chip-5', 25: 'rl-chip-25', 100: 'rl-chip-100' };
+            const chips = ROULETTE_CHIPS.map(c => `<button type="button" onclick="rouletteSetChip(${c})" class="rl-chip ${CHIP_CLS[c] || ''} ${rouletteChip === c ? 'rl-chip-on' : ''}" title="Фишка ${c} монет">${c}</button>`).join('');
+            // b489: классический стол: зеро слева на 3 ряда, 3 ряда × 12 чисел,
+            // справа «2:1», ниже дюжины (по 4 колонки) и равные шансы (по 2)
+            const betBadge = id => (rouletteBets[id] || 0) ? `<i class="rl-chipmini">${rouletteBets[id]}</i>` : '';
+            let cells = `<button type="button" onclick="rouletteBet('n0')" class="rl-cell rl-zero rl-zero-v">0${betBadge('n0')}</button>`;
+            const colIds = ['c3', 'c2', 'c1'];
+            for (let row = 0; row < 3; row++) {
+                for (let col = 1; col <= 12; col++) cells += rouletteSpotBtn(num(col * 3 - row), '');
+                cells += `<button type="button" onclick="rouletteBet('${colIds[row]}')" class="rl-cell rl-out rl-colbet">2:1${betBadge(colIds[row])}</button>`;
+            }
+            const dozens = [['d1', '1–12', 2], ['d2', '13–24', 6], ['d3', '25–36', 10]];
+            dozens.forEach(dz => {
+                const d = defs.find(x => x.id === dz[0]);
+                cells += `<button type="button" onclick="rouletteBet('${dz[0]}')" style="grid-column:${dz[2]} / span 4" class="rl-cell rl-out rl-dz">${d.label}${betBadge(dz[0])}</button>`;
+            });
+            const outs = [['low', '1–18', 2], ['even', 'ЧЁТ', 4], ['red', 'КРАСНОЕ', 6], ['black', 'ЧЁРНОЕ', 8], ['odd', 'НЕЧЕТ', 10], ['high', '19–36', 12]];
+            outs.forEach(oz => {
+                cells += `<button type="button" onclick="rouletteBet('${oz[0]}')" style="grid-column:${oz[2]} / span 2" class="rl-cell rl-out rl-ev">${oz[1]}${betBadge(oz[0])}</button>`;
+            });
             box.innerHTML = `
-                <div class="flex flex-wrap items-center gap-2">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
                     <span class="text-[10px] text-slate-400 font-bold mr-1">Фишка:</span>${chips}
                     <span class="ml-auto text-[11px] text-slate-300">На столе: <b class="text-amber-300">${total}</b></span>
                 </div>
-                <div class="grid grid-cols-3 gap-1 mt-2">
-                    ${rouletteSpotBtn(nums[0], 'py-2.5', ' style="grid-column:1/-1"')}<!-- b488: зеро во всю ширину стола (col-span-3 в tailwind.css нет) -->
-                    ${nums.slice(1).map(d => rouletteSpotBtn(d, '')).join('')}
-                </div>
-                <div class="grid grid-cols-3 gap-1 mt-1">
-                    ${dozens.map(d => rouletteSpotBtn(d, 'py-2')).join('')}
-                </div>
-                <div class="grid grid-cols-3 gap-1 mt-1">
-                    ${evens.map(d => rouletteSpotBtn(d, 'py-2 text-[10px]')).join('')}
+                <div class="rl-felt">
+                    <div class="rl-grid">${cells}</div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 mt-3">
                     <button type="button" onclick="rouletteDouble()" class="tama-btn px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200 transition">×2</button>
@@ -4542,7 +4602,7 @@ function nxToggle3d() {
                 </div>
                 <div class="flex flex-wrap items-center gap-1 mt-3">
                     <span class="text-[10px] text-slate-500 font-bold mr-1">История:</span>
-                    ${hist.length ? hist.map(n => `<span class="w-6 h-6 rounded-full text-[10px] font-black flex items-center justify-center ${n === 0 ? 'bg-emerald-600' : (ROULETTE_REDS.indexOf(n) >= 0 ? 'bg-rose-600' : 'bg-slate-800 border border-slate-600')} text-white">${n}</span>`).join('') : '<span class="text-[10px] text-slate-600">пока пусто</span>'}
+                    ${hist.length ? hist.map(n => `<span class="rl-histn ${n === 0 ? 'rl-hist-zero' : (ROULETTE_REDS.indexOf(n) >= 0 ? 'rl-hist-red' : 'rl-hist-black')}">${n}</span>`).join('') : '<span class="text-[10px] text-slate-600">пока пусто</span>'}
                 </div>`;
         }
         // ============ /b488 рулетка ============
