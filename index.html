@@ -277,7 +277,7 @@
                 </div>
                 <!-- b500: лобби режима «Лото»: мешок бочонков, карточка 3×9, голосовая озвучка номеров -->
                 <div id="lobby-loto" class="space-y-6 hidden">
-                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                    <div class="loto-room p-4 sm:p-6 rounded-2xl border border-amber-900/40">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><svg class="w-6 h-6 inline-block -mt-1 mr-2" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 8.2c0-2 2.2-3.2 5-3.2s5 1.2 5 3.2v8.6c0 2-2.2 3.2-5 3.2s-5-1.2-5-3.2z" fill="#c89b62" stroke="#7c4a24" stroke-width="1.4"/><ellipse cx="12" cy="8.2" rx="5" ry="3" fill="#f1dcb4" stroke="#7c4a24" stroke-width="1.4"/><circle cx="12" cy="8.2" r="1.9" fill="#fff8e6" stroke="#d64541" stroke-width="1.1"/><path d="M7 12.5h10M7 15.5h10" stroke="#7c4a24" stroke-width=".9" opacity=".55"/></svg>Русское лото</h2>
@@ -292,7 +292,7 @@
                         </div>
                         <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
                             <button id="loto-start" onclick="lotoStart()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-play mr-1"></i>Новая игра</button>
-                            <button id="loto-draw" onclick="lotoDraw()" class="hidden px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-black transition shadow-lg shadow-emerald-950/40"><i class="fa-solid fa-hand-pointer mr-1"></i>Достать бочонок</button>
+                            <button id="loto-draw" onclick="lotoDraw()" class="hidden px-5 py-2.5 rounded-xl loto-draw-btn text-amber-100 text-sm font-black transition shadow-lg shadow-red-950/50 border border-amber-400/60"><i class="fa-solid fa-hand-pointer mr-1"></i>Достать бочонок</button>
                             <button id="loto-auto" onclick="lotoToggleAuto()" class="hidden px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700 transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
                             <button id="loto-voice" onclick="lotoToggleVoice()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700 transition" title="Голосовая озвучка выпавших номеров (русский синтез речи)"><i class="fa-solid fa-volume-up mr-1"></i>Озвучка: вкл</button>
                             <button id="loto-stop" onclick="lotoFinish(true)" class="hidden px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition"><i class="fa-solid fa-stop mr-1"></i>Закончить тираж</button>
@@ -3225,83 +3225,147 @@ min-height:56vh}
         #player-name-box.name-flash{ animation:none; }
     }
 
-    /* ===== b500: Русское лото — деревянные бочонки, мешок, карточка 3×9, табло 1–90 ===== */
+
+    /* ===== b501: Русское лото — редизайн: деревянный стол, красное сукно, бочонки «лицом»,
+       бумажная карточка с печатной рамкой (числа накрываются бочонками-фишками) ===== */
     #mode-loto-btn.lq-on{ --lq-tint: rgba(217,119,6,.30); --lq-text:#fed7aa; border-color: rgba(251,146,60,.5); }
-    .loto-stage{
-        position:relative; display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
-        min-height:150px; padding:12px; border-radius:16px;
-        background:radial-gradient(120% 100% at 50% 0%, rgba(120,53,15,.38), rgba(2,6,23,.65));
-        border:1px solid rgba(251,191,36,.25); box-shadow:inset 0 0 40px rgba(2,6,23,.5);
+    /* комната: тёмное дерево с едва заметной доской */
+    .loto-room{
+        background:
+            repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 2px, transparent 2px 96px),
+            radial-gradient(120% 90% at 50% 0%, rgba(120,53,15,.28), rgba(2,6,23,.55)),
+            linear-gradient(180deg,#2b1a0e 0%,#1d1209 55%,#140d07 100%);
+        border-color:rgba(217,119,6,.35) !important;
+        box-shadow:0 18px 44px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
     }
-    .loto-bag{ position:relative; width:104px; height:116px; flex:0 0 auto; filter:drop-shadow(0 10px 22px rgba(0,0,0,.5)); }
+    /* стол: красное сукно с золотой строчкой, как мешок на фото */
+    .loto-stage{
+        position:relative; display:flex; align-items:center; justify-content:center; gap:18px; flex-wrap:wrap;
+        min-height:170px; padding:16px 12px; border-radius:18px;
+        background:
+            radial-gradient(120% 100% at 50% 0%, #991b1b 0%, #7f1d1d 45%, #450a0a 100%);
+        border:2px dashed rgba(252,211,77,.55);
+        box-shadow:inset 0 0 70px rgba(0,0,0,.55), 0 6px 18px rgba(0,0,0,.35);
+    }
+    .loto-stage::before{
+        content:''; position:absolute; inset:6px; border-radius:12px; pointer-events:none;
+        border:1px solid rgba(252,211,77,.22);
+    }
+    /* мешок */
+    .loto-bag{ position:relative; width:108px; height:120px; flex:0 0 auto; filter:drop-shadow(0 12px 22px rgba(0,0,0,.55)); }
     .loto-bag svg{ width:100%; height:100%; display:block; }
     .loto-bag-left{
-        position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
-        font-weight:900; font-size:22px; color:#fde68a; text-shadow:0 2px 8px rgba(0,0,0,.75);
+        position:absolute; left:50%; top:58%; transform:translate(-50%,-50%);
+        width:36px; height:36px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        background:radial-gradient(circle at 35% 30%, #fde68a, #f59e0b 70%, #b45309);
+        color:#450a0a; font-weight:900; font-size:15px;
+        border:1px solid #7c2d12; box-shadow:0 2px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.5);
     }
-    .loto-current{ position:relative; width:120px; height:100px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
-    .loto-barrel{ position:relative; width:98px; height:76px; transform:rotate(-14deg); filter:drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
+    /* бочонок: торец с номерным кольцом смотрит на игрока, сбоку — деревянный цилиндр */
+    .loto-current{ position:relative; width:132px; height:112px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+    .loto-barrel{ position:relative; width:112px; height:100px; transform:rotate(-6deg); filter:drop-shadow(0 12px 18px rgba(0,0,0,.55)); }
     .loto-barrel .lb-body{
-        position:absolute; inset:0; border-radius:16px/26px;
-        background:linear-gradient(180deg,#6d3f1d 0%,#b98a52 16%,#efd9ae 46%,#e7c795 58%,#a97b44 86%,#6d3f1d 100%);
-        box-shadow:inset 0 0 0 1px rgba(93,52,22,.55);
+        position:absolute; left:2px; bottom:2px; width:76px; height:86px; transform:rotate(-16deg);
+        border-radius:22px/32px;
+        background:linear-gradient(100deg,#5d3416 0%,#a97b44 16%,#e7c795 42%,#f6e7c6 54%,#c89b62 80%,#5d3416 100%);
+        box-shadow:inset 0 0 0 1px rgba(93,52,22,.55), inset 0 -6px 12px rgba(61,33,13,.35);
     }
     .loto-barrel .lb-body::before{
         content:''; position:absolute; inset:0; border-radius:inherit;
-        background:repeating-linear-gradient(90deg, transparent 0 12px, rgba(93,52,22,.16) 12px 14px);
+        background:repeating-linear-gradient(0deg, transparent 0 15px, rgba(93,52,22,.20) 15px 17px);
     }
     .loto-barrel .lb-cap{
-        position:absolute; right:-8px; top:50%; width:58px; height:58px; transform:translateY(-50%);
-        border-radius:50%;
-        background:radial-gradient(circle at 35% 30%, #fffaf0, #f4e3c1 62%, #dcc194);
-        border:2px solid #8a5a33;
-        box-shadow:inset 0 0 0 3px #d64541, 0 2px 8px rgba(0,0,0,.35);
+        position:absolute; right:0; top:0; width:76px; height:76px; border-radius:50%;
+        background:radial-gradient(circle at 36% 30%, #fffaf0, #f4e3c1 60%, #dcc194);
+        border:3px solid #8a5a33;
+        box-shadow:inset 0 0 0 4px #d64541, inset 0 0 0 5px rgba(255,248,230,.85), 0 3px 10px rgba(0,0,0,.4);
         display:flex; align-items:center; justify-content:center;
-        font-weight:900; font-size:21px; color:#c0392b;
+        font-weight:900; font-size:27px; color:#c0392b; letter-spacing:-.5px;
     }
-    .loto-barrel.ghost{ opacity:.45; }
-    .loto-barrel.ghost .lb-cap{ color:#8a5a33; box-shadow:inset 0 0 0 3px rgba(138,90,51,.5), 0 2px 8px rgba(0,0,0,.35); }
-    .loto-barrel.mini{ width:54px; height:42px; transform:rotate(-10deg); }
-    .loto-barrel.mini .lb-cap{ width:34px; height:34px; right:-5px; font-size:13px; box-shadow:inset 0 0 0 2px #d64541, 0 1px 4px rgba(0,0,0,.35); border-width:1px; }
+    .loto-barrel.ghost{ opacity:.4; }
+    .loto-barrel.ghost .lb-cap{ color:#8a5a33; box-shadow:inset 0 0 0 4px rgba(138,90,51,.45), 0 3px 10px rgba(0,0,0,.4); }
+    .loto-barrel.mini{ width:56px; height:50px; transform:rotate(-8deg); filter:drop-shadow(0 5px 8px rgba(0,0,0,.45)); }
+    .loto-barrel.mini .lb-body{ width:38px; height:44px; left:1px; bottom:1px; border-radius:12px/16px; transform:rotate(-14deg); }
+    .loto-barrel.mini .lb-cap{ width:38px; height:38px; border-width:2px; font-size:15px; box-shadow:inset 0 0 0 2px #d64541, inset 0 0 0 3px rgba(255,248,230,.85), 0 2px 5px rgba(0,0,0,.35); }
     @keyframes loto-drop{
-        0%{ transform:translate(-84px,-46px) rotate(-300deg) scale(.45); opacity:0; }
-        55%{ transform:translate(8px,6px) rotate(6deg) scale(1.06); opacity:1; }
-        100%{ transform:translate(0,0) rotate(-14deg) scale(1); opacity:1; }
+        0%{ transform:translate(-96px,-40px) rotate(-320deg) scale(.4); opacity:0; }
+        55%{ transform:translate(10px,8px) rotate(8deg) scale(1.07); opacity:1; }
+        100%{ transform:translate(0,0) rotate(-6deg) scale(1); opacity:1; }
     }
     .loto-drop{ animation:loto-drop .7s cubic-bezier(.22,.9,.32,1.15); }
-    .loto-phrase{ min-width:160px; max-width:280px; text-align:center; font-weight:800; color:#fde68a; font-size:15px; line-height:1.35; text-shadow:0 2px 8px rgba(0,0,0,.55); }
-    .loto-last{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; min-height:46px; }
-    .loto-card{
-        background:linear-gradient(180deg,#f7eed9,#e9dcbc); border-radius:12px; padding:8px;
-        border:1px solid #b48a4e; box-shadow:0 8px 22px rgba(0,0,0,.4); max-width:560px; margin:0 auto;
+    /* бумажный ярлык ведущего */
+    .loto-phrase{
+        min-width:170px; max-width:300px; text-align:center; font-weight:800; font-size:15px; line-height:1.35;
+        color:#7c2d12; background:linear-gradient(180deg,#fffdf5,#f3e8cd);
+        border:1px solid #d6b98c; border-radius:10px; padding:9px 14px;
+        box-shadow:0 4px 12px rgba(0,0,0,.4), inset 0 1px 0 #fff;
     }
-    .loto-card-row{ display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:4px; }
-    .loto-card-row + .loto-card-row{ margin-top:4px; }
-    .loto-card-row.row-done{ outline:2px solid rgba(16,185,129,.85); outline-offset:2px; border-radius:8px; }
+    /* куча последних бочонков — внахлёст, вразвалку */
+    .loto-last{ display:flex; flex-wrap:wrap; gap:0; justify-content:center; align-items:flex-end; min-height:54px; padding:0 8px; }
+    .loto-last .loto-barrel.mini{ margin-left:-12px; }
+    .loto-last .loto-barrel.mini:first-child{ margin-left:0; }
+    .loto-last .loto-barrel.mini:nth-child(odd){ transform:rotate(-13deg); }
+    .loto-last .loto-barrel.mini:nth-child(even){ transform:rotate(7deg) translateY(2px); }
+    .loto-last .loto-barrel.mini:nth-child(3n){ transform:rotate(-3deg) translateY(-2px); }
+    /* карточка: белая бумага с печатной рамкой, как на фото */
+    .loto-card{
+        position:relative; background:#fefefc; border-radius:6px; padding:12px;
+        border:1px solid #c9cdd4; box-shadow:0 12px 28px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
+        max-width:560px; margin:0 auto;
+    }
+    .loto-card::before{
+        content:''; position:absolute; inset:5px; border:2px dotted #b6bac2; border-radius:4px; pointer-events:none;
+    }
+    .loto-card-row{ display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:5px; }
+    .loto-card-row + .loto-card-row{ margin-top:5px; }
+    .loto-card-row.row-done{
+        outline:2px solid rgba(217,119,6,.9); outline-offset:3px; border-radius:8px;
+        background:linear-gradient(90deg, rgba(251,191,36,.16), rgba(251,191,36,.04));
+    }
     .loto-cell{
-        position:relative; height:36px; display:flex; align-items:center; justify-content:center;
-        font-weight:800; color:#231a10; font-size:16px;
-        background:rgba(255,255,255,.6); border:1px solid rgba(122,84,40,.35); border-radius:6px;
+        position:relative; height:40px; display:flex; align-items:center; justify-content:center;
+        font-weight:800; color:#1f2937; font-size:17px;
+        background:#fff; border:1px solid #e5e7eb; border-radius:4px;
     }
     .loto-cell.empty{ background:transparent; border-color:transparent; }
+    /* закрытое число накрыто бочонком: торец-фишка с красным кольцом */
     .loto-cell.marked{
-        color:#fff8e6; background:linear-gradient(180deg,#b98a52,#8a5a33);
-        box-shadow:inset 0 0 0 2px rgba(214,69,65,.85); text-shadow:0 1px 3px rgba(0,0,0,.5);
+        border-radius:50%;
+        background:radial-gradient(circle at 36% 30%, #fffaf0, #f4e3c1 62%, #dcc194);
+        border:2px solid #a97b44;
+        box-shadow:inset 0 0 0 3px #d64541, inset 0 0 0 4px rgba(255,248,230,.85), 0 3px 8px rgba(0,0,0,.4);
+        color:#c0392b; font-size:15px;
     }
-    .loto-board{ display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:3px; }
+    /* табло: бумажный тиражный лист */
+    .loto-board{
+        display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:4px;
+        background:linear-gradient(180deg,#f6f1e3,#eadfc4); padding:10px; border-radius:10px;
+        border:1px solid #d8c9a8; box-shadow:inset 0 1px 0 #fff;
+    }
     .loto-bcell{
-        height:24px; display:flex; align-items:center; justify-content:center;
-        font-size:11px; font-weight:700; color:#94a3b8;
-        background:rgba(30,41,59,.6); border:1px solid rgba(51,65,85,.7); border-radius:5px;
+        height:26px; display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; color:#6b7280;
+        background:#fffdf7; border:1px solid #e7e0cf; border-radius:5px;
     }
-    .loto-bcell.on{ color:#0f172a; background:linear-gradient(180deg,#fbbf24,#d97706); border-color:#fcd34d; font-weight:900; }
-    .loto-bcell.cur{ box-shadow:0 0 0 2px rgba(251,191,36,.9); }
+    .loto-bcell.on{
+        color:#c0392b; font-weight:900; border-radius:50%;
+        background:radial-gradient(circle at 36% 30%, #fffaf0, #f4e3c1 62%, #dcc194);
+        border-color:#a97b44; box-shadow:inset 0 0 0 2px #d64541;
+    }
+    .loto-bcell.cur{ box-shadow:inset 0 0 0 2px #d64541, 0 0 0 2px rgba(245,158,11,.8); }
+    /* кнопка «Достать бочонок» — сукно мешка */
+    .loto-draw-btn{ background:linear-gradient(180deg,#dc2626,#991b1b); }
+    .loto-draw-btn:hover{ background:linear-gradient(180deg,#ef4444,#b91c1c); }
     @media (max-width:480px){
-        .loto-cell{ height:30px; font-size:13px; }
-        .loto-barrel{ width:82px; height:64px; }
-        .loto-barrel .lb-cap{ width:48px; height:48px; font-size:17px; }
-        .loto-phrase{ font-size:13px; min-width:120px; }
-        .loto-bag{ width:88px; height:98px; }
+        .loto-cell{ height:32px; font-size:13px; }
+        .loto-cell.marked{ font-size:12px; box-shadow:inset 0 0 0 2px #d64541, inset 0 0 0 3px rgba(255,248,230,.85), 0 2px 6px rgba(0,0,0,.4); }
+        .loto-barrel{ width:92px; height:82px; }
+        .loto-barrel .lb-cap{ width:62px; height:62px; font-size:22px; }
+        .loto-barrel .lb-body{ width:62px; height:70px; }
+        .loto-phrase{ font-size:13px; min-width:130px; }
+        .loto-bag{ width:90px; height:100px; }
+        .loto-card{ padding:9px; }
     }
     @media (prefers-reduced-motion:reduce){
         .loto-drop{ animation:none; }
