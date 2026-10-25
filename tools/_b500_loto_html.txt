@@ -1,0 +1,57 @@
+                <!-- b500: лобби режима «Лото»: мешок бочонков, карточка 3×9, голосовая озвучка номеров -->
+                <div id="lobby-loto" class="space-y-6 hidden">
+                    <div class="bg-gradient-to-r from-slate-900 to-slate-900/60 p-4 sm:p-6 rounded-2xl border border-slate-800">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <h2 class="text-2xl font-black text-white tracking-tight"><svg class="w-6 h-6 inline-block -mt-1 mr-2" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 8.2c0-2 2.2-3.2 5-3.2s5 1.2 5 3.2v8.6c0 2-2.2 3.2-5 3.2s-5-1.2-5-3.2z" fill="#c89b62" stroke="#7c4a24" stroke-width="1.4"/><ellipse cx="12" cy="8.2" rx="5" ry="3" fill="#f1dcb4" stroke="#7c4a24" stroke-width="1.4"/><circle cx="12" cy="8.2" r="1.9" fill="#fff8e6" stroke="#d64541" stroke-width="1.1"/><path d="M7 12.5h10M7 15.5h10" stroke="#7c4a24" stroke-width=".9" opacity=".55"/></svg>Русское лото</h2>
+                                <p class="text-sm text-slate-400 mt-1">Мешок из 90 деревянных бочонков: ведущий достаёт их по одному и <b class="text-amber-300">голосом называет выпавший номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Тираж — 60 бочонков.</p>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
+                            <div class="flex flex-col items-center gap-1.5 min-w-0 w-full sm:w-auto">
+                                <div id="loto-bets" class="bets-strip flex flex-wrap items-center justify-center gap-1.5 min-w-0 w-full sm:w-auto max-w-full py-0.5"></div>
+                            </div>
+                            <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('loto',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="loto-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('loto', this.value)"><button type="button" onclick="stepBet('loto',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
+                            <button id="loto-start" onclick="lotoStart()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-play mr-1"></i>Новая игра</button>
+                            <button id="loto-draw" onclick="lotoDraw()" class="hidden px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-black transition shadow-lg shadow-emerald-950/40"><i class="fa-solid fa-hand-pointer mr-1"></i>Достать бочонок</button>
+                            <button id="loto-auto" onclick="lotoToggleAuto()" class="hidden px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700 transition"><i class="fa-solid fa-play mr-1"></i>Авто: выкл</button>
+                            <button id="loto-voice" onclick="lotoToggleVoice()" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700 transition" title="Голосовая озвучка выпавших номеров (русский синтез речи)"><i class="fa-solid fa-volume-up mr-1"></i>Озвучка: вкл</button>
+                            <button id="loto-stop" onclick="lotoFinish(true)" class="hidden px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition"><i class="fa-solid fa-stop mr-1"></i>Закончить тираж</button>
+                        </div>
+                        <!-- сцена: мешок, текущий бочонок, последние бочонки -->
+                        <div class="loto-stage mt-4">
+                            <div class="loto-bag" aria-hidden="true">
+                                <svg viewBox="0 0 120 130" fill="none">
+                                    <defs>
+                                        <linearGradient id="loto-bag-g" x1="0" y1="0" x2="1" y2="1">
+                                            <stop offset="0" stop-color="#b91c1c"/><stop offset=".5" stop-color="#7f1d1d"/><stop offset="1" stop-color="#450a0a"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <path d="M42 34c-16 12-30 32-30 55 0 24 20 36 48 36s48-12 48-36c0-23-14-43-30-55l-6-8H48z" fill="url(#loto-bag-g)" stroke="#fbbf24" stroke-width="2"/>
+                                    <path d="M46 22h28l6 12c-6 4-14 6-20 6s-14-2-20-6z" fill="#991b1b" stroke="#fbbf24" stroke-width="2"/>
+                                    <path d="M40 40c8 6 32 6 40 0" stroke="#fcd34d" stroke-width="3" fill="none"/>
+                                    <path d="M30 70c10 8 50 8 60 0M26 92c12 9 56 9 68 0" stroke="#f59e0b" stroke-width="2" opacity=".5" fill="none"/>
+                                    <ellipse cx="60" cy="20" rx="15" ry="6" fill="#450a0a" stroke="#fbbf24" stroke-width="2"/>
+                                </svg>
+                                <span id="loto-bag-left" class="loto-bag-left">90</span>
+                            </div>
+                            <div id="loto-current" class="loto-current"></div>
+                            <div id="loto-phrase" class="loto-phrase">Нажмите «Новая игра» — и голос ведущего назовёт первый бочонок.</div>
+                        </div>
+                        <div id="loto-last" class="loto-last mt-2"></div>
+                        <p id="loto-result" class="text-xs text-slate-400 mt-3 text-center"></p>
+                        <div id="loto-cards" class="mt-4 space-y-3"></div>
+                        <details class="mt-3 text-xs text-slate-400"><summary class="cursor-pointer font-bold text-slate-300">Табло разыгранных чисел (1–90)</summary><div id="loto-board" class="loto-board mt-2"></div></details>
+                        <div class="rules-card">
+                            <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
+                            <ol class="rules-list">
+                                <li>Выберите ставку и нажмите <b>«Новая игра»</b> — получите карточку 3×9, а мешок из 90 бочонков перемешается.</li>
+                                <li><b>«Достать бочонок»</b> (или «Авто») — ведущий показывает деревянный бочонок и <b>голосом называет номер</b> (озвучку можно выключить кнопкой).</li>
+                                <li>Числа на карточке закрываются сами: закрытая линия — <b>×3</b> к ставке, все 15 чисел («ЛОТО!») — <b>×25</b>.</li>
+                                <li>Тираж — <b>60 бочонков</b>; «Закончить тираж» останавливает досрочно (закрытые линии остаются оплачены). Чистый проигрыш кормит общий джекпот сайта.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>

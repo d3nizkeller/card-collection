@@ -1,0 +1,82 @@
+
+    /* ===== b500: Русское лото — деревянные бочонки, мешок, карточка 3×9, табло 1–90 ===== */
+    #mode-loto-btn.lq-on{ --lq-tint: rgba(217,119,6,.30); --lq-text:#fed7aa; border-color: rgba(251,146,60,.5); }
+    .loto-stage{
+        position:relative; display:flex; align-items:center; justify-content:center; gap:16px; flex-wrap:wrap;
+        min-height:150px; padding:12px; border-radius:16px;
+        background:radial-gradient(120% 100% at 50% 0%, rgba(120,53,15,.38), rgba(2,6,23,.65));
+        border:1px solid rgba(251,191,36,.25); box-shadow:inset 0 0 40px rgba(2,6,23,.5);
+    }
+    .loto-bag{ position:relative; width:104px; height:116px; flex:0 0 auto; filter:drop-shadow(0 10px 22px rgba(0,0,0,.5)); }
+    .loto-bag svg{ width:100%; height:100%; display:block; }
+    .loto-bag-left{
+        position:absolute; left:50%; top:56%; transform:translate(-50%,-50%);
+        font-weight:900; font-size:22px; color:#fde68a; text-shadow:0 2px 8px rgba(0,0,0,.75);
+    }
+    .loto-current{ position:relative; width:120px; height:100px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; }
+    .loto-barrel{ position:relative; width:98px; height:76px; transform:rotate(-14deg); filter:drop-shadow(0 8px 18px rgba(0,0,0,.45)); }
+    .loto-barrel .lb-body{
+        position:absolute; inset:0; border-radius:16px/26px;
+        background:linear-gradient(180deg,#6d3f1d 0%,#b98a52 16%,#efd9ae 46%,#e7c795 58%,#a97b44 86%,#6d3f1d 100%);
+        box-shadow:inset 0 0 0 1px rgba(93,52,22,.55);
+    }
+    .loto-barrel .lb-body::before{
+        content:''; position:absolute; inset:0; border-radius:inherit;
+        background:repeating-linear-gradient(90deg, transparent 0 12px, rgba(93,52,22,.16) 12px 14px);
+    }
+    .loto-barrel .lb-cap{
+        position:absolute; right:-8px; top:50%; width:58px; height:58px; transform:translateY(-50%);
+        border-radius:50%;
+        background:radial-gradient(circle at 35% 30%, #fffaf0, #f4e3c1 62%, #dcc194);
+        border:2px solid #8a5a33;
+        box-shadow:inset 0 0 0 3px #d64541, 0 2px 8px rgba(0,0,0,.35);
+        display:flex; align-items:center; justify-content:center;
+        font-weight:900; font-size:21px; color:#c0392b;
+    }
+    .loto-barrel.ghost{ opacity:.45; }
+    .loto-barrel.ghost .lb-cap{ color:#8a5a33; box-shadow:inset 0 0 0 3px rgba(138,90,51,.5), 0 2px 8px rgba(0,0,0,.35); }
+    .loto-barrel.mini{ width:54px; height:42px; transform:rotate(-10deg); }
+    .loto-barrel.mini .lb-cap{ width:34px; height:34px; right:-5px; font-size:13px; box-shadow:inset 0 0 0 2px #d64541, 0 1px 4px rgba(0,0,0,.35); border-width:1px; }
+    @keyframes loto-drop{
+        0%{ transform:translate(-84px,-46px) rotate(-300deg) scale(.45); opacity:0; }
+        55%{ transform:translate(8px,6px) rotate(6deg) scale(1.06); opacity:1; }
+        100%{ transform:translate(0,0) rotate(-14deg) scale(1); opacity:1; }
+    }
+    .loto-drop{ animation:loto-drop .7s cubic-bezier(.22,.9,.32,1.15); }
+    .loto-phrase{ min-width:160px; max-width:280px; text-align:center; font-weight:800; color:#fde68a; font-size:15px; line-height:1.35; text-shadow:0 2px 8px rgba(0,0,0,.55); }
+    .loto-last{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; min-height:46px; }
+    .loto-card{
+        background:linear-gradient(180deg,#f7eed9,#e9dcbc); border-radius:12px; padding:8px;
+        border:1px solid #b48a4e; box-shadow:0 8px 22px rgba(0,0,0,.4); max-width:560px; margin:0 auto;
+    }
+    .loto-card-row{ display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:4px; }
+    .loto-card-row + .loto-card-row{ margin-top:4px; }
+    .loto-card-row.row-done{ outline:2px solid rgba(16,185,129,.85); outline-offset:2px; border-radius:8px; }
+    .loto-cell{
+        position:relative; height:36px; display:flex; align-items:center; justify-content:center;
+        font-weight:800; color:#231a10; font-size:16px;
+        background:rgba(255,255,255,.6); border:1px solid rgba(122,84,40,.35); border-radius:6px;
+    }
+    .loto-cell.empty{ background:transparent; border-color:transparent; }
+    .loto-cell.marked{
+        color:#fff8e6; background:linear-gradient(180deg,#b98a52,#8a5a33);
+        box-shadow:inset 0 0 0 2px rgba(214,69,65,.85); text-shadow:0 1px 3px rgba(0,0,0,.5);
+    }
+    .loto-board{ display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:3px; }
+    .loto-bcell{
+        height:24px; display:flex; align-items:center; justify-content:center;
+        font-size:11px; font-weight:700; color:#94a3b8;
+        background:rgba(30,41,59,.6); border:1px solid rgba(51,65,85,.7); border-radius:5px;
+    }
+    .loto-bcell.on{ color:#0f172a; background:linear-gradient(180deg,#fbbf24,#d97706); border-color:#fcd34d; font-weight:900; }
+    .loto-bcell.cur{ box-shadow:0 0 0 2px rgba(251,191,36,.9); }
+    @media (max-width:480px){
+        .loto-cell{ height:30px; font-size:13px; }
+        .loto-barrel{ width:82px; height:64px; }
+        .loto-barrel .lb-cap{ width:48px; height:48px; font-size:17px; }
+        .loto-phrase{ font-size:13px; min-width:120px; }
+        .loto-bag{ width:88px; height:98px; }
+    }
+    @media (prefers-reduced-motion:reduce){
+        .loto-drop{ animation:none; }
+    }
