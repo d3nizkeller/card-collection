@@ -332,7 +332,7 @@
                         </div>
                         <div id="loto-last" class="loto-last mt-2"></div>
                         <p id="loto-result" class="text-xs text-slate-400 mt-3 text-center"></p>
-                        <div id="loto-cards" class="mt-4 space-y-3"></div>
+                        <div id="loto-cards" class="loto-tickets-grid mt-4"></div>
                         <details class="mt-3 text-xs text-slate-400"><summary class="cursor-pointer font-bold text-slate-300">Табло разыгранных чисел (1–90)</summary><div id="loto-board" class="loto-board mt-2"></div></details>
                         <div class="rules-card">
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
@@ -3467,6 +3467,12 @@ min-height:56vh}
         .loto-ticket{ padding:8px 8px 10px; }
         .loto-ticket-head{ padding:5px 9px; font-size:10px; }
     }
+
+    /* ===== b507: билеты сеткой — 2 колонки на широких экранах, столбик на телефоне ===== */
+    .loto-tickets-grid{ display:grid; grid-template-columns:1fr; gap:14px; }
+    @media (min-width:1024px){ .loto-tickets-grid{ grid-template-columns:1fr 1fr; gap:16px; } }
+    .loto-tickets-grid .loto-ticket{ max-width:none; margin:0; width:100%; }
+    .loto-tickets-grid .loto-ticket + .loto-ticket{ margin-top:0; }
     </style>
     <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
 
