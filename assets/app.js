@@ -19903,7 +19903,7 @@ function nxToggle3d() {
                         const card = loto.cards[k];
                         const doneRows = card.rowDone.filter(Boolean).length;
                         html += '<div class="loto-ticket">';
-                        html += '<div class="loto-ticket-head"><span><i class="fa-solid fa-ticket mr-1"></i>Билет ' + (k + 1) + '</span><span>' + (card.fullPaid ? '<b class="loto-stamp-full">ЛОТО ×' + LOTO_PAY_FULL + '</b>' : doneRows ? '<b class="loto-stamp-row">линий: ' + doneRows + ' ×' + LOTO_PAY_ROW + '</b>' : '<span class="text-slate-500">в игре</span>') + '</span></div>';
+                        html += '<div class="loto-ticket-head"><span><i class="fa-solid fa-star mr-1"></i>Билет ' + (k + 1) + '</span><span>' + (card.fullPaid ? '<b class="loto-stamp-full">ЛОТО ×' + LOTO_PAY_FULL + '</b>' : doneRows ? '<b class="loto-stamp-row">линий: ' + doneRows + ' ×' + LOTO_PAY_ROW + '</b>' : '<span class="text-slate-500">в игре</span>') + '</span></div>';
                         html += '<div class="loto-card">';
                         for (let r = 0; r < 3; r++) {
                             html += '<div class="loto-card-row' + (card.rowDone[r] ? ' row-done' : '') + '">';

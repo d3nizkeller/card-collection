@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob245" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob245">
+    <script src="assets/three.min.js?v=nxmob246" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob246">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob245">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob246">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob245">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob246">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -3403,6 +3403,70 @@ min-height:56vh}
         .loto-bag{ width:96px; height:104px; }
         .loto-bag-left{ width:34px; height:34px; font-size:14px; }
     }
+
+    /* ===== b506: яркие презентабельные билеты: золотая бумага, лента-шапка,
+       радужные колонки чисел, светящиеся фишки закрытых чисел ===== */
+    .loto-ticket{
+        position:relative; max-width:560px; margin:0 auto;
+        background:linear-gradient(160deg,#fff7e0 0%,#ffe9c2 45%,#ffd9a0 100%);
+        border:2px solid #b45309; border-radius:16px; padding:10px 12px 12px;
+        box-shadow:0 12px 30px rgba(0,0,0,.5), inset 0 0 0 2px rgba(255,255,255,.65);
+    }
+    .loto-ticket::after{
+        content:''; position:absolute; left:3px; right:3px; top:3px; height:34%;
+        border-radius:13px 13px 40% 40% / 13px 13px 14% 14%;
+        background:linear-gradient(to bottom, rgba(255,255,255,.45), rgba(255,255,255,0));
+        pointer-events:none;
+    }
+    .loto-ticket + .loto-ticket{ margin-top:14px; }
+    .loto-ticket-head{
+        display:flex; justify-content:space-between; align-items:center; gap:8px;
+        margin:0 0 8px; padding:6px 12px; border-radius:10px;
+        background:linear-gradient(90deg,#b91c1c 0%,#dc2626 45%,#f59e0b 100%);
+        color:#fff; font-size:12px; font-weight:900; letter-spacing:.06em; text-transform:uppercase;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 3px 10px rgba(185,28,28,.35);
+    }
+    .loto-ticket-head .text-slate-500{ color:rgba(255,255,255,.75); }
+    .loto-stamp-row{ color:#fef08a; text-shadow:0 1px 2px rgba(0,0,0,.4); }
+    .loto-stamp-full{ color:#fff; text-shadow:0 0 12px rgba(253,224,71,.9); }
+    .loto-card{
+        background:linear-gradient(180deg,#fffdf6,#fff4dd);
+        border:1px dashed #d97706; border-radius:12px; padding:8px;
+        box-shadow:none; max-width:none; margin:0;
+    }
+    .loto-card-row + .loto-card-row{ margin-top:6px; }
+    .loto-cell{
+        height:38px; border-radius:8px; font-size:17px; font-weight:900;
+        box-shadow:0 1px 0 rgba(15,23,42,.10);
+    }
+    /* колонки билета — радужная пастель, как цветные столбцы лото-карточек */
+    .loto-card-row .loto-cell:nth-child(1){ background:linear-gradient(180deg,#fee2e2,#fecaca); border-color:#fca5a5; color:#7f1d1d; }
+    .loto-card-row .loto-cell:nth-child(2){ background:linear-gradient(180deg,#ffedd5,#fed7aa); border-color:#fdba74; color:#7c2d12; }
+    .loto-card-row .loto-cell:nth-child(3){ background:linear-gradient(180deg,#fef9c3,#fde68a); border-color:#fcd34d; color:#713f12; }
+    .loto-card-row .loto-cell:nth-child(4){ background:linear-gradient(180deg,#ecfccb,#d9f99d); border-color:#a3e635; color:#3f6212; }
+    .loto-card-row .loto-cell:nth-child(5){ background:linear-gradient(180deg,#dcfce7,#bbf7d0); border-color:#86efac; color:#14532d; }
+    .loto-card-row .loto-cell:nth-child(6){ background:linear-gradient(180deg,#cffafe,#a5f3fc); border-color:#67e8f9; color:#155e75; }
+    .loto-card-row .loto-cell:nth-child(7){ background:linear-gradient(180deg,#e0f2fe,#bae6fd); border-color:#7dd3fc; color:#075985; }
+    .loto-card-row .loto-cell:nth-child(8){ background:linear-gradient(180deg,#ede9fe,#ddd6fe); border-color:#c4b5fd; color:#5b21b6; }
+    .loto-card-row .loto-cell:nth-child(9){ background:linear-gradient(180deg,#fce7f3,#fbcfe8); border-color:#f9a8d4; color:#9d174d; }
+    .loto-card-row .loto-cell.empty{ background:transparent; border:1px dashed rgba(180,83,9,.28); box-shadow:none; }
+    .loto-cell.marked{
+        background:radial-gradient(circle at 35% 30%, #fffbeb, #fde68a 55%, #f59e0b 100%);
+        border:2px solid #b45309; border-radius:50%; color:#b91c1c;
+        box-shadow:0 0 0 3px rgba(245,158,11,.35), 0 0 16px rgba(245,158,11,.6), inset 0 0 0 2px #ef4444;
+        transform:scale(1.07); font-size:16px; text-shadow:0 1px 0 rgba(255,255,255,.6);
+    }
+    .loto-card-row.row-done{
+        border-radius:10px; outline:none;
+        background:linear-gradient(90deg, rgba(245,158,11,.18), rgba(239,68,68,.14), rgba(245,158,11,.18));
+        box-shadow:0 0 0 2px #f59e0b, 0 0 20px rgba(245,158,11,.5);
+    }
+    @media (max-width:480px){
+        .loto-cell{ height:32px; font-size:14px; }
+        .loto-cell.marked{ font-size:13px; }
+        .loto-ticket{ padding:8px 8px 10px; }
+        .loto-ticket-head{ padding:5px 9px; font-size:10px; }
+    }
     </style>
     <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
 
@@ -3432,10 +3496,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob245"></script>
-    <script src="assets/stories.js?v=nxmob245"></script>
-    <script src="assets/qrcode.min.js?v=nxmob245"></script>
-    <script src="assets/qr-transfer.js?v=nxmob245"></script>
+    <script src="assets/app.js?v=nxmob246"></script>
+    <script src="assets/stories.js?v=nxmob246"></script>
+    <script src="assets/qrcode.min.js?v=nxmob246"></script>
+    <script src="assets/qr-transfer.js?v=nxmob246"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
