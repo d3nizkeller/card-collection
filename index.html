@@ -298,32 +298,38 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <svg viewBox="0 0 140 150" fill="none">
+                                <svg viewBox="0 0 160 172" fill="none">
                                     <defs>
-                                        <radialGradient id="loto-sack-g" cx="38%" cy="28%" r="85%">
-                                            <stop offset="0" stop-color="#fb7185"/><stop offset=".45" stop-color="#e11d48"/><stop offset="1" stop-color="#7f1d1d"/>
+                                        <radialGradient id="loto-sack-body" cx="36%" cy="26%" r="85%">
+                                            <stop offset="0" stop-color="#ff8f7c"/>
+                                            <stop offset=".38" stop-color="#e63c2e"/>
+                                            <stop offset="1" stop-color="#8f1410"/>
                                         </radialGradient>
-                                        <pattern id="loto-sack-p" width="16" height="16" patternUnits="userSpaceOnUse">
-                                            <circle cx="3" cy="3" r="1.4" fill="#fcd34d" opacity=".5"/>
-                                            <circle cx="11" cy="10" r="1.1" fill="#ffe4e6" opacity=".45"/>
-                                            <path d="M8 5l.8 1.6 1.7.3-1.2 1.2.3 1.7-1.6-.8-1.6.8.3-1.7-1.2-1.2 1.7-.3z" fill="#fda4af" opacity=".35"/>
-                                        </pattern>
+                                        <linearGradient id="loto-sack-frill" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0" stop-color="#e6483a"/>
+                                            <stop offset="1" stop-color="#a01810"/>
+                                        </linearGradient>
+                                        <linearGradient id="loto-sack-gloss" x1="0" y1="0" x2="1" y2="1">
+                                            <stop offset="0" stop-color="#ffffff" stop-opacity=".5"/>
+                                            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+                                        </linearGradient>
                                     </defs>
-                                    <ellipse cx="70" cy="141" rx="44" ry="7" fill="#000" opacity=".35"/>
-                                    <path d="M46 46c-19 14-32 35-32 56 0 25 25 37 56 37s56-12 56-37c0-21-13-42-32-56z" fill="url(#loto-sack-g)"/>
-                                    <path d="M46 46c-19 14-32 35-32 56 0 25 25 37 56 37s56-12 56-37c0-21-13-42-32-56z" fill="url(#loto-sack-p)"/>
-                                    <path d="M38 66c-7 13-10 27-9 40M102 66c7 13 10 27 9 40" stroke="#7f1d1d" stroke-width="2.5" opacity=".4" fill="none"/>
-                                    <path d="M54 58c-4 16-5 38-1 58M86 58c4 16 5 38 1 58" stroke="#fff" stroke-width="2" opacity=".16" fill="none"/>
-                                    <path d="M48 46c4-9 10-13 22-13s18 4 22 13c-6 5-14 7-22 7s-16-2-22-7z" fill="#be123c"/>
-                                    <path d="M54 36l-3 12M63 33l-2 14M77 33l2 14M86 36l3 12" stroke="#7f1d1d" stroke-width="2" opacity=".5"/>
-                                    <ellipse cx="70" cy="33" rx="19" ry="7.5" fill="#450a0a"/>
-                                    <circle cx="62" cy="30" r="7.5" fill="#f4e3c1" stroke="#8a5a33" stroke-width="1.5"/>
-                                    <circle cx="62" cy="30" r="3.4" fill="none" stroke="#d64541" stroke-width="1.6"/>
-                                    <circle cx="77" cy="29" r="6" fill="#efd9ae" stroke="#8a5a33" stroke-width="1.4"/>
-                                    <circle cx="77" cy="29" r="2.7" fill="none" stroke="#d64541" stroke-width="1.4"/>
-                                    <rect x="45" y="42" width="50" height="8" rx="4" fill="#fbbf24"/>
-                                    <path d="M70 46c-7-8-18-8-20 0 7 6 14 6 20 0zM70 46c7-8 18-8 20 0-7 6-14 6-20 0z" fill="#f59e0b"/>
-                                    <circle cx="70" cy="46" r="4" fill="#fde68a"/>
+                                    <ellipse cx="80" cy="166" rx="52" ry="6" fill="#000" opacity=".35"/>
+                                    <path d="M80 42C42 56 18 96 18 124c0 30 28 42 62 42s62-12 62-42c0-28-24-68-62-82z" fill="url(#loto-sack-body)"/>
+                                    <path d="M52 62c-14 14-24 36-24 54 0 10 4 18 10 24-8-24 2-56 22-74z" fill="url(#loto-sack-gloss)"/>
+                                    <ellipse cx="56" cy="86" rx="14" ry="26" fill="#fff" opacity=".18" transform="rotate(-18 56 86)"/>
+                                    <ellipse cx="80" cy="30" rx="24" ry="9" fill="#5a0d08"/>
+                                    <path d="M50 32c-6-12 0-24 8-20 0-9 12-12 16-4 3-8 15-8 18 0 4-8 16-5 16 4 8-4 14 8 8 20-10-6-50-6-60 0z" fill="url(#loto-sack-frill)"/>
+                                    <path d="M58 26c2-8 8-12 12-10M74 22c2-6 10-6 12 0M92 24c4-4 10 0 10 6" stroke="#7d100a" stroke-width="2" opacity=".5" fill="none"/>
+                                    <path d="M52 40c8 6 48 6 56 0" stroke="#e8c98f" stroke-width="7" stroke-linecap="round" fill="none"/>
+                                    <path d="M52 40c8 6 48 6 56 0" stroke="#b98f4f" stroke-width="7" stroke-linecap="round" stroke-dasharray="3 4" fill="none" opacity=".8"/>
+                                    <path d="M80 44c-2 10-6 18-4 26M80 44c3 10 7 16 6 24" stroke="#e8c98f" stroke-width="5" stroke-linecap="round" fill="none"/>
+                                    <path d="M80 44c-2 10-6 18-4 26M80 44c3 10 7 16 6 24" stroke="#b98f4f" stroke-width="5" stroke-linecap="round" stroke-dasharray="3 4" fill="none" opacity=".8"/>
+                                    <circle cx="80" cy="44" r="5.5" fill="#f0d6a4" stroke="#b98f4f" stroke-width="1.5"/>
+                                    <g transform="rotate(-4 80 112)">
+                                        <rect x="52" y="92" width="56" height="40" rx="3" fill="#efe0bd" stroke="#d9c69a" stroke-width="1.5"/>
+                                        <rect x="56" y="96" width="48" height="32" rx="2" fill="none" stroke="#a98f5f" stroke-width="1.2" stroke-dasharray="3 3"/>
+                                    </g>
                                 </svg>
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
@@ -3501,6 +3507,17 @@ min-height:56vh}
         color:#fff; font-weight:900; font-size:13px; text-align:center;
         box-shadow:0 4px 14px rgba(185,28,28,.4), inset 0 1px 0 rgba(255,255,255,.35);
     }
+
+    /* ===== b510: мешок по референсу — остаток бочонков пишется на пришитом ярлыке ===== */
+    .loto-bag-left{
+        position:absolute; left:50%; top:65%;
+        transform:translate(-50%,-50%) rotate(-4deg);
+        width:auto; height:auto; border-radius:0; display:block;
+        background:none; box-shadow:none;
+        color:#8f1410; font-size:22px; font-weight:900;
+        text-shadow:0 1px 0 rgba(255,255,255,.5);
+    }
+    @media (max-width:480px){ .loto-bag-left{ font-size:18px; } }
     </style>
     <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
 
