@@ -285,9 +285,6 @@
                             </div>
                         </div>
                         <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
-                            <div class="flex flex-col items-center gap-1.5 min-w-0 w-full sm:w-auto">
-                                <div id="loto-bets" class="bets-strip flex flex-wrap items-center justify-center gap-1.5 min-w-0 w-full sm:w-auto max-w-full py-0.5"></div>
-                            </div>
                             <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('loto',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="loto-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('loto', this.value)"><button type="button" onclick="stepBet('loto',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
                         </div>
                         <div class="flex flex-wrap items-center justify-center gap-2 mt-4">

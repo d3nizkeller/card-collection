@@ -19826,10 +19826,6 @@ function nxToggle3d() {
         }
         function renderLotoUI() {
             try { syncBetInput('loto'); } catch (e) {}
-            const bets = document.getElementById('loto-bets');
-            if (bets) bets.innerHTML = SLOTS_BETS.map(function (v) {
-                return '<button type="button" onclick="lotoSetBet(' + v + ')" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (loto.bet === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (loto.active ? 'disabled' : '') + '>' + fmtCoins(v) + '</button>';
-            }).join('');
             const start = document.getElementById('loto-start');
             if (start) {
                 start.classList.toggle('hidden', loto.active);
