@@ -19648,7 +19648,7 @@ function nxToggle3d() {
         const LOTO_PAY_ROW = 3;     // линия закрыта — ставка ×3
         const LOTO_PAY_FULL = 25;   // «ЛОТО!» (все 15) — ставка ×25
         const LOTO_MAX_TICKETS = 6; // b505/b508: максимум карточек в тираже
-        const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0 };
+        const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0, cheer: '' };
         try { if (LS.getItem('nx_loto_voice') === '0') loto.voice = false; } catch (e) {}
         try { loto.tickets = Math.max(1, Math.min(LOTO_MAX_TICKETS, parseInt(LS.getItem('nx_loto_tickets'), 10) || 1)); } catch (e) {}
         const LOTO_ONES = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
@@ -19800,7 +19800,12 @@ function nxToggle3d() {
                 msg = (msg ? msg + ' • ' : '') + 'Тираж окончен: 60 бочонков разыграны.';
                 lotoSpeak('Тираж окончен', false);
             }
-            if (!loto.active) lotoSettle();
+            if (!loto.active) {
+                lotoSettle();
+                loto.cheer = lotoCheerPhrase(); // b509: слова поддержки на случай провального тиража
+                const sd = lotoSummaryData();
+                lotoSpeak(sd.won.length ? 'Тираж окончен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + sd.total + '.' : loto.cheer, false);
+            }
             lotoRenderStage(n, msg || (hit ? 'Бочонок ' + n + ' — есть на карточке!' : 'Бочонок ' + n + ' — мимо карточек.'));
             saveState(); updateCoinDisplay();
             renderLotoUI();
@@ -19825,7 +19830,9 @@ function nxToggle3d() {
             lotoSettle();
             const done = loto.drawn.length;
             lotoRenderStage(null, manual ? 'Тираж остановлен на ' + done + ' бочонках. Выигрыш раунда: ' + fmtCoins(loto.win) + '.' : 'Тираж окончен. Выигрыш раунда: ' + fmtCoins(loto.win) + '.');
-            if (manual) lotoSpeak('Тираж остановлен', false);
+            loto.cheer = lotoCheerPhrase(); // b509
+            const sd = lotoSummaryData();
+            lotoSpeak(sd.won.length ? 'Тираж остановлен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + sd.total + '.' : loto.cheer, false);
             renderLotoUI();
         }
         function lotoToggleAuto() {
@@ -19852,6 +19859,43 @@ function nxToggle3d() {
             if (bl) bl.textContent = loto.active ? loto.bag.length : 90;
             const last = document.getElementById('loto-last');
             if (last) last.innerHTML = loto.last.slice().reverse().map(function (v) { return lotoBarrelHtml(v, true); }).join('');
+        }
+        // b509: итоги тиража — сколько билетов сыграли и сколько принесли; при нуле выигрышей — слова поддержки
+        function lotoCheerPhrase() {
+            const cheers = [
+                'Повезёт в следующий раз!',
+                'Бочонки сегодня вредничали — отыграетесь в следующем тираже!',
+                'Мешок был строгий. В следующий раз точно повезёт!',
+                'Линии были совсем близко — следующий тираж ваш!'
+            ];
+            return cheers[Math.floor(Math.random() * cheers.length)];
+        }
+        function lotoSummaryData() {
+            const rowPay = Math.floor(loto.bet * LOTO_PAY_ROW), fullPay = Math.floor(loto.bet * LOTO_PAY_FULL);
+            const tickets = loto.cards.map(function (cd, i) {
+                const lines = cd.rowPaid.filter(Boolean).length;
+                const win = lines * rowPay + (cd.fullPaid ? fullPay : 0);
+                return { n: i + 1, lines: lines, full: cd.fullPaid, win: win };
+            });
+            return { tickets: tickets, won: tickets.filter(function (t) { return t.win > 0; }), total: loto.win, cost: loto.bet * loto.cards.length };
+        }
+        function lotoSummary() {
+            const el = document.getElementById('loto-summary');
+            if (!el) return '';
+            if (loto.active || !loto.cards.length || !loto.drawn.length) { el.classList.add('hidden'); el.innerHTML = ''; return ''; }
+            const d = lotoSummaryData();
+            let html = '<div class="loto-summary-title"><i class="fa-solid fa-trophy mr-1"></i>Итоги тиража</div><div class="loto-summary-grid">';
+            for (let i = 0; i < d.tickets.length; i++) {
+                const t = d.tickets[i];
+                html += '<div class="loto-summary-row ' + (t.win > 0 ? 'win' : 'loss') + '"><span>Билет ' + t.n + '</span><span>' + (t.full ? 'ЛОТО! +' + fmtCoins(t.win) : t.lines ? 'линий: ' + t.lines + ' • +' + fmtCoins(t.win) : 'без линий') + '</span></div>';
+            }
+            html += '</div>';
+            const net = d.total - d.cost;
+            html += '<div class="loto-summary-total">Сыграли билетов: <b>' + d.won.length + ' из ' + d.tickets.length + '</b> • выигрыш: <b class="gold">' + fmtCoins(d.total) + '</b> • потрачено: <b>' + fmtCoins(d.cost) + '</b> • итог: <b class="' + (net >= 0 ? 'gold' : 'dim') + '">' + (net >= 0 ? '+' : '') + fmtCoins(net) + '</b></div>';
+            if (!d.won.length) html += '<div class="loto-summary-cheer">' + (loto.cheer || 'Повезёт в следующий раз!') + '</div>';
+            el.classList.remove('hidden');
+            el.innerHTML = html;
+            return html;
         }
         function renderLotoUI() {
             try { syncBetInput('loto'); } catch (e) {}
@@ -19930,6 +19974,7 @@ function nxToggle3d() {
                 }
                 board.innerHTML = html;
             }
+            lotoSummary(); // b509: панель итогов после тиража
         }
         function renderLoto() { renderLotoUI(); lotoRenderStage(loto.drawn.length ? loto.drawn[loto.drawn.length - 1] : null, loto.active ? 'Тираж идёт: достаньте бочонок.' : 'Нажмите «Новая игра», чтобы купить карточки.'); }
         // ============ /b500 ============

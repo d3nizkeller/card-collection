@@ -43,7 +43,7 @@ const sandbox = {
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(moduleCode + `
-;globalThis.__x = { loto, lotoWords, lotoMakeCard, lotoStart, lotoDraw, lotoFinish, lotoSetTickets, renderLotoUI, LOTO_DRAWS, LOTO_PAY_ROW, LOTO_PAY_FULL, LOTO_MAX_TICKETS };`, sandbox);
+;globalThis.__x = { loto, lotoWords, lotoMakeCard, lotoStart, lotoDraw, lotoFinish, lotoSetTickets, renderLotoUI, lotoSummary, lotoSummaryData, lotoCheerPhrase, LOTO_DRAWS, LOTO_PAY_ROW, LOTO_PAY_FULL, LOTO_MAX_TICKETS };`, sandbox);
 const X = sandbox.__x;
 
 let fails = 0;
@@ -116,6 +116,31 @@ ok(X.loto.tickets === 2 && X.loto.cards.length === 2, 'смена билетов
 X.lotoDraw(); X.lotoDraw(); X.lotoDraw();
 X.lotoFinish(true);
 ok(X.loto.active === false, 'ручная остановка тиража');
+
+// 6) b509: панель итогов после тиража
+sandbox.state.coins = 100000000;
+X.lotoSetTickets(2);
+X.loto.bet = 1000;
+X.lotoStart();
+let dd = 0;
+while (X.loto.active && dd < 60) { X.lotoDraw(); dd++; }
+const sumHtml = els['loto-summary'].innerHTML;
+ok(sumHtml.indexOf('Итоги тиража') >= 0, 'панель итогов отображается после тиража');
+ok(sumHtml.indexOf('Сыграли билетов') >= 0, 'в итогах есть счётчик сыгравших билетов');
+const sd = X.lotoSummaryData();
+ok(sd.tickets.length === 2 && sd.won.length === sd.tickets.filter(t => t.win > 0).length, 'lotoSummaryData согласована');
+
+// 7) b509: все билеты проигрышные — слова поддержки
+X.loto.active = false;
+X.loto.cards = [X.loto.cards[0]];
+X.loto.cards[0].rowPaid = [false, false, false];
+X.loto.cards[0].fullPaid = false;
+X.loto.win = 0;
+X.loto.cheer = X.lotoCheerPhrase();
+const cheerHtml = X.lotoSummary();
+ok(cheerHtml.indexOf('0 из 1') >= 0, 'итоги: 0 из 1 сыгравших');
+ok(cheerHtml.indexOf(X.loto.cheer) >= 0, 'баннер со словами поддержки в итогах');
+ok(X.lotoCheerPhrase().length > 10, 'слова поддержки непустые');
 
 console.log(fails ? ('\nFAILS: ' + fails) : '\nALL TESTS PASSED');
 process.exit(fails ? 1 : 0);
