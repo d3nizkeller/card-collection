@@ -19637,17 +19637,20 @@ function nxToggle3d() {
             });
         })();
 
-        // ============ b500: РУССКОЕ ЛОТО — мешок бочонков, карточка, голосовая озвучка ============
-        // Механика: ставка списывается за карточку; тираж = 60 бочонков из мешка 1–90.
+                // ============ b500: РУССКОЕ ЛОТО — мешок бочонков, карточки, голосовая озвучка ============
+        // b505: игрок сам выбирает, сколько карточек купить на тираж (1–4): каждая карточка
+        // стоит ставку, каждая играет независимо (линия ×3, ЛОТО ×25 за карточку).
+        // Механика: ставка списывается за каждую карточку; тираж = 60 бочонков из мешка 1–90.
         // Каждый бочонок показывается деревянным цилиндром с красным номером и
         // ОЗВУЧИВАЕТСЯ (Web Speech API, ru-RU): «сорок пять», «восемьдесят девять»…
-        // Закрытая линия карточки — ×3, все 15 чисел («ЛОТО!») — ×25.
         // Чистый проигрыш раунда кормит общий джекпот сайта, как в других играх.
         const LOTO_DRAWS = 60;      // бочонков за тираж (из 90)
         const LOTO_PAY_ROW = 3;     // линия закрыта — ставка ×3
         const LOTO_PAY_FULL = 25;   // «ЛОТО!» (все 15) — ставка ×25
-        const loto = { bet: 1000, voice: true, active: false, bag: [], drawn: [], card: null, marked: null, rowDone: [false, false, false], rowPaid: [false, false, false], auto: 0, last: [], win: 0 };
+        const LOTO_MAX_TICKETS = 4; // b505: максимум карточек в тираже
+        const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0 };
         try { if (LS.getItem('nx_loto_voice') === '0') loto.voice = false; } catch (e) {}
+        try { loto.tickets = Math.max(1, Math.min(LOTO_MAX_TICKETS, parseInt(LS.getItem('nx_loto_tickets'), 10) || 1)); } catch (e) {}
         const LOTO_ONES = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
         const LOTO_TEENS = ['десять', 'одиннадцать', 'двенадцать', 'тринадцать', 'четырнадцать', 'пятнадцать', 'шестнадцать', 'семнадцать', 'восемнадцать', 'девятнадцать'];
         const LOTO_TENS = ['', '', 'двадцать', 'тридцать', 'сорок', 'пятьдесят', 'шестьдесят', 'семьдесят', 'восемьдесят', 'девяносто'];
@@ -19675,6 +19678,12 @@ function nxToggle3d() {
             loto.bet = normBet(b);
             renderLotoUI();
         }
+        function lotoSetTickets(n) { // b505: выбор числа карточек на тираж
+            if (loto.active) return;
+            loto.tickets = Math.max(1, Math.min(LOTO_MAX_TICKETS, Math.floor(Number(n) || 1)));
+            try { LS.setItem('nx_loto_tickets', String(loto.tickets)); } catch (e) {}
+            renderLotoUI();
+        }
         function lotoToggleVoice() {
             loto.voice = !loto.voice;
             try { LS.setItem('nx_loto_voice', loto.voice ? '1' : '0'); } catch (e) {}
@@ -19699,35 +19708,43 @@ function nxToggle3d() {
             }
             return grid;
         }
+        function lotoMakeTicket() { // b505: одна карточка игрока со своим состоянием
+            return {
+                grid: lotoMakeCard(),
+                marked: [[false, false, false, false, false, false, false, false, false], [false, false, false, false, false, false, false, false, false], [false, false, false, false, false, false, false, false, false]],
+                rowDone: [false, false, false],
+                rowPaid: [false, false, false],
+                fullPaid: false
+            };
+        }
         function lotoStart() {
             if (loto.active) return;
             const bet = normBet(loto.bet);
             loto.bet = bet;
-            if (state.coins < bet) {
-                try { showToast('Лото: не хватает ' + fmtCoins(bet - state.coins) + ' монет на ставку', 'error'); } catch (e) {}
+            const cost = bet * loto.tickets; // b505: каждая карточка стоит ставку
+            if (state.coins < cost) {
+                try { showToast('Лото: не хватает ' + fmtCoins(cost - state.coins) + ' монет на ' + loto.tickets + ' карточ.', 'error'); } catch (e) {}
                 renderLotoUI();
                 return;
             }
-            state.coins -= bet;
-            try { jackpotFeed(bet); } catch (e) {} // b71: старт раунда кормит общий банк, как в других играх
+            state.coins -= cost;
+            try { jackpotFeed(cost); } catch (e) {} // b71: старт раунда кормит общий банк, как в других играх
             const bag = [];
             for (let v = 1; v <= 90; v++) bag.push(v);
             for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = bag[i]; bag[i] = bag[j]; bag[j] = t; }
             loto.bag = bag;
             loto.drawn = []; loto.last = []; loto.win = 0;
-            loto.card = lotoMakeCard();
-            loto.marked = [[false, false, false, false, false, false, false, false, false], [false, false, false, false, false, false, false, false, false], [false, false, false, false, false, false, false, false, false]];
-            loto.rowDone = [false, false, false]; loto.rowPaid = [false, false, false];
+            loto.cards = [];
+            for (let k = 0; k < loto.tickets; k++) loto.cards.push(lotoMakeTicket());
             loto.active = true;
             lotoStopAuto(false);
             saveState(); updateCoinDisplay();
-            lotoSpeak('Новая игра! Карточка получена, тяните бочонки.');
-            lotoRenderStage(null, 'Мешок перемешан: 90 бочонков. Тяните первый!');
+            lotoSpeak('Новая игра! Куплено карточек: ' + loto.tickets + '. Тяните бочонки.');
+            lotoRenderStage(null, 'Мешок перемешан: 90 бочонков, карточек в тираже: ' + loto.tickets + '. Тяните первый!');
             renderLotoUI();
         }
-        function lotoRowComplete(r) {
-            if (!loto.card || !loto.marked) return false;
-            for (let c = 0; c < 9; c++) { if (loto.card[r][c] && !loto.marked[r][c]) return false; }
+        function lotoRowComplete(card, r) {
+            for (let c = 0; c < 9; c++) { if (card.grid[r][c] && !card.marked[r][c]) return false; }
             return true;
         }
         function lotoDraw() {
@@ -19738,48 +19755,60 @@ function nxToggle3d() {
             loto.last.push(n);
             if (loto.last.length > 12) loto.last.shift();
             let hit = false;
-            for (let r = 0; r < 3; r++) for (let c = 0; c < 9; c++) {
-                if (loto.card[r][c] === n) { loto.marked[r][c] = true; hit = true; }
+            for (let k = 0; k < loto.cards.length; k++) {
+                const card = loto.cards[k];
+                for (let r = 0; r < 3; r++) for (let c = 0; c < 9; c++) {
+                    if (card.grid[r][c] === n) { card.marked[r][c] = true; hit = true; }
+                }
             }
             // b500: озвучка выпавшего номера — главное требование игры
             lotoSpeak(lotoWords(n) + (hit ? '! Есть на карточке.' : '.'));
-            let msg = '';
-            for (let r = 0; r < 3; r++) {
-                if (!loto.rowDone[r] && lotoRowComplete(r)) {
-                    loto.rowDone[r] = true;
-                    if (!loto.rowPaid[r]) {
-                        loto.rowPaid[r] = true;
-                        const pay = Math.floor(loto.bet * LOTO_PAY_ROW);
-                        state.coins += pay; loto.win += pay;
-                        msg = 'Линия ' + (r + 1) + ' закрыта: +' + fmtCoins(pay) + ' монет!';
-                        try { showToast('🪵 Лото: линия закрыта! +' + fmtCoins(pay), 'success'); } catch (e) {}
-                        try { launchConfetti(60); SoundFX.play('coin'); } catch (e) {}
-                        lotoSpeak('Линия закрыта! Плюс ' + pay, false);
+            let lines = 0, fulls = 0, msg = '';
+            for (let k = 0; k < loto.cards.length; k++) {
+                const card = loto.cards[k];
+                for (let r = 0; r < 3; r++) {
+                    if (!card.rowDone[r] && lotoRowComplete(card, r)) {
+                        card.rowDone[r] = true;
+                        if (!card.rowPaid[r]) {
+                            card.rowPaid[r] = true;
+                            lines++;
+                            const pay = Math.floor(loto.bet * LOTO_PAY_ROW);
+                            state.coins += pay; loto.win += pay;
+                            msg = 'Билет ' + (k + 1) + ': линия ' + (r + 1) + ' закрыта! +' + fmtCoins(pay);
+                        }
                     }
                 }
+                if (!card.fullPaid && card.rowDone[0] && card.rowDone[1] && card.rowDone[2]) {
+                    card.fullPaid = true;
+                    fulls++;
+                    const pay = Math.floor(loto.bet * LOTO_PAY_FULL);
+                    state.coins += pay; loto.win += pay;
+                    msg = 'Билет ' + (k + 1) + ': ЛОТО! Все 15 чисел! +' + fmtCoins(pay);
+                }
             }
-            const full = loto.rowDone[0] && loto.rowDone[1] && loto.rowDone[2];
-            if (full) {
-                const pay = Math.floor(loto.bet * LOTO_PAY_FULL);
-                state.coins += pay; loto.win += pay;
+            if (lines || fulls) {
+                try { showToast(fulls ? '🎉 ЛОТО на билете! +' + fmtCoins(loto.win) : '🪵 Линия закрыта! Раунд: +' + fmtCoins(loto.win), 'success'); } catch (e) {}
+                try { launchConfetti(fulls ? 160 : 60); SoundFX.play(fulls ? 'legendary' : 'coin'); } catch (e) {}
+                lotoSpeak(fulls ? 'Лото! Все пятнадцать чисел закрыты!' : 'Линия закрыта!', false);
+            }
+            const allFull = loto.cards.length > 0 && loto.cards.every(function (cd) { return cd.fullPaid; });
+            if (allFull) {
                 loto.active = false;
-                msg = 'ЛОТО! Все 15 чисел: +' + fmtCoins(pay) + ' монет!';
-                try { showToast('🎉 ЛОТО! Карточка закрыта: +' + fmtCoins(pay), 'success'); } catch (e) {}
-                try { launchConfetti(160); SoundFX.play('legendary'); } catch (e) {}
-                lotoSpeak('Лото! Все пятнадцать чисел закрыты!', false);
+                msg = (msg ? msg + ' • ' : '') + 'Все карточки закрыты — тираж окончен!';
             } else if (loto.drawn.length >= LOTO_DRAWS) {
                 loto.active = false;
-                msg = 'Тираж окончен: 60 бочонков разыграны.';
+                msg = (msg ? msg + ' • ' : '') + 'Тираж окончен: 60 бочонков разыграны.';
                 lotoSpeak('Тираж окончен', false);
             }
             if (!loto.active) lotoSettle();
-            lotoRenderStage(n, msg || (hit ? 'Бочонок ' + n + ' — есть на карточке!' : 'Бочонок ' + n + ' — мимо карточки.'));
+            lotoRenderStage(n, msg || (hit ? 'Бочонок ' + n + ' — есть на карточке!' : 'Бочонок ' + n + ' — мимо карточек.'));
             saveState(); updateCoinDisplay();
             renderLotoUI();
         }
         function lotoSettle() {
             lotoStopAuto(false);
-            const net = loto.win - loto.bet;
+            const cost = loto.bet * loto.cards.length;
+            const net = loto.win - cost;
             if (net < 0) {
                 try {
                     const add = jackpotOnLoss(-net); // b71: проигрыш кормит общий джекпот сайта
@@ -19826,11 +19855,17 @@ function nxToggle3d() {
         }
         function renderLotoUI() {
             try { syncBetInput('loto'); } catch (e) {}
+            // b505: выбор числа карточек на тираж
+            const tk = document.getElementById('loto-tickets');
+            if (tk) tk.innerHTML = [1, 2, 3, 4].map(function (v) {
+                return '<button type="button" onclick="lotoSetTickets(' + v + ')" title="Карточек в тираже: ' + v + ' (каждая стоит ставку)" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (loto.tickets === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (loto.active ? 'disabled' : '') + '>' + v + '</button>';
+            }).join('');
+            const cost = loto.bet * loto.tickets;
             const start = document.getElementById('loto-start');
             if (start) {
                 start.classList.toggle('hidden', loto.active);
-                start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Новая игра — ' + fmtCoins(loto.bet) + (state.coins < loto.bet ? ' · мало ' + fmtCoins(loto.bet - state.coins) : '');
-                start.classList.toggle('opacity-40', state.coins < loto.bet);
+                start.innerHTML = '<i class="fa-solid fa-play mr-1"></i>Новая игра — ' + fmtCoins(cost) + (state.coins < cost ? ' · мало ' + fmtCoins(cost - state.coins) : '');
+                start.classList.toggle('opacity-40', state.coins < cost);
             }
             const draw = document.getElementById('loto-draw');
             if (draw) {
@@ -19849,28 +19884,38 @@ function nxToggle3d() {
             if (voice) voice.innerHTML = loto.voice ? '<i class="fa-solid fa-volume-up mr-1"></i>Озвучка: вкл' : '<i class="fa-solid fa-volume-xmark mr-1"></i>Озвучка: выкл';
             const stop = document.getElementById('loto-stop');
             if (stop) stop.classList.toggle('hidden', !loto.active);
-            const markedCount = loto.marked ? loto.marked.reduce(function (a, row) { return a + row.filter(Boolean).length; }, 0) : 0;
+            let markedCount = 0, totalCells = 0;
+            for (let k = 0; k < loto.cards.length; k++) for (let r = 0; r < 3; r++) for (let c = 0; c < 9; c++) {
+                if (loto.cards[k].grid[r][c]) { totalCells++; if (loto.cards[k].marked[r][c]) markedCount++; }
+            }
             const res = document.getElementById('loto-result');
             if (res) res.innerHTML = loto.active
-                ? 'Тираж: <b class="text-slate-200">' + loto.drawn.length + '/' + LOTO_DRAWS + '</b> • закрыто <b class="text-slate-200">' + markedCount + '/15</b> • выигрыш раунда: <b class="text-amber-300">' + fmtCoins(loto.win) + '</b> • линия ×' + LOTO_PAY_ROW + ', ЛОТО ×' + LOTO_PAY_FULL
-                : 'Выберите ставку и жмите «Новая игра» — голос озвучит каждый бочонок. Линия ×' + LOTO_PAY_ROW + ', все 15 чисел ×' + LOTO_PAY_FULL + '.';
-            // карточка игрока
+                ? 'Тираж: <b class="text-slate-200">' + loto.drawn.length + '/' + LOTO_DRAWS + '</b> • карточек: <b class="text-slate-200">' + loto.cards.length + '</b> • закрыто <b class="text-slate-200">' + markedCount + '/' + totalCells + '</b> • выигрыш раунда: <b class="text-amber-300">' + fmtCoins(loto.win) + '</b>'
+                : 'Выберите ставку и число карточек (1–4, каждая стоит ставку) и жмите «Новая игра» — голос озвучит каждый бочонок. Линия ×' + LOTO_PAY_ROW + ', все 15 чисел ×' + LOTO_PAY_FULL + '.';
+            // карточки игрока
             const wrap = document.getElementById('loto-cards');
             if (wrap) {
-                if (!loto.card) {
-                    wrap.innerHTML = '<p class="text-xs text-slate-500 text-center">Карточка появится после «Новой игры».</p>';
+                if (!loto.cards.length) {
+                    wrap.innerHTML = '<p class="text-xs text-slate-500 text-center">Карточки появятся после «Новой игры».</p>';
                 } else {
-                    let html = '<div class="loto-card">';
-                    for (let r = 0; r < 3; r++) {
-                        html += '<div class="loto-card-row' + (loto.rowDone[r] ? ' row-done' : '') + '">';
-                        for (let c = 0; c < 9; c++) {
-                            const v = loto.card[r][c];
-                            if (!v) html += '<div class="loto-cell empty"></div>';
-                            else html += '<div class="loto-cell' + (loto.marked[r][c] ? ' marked' : '') + '">' + v + '</div>';
+                    let html = '';
+                    for (let k = 0; k < loto.cards.length; k++) {
+                        const card = loto.cards[k];
+                        const doneRows = card.rowDone.filter(Boolean).length;
+                        html += '<div class="loto-ticket">';
+                        html += '<div class="loto-ticket-head"><span><i class="fa-solid fa-ticket mr-1"></i>Билет ' + (k + 1) + '</span><span>' + (card.fullPaid ? '<b class="loto-stamp-full">ЛОТО ×' + LOTO_PAY_FULL + '</b>' : doneRows ? '<b class="loto-stamp-row">линий: ' + doneRows + ' ×' + LOTO_PAY_ROW + '</b>' : '<span class="text-slate-500">в игре</span>') + '</span></div>';
+                        html += '<div class="loto-card">';
+                        for (let r = 0; r < 3; r++) {
+                            html += '<div class="loto-card-row' + (card.rowDone[r] ? ' row-done' : '') + '">';
+                            for (let c = 0; c < 9; c++) {
+                                const v = card.grid[r][c];
+                                if (!v) html += '<div class="loto-cell empty"></div>';
+                                else html += '<div class="loto-cell' + (card.marked[r][c] ? ' marked' : '') + '">' + v + '</div>';
+                            }
+                            html += '</div>';
                         }
-                        html += '</div>';
+                        html += '</div></div>';
                     }
-                    html += '</div>';
                     wrap.innerHTML = html;
                 }
             }
@@ -19886,7 +19931,7 @@ function nxToggle3d() {
                 board.innerHTML = html;
             }
         }
-        function renderLoto() { renderLotoUI(); lotoRenderStage(loto.drawn.length ? loto.drawn[loto.drawn.length - 1] : null, loto.active ? 'Тираж идёт: достаньте бочонок.' : 'Нажмите «Новая игра», чтобы получить карточку.'); }
+        function renderLoto() { renderLotoUI(); lotoRenderStage(loto.drawn.length ? loto.drawn[loto.drawn.length - 1] : null, loto.active ? 'Тираж идёт: достаньте бочонок.' : 'Нажмите «Новая игра», чтобы купить карточки.'); }
         // ============ /b500 ============
         window.onload = function() {
           // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
