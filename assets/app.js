@@ -19647,7 +19647,7 @@ function nxToggle3d() {
         const LOTO_DRAWS = 60;      // бочонков за тираж (из 90)
         const LOTO_PAY_ROW = 3;     // линия закрыта — ставка ×3
         const LOTO_PAY_FULL = 25;   // «ЛОТО!» (все 15) — ставка ×25
-        const LOTO_MAX_TICKETS = 4; // b505: максимум карточек в тираже
+        const LOTO_MAX_TICKETS = 6; // b505/b508: максимум карточек в тираже
         const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0 };
         try { if (LS.getItem('nx_loto_voice') === '0') loto.voice = false; } catch (e) {}
         try { loto.tickets = Math.max(1, Math.min(LOTO_MAX_TICKETS, parseInt(LS.getItem('nx_loto_tickets'), 10) || 1)); } catch (e) {}
@@ -19857,7 +19857,7 @@ function nxToggle3d() {
             try { syncBetInput('loto'); } catch (e) {}
             // b505: выбор числа карточек на тираж
             const tk = document.getElementById('loto-tickets');
-            if (tk) tk.innerHTML = [1, 2, 3, 4].map(function (v) {
+            if (tk) tk.innerHTML = [1, 2, 3, 4, 5, 6].map(function (v) {
                 return '<button type="button" onclick="lotoSetTickets(' + v + ')" title="Карточек в тираже: ' + v + ' (каждая стоит ставку)" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (loto.tickets === v ? 'bg-amber-500 border-amber-400 text-slate-950' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (loto.active ? 'disabled' : '') + '>' + v + '</button>';
             }).join('');
             const cost = loto.bet * loto.tickets;
@@ -19891,7 +19891,7 @@ function nxToggle3d() {
             const res = document.getElementById('loto-result');
             if (res) res.innerHTML = loto.active
                 ? 'Тираж: <b class="text-slate-200">' + loto.drawn.length + '/' + LOTO_DRAWS + '</b> • карточек: <b class="text-slate-200">' + loto.cards.length + '</b> • закрыто <b class="text-slate-200">' + markedCount + '/' + totalCells + '</b> • выигрыш раунда: <b class="text-amber-300">' + fmtCoins(loto.win) + '</b>'
-                : 'Выберите ставку и число карточек (1–4, каждая стоит ставку) и жмите «Новая игра» — голос озвучит каждый бочонок. Линия ×' + LOTO_PAY_ROW + ', все 15 чисел ×' + LOTO_PAY_FULL + '.';
+                : 'Выберите ставку и число карточек (1–6, каждая стоит ставку) и жмите «Новая игра» — голос озвучит каждый бочонок. Линия ×' + LOTO_PAY_ROW + ', все 15 чисел ×' + LOTO_PAY_FULL + '.';
             // карточки игрока
             const wrap = document.getElementById('loto-cards');
             if (wrap) {

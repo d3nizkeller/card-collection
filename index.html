@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob246" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob246">
+    <script src="assets/three.min.js?v=nxmob247" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob247">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob246">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob247">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob246">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob247">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -281,7 +281,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><svg width="26" height="26" class="inline-block -mt-1 mr-2" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 8.2c0-2 2.2-3.2 5-3.2s5 1.2 5 3.2v8.6c0 2-2.2 3.2-5 3.2s-5-1.2-5-3.2z" fill="#c89b62" stroke="#7c4a24" stroke-width="1.4"/><ellipse cx="12" cy="8.2" rx="5" ry="3" fill="#f1dcb4" stroke="#7c4a24" stroke-width="1.4"/><circle cx="12" cy="8.2" r="1.9" fill="#fff8e6" stroke="#d64541" stroke-width="1.1"/><path d="M7 12.5h10M7 15.5h10" stroke="#7c4a24" stroke-width=".9" opacity=".55"/></svg>Русское лото</h2>
-                                <p class="text-sm text-slate-400 mt-1">Мешок из 90 деревянных бочонков: ведущий достаёт их по одному и <b class="text-amber-300">голосом называет выпавший номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–4 билета</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 бочонков.</p>
+                                <p class="text-sm text-slate-400 mt-1">Мешок из 90 деревянных бочонков: ведущий достаёт их по одному и <b class="text-amber-300">голосом называет выпавший номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–6 билетов</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 бочонков.</p>
                             </div>
                         </div>
                         <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
@@ -337,7 +337,7 @@
                         <div class="rules-card">
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
-                                <li>Выберите ставку и число карточек (<b>1–4</b>, каждая стоит ставку) и нажмите <b>«Новая игра»</b> — получите билеты 3×9, а мешок из 90 бочонков перемешается.</li>
+                                <li>Выберите ставку и число карточек (<b>1–6</b>, каждая стоит ставку) и нажмите <b>«Новая игра»</b> — получите билеты 3×9, а мешок из 90 бочонков перемешается.</li>
                                 <li><b>«Достать бочонок»</b> (или «Авто») — ведущий показывает деревянный бочонок и <b>голосом называет номер</b> (озвучку можно выключить кнопкой).</li>
                                 <li>Числа на билетах закрываются сами: линия билета — <b>×3</b> к ставке, все 15 чисел билета («ЛОТО!») — <b>×25</b>; каждый билет играет сам за себя.</li>
                                 <li>Тираж — <b>60 бочонков</b>; «Закончить тираж» останавливает досрочно (закрытые линии остаются оплачены). Чистый проигрыш кормит общий джекпот сайта.</li>
@@ -3502,10 +3502,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob246"></script>
-    <script src="assets/stories.js?v=nxmob246"></script>
-    <script src="assets/qrcode.min.js?v=nxmob246"></script>
-    <script src="assets/qr-transfer.js?v=nxmob246"></script>
+    <script src="assets/app.js?v=nxmob247"></script>
+    <script src="assets/stories.js?v=nxmob247"></script>
+    <script src="assets/qrcode.min.js?v=nxmob247"></script>
+    <script src="assets/qr-transfer.js?v=nxmob247"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

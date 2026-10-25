@@ -76,11 +76,11 @@ ok(true, '300 карточек: 5 чисел в строке, диапазоны
 
 // 3) b505: выбор числа билетов +_CLAMP_
 X.lotoSetTickets(3); ok(X.loto.tickets === 3, 'выбор 3 карточек');
-X.lotoSetTickets(9); ok(X.loto.tickets === X.LOTO_MAX_TICKETS, 'зажим сверху до 4');
+X.lotoSetTickets(9); ok(X.loto.tickets === X.LOTO_MAX_TICKETS, 'зажим сверху до 6');
 X.lotoSetTickets(0); ok(X.loto.tickets === 1, 'зажим снизу до 1');
 
 // 4) полный тираж с N билетами: стоимость, выплаты по каждому билету, озвучка
-for (const T of [1, 2, 4]) {
+for (const T of [1, 2, 6]) {
     for (let round = 0; round < 15; round++) {
         spoken.length = 0; toasts.length = 0;
         sandbox.state.coins = 100000000;
