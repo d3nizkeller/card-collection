@@ -4987,12 +4987,13 @@ function nxToggle3d() {
             if (m !== 'lines' && lines.auto) linesAutoStop(false, 'смена игры');
             if (m !== 'wheel' && wheel.auto) { wheel.auto = false; try { wheelAutoUI(); } catch (e) {} } // b314
             if (m !== 'loto' && loto.auto) lotoStopAuto(false); // b500
+            if (m !== 'loto') lotoTronStop(); // b536: физика шаров крутится только в лобо лото
             nx3dReleaseHidden(m); // b305: скрытые игры отдают WebGL-контексты
             if (m === 'slots') { slotsEnsure(); renderSlotsUI(); } // b49
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
             if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
             if (m === 'mines') { renderMinesUI(); } // b79
-            if (m === 'loto') { renderLoto(); try { jackpotRender(); } catch (e) {} } // b500/b517
+            if (m === 'loto') { renderLoto(); try { jackpotRender(); } catch (e) {} lotoTronStart(); } // b500/b517/b536
             if (m === 'scratch') { renderScratch(); try { jackpotRender(); } catch (e) {} } // b519
             if (m === 'lines') { linesEnsure(); renderLinesUI(); } // b103
             // b356: вернулись в арену после другой игры — 3D-сцену боя нужно поднять
@@ -19855,6 +19856,61 @@ function nxToggle3d() {
                 rowPaid: [false, false, false],
                 fullPaid: false
             };
+        }
+        // ==== b536: шары хаотично летают внутри барабана (физика с отскоками от сферы) ====
+        const lotoTron = { raf: 0, balls: [] };
+        function lotoTronStart() {
+            if (lotoTron.raf) return;
+            try {
+                if (typeof requestAnimationFrame === 'undefined') return;
+                const tron = document.getElementById('loto-tron');
+                const drum = tron ? tron.querySelector('.lt-drum') : null;
+                const host = tron ? tron.querySelector('.lt-balls') : null;
+                if (!drum || !host) return;
+                const els = host.querySelectorAll('.lt-ball');
+                if (!els.length) return;
+                const W = drum.clientWidth || 140;
+                const cx = W / 2, cy = W / 2, R = W / 2 - 6 - 9; // обод + радиус шара
+                lotoTron.balls = [];
+                for (let i = 0; i < els.length; i++) {
+                    const a = Math.random() * Math.PI * 2, r = Math.random() * R * 0.7;
+                    lotoTron.balls.push({
+                        el: els[i],
+                        x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r,
+                        vx: (Math.random() * 2 - 1) * 70, vy: (Math.random() * 2 - 1) * 70
+                    });
+                }
+                let last = performance.now();
+                const step = function (now) {
+                    lotoTron.raf = requestAnimationFrame(step);
+                    const dt = Math.min(0.05, (now - last) / 1000);
+                    last = now;
+                    if (document.hidden) return;
+                    const tr = document.getElementById('loto-tron');
+                    const spinning = !!tr && tr.classList.contains('spinning');
+                    const target = spinning ? 200 : 48; // b536: раскрутка разгоняет шары
+                    for (let i = 0; i < lotoTron.balls.length; i++) {
+                        const b = lotoTron.balls[i];
+                        const sp = Math.hypot(b.vx, b.vy) || 1;
+                        const k = 1 + (target / sp - 1) * Math.min(1, dt * 3);
+                        b.vx *= k; b.vy *= k;
+                        b.vx += (Math.random() * 2 - 1) * 40 * dt; // случайные импульсы — хаос
+                        b.vy += (Math.random() * 2 - 1) * 40 * dt;
+                        b.x += b.vx * dt; b.y += b.vy * dt;
+                        const dx = b.x - cx, dy = b.y - cy, d = Math.hypot(dx, dy) || 1;
+                        if (d > R) { // отскок от сферы
+                            const nx = dx / d, ny = dy / d, dot = b.vx * nx + b.vy * ny;
+                            b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny;
+                            b.x = cx + nx * R; b.y = cy + ny * R;
+                        }
+                        b.el.style.transform = 'translate(' + (b.x - 9).toFixed(1) + 'px,' + (b.y - 9).toFixed(1) + 'px)';
+                    }
+                };
+                lotoTron.raf = requestAnimationFrame(step);
+            } catch (e) {}
+        }
+        function lotoTronStop() {
+            if (lotoTron.raf) { try { cancelAnimationFrame(lotoTron.raf); } catch (e) {} lotoTron.raf = 0; }
         }
         function lotoJpRoll() { // b518: шанс золотого бочонка — из Студии + гарантия, как у других игр
             try {
