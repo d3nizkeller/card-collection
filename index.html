@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob259" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob259">
+    <script src="assets/three.min.js?v=nxmob260" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob260">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob259">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob260">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob259">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob260">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -349,7 +349,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <img src="assets/loto-bag.png?v=nxmob259" class="loto-bag-img" alt="">
+                                <img src="assets/loto-bag.png?v=nxmob260" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -3838,6 +3838,23 @@ min-height:56vh}
         .sc-cell.rev.win .sc-face, .sc-cell.rev.jp .sc-face, .sc-wslot.rev.hit .sc-face{ animation:none; }
     }
 
+    /* ===== b527: совпавшие шары видны ВНУТРИ круга (кольцо и галочка больше не срезаются) ===== */
+    .sc-wslot.rev.hit .sc-face{
+        background:radial-gradient(circle at 32% 28%, #ffffff 0%, #e7fbf1 40%, #a7f3d0 72%, #6ee7b7 100%);
+        color:#065f46;
+        box-shadow:inset 0 0 0 3px #16a34a, inset 0 -4px 8px rgba(0,0,0,.18), inset 3px 4px 6px rgba(255,255,255,.95);
+        animation:sc-ballflash 1.1s ease-in-out 6;
+    }
+    .sc-wslot.rev.hit .sc-ball-n{ color:#065f46; text-shadow:0 1px 0 rgba(255,255,255,.85); }
+    @keyframes sc-ballflash{
+        0%,100%{ box-shadow:inset 0 0 0 3px #16a34a, inset 0 -4px 8px rgba(0,0,0,.18), inset 3px 4px 6px rgba(255,255,255,.95); }
+        50%{ box-shadow:inset 0 0 0 5px #22c55e, inset 0 0 20px rgba(34,197,94,.85), inset 3px 4px 6px rgba(255,255,255,.95); }
+    }
+    .sc-wslot.rev.hit::before{
+        top:4px; left:50%; right:auto; transform:translateX(-50%);
+        width:15px; height:15px; font-size:9px;
+    }
+
     </style>
     <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
 
@@ -3867,10 +3884,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob259"></script>
-    <script src="assets/stories.js?v=nxmob259"></script>
-    <script src="assets/qrcode.min.js?v=nxmob259"></script>
-    <script src="assets/qr-transfer.js?v=nxmob259"></script>
+    <script src="assets/app.js?v=nxmob260"></script>
+    <script src="assets/stories.js?v=nxmob260"></script>
+    <script src="assets/qrcode.min.js?v=nxmob260"></script>
+    <script src="assets/qr-transfer.js?v=nxmob260"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
