@@ -35,6 +35,7 @@ const sandbox = {
     showToast(m, t) { toasts.push([m, t]); },
     launchConfetti() {}, SoundFX: { play() {} },
     jackpotFeed() {}, jackpotOnLoss(x) { return x; }, jackpotPool() { return 0; },
+    jackpotWin() { const p = sandbox.__jp || 0; sandbox.state.coins += p; return p; },
     normBet(b) { b = Math.floor(Number(b)); return isFinite(b) && b >= 1 ? b : 1; },
     fmtCoins(n) { return String(n); },
     SLOTS_BETS: [100, 1000, 5000],
@@ -141,6 +142,29 @@ const cheerHtml = X.lotoSummary();
 ok(cheerHtml.indexOf('0 из 1') >= 0, 'итоги: 0 из 1 сыгравших');
 ok(cheerHtml.indexOf(X.loto.cheer) >= 0, 'баннер со словами поддержки в итогах');
 ok(X.lotoCheerPhrase().length > 10, 'слова поддержки непустые');
+
+// 8) b517: золотой бочонок 90 первым в тираже срывает джекпот
+sandbox.__jp = 777;
+sandbox.state.coins = 100000000;
+X.lotoSetTickets(1);
+X.loto.bet = 1000;
+X.lotoStart();
+const gi = X.loto.bag.indexOf(90);
+const li = X.loto.bag.length - 1;
+const tmp = X.loto.bag[gi]; X.loto.bag[gi] = X.loto.bag[li]; X.loto.bag[li] = tmp;
+X.lotoDraw();
+ok(X.loto.drawn[0] === 90, 'первым выпал золотой бочонок 90');
+ok(X.loto.win >= 777, 'джекпот-приз учтён в выигрыше раунда (' + X.loto.win + ')');
+ok(els['loto-current'].innerHTML.indexOf('gold') >= 0, 'золотой бочонок рисуется золотым');
+ok(els['loto-phrase'].textContent.indexOf('Джекпот сайта +777') >= 0, 'фраза о срыве джекпота');
+// не первым — без джекпота
+X.lotoFinish(true);
+sandbox.__jp = 0;
+X.loto.bet = 1000;
+X.lotoStart();
+X.lotoDraw(); // первый бочонок случайный
+if (X.loto.drawn[0] !== 90) ok(X.loto.win === 0 || X.loto.win < 777, 'джекпот только за ПЕРВЫЙ бочонок 90');
+X.lotoFinish(true);
 
 console.log(fails ? ('\nFAILS: ' + fails) : '\nALL TESTS PASSED');
 process.exit(fails ? 1 : 0);

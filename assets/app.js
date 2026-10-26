@@ -4989,7 +4989,7 @@ function nxToggle3d() {
             if (m === 'grid') { gridEnsure(); renderGridUI(); } // b53
             if (m === 'wheel') { wheelEnsure(); renderWheelUI(); } // b74
             if (m === 'mines') { renderMinesUI(); } // b79
-            if (m === 'loto') { renderLoto(); } // b500
+            if (m === 'loto') { renderLoto(); try { jackpotRender(); } catch (e) {} } // b500/b517
             if (m === 'lines') { linesEnsure(); renderLinesUI(); } // b103
             // b356: вернулись в арену после другой игры — 3D-сцену боя нужно поднять
             // заново (её освободил nx3dReleaseHidden), иначе бой останется плоским
@@ -6795,6 +6795,14 @@ function nxToggle3d() {
             const rw = document.getElementById('roulette-jp-winner');
             if (rw) { rw.textContent = wtxt; rw.title = wtitle; }
             nxSetHtml(document.getElementById('roulette-jp-top-list'), html); // b468
+            // b517: банк джекпота виден и в лобби лото (золотой бочонок 90 срывает его)
+            const ltv = document.getElementById('loto-jackpot');
+            if (ltv) ltv.textContent = fmtCoins(pool);
+            const ltn = document.getElementById('loto-jackpot-note');
+            if (ltn) ltn.textContent = note;
+            const ltw = document.getElementById('loto-jp-winner');
+            if (ltw) { ltw.textContent = wtxt; ltw.title = wtitle; }
+            nxSetHtml(document.getElementById('loto-jp-top-list'), html);
             try { rlSync(); } catch (e) {} // b491: шанс золотого зеро — из настроек
             try { jpcLabelsRender(); } catch (e) {} // b415: надписи о процентах — вслед за настройками
         }
@@ -19648,6 +19656,7 @@ function nxToggle3d() {
         const LOTO_PAY_ROW = 3;     // линия закрыта — ставка ×3
         const LOTO_PAY_FULL = 25;   // «ЛОТО!» (все 15) — ставка ×25
         const LOTO_MAX_TICKETS = 6; // b505/b508: максимум карточек в тираже
+        const LOTO_GOLD = 90; // b517: золотой бочонок — первым в тираже срывает джекпот сайта
         const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0, cheer: '' };
         try { if (LS.getItem('nx_loto_voice') === '0') loto.voice = false; } catch (e) {}
         try { loto.tickets = Math.max(1, Math.min(LOTO_MAX_TICKETS, parseInt(LS.getItem('nx_loto_tickets'), 10) || 1)); } catch (e) {}
@@ -19754,6 +19763,17 @@ function nxToggle3d() {
             loto.drawn.push(n);
             loto.last.push(n);
             if (loto.last.length > 12) loto.last.shift();
+            // b517: золотой бочонок 90 первым в тираже — срыв общего джекпота сайта
+            let jpPrize = 0;
+            if (loto.drawn.length === 1 && n === LOTO_GOLD) {
+                try { if (!(typeof jpcOff === 'function' && jpcOff())) jpPrize = jackpotWin() || 0; } catch (e) {}
+                if (jpPrize > 0) {
+                    state.coins += 0; // jackpotWin() сама начислила монеты
+                    loto.win += jpPrize;
+                    try { launchConfetti(220); SoundFX.play('legendary'); } catch (e) {}
+                    lotoSpeak('Золотой бочонок девяносто! Джекпот! Весь банк сайта ваш!', false);
+                }
+            }
             let hit = false;
             for (let k = 0; k < loto.cards.length; k++) {
                 const card = loto.cards[k];
@@ -19791,6 +19811,7 @@ function nxToggle3d() {
                 try { launchConfetti(fulls ? 160 : 60); SoundFX.play(fulls ? 'legendary' : 'coin'); } catch (e) {}
                 lotoSpeak(fulls ? 'Лото! Все пятнадцать чисел закрыты!' : 'Линия закрыта!', false);
             }
+            if (jpPrize > 0) msg = 'ЗОЛОТОЙ БОЧОНОК 90! Джекпот сайта +' + fmtCoins(jpPrize) + '!';
             const allFull = loto.cards.length > 0 && loto.cards.every(function (cd) { return cd.fullPaid; });
             if (allFull) {
                 loto.active = false;
@@ -19848,7 +19869,7 @@ function nxToggle3d() {
             if (ui) renderLotoUI();
         }
         function lotoBarrelHtml(n, mini) {
-            return '<div class="loto-barrel' + (mini ? ' mini' : '') + '"><div class="lb-body"></div><div class="lb-cap">' + n + '</div></div>';
+            return '<div class="loto-barrel' + (mini ? ' mini' : '') + (n === LOTO_GOLD ? ' gold' : '') + '"><div class="lb-body"></div><div class="lb-cap">' + n + '</div></div>';
         }
         function lotoRenderStage(n, phrase) {
             const cur = document.getElementById('loto-current');
@@ -19970,7 +19991,7 @@ function nxToggle3d() {
                 const cur = loto.drawn.length ? loto.drawn[loto.drawn.length - 1] : 0;
                 for (let v = 1; v <= 90; v++) {
                     const on = loto.drawn.indexOf(v) >= 0;
-                    html += '<div class="loto-bcell' + (on ? ' on' : '') + (v === cur ? ' cur' : '') + '">' + v + '</div>';
+                    html += '<div class="loto-bcell' + (on ? ' on' : '') + (v === cur ? ' cur' : '') + (v === LOTO_GOLD ? ' n90' : '') + '">' + v + '</div>';
                 }
                 board.innerHTML = html;
             }

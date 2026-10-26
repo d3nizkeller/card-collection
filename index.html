@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob250" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob250">
+    <script src="assets/three.min.js?v=nxmob251" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob251">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob250">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob251">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob250">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob251">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -281,7 +281,26 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><svg width="26" height="26" class="inline-block -mt-1 mr-2" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 8.2c0-2 2.2-3.2 5-3.2s5 1.2 5 3.2v8.6c0 2-2.2 3.2-5 3.2s-5-1.2-5-3.2z" fill="#c89b62" stroke="#7c4a24" stroke-width="1.4"/><ellipse cx="12" cy="8.2" rx="5" ry="3" fill="#f1dcb4" stroke="#7c4a24" stroke-width="1.4"/><circle cx="12" cy="8.2" r="1.9" fill="#fff8e6" stroke="#d64541" stroke-width="1.1"/><path d="M7 12.5h10M7 15.5h10" stroke="#7c4a24" stroke-width=".9" opacity=".55"/></svg>Лото</h2>
-                                <p class="text-sm text-slate-400 mt-1">Мешок из 90 деревянных бочонков: ведущий достаёт их по одному и <b class="text-amber-300">голосом называет выпавший номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–6 билетов</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 бочонков.</p>
+                                <p class="text-sm text-slate-400 mt-1">Мешок из 90 деревянных бочонков: ведущий достаёт их по одному и <b class="text-amber-300">голосом называет выпавший номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–6 билетов</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 бочонков. Золотой бочонок <b class="text-amber-300">90</b>, выпавший <b class="text-amber-300">первым</b> в тираже, срывает весь джекпот сайта.</p>
+                            </div>
+                        </div>
+                        <!-- b517: банк джекпота сайта в лобби лото -->
+                        <div class="jp-banner mt-3">
+                            <div class="jp-shine" aria-hidden="true"></div>
+                            <div class="jp-flex">
+                                <div class="jp-main">
+                                    <div class="jp-head">
+                                        <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
+                                        <span id="loto-jackpot" class="jp-value">0</span>
+                                    </div>
+                                    <p class="jp-desc">золотой бочонок <b>90</b> первым в тираже — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> чистого проигрыша — шанс: <b>1 из 90 тиражей</b></p>
+                                    <p id="loto-jackpot-note" class="jp-note"></p>
+                                    <p id="loto-jp-winner" class="jp-winner"></p>
+                                </div>
+                                <div id="loto-jp-top" class="jp-top">
+                                    <p class="jp-top-title"><i class="fa-solid fa-trophy"></i>Топ-3 джекпота сайта · 24 ч<i class="fa-solid fa-circle text-emerald-400 animate-pulse ml-1.5" style="font-size:6px;vertical-align:2px" title="крупнейшие срывы за сутки, обновляется в реальном времени"></i></p>
+                                    <ol id="loto-jp-top-list" class="jp-top-list"></ol>
+                                </div>
                             </div>
                         </div>
                         <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
@@ -298,7 +317,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <img src="assets/loto-bag.png?v=nxmob250" class="loto-bag-img" alt="">
+                                <img src="assets/loto-bag.png?v=nxmob251" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -316,6 +335,7 @@
                                 <li><b>«Достать бочонок»</b> (или «Авто») — ведущий показывает деревянный бочонок и <b>голосом называет номер</b> (озвучку можно выключить кнопкой).</li>
                                 <li>Числа на билетах закрываются сами: линия билета — <b>×3</b> к ставке, все 15 чисел билета («ЛОТО!») — <b>×25</b>; каждый билет играет сам за себя.</li>
                                 <li>Тираж — <b>60 бочонков</b>; «Закончить тираж» останавливает досрочно (закрытые линии остаются оплачены). Чистый проигрыш кормит общий джекпот сайта.</li>
+                                <li>Золотой бочонок <b>90</b>, выпавший <b>первым</b> в тираже, срывает <b>весь джекпот сайта</b> (шанс 1 из 90 тиражей); ставка и проигрыш тоже копят банк.</li>
                             </ol>
                         </div>
                     </div>
@@ -3487,6 +3507,18 @@ min-height:56vh}
     }
     @media (max-width:480px){ .loto-bag-left{ font-size:18px; } }
 
+    /* ===== b517: золотой бочонок 90 — срыв джекпота сайта ===== */
+    .loto-barrel.gold .lb-body{ background:linear-gradient(180deg,#92400e 0%,#f59e0b 30%,#fde68a 50%,#f59e0b 70%,#92400e 100%); }
+    .loto-barrel.gold .lb-cap{
+        background:radial-gradient(circle at 35% 30%, #fffbeb, #fde68a 55%, #f59e0b);
+        color:#b45309; border-color:#92400e;
+        box-shadow:inset 0 0 0 3px #b45309, 0 0 20px rgba(253,224,71,.85);
+    }
+    .loto-barrel.gold{ filter:drop-shadow(0 0 14px rgba(253,224,71,.65)); }
+    .loto-bcell.n90{ border-color:rgba(245,158,11,.7); color:#fbbf24; font-weight:900; }
+    .loto-bcell.n90.on{ background:linear-gradient(180deg,#fde68a,#f59e0b); color:#78350f; box-shadow:0 0 12px rgba(253,224,71,.8); }
+
+
     /* ===== b513: натуральный мешок — фотореалистичный рендер в webp с прозрачностью ===== */
     .loto-bag-img{
         width:100%; height:100%; object-fit:contain; display:block;
@@ -3522,10 +3554,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob250"></script>
-    <script src="assets/stories.js?v=nxmob250"></script>
-    <script src="assets/qrcode.min.js?v=nxmob250"></script>
-    <script src="assets/qr-transfer.js?v=nxmob250"></script>
+    <script src="assets/app.js?v=nxmob251"></script>
+    <script src="assets/stories.js?v=nxmob251"></script>
+    <script src="assets/qrcode.min.js?v=nxmob251"></script>
+    <script src="assets/qr-transfer.js?v=nxmob251"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
