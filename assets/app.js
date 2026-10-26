@@ -19859,6 +19859,18 @@ function nxToggle3d() {
         }
         // ==== b536: шары хаотично летают внутри барабана (физика с отскоками от сферы) ====
         const lotoTron = { raf: 0, balls: [] };
+        function lotoTronNumbers() { // b537: цифры на шарах в барабане
+            try {
+                const tron = document.getElementById('loto-tron');
+                if (!tron) return;
+                const els = tron.querySelectorAll('.lt-ball');
+                if (!els.length) return;
+                const pool = [];
+                for (let v = 1; v <= 90; v++) pool.push(v);
+                for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+                for (let i = 0; i < els.length; i++) els[i].innerHTML = '<b>' + pool[i % pool.length] + '</b>';
+            } catch (e) {}
+        }
         function lotoTronStart() {
             if (lotoTron.raf) return;
             try {
@@ -19869,6 +19881,7 @@ function nxToggle3d() {
                 if (!drum || !host) return;
                 const els = host.querySelectorAll('.lt-ball');
                 if (!els.length) return;
+                lotoTronNumbers(); // b537
                 const W = drum.clientWidth || 140;
                 const cx = W / 2, cy = W / 2, R = W / 2 - 6 - 9; // обод + радиус шара
                 lotoTron.balls = [];
@@ -19939,6 +19952,7 @@ function nxToggle3d() {
             loto.cards = [];
             for (let k = 0; k < loto.tickets; k++) loto.cards.push(lotoMakeTicket());
             loto.jpHit = lotoJpRoll(); // b518: срыв джекпота разыгрывается на старте тиража
+            lotoTronNumbers(); // b537: новая игра — новые номера на шарах
             loto.active = true;
             lotoStopAuto(false);
             saveState(); updateCoinDisplay();
