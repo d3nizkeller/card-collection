@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob268" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob268">
+    <script src="assets/three.min.js?v=nxmob269" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob269">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob268">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob269">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob268">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob269">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -226,7 +226,7 @@
                 <button onclick="setBattleMode('wheel')" id="mode-wheel-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700"><i class="fa-solid fa-dharmachakra mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Колесо</span></button>
                 <button onclick="setBattleMode('tama')" id="mode-tama-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Тамагочи: питомец тратит ваш баланс на еду, игры и уход, а за уровни дарит карты"><i class="fa-solid fa-paw mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Тамагочи</span></button>
                 <button onclick="setBattleMode('roulette')" id="mode-roulette-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Рулетка: ставки фишками из баланса, число ×36, дюжина ×3, равные шансы ×2"><i class="fa-solid fa-circle-dot mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Рулетка</span></button>
-                <button onclick="setBattleMode('loto')" id="mode-loto-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Лото: мешок бочонков, карточка 3×9 и голосовая озвучка каждого номера"><i class="fa-solid fa-database mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Лото</span></button>
+                <button onclick="setBattleMode('loto')" id="mode-loto-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Лото: лототрон на 90 шаров, карточки 3×9 и голосовая озвучка каждого номера"><i class="fa-solid fa-database mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Лото</span></button>
                 <button onclick="setBattleMode('scratch')" id="mode-scratch-btn" class="w-full flex flex-col items-center justify-center gap-1 px-1 py-2 rounded-xl text-[13px] sm:text-[15px] lg:text-[13px] font-bold transition whitespace-nowrap overflow-hidden min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 bg-slate-800 text-slate-300 border border-slate-700" title="Скретч-лото: стирайте фольгу, совпадайте с выигрышными числами, золотая клетка JKP срывает джекпот сайта"><i class="fa-solid fa-eraser mr-0 lg:mr-1.5"></i><span class="block lg:inline w-full lg:w-auto text-center lg:text-left text-[8px] sm:text-[9px] lg:text-xs font-bold leading-none truncate">Скретч</span></button>
                 </div>
             <!-- Battle Lobby -->
@@ -313,7 +313,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-database text-amber-400 mr-2"></i>Лото</h2>
-                                <p class="text-sm text-slate-400 mt-1">Мешок из 90 деревянных бочонков: ведущий достаёт их по одному и <b class="text-amber-300">голосом называет выпавший номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–6 билетов</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 бочонков. Золотой бочонок <b class="text-amber-300">90</b>, выпавший <b class="text-amber-300">первым</b> в тираже, срывает весь джекпот сайта.</p>
+                                <p class="text-sm text-slate-400 mt-1">В лототроне <b class="text-amber-300">90 шаров с номерами</b>: машина перемешивает их и в реальном времени выбрасывает выпавший шар, а ведущий <b class="text-amber-300">голосом называет номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–6 билетов</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 бочонков. Золотой шар <b class="text-amber-300">90</b>, выпавший <b class="text-amber-300">первым</b> в тираже, срывает весь джекпот сайта.</p>
                             </div>
                         </div>
                         <!-- b517: банк джекпота сайта в лобби лото -->
@@ -325,7 +325,7 @@
                                         <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
                                         <span id="loto-jackpot" class="jp-value">0</span>
                                     </div>
-                                    <p class="jp-desc">золотой бочонок <b>90</b> первым в тираже — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> чистого проигрыша — шанс: <b data-jpc="odds-loto">1 из 90 тиражей</b></p>
+                                    <p class="jp-desc">золотой шар <b>90</b> первым в тираже — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> чистого проигрыша — шанс: <b data-jpc="odds-loto">1 из 90 тиражей</b></p>
                                     <p id="loto-jackpot-note" class="jp-note"></p>
                                     <p id="loto-jp-winner" class="jp-winner"></p>
                                 </div>
@@ -352,9 +352,7 @@
                                     <div class="lt-drum">
                                         <i class="lt-clamp" style="--a:20deg"></i><i class="lt-clamp" style="--a:80deg"></i><i class="lt-clamp" style="--a:140deg"></i><i class="lt-clamp" style="--a:200deg"></i><i class="lt-clamp" style="--a:260deg"></i><i class="lt-clamp" style="--a:320deg"></i>
                                         <div class="lt-hub"><i class="lt-spoke"></i><i class="lt-spoke"></i><i class="lt-spoke"></i></div>
-                                        <div class="lt-balls">
-                                            <i class="lt-ball" style="--x:24%;--y:72%"></i><i class="lt-ball" style="--x:38%;--y:78%"></i><i class="lt-ball" style="--x:52%;--y:74%"></i><i class="lt-ball" style="--x:31%;--y:62%"></i><i class="lt-ball" style="--x:45%;--y:64%"></i><i class="lt-ball" style="--x:59%;--y:62%"></i><i class="lt-ball" style="--x:38%;--y:52%"></i>
-                                        </div>
+                                        <div class="lt-balls"><!-- b538: 90 шаров строит JS (lotoTronBuild) --></div>
                                         <div class="lt-glass"></div>
                                     </div>
                                     <div class="lt-base">
@@ -374,11 +372,11 @@
                         <div class="rules-card">
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
-                                <li>Выберите ставку и число карточек (<b>1–6</b>, каждая стоит ставку) и нажмите <b>«Новая игра»</b> — получите билеты 3×9, а мешок из 90 бочонков перемешается.</li>
-                                <li><b>«Достать бочонок»</b> (или «Авто») — ведущий показывает деревянный бочонок и <b>голосом называет номер</b> (озвучку можно выключить кнопкой).</li>
+                                <li>Выберите ставку и число карточек (<b>1–6</b>, каждая стоит ставку) и нажмите <b>«Новая игра»</b> — получите карточки 3×9, а лототрон перемешает все 90 шаров.</li>
+                                <li><b>«Достать шар»</b> (или «Авто») — шар вылетает из лототрона, крупный шар с номером показывается на сцене, а ведущий <b>голосом называет номер</b> (озвучку можно выключить кнопкой).</li>
                                 <li>Числа на билетах закрываются сами: линия билета — <b>×3</b> к ставке, все 15 чисел билета («ЛОТО!») — <b>×25</b>; каждый билет играет сам за себя.</li>
                                 <li>Тираж — <b>60 бочонков</b>; «Закончить тираж» останавливает досрочно (закрытые линии остаются оплачены). Чистый проигрыш кормит общий джекпот сайта.</li>
-                                <li>Золотой бочонок <b>90</b>, выпавший <b>первым</b> в тираже, срывает <b>весь джекпот сайта</b> (шанс 1 из 90 тиражей); ставка и проигрыш тоже копят банк.</li>
+                                <li>Золотой шар <b>90</b>, выпавший <b>первым</b> в тираже, срывает <b>весь джекпот сайта</b> (шанс 1 из 90 тиражей); ставка и проигрыш тоже копят банк.</li>
                             </ol>
                         </div>
                     </div>
@@ -2258,7 +2256,7 @@ min-height:56vh}
                     <span>Вероятность JACKPOT и гарантия</span>
                 </h3>
                 <div id="jpc-prob" class="space-y-2"></div>
-                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16, Рулетка (золотое зеро) 1 из 37, Лото (золотой бочонок 90 первым в тираже) ≈ 1 из 90, Скретч (золотая клетка JKP) ≈ 1 из 300 билетов.</p>
+                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16, Рулетка (золотое зеро) 1 из 37, Лото (золотой шар 90 первым в тираже) ≈ 1 из 90, Скретч (золотая клетка JKP) ≈ 1 из 300 билетов.</p>
             </div>
             <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
@@ -4032,6 +4030,52 @@ min-height:56vh}
     .loto-bag-left{ color:#0f172a; text-shadow:none; font-size:11px; }
 
 
+
+    /* ===== b538: 90 шаров в троне, вылет при розыгрыше, шар вместо бочонка в сцене ===== */
+    .lt-ball{ width:11px; height:11px; }
+    .lt-ball b{ font-size:7px; }
+    .lt-ball.out{ animation:lt-out .55s ease-in forwards; }
+    @keyframes lt-out{ to{ transform:translate(72px,58px) scale(.5); opacity:0; } }
+    .loto-current{ width:120px; height:112px; }
+    .loto-bigball{
+        position:relative; width:92px; height:92px; border-radius:50%;
+        background:radial-gradient(circle at 32% 28%, #ffffff, #eef1f5 45%, #c9cfd9 75%, #9aa2ae);
+        box-shadow:inset -4px -6px 12px rgba(0,0,0,.25), inset 4px 6px 10px rgba(255,255,255,.9), 0 10px 24px rgba(0,0,0,.5);
+        display:flex; align-items:center; justify-content:center;
+    }
+    .loto-bigball::before{
+        content:''; position:absolute; left:50%; top:50%; width:58%; height:58%;
+        transform:translate(-50%,-50%); border-radius:50%;
+        background:radial-gradient(circle at 40% 35%, #4ade80, #15803d 75%);
+    }
+    .loto-bigball b{ position:relative; z-index:2; color:#fff; font-size:30px; font-weight:900; text-shadow:0 2px 3px rgba(0,0,0,.5); font-style:normal; }
+    .loto-bigball.gold::before{ background:radial-gradient(circle at 40% 35%, #fde68a, #b45309 75%); }
+    .loto-bigball.ghost{ opacity:.5; }
+    .loto-bigball.ghost::before{ background:radial-gradient(circle at 40% 35%, #cbd5e1, #64748b 75%); }
+    .loto-miniball{
+        position:relative; width:34px; height:34px; border-radius:50%; flex:0 0 auto;
+        background:radial-gradient(circle at 32% 28%, #ffffff, #eef1f5 50%, #cbd2dc 80%);
+        box-shadow:inset -2px -3px 6px rgba(0,0,0,.25), inset 2px 3px 5px rgba(255,255,255,.9), 0 4px 10px rgba(0,0,0,.4);
+        display:flex; align-items:center; justify-content:center;
+    }
+    .loto-miniball::before{
+        content:''; position:absolute; left:50%; top:50%; width:60%; height:60%;
+        transform:translate(-50%,-50%); border-radius:50%;
+        background:radial-gradient(circle at 40% 35%, #4ade80, #15803d 75%);
+    }
+    .loto-miniball b{ position:relative; z-index:2; color:#fff; font-size:12px; font-weight:900; font-style:normal; }
+    .loto-miniball.gold::before{ background:radial-gradient(circle at 40% 35%, #fde68a, #b45309 75%); }
+    .loto-last .loto-miniball{ margin-left:-8px; }
+    .loto-last .loto-miniball:first-child{ margin-left:0; }
+    .loto-last .loto-miniball:nth-child(odd){ transform:translateY(-2px); }
+    .loto-last .loto-miniball:nth-child(even){ transform:translateY(2px); }
+    @media (max-width:480px){
+        .loto-bigball{ width:74px; height:74px; }
+        .loto-bigball b{ font-size:24px; }
+        .loto-current{ width:96px; height:92px; }
+        .loto-miniball{ width:28px; height:28px; }
+        .loto-miniball b{ font-size:10px; }
+    }
     /* ===== b537: спицы из центра ступицы + цифры на шарах ===== */
     .lt-spoke{ top:50%; margin-top:0; }
     .lt-ball::after{
@@ -4088,10 +4132,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob268"></script>
-    <script src="assets/stories.js?v=nxmob268"></script>
-    <script src="assets/qrcode.min.js?v=nxmob268"></script>
-    <script src="assets/qr-transfer.js?v=nxmob268"></script>
+    <script src="assets/app.js?v=nxmob269"></script>
+    <script src="assets/stories.js?v=nxmob269"></script>
+    <script src="assets/qrcode.min.js?v=nxmob269"></script>
+    <script src="assets/qr-transfer.js?v=nxmob269"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

@@ -5632,7 +5632,7 @@ function nxToggle3d() {
         const JPC_PITY_KEY = 'nexus_jp_pity';
         const JPC_GAMES = ['Slots', 'Grid', 'Lines', 'Wheel', 'Roulette', 'Loto', 'Scratch']; // b491; b518; b529: скретч тоже в общем джекпоте
         const JPC_GAME_RU = { Slots: 'Слоты', Grid: 'Сетка', Lines: 'Линии', Wheel: 'Колесо', Roulette: 'Рулетка', Loto: 'Лото', Scratch: 'Скретч' };
-        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор', Roulette: 'золотое зеро', Loto: 'золотой бочонок', Scratch: 'золотая клетка' };
+        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор', Roulette: 'золотое зеро', Loto: 'золотой шар', Scratch: 'золотая клетка' };
         // Заводские вероятности = ровно прежние константы b220:
         //   Слоты  3 / (5*10 + 3) = 5.66 %   Сетка 2 / (5*10 + 2) = 3.85 %
         //   Линии  1 / 25        = 4.00 %   Колесо 1 / 16        = 6.25 %
@@ -19859,16 +19859,46 @@ function nxToggle3d() {
         }
         // ==== b536: шары хаотично летают внутри барабана (физика с отскоками от сферы) ====
         const lotoTron = { raf: 0, balls: [] };
-        function lotoTronNumbers() { // b537: цифры на шарах в барабане
+        function lotoTronBuild() { // b538: в троне ВСЕ 90 шаров с номерами
             try {
                 const tron = document.getElementById('loto-tron');
-                if (!tron) return;
-                const els = tron.querySelectorAll('.lt-ball');
+                const host = tron ? tron.querySelector('.lt-balls') : null;
+                if (!host) return;
+                let html = '';
+                for (let v = 1; v <= 90; v++) html += '<i class="lt-ball" data-n="' + v + '"><b>' + v + '</b></i>';
+                host.innerHTML = html;
+                lotoTronInitBalls();
+            } catch (e) {}
+        }
+        function lotoTronInitBalls() { // b538: физика перечитывает набор шаров
+            try {
+                const tron = document.getElementById('loto-tron');
+                const drum = tron ? tron.querySelector('.lt-drum') : null;
+                const host = tron ? tron.querySelector('.lt-balls') : null;
+                if (!drum || !host) return;
+                const els = host.querySelectorAll('.lt-ball:not(.out)');
                 if (!els.length) return;
-                const pool = [];
-                for (let v = 1; v <= 90; v++) pool.push(v);
-                for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
-                for (let i = 0; i < els.length; i++) els[i].innerHTML = '<b>' + pool[i % pool.length] + '</b>';
+                const W = drum.clientWidth || 140;
+                const cx = W / 2, R = W / 2 - 6 - 5.5;
+                lotoTron.balls = [];
+                for (let i = 0; i < els.length; i++) {
+                    const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * R * 0.9;
+                    lotoTron.balls.push({
+                        el: els[i],
+                        x: cx + Math.cos(a) * r, y: cx + Math.sin(a) * r,
+                        vx: (Math.random() * 2 - 1) * 70, vy: (Math.random() * 2 - 1) * 70
+                    });
+                }
+            } catch (e) {}
+        }
+        function lotoTronFlyOut(n) { // b538: выпавший шар в реальном времени покидает барабан
+            try {
+                const tron = document.getElementById('loto-tron');
+                const el = tron ? tron.querySelector('.lt-ball[data-n="' + n + '"]') : null;
+                if (!el) return;
+                el.classList.add('out');
+                for (let i = lotoTron.balls.length - 1; i >= 0; i--) if (lotoTron.balls[i].el === el) lotoTron.balls.splice(i, 1);
+                setTimeout(function () { try { el.remove(); } catch (e) {} }, 600);
             } catch (e) {}
         }
         function lotoTronStart() {
@@ -19879,11 +19909,11 @@ function nxToggle3d() {
                 const drum = tron ? tron.querySelector('.lt-drum') : null;
                 const host = tron ? tron.querySelector('.lt-balls') : null;
                 if (!drum || !host) return;
+                lotoTronBuild(); // b538: 90 шаров
                 const els = host.querySelectorAll('.lt-ball');
                 if (!els.length) return;
-                lotoTronNumbers(); // b537
                 const W = drum.clientWidth || 140;
-                const cx = W / 2, cy = W / 2, R = W / 2 - 6 - 9; // обод + радиус шара
+                const cx = W / 2, cy = W / 2, R = W / 2 - 6 - 5.5; // обод + радиус шара
                 lotoTron.balls = [];
                 for (let i = 0; i < els.length; i++) {
                     const a = Math.random() * Math.PI * 2, r = Math.random() * R * 0.7;
@@ -19916,7 +19946,7 @@ function nxToggle3d() {
                             b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny;
                             b.x = cx + nx * R; b.y = cy + ny * R;
                         }
-                        b.el.style.transform = 'translate(' + (b.x - 9).toFixed(1) + 'px,' + (b.y - 9).toFixed(1) + 'px)';
+                        b.el.style.transform = 'translate(' + (b.x - 5.5).toFixed(1) + 'px,' + (b.y - 5.5).toFixed(1) + 'px)';
                     }
                 };
                 lotoTron.raf = requestAnimationFrame(step);
@@ -19952,12 +19982,12 @@ function nxToggle3d() {
             loto.cards = [];
             for (let k = 0; k < loto.tickets; k++) loto.cards.push(lotoMakeTicket());
             loto.jpHit = lotoJpRoll(); // b518: срыв джекпота разыгрывается на старте тиража
-            lotoTronNumbers(); // b537: новая игра — новые номера на шарах
+            lotoTronBuild(); // b538: новая игра — барабан снова заряжен 90 шарами
             loto.active = true;
             lotoStopAuto(false);
             saveState(); updateCoinDisplay();
             lotoSpeak('Новая игра! Куплено карточек: ' + loto.tickets + '. Тяните бочонки.', undefined, ['ph_start']);
-            lotoRenderStage(null, 'Мешок перемешан: 90 бочонков, карточек в тираже: ' + loto.tickets + '. Тяните первый!');
+            lotoRenderStage(null, 'Лототрон перемешал 90 шаров, карточек в тираже: ' + loto.tickets + '. Тяните первый!');
             renderLotoUI();
         }
         function lotoRowComplete(card, r) {
@@ -19984,6 +20014,7 @@ function nxToggle3d() {
             }
             loto.drawn.push(n);
             loto.last.push(n);
+            lotoTronFlyOut(n); // b538: шар покидает барабан в момент розыгрыша
             if (loto.last.length > 12) loto.last.shift();
             // b517: золотой бочонок 90 первым в тираже — срыв общего джекпота сайта
             let jpPrize = 0;
@@ -19994,7 +20025,7 @@ function nxToggle3d() {
                     state.coins += 0; // jackpotWin() сама начислила монеты
                     loto.win += jpPrize;
                     try { launchConfetti(220); SoundFX.play('legendary'); } catch (e) {}
-                    lotoSpeak('Золотой бочонок девяносто! Джекпот! Весь банк сайта ваш!', false);
+                    lotoSpeak('Золотой шар девяносто! Джекпот! Весь банк сайта ваш!', false);
                 }
             }
             let hit = false;
@@ -20034,7 +20065,7 @@ function nxToggle3d() {
                 try { launchConfetti(fulls ? 160 : 60); SoundFX.play(fulls ? 'legendary' : 'coin'); } catch (e) {}
                 lotoSpeak(fulls ? 'Лото! Все пятнадцать чисел закрыты!' : 'Линия закрыта!', false, fulls ? ['ph_loto'] : ['ph_line']);
             }
-            if (jpPrize > 0) msg = 'ЗОЛОТОЙ БОЧОНОК 90! Джекпот сайта +' + fmtCoins(jpPrize) + '!';
+            if (jpPrize > 0) msg = 'ЗОЛОТОЙ ШАР 90! Джекпот сайта +' + fmtCoins(jpPrize) + '!';
             const allFull = loto.cards.length > 0 && loto.cards.every(function (cd) { return cd.fullPaid; });
             if (allFull) {
                 loto.active = false;
@@ -20055,7 +20086,7 @@ function nxToggle3d() {
                 const tron = document.getElementById('loto-tron');
                 if (tron) { tron.classList.add('spinning'); setTimeout(function () { tron.classList.remove('spinning'); }, 900); }
             } catch (e) {}
-            lotoRenderStage(n, msg || (hit ? 'Бочонок ' + n + ' — есть на карточке!' : 'Бочонок ' + n + ' — мимо карточек.'));
+            lotoRenderStage(n, msg || (hit ? 'Шар ' + n + ' — есть на карточке!' : 'Шар ' + n + ' — мимо карточек.'));
             saveState(); updateCoinDisplay();
             renderLotoUI();
         }
@@ -20096,12 +20127,13 @@ function nxToggle3d() {
             if (loto.auto) { try { clearInterval(loto.auto); } catch (e) {} loto.auto = 0; }
             if (ui) renderLotoUI();
         }
-        function lotoBarrelHtml(n, mini) {
-            return '<div class="loto-barrel' + (mini ? ' mini' : '') + (n === LOTO_GOLD ? ' gold' : '') + '"><div class="lb-body"></div><div class="lb-cap">' + n + '</div></div>';
+        function lotoBarrelHtml(n, mini) { // b538: выпавший номер показываем шаром как в троне
+            if (mini) return '<div class="loto-miniball' + (n === LOTO_GOLD ? ' gold' : '') + '"><b>' + n + '</b></div>';
+            return '<div class="loto-bigball' + (n === LOTO_GOLD ? ' gold' : '') + '"><b>' + n + '</b></div>';
         }
         function lotoRenderStage(n, phrase) {
             const cur = document.getElementById('loto-current');
-            if (cur) cur.innerHTML = n == null ? '<div class="loto-barrel ghost"><div class="lb-body"></div><div class="lb-cap">?</div></div>' : lotoBarrelHtml(n, false).replace('loto-barrel', 'loto-barrel loto-drop');
+            if (cur) cur.innerHTML = n == null ? '<div class="loto-bigball ghost loto-drop"><b>?</b></div>' : lotoBarrelHtml(n, false).replace('loto-bigball', 'loto-bigball loto-drop');
             const ph = document.getElementById('loto-phrase');
             if (ph) ph.textContent = phrase || '';
             const bl = document.getElementById('loto-bag-left');
@@ -20117,7 +20149,7 @@ function nxToggle3d() {
             const cheers = [
                 'Повезёт в следующий раз!',
                 'Бочонки сегодня вредничали — отыграетесь в следующем тираже!',
-                'Мешок был строгий. В следующий раз точно повезёт!',
+                'Лототрон был строгий. В следующий раз точно повезёт!',
                 'Линии были совсем близко — следующий тираж ваш!'
             ];
             return cheers[(loto.cheerIdx || 1) - 1];
@@ -20166,7 +20198,7 @@ function nxToggle3d() {
             const draw = document.getElementById('loto-draw');
             if (draw) {
                 draw.classList.toggle('hidden', !loto.active);
-                draw.innerHTML = '<i class="fa-solid fa-hand-pointer mr-1"></i>Достать бочонок (' + Math.max(0, LOTO_DRAWS - loto.drawn.length) + ')';
+                draw.innerHTML = '<i class="fa-solid fa-hand-pointer mr-1"></i>Достать шар (' + Math.max(0, LOTO_DRAWS - loto.drawn.length) + ')';
             }
             const auto = document.getElementById('loto-auto');
             if (auto) {
