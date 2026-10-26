@@ -5629,14 +5629,14 @@ function nxToggle3d() {
         // (grant) — своя метка t на каждого игрока, как у счётчиков led/won.
         const JPC_KEY = 'nexus_jackpot_cfg';
         const JPC_PITY_KEY = 'nexus_jp_pity';
-        const JPC_GAMES = ['Slots', 'Grid', 'Lines', 'Wheel', 'Roulette', 'Loto']; // b491; b518: лото тоже в общем джекпоте
-        const JPC_GAME_RU = { Slots: 'Слоты', Grid: 'Сетка', Lines: 'Линии', Wheel: 'Колесо', Roulette: 'Рулетка', Loto: 'Лото' };
-        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор', Roulette: 'золотое зеро', Loto: 'золотой бочонок' };
+        const JPC_GAMES = ['Slots', 'Grid', 'Lines', 'Wheel', 'Roulette', 'Loto', 'Scratch']; // b491; b518; b529: скретч тоже в общем джекпоте
+        const JPC_GAME_RU = { Slots: 'Слоты', Grid: 'Сетка', Lines: 'Линии', Wheel: 'Колесо', Roulette: 'Рулетка', Loto: 'Лото', Scratch: 'Скретч' };
+        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор', Roulette: 'золотое зеро', Loto: 'золотой бочонок', Scratch: 'золотая клетка' };
         // Заводские вероятности = ровно прежние константы b220:
         //   Слоты  3 / (5*10 + 3) = 5.66 %   Сетка 2 / (5*10 + 2) = 3.85 %
         //   Линии  1 / 25        = 4.00 %   Колесо 1 / 16        = 6.25 %
         // b491: Рулетка 1 / 37     = 2.70 %  — золотое зеро (ровно шанс зеро на столе)
-        const JPC_DEFAULT_P = { Slots: 5.66, Grid: 3.85, Lines: 4, Wheel: 6.25, Roulette: 2.7, Loto: 1.11 }; // b518: лото ≈ 1 из 90 тиражей
+        const JPC_DEFAULT_P = { Slots: 5.66, Grid: 3.85, Lines: 4, Wheel: 6.25, Roulette: 2.7, Loto: 1.11, Scratch: 0.33 }; // b518; b529: лото ≈ 1 из 90, скретч ≈ 1 из 300 билетов
         // ============ b471: ЦЕНЫ ОБМЕНА «🏛 ДОМ КОЛЛЕКЦИОНЕРА» ============
         // Три таблицы по редкости + личная цена на отдельную карту. Раньше все три
         // были зашиты константами (MARKET_HOUSE_PRICE, MARKET_SYS_PRICE и база
@@ -6193,7 +6193,7 @@ function nxToggle3d() {
                             (jpcOff() ? 'выключен' : jpcOdds(p)) + '</span>' +
                     '</div>' +
                     '<div class="flex flex-wrap items-center gap-1.5">' +
-                        '<span class="text-[9px] text-slate-500 shrink-0" style="min-width:5.5rem">гарантия, ' + (g === 'Loto' ? 'тиражей' : 'спинов') + '</span>' +
+                        '<span class="text-[9px] text-slate-500 shrink-0" style="min-width:5.5rem">гарантия, ' + (g === 'Loto' ? 'тиражей' : g === 'Scratch' ? 'билетов' : 'спинов') + '</span>' +
                         '<input id="jpc-pity' + g + '" type="number" min="0" max="1000000" step="1" value="' + pity + '" ' +
                             'onchange="jpcSet({pity' + g + ':Math.max(0,Math.round(Number(this.value)||0))})" ' +
                             'class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-0.5 text-[11px] font-bold text-white" style="width:6rem">' +
@@ -6312,6 +6312,15 @@ function nxToggle3d() {
                     const n = 100 / pp;
                     return '1 из ' + (n >= 100 ? Math.round(n).toLocaleString('ru-RU') : (Math.round(n * 10) / 10)) + ' спинов';
                 }
+                // b529: шанс золотой клетки в скретче
+                case 'odds-scratch': {
+                    if (jpcOff()) return 'не выпадает';
+                    const ps = jpcP('Scratch');
+                    if (ps >= 100) return 'каждый билет';
+                    if (ps <= 0) return 'не выпадает';
+                    const ns = 100 / ps;
+                    return '1 из ' + (ns >= 100 ? Math.round(ns).toLocaleString('ru-RU') : (Math.round(ns * 10) / 10)) + ' билетов';
+                }
                 // b518: шанс золотого бочонка в лото
                 case 'odds-loto': {
                     if (jpcOff()) return 'не выпадает';
@@ -6333,7 +6342,7 @@ function nxToggle3d() {
             }
             return '';
         }
-        const JPC_LABEL_KEYS = ['feed', 'loss', 'pay', 'pay2', 'pay2v', 'pay3', 'paynum', 'odds-wheel', 'odds-roulette', 'odds-loto'];
+        const JPC_LABEL_KEYS = ['feed', 'loss', 'pay', 'pay2', 'pay2v', 'pay3', 'paynum', 'odds-wheel', 'odds-roulette', 'odds-loto', 'odds-scratch'];
         function jpcLabelsRender() {
             for (let i = 0; i < JPC_LABEL_KEYS.length; i++) {
                 const key = JPC_LABEL_KEYS[i];
@@ -20046,7 +20055,6 @@ function nxToggle3d() {
         // Фольга стирается пальцем/мышью (canvas, destination-out); стёрто >55% — клетка вскрывается.
         // Совпало число — приз множитель ставки; золотая клетка JKP (1 из 300 билетов) срывает джекпот сайта.
         const SC_P_CELL = 0.04;   // шанс выигрышной клетки
-        const SC_JP_P = 1 / 300;  // шанс золотой клетки джекпота на билет
         const SC_MAX_TICKETS = 4; // b525: максимум билетов в покупке
         const SC_PRIZES = [[1, 50], [2, 30], [5, 14], [25, 5], [100, 1]]; // [множитель, вес]
         const SC_SYMS = ['fa-trophy', 'fa-star', 'fa-crown', 'fa-sack-dollar'];
@@ -20059,7 +20067,14 @@ function nxToggle3d() {
             for (let i = 0; i < SC_PRIZES.length; i++) { r -= SC_PRIZES[i][1]; if (r <= 0) return SC_PRIZES[i][0]; }
             return 1;
         }
-        function scMakeTicket() {
+        function scJpRoll() { // b529: шанс золотой клетки — из Студии + гарантия, как у других игр
+            try {
+                if (jpcOff()) return false;
+                const p = jpcSpinPct('Scratch');
+                return p > 0 && Math.random() * 100 < p;
+            } catch (e) { return false; }
+        }
+        function scMakeTicket(jpHit) {
             const pool = [];
             for (let v = 1; v <= 30; v++) pool.push(v);
             for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
@@ -20074,7 +20089,7 @@ function nxToggle3d() {
                     cells.push({ num: rest[Math.floor(Math.random() * rest.length)], mult: 0, sym: SC_SYMS[Math.floor(Math.random() * SC_SYMS.length)], jkp: false });
                 }
             }
-            if (Math.random() < SC_JP_P) { // золотая клетка джекпота
+            if (jpHit) { // b529: золотая клетка джекпота — по срыву из Студии/гарантии
                 const k = Math.floor(Math.random() * 12);
                 cells[k] = { num: winNums[0], mult: 0, sym: 'fa-crown', jkp: true };
             }
@@ -20106,7 +20121,7 @@ function nxToggle3d() {
             state.coins -= cost;
             try { jackpotFeed(cost); } catch (e) {}
             scratch.tickets = [];
-            for (let k = 0; k < scratch.count; k++) scratch.tickets.push(scMakeTicket());
+            for (let k = 0; k < scratch.count; k++) scratch.tickets.push(scMakeTicket(scJpRoll())); // b529
             saveState(); updateCoinDisplay();
             renderScratchUI();
         }

@@ -135,6 +135,18 @@ ok(typeof TW.explain === 'string' && TW.explain.indexOf('число ' + TW.winNu
 ok(els['sc-legend'].innerHTML.indexOf('Как читать') >= 0, 'поясняющий блок показан при выигрыше');
 ok(els['sc-result'].innerHTML.indexOf('Билет 1:') >= 0, 'в итоге есть расшифровка по билетам');
 
+// 8) b529: золотая клетка управляется из Студии (scJpRoll)
+sandbox.__jpPct = 100;
+sandbox.state.coins = 100000000;
+X.scSetCount(2);
+X.scratchSetBet(100);
+X.scratchBuy();
+ok(X.scratch.tickets.every(T => T.cells.some(c => c.jkp)), 'шанс 100%: золотая клетка в каждом билете');
+sandbox.__jpPct = 0;
+X.scratchBuy();
+ok(X.scratch.tickets.every(T => !T.cells.some(c => c.jkp)), 'шанс 0%: золотых клеток нет');
+sandbox.__jpPct = 0;
+
 function scratch_tickets_len() { return X.scratch.tickets.length; }
 
 console.log(fails ? ('\nFAILS: ' + fails) : '\nALL TESTS PASSED');

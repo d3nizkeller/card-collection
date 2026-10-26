@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob260" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob260">
+    <script src="assets/three.min.js?v=nxmob261" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob261">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob260">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob261">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob260">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob261">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -282,7 +282,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-eraser text-slate-300 mr-2"></i>Скретч-лото</h2>
-                                <p class="text-sm text-slate-400 mt-1">Моментальная лотерея как в киоске: купите билет и <b class="text-slate-200">стирайте серебряную фольгу</b> пальцем или мышью. 4 выигрышных числа и 12 ваших: совпало число — приз множителем к ставке (до ×100), золотая клетка <b class="text-amber-300">JKP</b> (1 из 300 билетов) срывает весь джекпот сайта. Билетов покупаете до <b class="text-amber-300">4 за раз</b> — лежат сеткой 2×2.</p>
+                                <p class="text-sm text-slate-400 mt-1">Моментальная лотерея как в киоске: купите билет и <b class="text-slate-200">стирайте серебряную фольгу</b> пальцем или мышью. 4 выигрышных числа и 12 ваших: совпало число — приз множителем к ставке (до ×100), золотая клетка <b class="text-amber-300">JKP</b> (<b data-jpc="odds-scratch">1 из 300 билетов</b>) срывает весь джекпот сайта. Билетов покупаете до <b class="text-amber-300">4 за раз</b> — лежат сеткой 2×2.</p>
                             </div>
                         </div>
                         <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
@@ -349,7 +349,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <img src="assets/loto-bag.png?v=nxmob260" class="loto-bag-img" alt="">
+                                <img src="assets/loto-bag.png?v=nxmob261" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -2247,7 +2247,7 @@ min-height:56vh}
                     <span>Вероятность JACKPOT и гарантия</span>
                 </h3>
                 <div id="jpc-prob" class="space-y-2"></div>
-                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16, Рулетка (золотое зеро) 1 из 37, Лото (золотой бочонок 90 первым в тираже) ≈ 1 из 90.</p>
+                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16, Рулетка (золотое зеро) 1 из 37, Лото (золотой бочонок 90 первым в тираже) ≈ 1 из 90, Скретч (золотая клетка JKP) ≈ 1 из 300 билетов.</p>
             </div>
 
             <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
@@ -3894,10 +3894,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob260"></script>
-    <script src="assets/stories.js?v=nxmob260"></script>
-    <script src="assets/qrcode.min.js?v=nxmob260"></script>
-    <script src="assets/qr-transfer.js?v=nxmob260"></script>
+    <script src="assets/app.js?v=nxmob261"></script>
+    <script src="assets/stories.js?v=nxmob261"></script>
+    <script src="assets/qrcode.min.js?v=nxmob261"></script>
+    <script src="assets/qr-transfer.js?v=nxmob261"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
