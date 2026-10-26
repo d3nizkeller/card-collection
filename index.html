@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob253" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob253">
+    <script src="assets/three.min.js?v=nxmob254" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob254">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob253">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob254">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob253">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob254">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -347,7 +347,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <img src="assets/loto-bag.png?v=nxmob253" class="loto-bag-img" alt="">
+                                <img src="assets/loto-bag.png?v=nxmob254" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -3590,6 +3590,89 @@ min-height:56vh}
     .sc-wslot .sc-foil{ border-radius:50%; }
     @keyframes sc-pop{ 0%{ transform:scale(.7); } 70%{ transform:scale(1.08); } 100%{ transform:scale(1); } }
     .sc-wslot.rev .sc-face, .sc-cell.rev .sc-face{ animation:sc-pop .3s ease; }
+
+    /* ===== b520: скретч-билет — современный премиальный вид ===== */
+    .sc-ticket{
+        position:relative; max-width:430px; margin:0 auto; border-radius:24px; padding:18px 16px 14px;
+        background:
+            radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,.22), transparent 55%),
+            radial-gradient(90% 60% at 85% 110%, rgba(255,122,0,.55), transparent 60%),
+            linear-gradient(160deg,#ff9a2e 0%,#ff7a00 35%,#f45800 70%,#d63c00 100%);
+        box-shadow:0 24px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 0 rgba(0,0,0,.25);
+        overflow:hidden;
+    }
+    .sc-ticket::before{
+        content:''; position:absolute; inset:0; pointer-events:none;
+        background:
+            repeating-linear-gradient(45deg, rgba(255,255,255,.05) 0 2px, transparent 2px 14px),
+            repeating-linear-gradient(-45deg, rgba(255,255,255,.04) 0 2px, transparent 2px 14px);
+    }
+    .sc-ticket::after{
+        content:''; position:absolute; left:50%; top:-70px; width:280px; height:150px;
+        transform:translateX(-50%); pointer-events:none;
+        background:radial-gradient(closest-side, rgba(255,255,255,.45), transparent);
+        filter:blur(6px);
+    }
+    .sc-notch{ position:absolute; top:50%; width:22px; height:22px; border-radius:50%; background:#0f172a; box-shadow:inset 0 2px 6px rgba(0,0,0,.65); transform:translateY(-50%); z-index:2; }
+    .sc-notch.l{ left:-11px; } .sc-notch.r{ right:-11px; }
+    .sc-brand{ display:inline-flex; align-items:center; gap:6px; font-weight:900; letter-spacing:.14em; font-size:13px; text-shadow:0 1px 2px rgba(0,0,0,.25); }
+    .sc-brand-i{ color:#ffe8d1; font-size:12px; }
+    .sc-price{ background:rgba(255,255,255,.95); color:#e34c00; font-weight:900; font-size:12px; padding:4px 12px; border-radius:9999px; box-shadow:0 2px 8px rgba(0,0,0,.25); }
+    .sc-super{ margin-top:12px; text-align:center; font-weight:900; letter-spacing:.3em; font-size:10px; color:rgba(255,255,255,.9); }
+    .sc-super-val{
+        text-align:center; font-size:34px; font-weight:900; letter-spacing:.02em;
+        background:linear-gradient(180deg,#ffffff 10%,#ffe8c7 60%,#ffd191 100%);
+        -webkit-background-clip:text; background-clip:text; color:transparent;
+        filter:drop-shadow(0 3px 8px rgba(0,0,0,.35));
+    }
+    .sc-cap{
+        display:table; margin:14px auto 8px; padding:4px 14px; border-radius:9999px;
+        background:rgba(0,0,0,.22); backdrop-filter:blur(4px);
+        letter-spacing:.22em; font-size:9px; font-weight:900; color:#ffe8d1;
+    }
+    .sc-wslot .sc-face{
+        background:radial-gradient(circle at 32% 28%, #ffffff 0%, #f2f2f5 45%, #c9c9d2 75%, #9fa3ad 100%);
+        box-shadow:inset 0 -3px 6px rgba(0,0,0,.25), inset 2px 3px 4px rgba(255,255,255,.9), 0 4px 10px rgba(0,0,0,.35);
+        color:#1c2028;
+    }
+    .sc-ball-n{ font-weight:900; font-size:18px; text-shadow:0 1px 0 rgba(255,255,255,.8); }
+    .sc-cell .sc-face{
+        background:linear-gradient(160deg, rgba(28,22,10,.94), rgba(12,9,4,.96));
+        border:1px solid rgba(255,190,120,.28); border-radius:14px;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 4px 12px rgba(0,0,0,.35);
+    }
+    .sc-cell.rev.win .sc-face{
+        background:linear-gradient(160deg,#052e16,#022c22);
+        border-color:rgba(74,222,128,.7);
+        box-shadow:0 0 16px rgba(74,222,128,.45), inset 0 0 0 1px rgba(74,222,128,.5);
+    }
+    .sc-cell.rev.jp .sc-face{
+        background:linear-gradient(160deg,#4a3208,#241a04);
+        border-color:#fcd34d;
+        box-shadow:0 0 22px rgba(252,211,77,.65), inset 0 0 0 1px rgba(252,211,77,.7);
+    }
+    .sc-cell.rev.win .sc-prize{ color:#86efac; }
+    /* живой блик, бегающий по фольге, пока клетка не вскрыта */
+    .sc-wslot:not(.rev)::after, .sc-cell:not(.rev)::after{
+        content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+        background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.55) 48%, transparent 62%);
+        transform:translateX(-130%);
+        animation:sc-shine 2.8s ease-in-out infinite;
+    }
+    @keyframes sc-shine{ 0%{ transform:translateX(-130%); } 55%{ transform:translateX(130%); } 100%{ transform:translateX(130%); } }
+    .sc-foot{ margin-top:14px; display:flex; align-items:center; gap:10px; }
+    .sc-barcode{
+        flex:1; height:26px; border-radius:3px; background-color:rgba(255,255,255,.92);
+        background-image:repeating-linear-gradient(90deg,#111 0 2px,transparent 2px 5px,#111 5px 6px,transparent 6px 9px,#111 9px 12px,transparent 12px 14px);
+        opacity:.9;
+    }
+    .sc-serial{ font-size:9px; font-weight:800; letter-spacing:.12em; color:rgba(255,255,255,.85); }
+    @media (max-width:480px){
+        .sc-super-val{ font-size:28px; }
+    }
+    @media (prefers-reduced-motion:reduce){
+        .sc-wslot:not(.rev)::after, .sc-cell:not(.rev)::after{ animation:none; }
+    }
     @media (max-width:480px){
         .sc-ticket{ padding:10px 10px 12px; }
         .sc-wslot{ width:44px; height:44px; }
@@ -3638,10 +3721,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob253"></script>
-    <script src="assets/stories.js?v=nxmob253"></script>
-    <script src="assets/qrcode.min.js?v=nxmob253"></script>
-    <script src="assets/qr-transfer.js?v=nxmob253"></script>
+    <script src="assets/app.js?v=nxmob254"></script>
+    <script src="assets/stories.js?v=nxmob254"></script>
+    <script src="assets/qrcode.min.js?v=nxmob254"></script>
+    <script src="assets/qr-transfer.js?v=nxmob254"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
