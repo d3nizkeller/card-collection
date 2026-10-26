@@ -19986,7 +19986,7 @@ function nxToggle3d() {
             loto.active = true;
             lotoStopAuto(false);
             saveState(); updateCoinDisplay();
-            lotoSpeak('Новая игра! Куплено карточек: ' + loto.tickets + '. Тяните бочонки.', undefined, ['ph_start']);
+            lotoSpeak('Новая игра! Куплено карточек: ' + loto.tickets + '. Тяните шары.', undefined, ['ph_start']);
             lotoRenderStage(null, 'Лототрон перемешал 90 шаров, карточек в тираже: ' + loto.tickets + '. Тяните первый!');
             renderLotoUI();
         }
@@ -20072,7 +20072,7 @@ function nxToggle3d() {
                 msg = (msg ? msg + ' • ' : '') + 'Все карточки закрыты — тираж окончен!';
             } else if (loto.drawn.length >= LOTO_DRAWS) {
                 loto.active = false;
-                msg = (msg ? msg + ' • ' : '') + 'Тираж окончен: 60 бочонков разыграны.';
+                msg = (msg ? msg + ' • ' : '') + 'Тираж окончен: 60 шаров разыграны.';
                 lotoSpeak('Тираж окончен', false);
             }
             if (!loto.active) {
@@ -20109,7 +20109,7 @@ function nxToggle3d() {
             loto.active = false;
             lotoSettle();
             const done = loto.drawn.length;
-            lotoRenderStage(null, manual ? 'Тираж остановлен на ' + done + ' бочонках. Выигрыш раунда: ' + fmtCoins(loto.win) + '.' : 'Тираж окончен. Выигрыш раунда: ' + fmtCoins(loto.win) + '.');
+            lotoRenderStage(null, manual ? 'Тираж остановлен на ' + done + ' шарах. Выигрыш раунда: ' + fmtCoins(loto.win) + '.' : 'Тираж окончен. Выигрыш раунда: ' + fmtCoins(loto.win) + '.');
             loto.cheer = lotoCheerPhrase(); // b509
             const sd = lotoSummaryData();
             lotoSpeak(sd.won.length ? 'Тираж остановлен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false, sd.won.length ? ['ph_stop'] : ['ph_cheer' + (loto.cheerIdx || 1)]);
@@ -20260,7 +20260,7 @@ function nxToggle3d() {
             }
             lotoSummary(); // b509: панель итогов после тиража
         }
-        function renderLoto() { renderLotoUI(); lotoRenderStage(loto.drawn.length ? loto.drawn[loto.drawn.length - 1] : null, loto.active ? 'Тираж идёт: достаньте бочонок.' : 'Нажмите «Новая игра», чтобы купить карточки.'); }
+        function renderLoto() { renderLotoUI(); lotoRenderStage(loto.drawn.length ? loto.drawn[loto.drawn.length - 1] : null, loto.active ? 'Тираж идёт: достаньте шар.' : 'Нажмите «Новая игра», чтобы купить карточки.'); }
         // ============ /b500 ============
                 // ============ b519: СКРЕТЧ-ЛОТО — стирай фольгу как в настоящей моментальной лотерее ============
         // b525: до 4 билетов за покупку (каждый стоит ставку), билеты лежат сеткой 2×2,

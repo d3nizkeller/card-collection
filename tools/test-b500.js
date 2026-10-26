@@ -27,7 +27,7 @@ const sandbox = {
     setInterval: () => 0,
     clearInterval: () => {},
     Math, Number, String, Array, Object, JSON, isFinite, parseInt, parseFloat,
-    window: { speechSynthesis: { cancel() {}, resume() {}, speak(u) { spoken.push(u.text); this.speaking = true; }, getVoices() { return [{ lang: 'ru-RU' }]; }, speaking: false, pending: false } },
+    window: { speechSynthesis: { cancel() {}, resume() {}, speak(u) { spoken.push(u.text); this.speaking = true; if (u.onend) u.onend(); }, getVoices() { return [{ lang: 'ru-RU' }]; }, speaking: false, pending: false } },
     setTimeout(fn, ms) { if (ms >= 1000) return 0; fn(); return 0; },
     SpeechSynthesisUtterance: class { constructor(t) { this.text = t; } },
     document: { getElementById(id) { if (!els[id]) els[id] = fakeEl(); return els[id]; } },
