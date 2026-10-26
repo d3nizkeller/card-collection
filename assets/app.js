@@ -20139,7 +20139,7 @@ function nxToggle3d() {
             const bl = document.getElementById('loto-bag-left');
             if (bl) bl.textContent = loto.active ? loto.bag.length : 90;
             const tray = document.getElementById('loto-tray'); // b535: лоток выпавших шаров на тумбе
-            if (tray) tray.innerHTML = loto.last.slice(-5).map(function (v) { return '<i class="lt-tball">' + v + '</i>'; }).join('');
+            if (tray) tray.innerHTML = loto.last.slice(-4).map(function (v) { return '<i class="lt-tball">' + v + '</i>'; }).join(''); // b539: 4 шара — все видны в лотке
             const last = document.getElementById('loto-last');
             if (last) last.innerHTML = loto.last.slice().reverse().map(function (v) { return lotoBarrelHtml(v, true); }).join('');
         }

@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob269" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob269">
+    <script src="assets/three.min.js?v=nxmob270" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob270">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob269">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob270">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob269">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob270">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -4031,6 +4031,14 @@ min-height:56vh}
 
 
 
+
+    /* ===== b539: лоток тумбы — 4 шара, все целиком видны ===== */
+    .lt-tray{ left:10px; top:-12px; width:84px; height:26px; padding:0 4px; gap:2px; justify-content:center; }
+    .lt-tball{ width:16px; height:16px; font-size:8px; }
+    @media (max-width:480px){
+        .lt-tray{ width:72px; height:24px; left:8px; }
+        .lt-tball{ width:14px; height:14px; font-size:7px; }
+    }
     /* ===== b538: 90 шаров в троне, вылет при розыгрыше, шар вместо бочонка в сцене ===== */
     .lt-ball{ width:11px; height:11px; }
     .lt-ball b{ font-size:7px; }
@@ -4132,10 +4140,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob269"></script>
-    <script src="assets/stories.js?v=nxmob269"></script>
-    <script src="assets/qrcode.min.js?v=nxmob269"></script>
-    <script src="assets/qr-transfer.js?v=nxmob269"></script>
+    <script src="assets/app.js?v=nxmob270"></script>
+    <script src="assets/stories.js?v=nxmob270"></script>
+    <script src="assets/qrcode.min.js?v=nxmob270"></script>
+    <script src="assets/qr-transfer.js?v=nxmob270"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
