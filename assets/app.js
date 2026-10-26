@@ -20074,7 +20074,7 @@ function nxToggle3d() {
                 const k = Math.floor(Math.random() * 12);
                 cells[k] = { num: winNums[0], mult: 0, sym: 'fa-crown', jkp: true };
             }
-            return { winNums: winNums, cells: cells };
+            return { winNums: winNums, cells: cells, serial: 'NX-' + (100000 + Math.floor(Math.random() * 900000)) }; // b520
         }
         function scratchSetBet(b) {
             scratch.bet = normBet(b);
@@ -20108,7 +20108,14 @@ function nxToggle3d() {
             const cv = document.getElementById('sc-foil-' + i);
             if (cv) cv.style.display = 'none';
             const host = document.getElementById('sc-slot-' + i);
-            if (host) host.classList.add('rev');
+            if (host) {
+                host.classList.add('rev');
+                if (i >= 4) { // b520: подсветка призовых клеток после вскрытия
+                    const cell = scratch.ticket.cells[i - 4];
+                    if (cell.jkp) host.classList.add('jp');
+                    else if (scCellPrize(cell) > 0) host.classList.add('win');
+                }
+            }
             if (scratch.revealed.every(Boolean)) scSettle();
         }
         function scSettle() {
@@ -20158,19 +20165,26 @@ function nxToggle3d() {
             try {
                 const ctx = cv.getContext('2d');
                 const w = cv.width, h = cv.height;
-                const g = ctx.createLinearGradient(0, 0, w, h);
-                g.addColorStop(0, '#e8e8ec'); g.addColorStop(.35, '#b9bcc4'); g.addColorStop(.55, '#dcdde2'); g.addColorStop(1, '#9aa0aa');
                 ctx.globalCompositeOperation = 'source-over';
+                const g = ctx.createLinearGradient(0, 0, w, h); // b520: голографическое серебро
+                g.addColorStop(0, '#fafbfe'); g.addColorStop(.28, '#c3c8d4'); g.addColorStop(.5, '#eef1f6'); g.addColorStop(.72, '#a9afbc'); g.addColorStop(1, '#dfe3ea');
                 ctx.fillStyle = g;
                 ctx.fillRect(0, 0, w, h);
+                const ir = ctx.createLinearGradient(0, h, w, 0); // радужные переливы фольги
+                ir.addColorStop(0, 'rgba(255,120,180,.20)'); ir.addColorStop(.25, 'rgba(120,220,255,.20)'); ir.addColorStop(.5, 'rgba(180,255,160,.18)'); ir.addColorStop(.75, 'rgba(255,220,120,.20)'); ir.addColorStop(1, 'rgba(190,140,255,.20)');
+                ctx.fillStyle = ir;
+                ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = 'rgba(255,255,255,.5)'; // диагональный блик
+                ctx.beginPath(); ctx.moveTo(-10, h * .8); ctx.lineTo(w * .5, -10); ctx.lineTo(w * .78, -10); ctx.lineTo(-10, h * 1.05); ctx.closePath(); ctx.fill();
                 ctx.fillStyle = 'rgba(255,255,255,.35)';
                 for (let i = 0; i < 26; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 5, 1);
-                ctx.fillStyle = 'rgba(70,74,84,.35)';
+                ctx.fillStyle = 'rgba(70,74,84,.30)';
                 for (let i = 0; i < 18; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 4, 1);
-                ctx.fillStyle = 'rgba(90,94,104,.55)';
-                ctx.font = 'bold 11px system-ui, sans-serif';
+                ctx.fillStyle = 'rgba(84,89,102,.62)';
+                try { ctx.letterSpacing = '2px'; } catch (e) {}
+                ctx.font = 'bold 10px system-ui, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText('СТЕРЕТЬ', w / 2, h / 2 + 4);
+                ctx.fillText('СТЕРЕТЬ', w / 2, h / 2 + 3);
             } catch (e) {}
         }
         function scErase(ev, i) {
@@ -20240,7 +20254,8 @@ function nxToggle3d() {
                 return;
             }
             const t = scratch.ticket;
-            let html = '<div class="sc-head"><span class="sc-brand">СКРЕТЧ-ЛОТО</span><span class="sc-price">' + fmtCoins(scratch.bet) + '</span></div>';
+            let html = '<div class="sc-notch l"></div><div class="sc-notch r"></div>';
+            html += '<div class="sc-head"><span class="sc-brand"><i class="fa-solid fa-crown sc-brand-i"></i>СКРЕТЧ-ЛОТО</span><span class="sc-price">' + fmtCoins(scratch.bet) + '</span></div>';
             html += '<div class="sc-super">СУПЕРПРИЗ</div><div class="sc-super-val" id="sc-jp">0</div>';
             html += '<div class="sc-cap">ВЫИГРЫШНЫЕ ЧИСЛА</div><div class="sc-winrow">';
             for (let i = 0; i < 4; i++) html += scSlotHtml(i, '<span class="sc-ball-n">' + t.winNums[i] + '</span>', 'sc-wslot');
@@ -20254,6 +20269,7 @@ function nxToggle3d() {
                 html += scSlotHtml(4 + c, inner, 'sc-cell' + (cell.jkp ? ' jkp' : ''));
             }
             html += '</div>';
+            html += '<div class="sc-foot"><span class="sc-barcode" aria-hidden="true"></span><span class="sc-serial">' + (t.serial || '') + '</span></div>';
             wrap.innerHTML = html;
             for (let i = 0; i < 16; i++) {
                 const cv = document.getElementById('sc-foil-' + i);
