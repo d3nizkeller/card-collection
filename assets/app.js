@@ -6207,14 +6207,18 @@ function nxToggle3d() {
                     const img = new Image();
                     img.onload = function () {
                         try {
-                            const max = 480;
+                            const max = 720; // b533: выше резолюция — одинаково резко на ретине
                             const k = Math.min(1, max / Math.max(img.width, img.height));
                             const cv = document.createElement('canvas');
                             cv.width = Math.max(1, Math.round(img.width * k));
                             cv.height = Math.max(1, Math.round(img.height * k));
                             cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-                            const data = cv.toDataURL('image/webp', 0.72);
-                            if (data.length > 150000) {
+                            // b533: кто не умеет webp (старые iOS/Android) — пишем jpeg, его декодируют все
+                            let probe = '';
+                            try { probe = cv.toDataURL('image/webp'); } catch (e) {}
+                            const canWebp = probe.indexOf('data:image/webp') === 0;
+                            const data = canWebp ? cv.toDataURL('image/webp', 0.75) : cv.toDataURL('image/jpeg', 0.82);
+                            if (data.length > 220000) {
                                 try { showToast('Файл слишком большой для фона — возьмите картинку проще', 'error'); } catch (e) {}
                                 return;
                             }
