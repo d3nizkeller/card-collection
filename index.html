@@ -3855,6 +3855,16 @@ min-height:56vh}
         width:15px; height:15px; font-size:9px;
     }
 
+    /* ===== b528: один (или нечётный последний) билет — по центру, а не прижат к левому краю ===== */
+    .sc-tickets-grid .sc-ticket:only-child,
+    .sc-tickets-grid .sc-ticket:last-child:nth-child(odd){
+        grid-column:1 / -1; justify-self:center; width:100%; max-width:430px;
+    }
+    .loto-tickets-grid .loto-ticket:only-child,
+    .loto-tickets-grid .loto-ticket:last-child:nth-child(odd){
+        grid-column:1 / -1; justify-self:center; width:100%; max-width:560px;
+    }
+
     </style>
     <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
 
