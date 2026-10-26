@@ -298,57 +298,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <svg viewBox="0 0 200 220" fill="none">
-                                    <defs>
-                                        <radialGradient id="loto-sack-body" cx="36%" cy="26%" r="85%">
-                                            <stop offset="0" stop-color="#ff8f7c"/>
-                                            <stop offset=".38" stop-color="#e63c2e"/>
-                                            <stop offset="1" stop-color="#8f1410"/>
-                                        </radialGradient>
-                                        <linearGradient id="loto-sack-frill" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0" stop-color="#f06a54"/>
-                                            <stop offset="1" stop-color="#b3170e"/>
-                                        </linearGradient>
-                                        <linearGradient id="loto-sack-gloss" x1="0" y1="0" x2="1" y2="1">
-                                            <stop offset="0" stop-color="#ffffff" stop-opacity=".42"/>
-                                            <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-                                        </linearGradient>
-                                    </defs>
-                                    <ellipse cx="100" cy="212" rx="56" ry="6.5" fill="#000" opacity=".35"/>
-                                    <!-- рюша: базовая лента, задние лепестки, тёмный зев, передние лепестки -->
-                                    <rect x="58" y="42" width="84" height="8" rx="3" fill="#9f1710"/>
-                                    <path d="M60 50C46 34 50 14 64 8c8 10 14 26 16 42z" fill="#9f1710"/>
-                                    <path d="M140 50c14-16 10-36-4-42-8 10-14 26-16 42z" fill="#9f1710"/>
-                                    <path d="M78 48c-2-20 6-38 22-42 16 4 24 22 22 42z" fill="#9f1710"/>
-                                    <path d="M82 48c4-18 10-28 18-32 8 4 14 14 18 32z" fill="#5a0d08"/>
-                                    <path d="M68 48c-6-12-2-24 8-28 5 8 8 18 9 28z" fill="url(#loto-sack-frill)"/>
-                                    <path d="M132 48c6-12 2-24-8-28-5 8-8 18-9 28z" fill="url(#loto-sack-frill)"/>
-                                    <path d="M88 48c0-14 5-24 12-26 7 2 12 12 12 26z" fill="url(#loto-sack-frill)"/>
-                                    <path d="M74 44c-2-8 0-16 4-20M126 44c2-8 0-16-4-20M97 42c0-8 1-14 3-18" stroke="#7d100a" stroke-width="1.6" opacity=".5" fill="none"/>
-                                    <!-- горловина -->
-                                    <path d="M80 48h40c-2 12-3 18-4 26H84c-1-8-2-14-4-26z" fill="#c22a1d"/>
-                                    <path d="M90 50v20M100 50v22M110 50v20" stroke="#8f1410" stroke-width="2" opacity=".5"/>
-                                    <!-- корпус -->
-                                    <path d="M100 64c-38 12-68 54-68 88 0 36 31 56 68 56s68-20 68-56c0-34-30-76-68-88z" fill="url(#loto-sack-body)"/>
-                                    <path d="M64 96c-16 20-24 46-20 72-8-8-12-18-12-28 0-20 12-38 26-50z" fill="url(#loto-sack-gloss)"/>
-                                    <ellipse cx="62" cy="122" rx="12" ry="26" fill="#fff" opacity=".12" transform="rotate(-16 62 122)"/>
-                                    <!-- верёвка: двойная обмотка + узел + концы -->
-                                    <ellipse cx="100" cy="81" rx="24" ry="8" stroke="#d9b678" stroke-width="7" fill="none"/>
-                                    <ellipse cx="100" cy="81" rx="24" ry="8" stroke="#a87f3f" stroke-width="7" stroke-dasharray="5 5" fill="none" opacity=".5"/>
-                                    <ellipse cx="100" cy="70" rx="22" ry="10" stroke="#e8c98f" stroke-width="14" fill="none"/>
-                                    <ellipse cx="100" cy="70" rx="22" ry="10" stroke="#a87f3f" stroke-width="14" stroke-dasharray="6 6" fill="none" opacity=".55"/>
-                                    <path d="M99 77c-3 11-5 20-6 30M101 77c3 11 5 20 6 28" stroke="#e8c98f" stroke-width="5" stroke-linecap="round" fill="none"/>
-                                    <path d="M99 77c-3 11-5 20-6 30M101 77c3 11 5 20 6 28" stroke="#b98f4f" stroke-width="5" stroke-linecap="round" stroke-dasharray="4 4" fill="none" opacity=".6"/>
-                                    <ellipse cx="100" cy="70" rx="16" ry="8.5" fill="#e8c98f"/>
-                                    <ellipse cx="100" cy="70" rx="16" ry="8.5" fill="none" stroke="#a87f3f" stroke-width="3" stroke-dasharray="4 4" opacity=".45"/>
-                                    <circle cx="100" cy="70" r="6.5" fill="#f0d6a4" stroke="#b98f4f" stroke-width="1.5"/>
-                                    <path d="M96 71l8 4M96 75l8-4" stroke="#b98f4f" stroke-width="1.4"/>
-                                    <!-- ярлык -->
-                                    <g transform="rotate(-5 100 142)">
-                                        <rect x="69" y="120" width="62" height="44" rx="3" fill="#efe0bd" stroke="#d9c69a" stroke-width="1.5"/>
-                                        <rect x="74" y="125" width="52" height="34" rx="2" fill="none" stroke="#a98f5f" stroke-width="1.2" stroke-dasharray="3 3"/>
-                                    </g>
-                                </svg>
+                                <img src="assets/loto-bag.webp?v=nxmob248" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -3528,14 +3478,20 @@ min-height:56vh}
 
     /* ===== b510: мешок по референсу — остаток бочонков пишется на пришитом ярлыке ===== */
     .loto-bag-left{
-        position:absolute; left:50%; top:64%;
-        transform:translate(-50%,-50%) rotate(-4deg);
+        position:absolute; left:45.5%; top:69.5%;
+        transform:translate(-50%,-50%);
         width:auto; height:auto; border-radius:0; display:block;
         background:none; box-shadow:none;
         color:#8f1410; font-size:22px; font-weight:900;
         text-shadow:0 1px 0 rgba(255,255,255,.5);
     }
     @media (max-width:480px){ .loto-bag-left{ font-size:18px; } }
+
+    /* ===== b513: натуральный мешок — фотореалистичный рендер в webp с прозрачностью ===== */
+    .loto-bag-img{
+        width:100%; height:100%; object-fit:contain; display:block;
+        filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));
+    }
     </style>
     <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
 
