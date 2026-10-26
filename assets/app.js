@@ -20166,22 +20166,24 @@ function nxToggle3d() {
                 const ctx = cv.getContext('2d');
                 const w = cv.width, h = cv.height;
                 ctx.globalCompositeOperation = 'source-over';
-                const g = ctx.createLinearGradient(0, 0, w, h); // b520: голографическое серебро
-                g.addColorStop(0, '#fafbfe'); g.addColorStop(.28, '#c3c8d4'); g.addColorStop(.5, '#eef1f6'); g.addColorStop(.72, '#a9afbc'); g.addColorStop(1, '#dfe3ea');
+                const g = ctx.createLinearGradient(0, 0, w, h); // b521: металлическое серебро с контрастом
+                g.addColorStop(0, '#f4f6fa'); g.addColorStop(.22, '#8d95a5'); g.addColorStop(.45, '#e6e9ef'); g.addColorStop(.62, '#6f7686'); g.addColorStop(.8, '#cdd2da'); g.addColorStop(1, '#878e9d');
                 ctx.fillStyle = g;
                 ctx.fillRect(0, 0, w, h);
-                const ir = ctx.createLinearGradient(0, h, w, 0); // радужные переливы фольги
-                ir.addColorStop(0, 'rgba(255,120,180,.20)'); ir.addColorStop(.25, 'rgba(120,220,255,.20)'); ir.addColorStop(.5, 'rgba(180,255,160,.18)'); ir.addColorStop(.75, 'rgba(255,220,120,.20)'); ir.addColorStop(1, 'rgba(190,140,255,.20)');
+                const ir = ctx.createLinearGradient(0, h, w, 0); // лёгкие радужные переливы
+                ir.addColorStop(0, 'rgba(255,120,180,.10)'); ir.addColorStop(.25, 'rgba(120,220,255,.10)'); ir.addColorStop(.5, 'rgba(180,255,160,.08)'); ir.addColorStop(.75, 'rgba(255,220,120,.10)'); ir.addColorStop(1, 'rgba(190,140,255,.10)');
                 ctx.fillStyle = ir;
                 ctx.fillRect(0, 0, w, h);
-                ctx.fillStyle = 'rgba(255,255,255,.5)'; // диагональный блик
-                ctx.beginPath(); ctx.moveTo(-10, h * .8); ctx.lineTo(w * .5, -10); ctx.lineTo(w * .78, -10); ctx.lineTo(-10, h * 1.05); ctx.closePath(); ctx.fill();
-                ctx.fillStyle = 'rgba(255,255,255,.35)';
-                for (let i = 0; i < 26; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 5, 1);
-                ctx.fillStyle = 'rgba(70,74,84,.30)';
-                for (let i = 0; i < 18; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 4, 1);
-                ctx.fillStyle = 'rgba(84,89,102,.62)';
-                try { ctx.letterSpacing = '2px'; } catch (e) {}
+                ctx.fillStyle = 'rgba(255,255,255,.42)'; // диагональный блик
+                ctx.beginPath(); ctx.moveTo(-10, h * .8); ctx.lineTo(w * .5, -10); ctx.lineTo(w * .72, -10); ctx.lineTo(-10, h * 1.02); ctx.closePath(); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,.5)'; // внутренняя рамка фольги
+                ctx.fillRect(0, 0, w, 2); ctx.fillRect(0, h - 2, w, 2); ctx.fillRect(0, 0, 2, h); ctx.fillRect(w - 2, 0, 2, h);
+                ctx.fillStyle = 'rgba(255,255,255,.30)';
+                for (let i = 0; i < 22; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 5, 1);
+                ctx.fillStyle = 'rgba(52,58,72,.35)';
+                for (let i = 0; i < 16; i++) ctx.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 4, 1);
+                ctx.fillStyle = 'rgba(40,45,58,.78)';
+                try { ctx.letterSpacing = '3px'; } catch (e) {}
                 ctx.font = 'bold 10px system-ui, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('СТЕРЕТЬ', w / 2, h / 2 + 3);
