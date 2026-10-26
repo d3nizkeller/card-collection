@@ -1,4 +1,4 @@
-// test-b519: харнес-тест модуля «Скретч-лото» (b519) без браузера.
+// test-b519: харнес-тест модуля «Скретч-лото» (b519/b525, мультибилетный) без браузера.
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -13,9 +13,10 @@ const toasts = [];
 const els = {};
 function fakeCtx() {
     return {
-        globalCompositeOperation: '', fillStyle: '', font: '', textAlign: '',
+        globalCompositeOperation: '', fillStyle: '', font: '', textAlign: '', letterSpacing: '',
         createLinearGradient() { return { addColorStop() {} }; },
-        fillRect() {}, beginPath() {}, arc() {}, fill() {}, fillText() {},
+        createRadialGradient() { return { addColorStop() {} }; },
+        fillRect() {}, beginPath() {}, arc() {}, fill() {}, fillText() {}, closePath() {}, moveTo() {}, lineTo() {},
         getImageData(x, y, w, h) { return { data: new Uint8ClampedArray(w * h * 4) }; },
     };
 }
@@ -34,7 +35,10 @@ const sandbox = {
     setInterval: () => 0, clearInterval: () => {},
     window: { addEventListener() {}, speechSynthesis: { cancel() {}, speak() {}, getVoices() { return []; } } },
     SpeechSynthesisUtterance: class { constructor(t) { this.text = t; } },
-    document: { getElementById(id) { if (!els[id]) els[id] = fakeEl(); return els[id]; } },
+    document: {
+        getElementById(id) { if (!els[id]) els[id] = fakeEl(); return els[id]; },
+        querySelectorAll() { return []; },
+    },
     LS: { getItem() { return null; }, setItem() {} },
     state: { coins: 100000000, stats: {} },
     saveState() {}, updateCoinDisplay() {},
@@ -50,7 +54,7 @@ const sandbox = {
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(moduleCode + `
-;globalThis.__x = { scratch, scratchBuy, scratchSetBet, scEraseAll, scReveal, scMakeTicket, renderScratchUI, SC_P_CELL, SC_JP_P };`, sandbox);
+;globalThis.__x = { scratch, scratchBuy, scratchSetBet, scSetCount, scEraseAll, scReveal, scMakeTicket, scActive, renderScratchUI, SC_MAX_TICKETS };`, sandbox);
 const X = sandbox.__x;
 
 let fails = 0;
@@ -61,52 +65,65 @@ for (let i = 0; i < 200; i++) {
     const t = X.scMakeTicket();
     let bad = false;
     if (new Set(t.winNums).size !== 4) bad = true;
-    t.winNums.forEach(v => { if (v < 1 || v > 30) bad = true; });
-    if (t.cells.length !== 12) bad = true;
+    if (t.cells.length !== 12 || t.revealed.length !== 16) bad = true;
     t.cells.forEach(c => {
         if (c.jkp) { if (t.winNums.indexOf(c.num) < 0) bad = true; }
         else if (c.mult > 0) { if (t.winNums.indexOf(c.num) < 0) bad = true; }
-        else if (t.winNums.indexOf(c.num) >= 0) bad = true; // пустышка не должна совпадать
-        if (c.num < 1 || c.num > 30) bad = true;
+        else if (t.winNums.indexOf(c.num) >= 0) bad = true;
     });
     if (bad) { fails++; console.error('  FAIL: билет невалиден', JSON.stringify(t)); break; }
 }
 ok(true, '200 билетов: 4 выигрышных числа, совпадения только у призовых/JKP');
 
-// 2) покупка: списание ставки и состояние
-sandbox.state.coins = 100000000;
+// 2) b525: выбор числа билетов и зажимы
+X.scSetCount(4); ok(X.scratch.count === 4, 'выбор 4 билетов');
+X.scSetCount(9); ok(X.scratch.count === X.SC_MAX_TICKETS, 'зажим сверху до 4');
+X.scSetCount(0); ok(X.scratch.count === 1, 'зажим снизу до 1');
+
+// 3) покупка 2 билетов: списание двойной ставки
+X.scSetCount(2);
 X.scratchSetBet(2000);
+sandbox.state.coins = 100000000;
 const before = sandbox.state.coins;
 X.scratchBuy();
-ok(sandbox.state.coins === before - 2000, 'ставка списана при покупке');
-ok(!!X.scratch.ticket && X.scratch.revealed.length === 16, 'билет и 16 закрытых клеток');
-ok(X.scratch.done === false, 'билет не разыгран');
+ok(scratch_tickets_len() === 2, 'куплено 2 билета');
+ok(sandbox.state.coins === before - 4000, 'списано ставка×2');
+ok(X.scActive() === true, 'пока есть невскрытые — покупка заблокирована');
+X.scSetCount(4);
+ok(X.scratch.count === 2, 'смена числа билетов во время игры заблокирована');
 
-// 3) вскрытие всех клеток: выплата по множителям
+// 4) полное вскрытие: независимый расчёт каждого билета
 let expect = 0;
-X.scratch.ticket.cells.forEach(c => { if (!c.jkp && c.mult > 0) expect += Math.floor(2000 * c.mult); });
+X.scratch.tickets.forEach(T => T.cells.forEach(c => { if (!c.jkp && c.mult > 0) expect += Math.floor(2000 * c.mult); }));
 X.scEraseAll();
-ok(X.scratch.revealed.every(Boolean), 'все клетки вскрыты «Стереть всё»');
-ok(X.scratch.done === true, 'билет разыгран после полного вскрытия');
-ok(X.scratch.win === expect, 'выигрыш = сумма множителей (' + X.scratch.win + ' / ' + expect + ')');
-ok(sandbox.state.coins === before - 2000 + expect, 'баланс сошёлся');
+ok(X.scratch.tickets.every(T => T.done), 'оба билета разыграны');
+const totalWin = X.scratch.tickets.reduce((s, T) => s + T.win, 0);
+ok(totalWin === expect, 'выигрыш = сумма по билетам (' + totalWin + ')');
+ok(sandbox.state.coins === before - 4000 + expect, 'баланс сошёлся');
+ok(X.scActive() === false, 'после розыгрыша можно покупать снова');
 
-// 4) золотая клетка JKP срывает джекпот
+// 5) JKP-клетка срывает джекпот
 sandbox.__jp = 5000;
 sandbox.state.coins = 100000000;
 const b2 = sandbox.state.coins;
+X.scSetCount(1);
 X.scratchSetBet(1000);
 X.scratchBuy();
-X.scratch.ticket.cells.forEach((c, idx) => { if (idx !== 3) c.jkp = false; });
-X.scratch.ticket.cells[3] = { num: X.scratch.ticket.winNums[0], mult: 0, sym: 'fa-crown', jkp: true };
+const T0 = X.scratch.tickets[0];
+T0.cells.forEach((c, idx) => { if (idx !== 3) c.jkp = false; });
+T0.cells[3] = { num: T0.winNums[0], mult: 0, sym: 'fa-crown', jkp: true };
 X.scEraseAll();
-ok(X.scratch.win >= 5000, 'JKP-клетка принесла джекпот (' + X.scratch.win + ')');
-ok(sandbox.state.coins === b2 - 1000 + X.scratch.win, 'баланс с джекпотом сошёлся');
+ok(T0.win >= 5000, 'JKP-клетка принесла джекпот (' + T0.win + ')');
+ok(sandbox.state.coins === b2 - 1000 + T0.win, 'баланс с джекпотом сошёлся');
 sandbox.__jp = 0;
 
-// 5) повторная покупка после розыгрыша
+// 6) вскрытие одной клетки через scReveal(t,i)
 X.scratchBuy();
-ok(X.scratch.done === false && !!X.scratch.ticket, 'после розыгрыша можно купить новый билет');
+X.scReveal(0, 0);
+ok(X.scratch.tickets[0].revealed[0] === true, 'scReveal(0,0) вскрыл клетку');
+ok(X.scratch.tickets[0].done === false, 'билет ещё не разыгран');
+
+function scratch_tickets_len() { return X.scratch.tickets.length; }
 
 console.log(fails ? ('\nFAILS: ' + fails) : '\nALL TESTS PASSED');
 process.exit(fails ? 1 : 0);

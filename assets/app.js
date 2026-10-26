@@ -20039,15 +20039,19 @@ function nxToggle3d() {
         }
         function renderLoto() { renderLotoUI(); lotoRenderStage(loto.drawn.length ? loto.drawn[loto.drawn.length - 1] : null, loto.active ? 'Тираж идёт: достаньте бочонок.' : 'Нажмите «Новая игра», чтобы купить карточки.'); }
         // ============ /b500 ============
-        // ============ b519: СКРЕТЧ-ЛОТО — стирай фольгу как в настоящей моментальной лотерее ============
+                // ============ b519: СКРЕТЧ-ЛОТО — стирай фольгу как в настоящей моментальной лотерее ============
+        // b525: до 4 билетов за покупку (каждый стоит ставку), билеты лежат сеткой 2×2,
+        // каждый билет разыгрывается и рассчитывается независимо.
         // Билет: 4 «выигрышных числа» и 12 «ваших чисел» под серебряной фольгой.
         // Фольга стирается пальцем/мышью (canvas, destination-out); стёрто >55% — клетка вскрывается.
         // Совпало число — приз множитель ставки; золотая клетка JKP (1 из 300 билетов) срывает джекпот сайта.
         const SC_P_CELL = 0.04;   // шанс выигрышной клетки
         const SC_JP_P = 1 / 300;  // шанс золотой клетки джекпота на билет
+        const SC_MAX_TICKETS = 4; // b525: максимум билетов в покупке
         const SC_PRIZES = [[1, 50], [2, 30], [5, 14], [25, 5], [100, 1]]; // [множитель, вес]
         const SC_SYMS = ['fa-trophy', 'fa-star', 'fa-crown', 'fa-sack-dollar'];
-        const scratch = { bet: 1000, ticket: null, revealed: null, scratching: -1, done: false, win: 0 };
+        const scratch = { bet: 1000, count: 1, tickets: [], scratching: -1 };
+        try { scratch.count = Math.max(1, Math.min(SC_MAX_TICKETS, parseInt(LS.getItem('nx_sc_count'), 10) || 1)); } catch (e) {}
         function scMultPick() {
             let sum = 0;
             for (let i = 0; i < SC_PRIZES.length; i++) sum += SC_PRIZES[i][1];
@@ -20074,27 +20078,35 @@ function nxToggle3d() {
                 const k = Math.floor(Math.random() * 12);
                 cells[k] = { num: winNums[0], mult: 0, sym: 'fa-crown', jkp: true };
             }
-            return { winNums: winNums, cells: cells, serial: 'NX-' + (100000 + Math.floor(Math.random() * 900000)) }; // b520
+            return { winNums: winNums, cells: cells, serial: 'NX-' + (100000 + Math.floor(Math.random() * 900000)), revealed: new Array(16).fill(false), done: false, win: 0 };
         }
         function scratchSetBet(b) {
             scratch.bet = normBet(b);
             renderScratchUI();
         }
+        function scSetCount(n) { // b525: сколько билетов купить
+            if (scActive()) return;
+            scratch.count = Math.max(1, Math.min(SC_MAX_TICKETS, Math.floor(Number(n) || 1)));
+            try { LS.setItem('nx_sc_count', String(scratch.count)); } catch (e) {}
+            renderScratchUI();
+        }
+        function scActive() {
+            return scratch.tickets.some(function (t) { return !t.done; });
+        }
         function scratchBuy() {
-            if (scratch.ticket && !scratch.done) return;
+            if (scActive()) return;
             const bet = normBet(scratch.bet);
             scratch.bet = bet;
-            if (state.coins < bet) {
-                try { showToast('Скретч: не хватает ' + fmtCoins(bet - state.coins) + ' монет на билет', 'error'); } catch (e) {}
+            const cost = bet * scratch.count; // b525: каждый билет стоит ставку
+            if (state.coins < cost) {
+                try { showToast('Скретч: не хватает ' + fmtCoins(cost - state.coins) + ' монет на ' + scratch.count + ' билет(ов)', 'error'); } catch (e) {}
                 renderScratchUI();
                 return;
             }
-            state.coins -= bet;
-            try { jackpotFeed(bet); } catch (e) {}
-            scratch.ticket = scMakeTicket();
-            scratch.revealed = new Array(16).fill(false);
-            scratch.done = false;
-            scratch.win = 0;
+            state.coins -= cost;
+            try { jackpotFeed(cost); } catch (e) {}
+            scratch.tickets = [];
+            for (let k = 0; k < scratch.count; k++) scratch.tickets.push(scMakeTicket());
             saveState(); updateCoinDisplay();
             renderScratchUI();
         }
@@ -20102,63 +20114,66 @@ function nxToggle3d() {
             if (cell.jkp) return 0;
             return cell.mult > 0 ? Math.floor(scratch.bet * cell.mult) : 0;
         }
-        function scReveal(i) {
-            if (!scratch.ticket || scratch.revealed[i]) return;
-            scratch.revealed[i] = true;
-            const cv = document.getElementById('sc-foil-' + i);
+        function scReveal(t, i) {
+            const T = scratch.tickets[t];
+            if (!T || T.revealed[i]) return;
+            T.revealed[i] = true;
+            const cv = document.getElementById('sc-foil-' + t + '-' + i);
             if (cv) cv.style.display = 'none';
-            const host = document.getElementById('sc-slot-' + i);
+            const host = document.getElementById('sc-slot-' + t + '-' + i);
             if (host) {
                 host.classList.add('rev');
                 if (i >= 4) { // b520: подсветка призовых клеток после вскрытия
-                    const cell = scratch.ticket.cells[i - 4];
+                    const cell = T.cells[i - 4];
                     if (cell.jkp) host.classList.add('jp');
                     else if (scCellPrize(cell) > 0) host.classList.add('win');
                 }
             }
-            if (scratch.revealed.every(Boolean)) scSettle();
+            if (T.revealed.every(Boolean)) scSettleTicket(t);
         }
-        function scSettle() {
-            if (scratch.done || !scratch.ticket) return;
-            scratch.done = true;
-            const t = scratch.ticket;
+        function scSettleTicket(t) { // b525: каждый билет рассчитывается независимо
+            const T = scratch.tickets[t];
+            if (!T || T.done) return;
+            T.done = true;
             let win = 0, hits = 0, jp = 0;
             for (let c = 0; c < 12; c++) {
-                const cell = t.cells[c];
+                const cell = T.cells[c];
                 if (cell.jkp) {
                     try { if (!(typeof jpcOff === 'function' && jpcOff())) jp = jackpotWin() || 0; } catch (e) {}
                     try { jpcPityNote('Scratch', jp > 0); } catch (e) {}
                     continue;
                 }
-                if (cell.mult > 0 && t.winNums.indexOf(cell.num) >= 0) { win += scCellPrize(cell); hits++; }
+                if (cell.mult > 0 && T.winNums.indexOf(cell.num) >= 0) { win += scCellPrize(cell); hits++; }
             }
+            T.win = win + jp;
             if (jp > 0) {
                 try { launchConfetti(220); SoundFX.play('legendary'); } catch (e) {}
-                try { showToast('👑 СКРЕТЧ: золотая клетка! Джекпот сайта +' + fmtCoins(jp), 'success'); } catch (e) {}
+                try { showToast('👑 Скретч, билет ' + (t + 1) + ': золотая клетка! Джекпот +' + fmtCoins(jp), 'success'); } catch (e) {}
             }
-            scratch.win = win + jp;
             if (win > 0) {
                 state.coins += win;
                 try { launchConfetti(win >= scratch.bet * 25 ? 140 : 60); SoundFX.play('coin'); } catch (e) {}
-                try { showToast('🎫 Скретч: совпадений ' + hits + ', выигрыш +' + fmtCoins(win), 'success'); } catch (e) {}
+                try { showToast('🎫 Билет ' + (t + 1) + ': совпадений ' + hits + ', выигрыш +' + fmtCoins(win), 'success'); } catch (e) {}
             } else if (jp <= 0) {
-                try { showToast('🎫 Билет пустой. Повезёт в следующий раз!', 'refund'); } catch (e) {}
+                try { showToast('🎫 Билет ' + (t + 1) + ' пустой. Повезёт в следующий раз!', 'refund'); } catch (e) {}
             }
-            const net = scratch.win - scratch.bet;
+            const net = T.win - scratch.bet;
             if (net < 0) {
                 try {
                     const add = jackpotOnLoss(-net);
-                    if (add) showToast('Банк джекпота вырос на +' + fmtCoins(add), 'refund');
+                    if (add && t === 0) showToast('Банк джекпота вырос на +' + fmtCoins(add), 'refund');
                 } catch (e) {}
-            } else if (scratch.win > 0) {
+            } else if (T.win > 0) {
                 state.stats.scratchWins = (state.stats.scratchWins || 0) + 1;
             }
             saveState(); updateCoinDisplay();
             renderScratchUI();
         }
         function scEraseAll() {
-            if (!scratch.ticket || scratch.done) return;
-            for (let i = 0; i < 16; i++) scReveal(i);
+            if (!scratch.tickets.length) return;
+            for (let t = 0; t < scratch.tickets.length; t++) {
+                for (let i = 0; i < 16; i++) scReveal(t, i);
+            }
         }
         // ---- фольга: canvas-стирание ----
         function scFoilPaint(cv) {
@@ -20194,8 +20209,9 @@ function nxToggle3d() {
                 ctx.fillText('СТЕРЕТЬ', w / 2, h / 2 + 3.5);
             } catch (e) {}
         }
-        function scErase(ev, i) {
-            const cv = document.getElementById('sc-foil-' + i);
+        function scErase(ev, idx) {
+            const t = Math.floor(idx / 16), i = idx % 16;
+            const cv = document.getElementById('sc-foil-' + t + '-' + i);
             if (!cv || !cv.getContext) return;
             try {
                 const rect = cv.getBoundingClientRect();
@@ -20212,15 +20228,17 @@ function nxToggle3d() {
                     const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
                     let clear = 0, tot = 0;
                     for (let p = 3; p < d.length; p += 16) { tot++; if (d[p] < 40) clear++; }
-                    if (tot && clear / tot > 0.55) scReveal(i);
+                    if (tot && clear / tot > 0.55) scReveal(t, i);
                 }
             } catch (e) {}
         }
-        function scDown(ev, i) {
-            if (!scratch.ticket || scratch.done || scratch.revealed[i]) return;
+        function scDown(ev, idx) {
+            const t = Math.floor(idx / 16), i = idx % 16;
+            const T = scratch.tickets[t];
+            if (!T || T.done || T.revealed[i]) return;
             try { ev.preventDefault(); } catch (e) {}
-            scratch.scratching = i;
-            scErase(ev, i);
+            scratch.scratching = idx;
+            scErase(ev, idx);
         }
         function scMove(ev) {
             if (scratch.scratching < 0) return;
@@ -20233,59 +20251,91 @@ function nxToggle3d() {
             window.addEventListener('pointercancel', scUp);
         } catch (e) {}
         // ---- рендер ----
-        function scSlotHtml(i, inner, cls) {
-            return '<div class="' + cls + '" id="sc-slot-' + i + '"><div class="sc-face">' + inner + '</div>' +
-                '<canvas class="sc-foil" id="sc-foil-' + i + '" width="96" height="96" onpointerdown="scDown(event,' + i + ')"></canvas></div>';
+        function scSlotHtml(t, i, inner, cls) {
+            const idx = t * 16 + i;
+            return '<div class="' + cls + '" id="sc-slot-' + t + '-' + i + '"><div class="sc-face">' + inner + '</div>' +
+                '<canvas class="sc-foil" id="sc-foil-' + t + '-' + i + '" width="96" height="96" onpointerdown="scDown(event,' + idx + ')"></canvas></div>';
         }
-        function renderScratchUI() {
-            try { syncBetInput('scratch'); } catch (e) {}
-            const buy = document.getElementById('sc-buy');
-            if (buy) {
-                const busy = !!(scratch.ticket && !scratch.done);
-                buy.classList.toggle('hidden', busy);
-                buy.innerHTML = '<i class="fa-solid fa-ticket mr-1"></i>Купить билет — ' + fmtCoins(scratch.bet) + (state.coins < scratch.bet ? ' · мало ' + fmtCoins(scratch.bet - state.coins) : '');
-                buy.classList.toggle('opacity-40', state.coins < scratch.bet);
-            }
-            const erase = document.getElementById('sc-erase');
-            if (erase) erase.classList.toggle('hidden', !scratch.ticket || scratch.done);
-            const res = document.getElementById('sc-result');
-            if (res) res.innerHTML = !scratch.ticket
-                ? 'Купите билет и стирайте фольгу пальцем или мышью: совпало число — приз множителем к ставке, золотая клетка — джекпот сайта.'
-                : scratch.done
-                    ? 'Билет разыгран: выигрыш <b class="text-amber-300">' + fmtCoins(scratch.win) + '</b> при ставке ' + fmtCoins(scratch.bet) + '. Купить новый?'
-                    : 'Стирайте фольгу! Совпадение с выигрышными числами приносит множитель к ставке.';
-            const wrap = document.getElementById('sc-ticket');
-            if (!wrap) return;
-            if (!scratch.ticket) {
-                wrap.innerHTML = '<div class="sc-empty">Билет появится после покупки</div>';
-                return;
-            }
-            const t = scratch.ticket;
-            let html = '<div class="sc-notch l"></div><div class="sc-notch r"></div>';
-            html += '<div class="sc-head"><span class="sc-brand"><i class="fa-solid fa-crown sc-brand-i"></i>СКРЕТЧ-ЛОТО</span><span class="sc-price">' + fmtCoins(scratch.bet) + '</span></div>';
-            html += '<div class="sc-super">СУПЕРПРИЗ</div><div class="sc-super-val" id="sc-jp">0</div>';
+        function scTicketHtml(t) {
+            const T = scratch.tickets[t];
+            let html = '<div class="sc-ticket">';
+            html += '<div class="sc-notch l"></div><div class="sc-notch r"></div>';
+            html += '<div class="sc-head"><span class="sc-brand"><i class="fa-solid fa-crown sc-brand-i"></i>СКРЕТЧ-ЛОТО · ' + (t + 1) + '</span><span class="sc-price">' + fmtCoins(scratch.bet) + '</span></div>';
+            html += '<div class="sc-super">СУПЕРПРИЗ</div><div class="sc-super-val sc-jp-val"' + (t === 0 ? ' id="sc-jp"' : '') + '>0</div>';
             html += '<div class="sc-cap">ВЫИГРЫШНЫЕ ЧИСЛА</div><div class="sc-winrow">';
-            for (let i = 0; i < 4; i++) html += scSlotHtml(i, '<span class="sc-ball-n">' + t.winNums[i] + '</span>', 'sc-wslot');
+            for (let i = 0; i < 4; i++) html += scSlotHtml(t, i, '<span class="sc-ball-n">' + T.winNums[i] + '</span>', 'sc-wslot');
             html += '</div><div class="sc-cap">ВАШИ ЧИСЛА</div><div class="sc-grid">';
             for (let c = 0; c < 12; c++) {
-                const cell = t.cells[c];
+                const cell = T.cells[c];
                 const prize = scCellPrize(cell);
                 const inner = cell.jkp
                     ? '<i class="fa-solid fa-crown sc-sym gold"></i><span class="sc-num">JKP</span><span class="sc-prize gold">ДЖЕКПОТ</span>'
                     : '<i class="fa-solid ' + cell.sym + ' sc-sym"></i><span class="sc-num">' + cell.num + '</span><span class="sc-prize' + (prize > 0 ? ' win' : '') + '">' + (prize > 0 ? '+' + fmtCoins(prize) : '—') + '</span>';
-                html += scSlotHtml(4 + c, inner, 'sc-cell' + (cell.jkp ? ' jkp' : ''));
+                html += scSlotHtml(t, 4 + c, inner, 'sc-cell' + (cell.jkp ? ' jkp' : ''));
             }
             html += '</div>';
-            html += '<div class="sc-foot"><span class="sc-barcode" aria-hidden="true"></span><span class="sc-serial">' + (t.serial || '') + '</span></div>';
+            html += '<div class="sc-foot"><span class="sc-barcode" aria-hidden="true"></span><span class="sc-serial">' + (T.serial || '') + '</span></div>';
+            html += '</div>';
+            return html;
+        }
+        function renderScratchUI() {
+            try { syncBetInput('scratch'); } catch (e) {}
+            // b525: выбор числа билетов
+            const cnt = document.getElementById('sc-count');
+            if (cnt) cnt.innerHTML = [1, 2, 3, 4].map(function (v) {
+                return '<button type="button" onclick="scSetCount(' + v + ')" title="Билетов в покупке: ' + v + ' (каждый стоит ставку)" class="px-3 py-1.5 rounded-full text-[11px] font-bold border transition shrink-0 whitespace-nowrap ' + (scratch.count === v ? 'bg-violet-500 border-violet-400 text-white' : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:bg-slate-700') + '" ' + (scActive() ? 'disabled' : '') + '>' + v + '</button>';
+            }).join('');
+            const cost = scratch.bet * scratch.count;
+            const buy = document.getElementById('sc-buy');
+            if (buy) {
+                buy.classList.toggle('hidden', scActive());
+                buy.innerHTML = '<i class="fa-solid fa-ticket mr-1"></i>Купить билеты: ' + scratch.count + ' — ' + fmtCoins(cost) + (state.coins < cost ? ' · мало ' + fmtCoins(cost - state.coins) : '');
+                buy.classList.toggle('opacity-40', state.coins < cost);
+            }
+            const erase = document.getElementById('sc-erase');
+            if (erase) erase.classList.toggle('hidden', !scActive());
+            const res = document.getElementById('sc-result');
+            if (res) {
+                if (!scratch.tickets.length) {
+                    res.innerHTML = 'Купите от 1 до 4 билетов и стирайте фольгу пальцем или мышью: совпало число — приз множителем к ставке, золотая клетка — джекпот сайта.';
+                } else if (scActive()) {
+                    res.innerHTML = 'Стирайте фольгу! Билетов в тираже: <b class="text-slate-200">' + scratch.tickets.length + '</b>, ставка каждого: <b class="text-slate-200">' + fmtCoins(scratch.bet) + '</b>.';
+                } else {
+                    const total = scratch.tickets.reduce(function (a, T) { return a + T.win; }, 0);
+                    res.innerHTML = 'Все билеты разыграны: выигрыш <b class="text-amber-300">' + fmtCoins(total) + '</b> при затраченных ' + fmtCoins(cost) + '. Купить ещё?';
+                }
+            }
+            const wrap = document.getElementById('sc-tickets');
+            if (!wrap) return;
+            if (!scratch.tickets.length) {
+                wrap.innerHTML = '<div class="sc-ticket"><div class="sc-empty">Билеты появятся после покупки</div></div>';
+                return;
+            }
+            let html = '';
+            for (let t = 0; t < scratch.tickets.length; t++) html += scTicketHtml(t);
             wrap.innerHTML = html;
-            for (let i = 0; i < 16; i++) {
-                const cv = document.getElementById('sc-foil-' + i);
-                if (cv) scFoilPaint(cv);
-                if (scratch.revealed[i]) { if (cv) cv.style.display = 'none'; const host = document.getElementById('sc-slot-' + i); if (host) host.classList.add('rev'); }
+            for (let t = 0; t < scratch.tickets.length; t++) {
+                const T = scratch.tickets[t];
+                for (let i = 0; i < 16; i++) {
+                    const cv = document.getElementById('sc-foil-' + t + '-' + i);
+                    if (cv && !T.revealed[i]) scFoilPaint(cv);
+                    if (cv && T.revealed[i]) cv.style.display = 'none';
+                    if (T.revealed[i]) {
+                        const host = document.getElementById('sc-slot-' + t + '-' + i);
+                        if (host) {
+                            host.classList.add('rev');
+                            if (i >= 4) {
+                                const cell = T.cells[i - 4];
+                                if (cell.jkp) host.classList.add('jp');
+                                else if (scCellPrize(cell) > 0) host.classList.add('win');
+                            }
+                        }
+                    }
+                }
             }
             try {
-                const sj = document.getElementById('sc-jp');
-                if (sj) sj.textContent = fmtCoins(jackpotPool());
+                const vals = document.querySelectorAll('.sc-jp-val');
+                for (let k = 0; k < vals.length; k++) vals[k].textContent = fmtCoins(jackpotPool());
             } catch (e) {}
         }
         function renderScratch() { renderScratchUI(); }

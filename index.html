@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob257" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob257">
+    <script src="assets/three.min.js?v=nxmob258" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob258">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob257">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob258">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob257">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob258">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -282,22 +282,23 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-eraser text-slate-300 mr-2"></i>Скретч-лото</h2>
-                                <p class="text-sm text-slate-400 mt-1">Моментальная лотерея как в киоске: купите билет и <b class="text-slate-200">стирайте серебряную фольгу</b> пальцем или мышью. 4 выигрышных числа и 12 ваших: совпало число — приз множителем к ставке (до ×100), золотая клетка <b class="text-amber-300">JKP</b> (1 из 300 билетов) срывает весь джекпот сайта.</p>
+                                <p class="text-sm text-slate-400 mt-1">Моментальная лотерея как в киоске: купите билет и <b class="text-slate-200">стирайте серебряную фольгу</b> пальцем или мышью. 4 выигрышных числа и 12 ваших: совпало число — приз множителем к ставке (до ×100), золотая клетка <b class="text-amber-300">JKP</b> (1 из 300 билетов) срывает весь джекпот сайта. Билетов покупаете до <b class="text-amber-300">4 за раз</b> — лежат сеткой 2×2.</p>
                             </div>
                         </div>
                         <div class="flex flex-wrap justify-center gap-x-5 gap-y-3 sm:gap-x-10 mt-4">
                             <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Ставка</span><div class="flex items-center gap-1"><button type="button" onclick="stepBet('scratch',-1)" title="Уменьшить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-minus"></i></button><input id="scratch-bet-input" inputmode="numeric" maxlength="16" placeholder="Своя ставка" title="Впишите свою сумму ставки и нажмите Enter (примеры: 250, 5k, 1.2m, 3b, 2t, 4q)" class="px-2 py-1.5 rounded-full text-[11px] font-bold text-center bg-slate-800/80 border border-slate-700 text-amber-200 placeholder-slate-500 w-24 sm:w-28 shrink-0 focus:border-amber-400/70 focus:outline-none transition" onkeydown="if(event.key==='Enter')this.blur()" onchange="applyCustomBet('scratch', this.value)"><button type="button" onclick="stepBet('scratch',1)" title="Увеличить ставку" class="step-btn w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center shrink-0 text-[11px] font-black"><i class="fa-solid fa-plus"></i></button></div></div>
+                            <div class="flex flex-col items-center gap-1 shrink-0"><span class="text-[9px] sm:text-[10px] uppercase tracking-[.18em] font-black text-slate-500 leading-none">Билеты</span><div id="sc-count" class="flex items-center gap-1.5"></div></div>
                         </div>
                         <div class="flex flex-wrap items-center justify-center gap-2 mt-4">
                             <button id="sc-buy" onclick="scratchBuy()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-sm font-black transition shadow-lg shadow-amber-950/40"><i class="fa-solid fa-ticket mr-1"></i>Купить билет</button>
                             <button id="sc-erase" onclick="scEraseAll()" class="hidden px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold border border-slate-700 transition"><i class="fa-solid fa-eraser mr-1"></i>Стереть всё</button>
                         </div>
-                        <div id="sc-ticket" class="sc-ticket mt-4"></div>
+                        <div id="sc-tickets" class="sc-tickets-grid mt-4"></div>
                         <p id="sc-result" class="text-xs text-slate-400 mt-3 text-center"></p>
                         <div class="rules-card">
                             <p class="rules-title"><i class="fa-solid fa-book-open mr-1"></i>Как играть</p>
                             <ol class="rules-list">
-                                <li>Выберите ставку и нажмите <b>«Купить билет»</b> — ставка списывается, билет приходит закрытый серебряной фольгой.</li>
+                                <li>Выберите ставку и число билетов (<b>1–4</b>, каждый стоит ставку) и нажмите <b>«Купить билеты»</b> — они лягут сеткой, закрытые серебряной фольгой.</li>
                                 <li><b>Стирайте фольгу</b> пальцем или мышью (или «Стереть всё»): стёрли больше половины клетки — она вскрывается сама.</li>
                                 <li>Ваше число совпало с выигрышным — приз множителем к ставке (×1…×100); золотая клетка <b>JKP</b> срывает весь джекпот сайта.</li>
                                 <li>Билет кормит общий банк: взнос со ставки и <b>100%</b> чистого проигрыша; суперприз билета — это и есть джекпот сайта.</li>
@@ -347,7 +348,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <img src="assets/loto-bag.png?v=nxmob257" class="loto-bag-img" alt="">
+                                <img src="assets/loto-bag.png?v=nxmob258" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -3796,6 +3797,10 @@ min-height:56vh}
         animation:sc-glint 2.8s ease-in-out infinite;
     }
     @keyframes sc-glint{ 0%{ left:-80%; } 55%{ left:115%; } 100%{ left:115%; } }
+    /* ===== b525: до 4 билетов скретча сеткой 2×2 ===== */
+    .sc-tickets-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+    @media (min-width:1024px){ .sc-tickets-grid{ grid-template-columns:1fr 1fr; } }
+    .sc-tickets-grid .sc-ticket{ max-width:none; width:100%; margin:0; }
 
     </style>
     <div id="toast-container" class="fixed left-1/2 z-[95] space-y-2 pointer-events-none w-[calc(100%-24px)] max-w-md"></div>
@@ -3826,10 +3831,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob257"></script>
-    <script src="assets/stories.js?v=nxmob257"></script>
-    <script src="assets/qrcode.min.js?v=nxmob257"></script>
-    <script src="assets/qr-transfer.js?v=nxmob257"></script>
+    <script src="assets/app.js?v=nxmob258"></script>
+    <script src="assets/stories.js?v=nxmob258"></script>
+    <script src="assets/qrcode.min.js?v=nxmob258"></script>
+    <script src="assets/qr-transfer.js?v=nxmob258"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
