@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob270" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob270">
+    <script src="assets/three.min.js?v=nxmob271" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob271">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob270">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob271">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob270">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob271">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -313,7 +313,7 @@
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <h2 class="text-2xl font-black text-white tracking-tight"><i class="fa-solid fa-database text-amber-400 mr-2"></i>Лото</h2>
-                                <p class="text-sm text-slate-400 mt-1">В лототроне <b class="text-amber-300">90 шаров с номерами</b>: машина перемешивает их и в реальном времени выбрасывает выпавший шар, а ведущий <b class="text-amber-300">голосом называет номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–6 билетов</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 бочонков. Золотой шар <b class="text-amber-300">90</b>, выпавший <b class="text-amber-300">первым</b> в тираже, срывает весь джекпот сайта.</p>
+                                <p class="text-sm text-slate-400 mt-1">В лототроне <b class="text-amber-300">90 шаров с номерами</b>: машина перемешивает их и в реальном времени выбрасывает выпавший шар, а ведущий <b class="text-amber-300">голосом называет номер</b>. Закрывайте числа на карточке: линия — <b class="text-amber-300">×3</b>, все 15 чисел («ЛОТО!») — <b class="text-amber-300">×25</b>. Карточек покупаете, сколько хотите: <b class="text-amber-300">1–6 билетов</b> на тираж (каждая стоит ставку), каждый играет сам за себя. Тираж — 60 шаров. Золотой шар <b class="text-amber-300">90</b>, выпавший <b class="text-amber-300">первым</b> в тираже, срывает весь джекпот сайта.</p>
                             </div>
                         </div>
                         <!-- b517: банк джекпота сайта в лобби лото -->
@@ -362,7 +362,7 @@
                                     </div>
                                 </div>
                             <div id="loto-current" class="loto-current"></div>
-                            <div id="loto-phrase" class="loto-phrase">Нажмите «Новая игра» — и голос ведущего назовёт первый бочонок.</div>
+                            <div id="loto-phrase" class="loto-phrase">Нажмите «Новая игра» — и голос ведущего назовёт первый шар.</div>
                         </div>
                         <div id="loto-last" class="loto-last mt-2"></div>
                         <p id="loto-result" class="text-xs text-slate-400 mt-3 text-center"></p>
@@ -375,7 +375,7 @@
                                 <li>Выберите ставку и число карточек (<b>1–6</b>, каждая стоит ставку) и нажмите <b>«Новая игра»</b> — получите карточки 3×9, а лототрон перемешает все 90 шаров.</li>
                                 <li><b>«Достать шар»</b> (или «Авто») — шар вылетает из лототрона, крупный шар с номером показывается на сцене, а ведущий <b>голосом называет номер</b> (озвучку можно выключить кнопкой).</li>
                                 <li>Числа на билетах закрываются сами: линия билета — <b>×3</b> к ставке, все 15 чисел билета («ЛОТО!») — <b>×25</b>; каждый билет играет сам за себя.</li>
-                                <li>Тираж — <b>60 бочонков</b>; «Закончить тираж» останавливает досрочно (закрытые линии остаются оплачены). Чистый проигрыш кормит общий джекпот сайта.</li>
+                                <li>Тираж — <b>60 шаров</b>; «Закончить тираж» останавливает досрочно (закрытые линии остаются оплачены). Чистый проигрыш кормит общий джекпот сайта.</li>
                                 <li>Золотой шар <b>90</b>, выпавший <b>первым</b> в тираже, срывает <b>весь джекпот сайта</b> (шанс 1 из 90 тиражей); ставка и проигрыш тоже копят банк.</li>
                             </ol>
                         </div>
@@ -4140,10 +4140,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob270"></script>
-    <script src="assets/stories.js?v=nxmob270"></script>
-    <script src="assets/qrcode.min.js?v=nxmob270"></script>
-    <script src="assets/qr-transfer.js?v=nxmob270"></script>
+    <script src="assets/app.js?v=nxmob271"></script>
+    <script src="assets/stories.js?v=nxmob271"></script>
+    <script src="assets/qrcode.min.js?v=nxmob271"></script>
+    <script src="assets/qr-transfer.js?v=nxmob271"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
