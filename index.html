@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob251" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob251">
+    <script src="assets/three.min.js?v=nxmob252" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob252">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob251">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob252">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob251">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob252">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -293,7 +293,7 @@
                                         <span class="jp-label"><i class="fa-solid fa-crown"></i>Джекпот сайта</span>
                                         <span id="loto-jackpot" class="jp-value">0</span>
                                     </div>
-                                    <p class="jp-desc">золотой бочонок <b>90</b> первым в тираже — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> чистого проигрыша — шанс: <b>1 из 90 тиражей</b></p>
+                                    <p class="jp-desc">золотой бочонок <b>90</b> первым в тираже — <b data-jpc="pay">весь банк ваш</b>; банк кормят <b data-jpc="feed">100%</b> каждой ставки и <b data-jpc="loss">100%</b> чистого проигрыша — шанс: <b data-jpc="odds-loto">1 из 90 тиражей</b></p>
                                     <p id="loto-jackpot-note" class="jp-note"></p>
                                     <p id="loto-jp-winner" class="jp-winner"></p>
                                 </div>
@@ -317,7 +317,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <img src="assets/loto-bag.png?v=nxmob251" class="loto-bag-img" alt="">
+                                <img src="assets/loto-bag.png?v=nxmob252" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -2215,7 +2215,7 @@ min-height:56vh}
                     <span>Вероятность JACKPOT и гарантия</span>
                 </h3>
                 <div id="jpc-prob" class="space-y-2"></div>
-                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16, Рулетка (золотое зеро) 1 из 37.</p>
+                <p class="text-[10px] text-slate-500 leading-snug">Процент — шанс символа JACKPOT на один барабан (Слоты), на одну ячейку поля (Сетка, Линии) или на один сектор (Колесо). Справа — итоговая частота «1 из N». Заводские значения повторяют прежнее поведение игры: Слоты ≈ 1 из 5 500 спинов, Сетка ≈ 1 из 25, Линии ≈ 1 из 1 730, Колесо 1 из 16, Рулетка (золотое зеро) 1 из 37, Лото (золотой бочонок 90 первым в тираже) ≈ 1 из 90.</p>
             </div>
 
             <div class="bg-slate-900/80 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
@@ -3554,10 +3554,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob251"></script>
-    <script src="assets/stories.js?v=nxmob251"></script>
-    <script src="assets/qrcode.min.js?v=nxmob251"></script>
-    <script src="assets/qr-transfer.js?v=nxmob251"></script>
+    <script src="assets/app.js?v=nxmob252"></script>
+    <script src="assets/stories.js?v=nxmob252"></script>
+    <script src="assets/qrcode.min.js?v=nxmob252"></script>
+    <script src="assets/qr-transfer.js?v=nxmob252"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

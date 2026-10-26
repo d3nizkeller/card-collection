@@ -36,6 +36,9 @@ const sandbox = {
     launchConfetti() {}, SoundFX: { play() {} },
     jackpotFeed() {}, jackpotOnLoss(x) { return x; }, jackpotPool() { return 0; },
     jackpotWin() { const p = sandbox.__jp || 0; sandbox.state.coins += p; return p; },
+    jpcOff() { return false; },
+    jpcSpinPct(g) { return sandbox.__jpPct || 0; },
+    jpcPityNote() {},
     normBet(b) { b = Math.floor(Number(b)); return isFinite(b) && b >= 1 ? b : 1; },
     fmtCoins(n) { return String(n); },
     SLOTS_BETS: [100, 1000, 5000],
@@ -143,15 +146,13 @@ ok(cheerHtml.indexOf('0 из 1') >= 0, 'итоги: 0 из 1 сыгравших'
 ok(cheerHtml.indexOf(X.loto.cheer) >= 0, 'баннер со словами поддержки в итогах');
 ok(X.lotoCheerPhrase().length > 10, 'слова поддержки непустые');
 
-// 8) b517: золотой бочонок 90 первым в тираже срывает джекпот
+// 8) b517/b518: золотой бочонок 90 первым в тираже срывает джекпот (шанс из Студии)
 sandbox.__jp = 777;
+sandbox.__jpPct = 100; // гарантия/100% — срыв разыгрывается на старте
 sandbox.state.coins = 100000000;
 X.lotoSetTickets(1);
 X.loto.bet = 1000;
 X.lotoStart();
-const gi = X.loto.bag.indexOf(90);
-const li = X.loto.bag.length - 1;
-const tmp = X.loto.bag[gi]; X.loto.bag[gi] = X.loto.bag[li]; X.loto.bag[li] = tmp;
 X.lotoDraw();
 ok(X.loto.drawn[0] === 90, 'первым выпал золотой бочонок 90');
 ok(X.loto.win >= 777, 'джекпот-приз учтён в выигрыше раунда (' + X.loto.win + ')');
@@ -160,10 +161,12 @@ ok(els['loto-phrase'].textContent.indexOf('Джекпот сайта +777') >= 0
 // не первым — без джекпота
 X.lotoFinish(true);
 sandbox.__jp = 0;
+sandbox.__jpPct = 0; // срыва нет — золотой первым выйти не должен
 X.loto.bet = 1000;
 X.lotoStart();
-X.lotoDraw(); // первый бочонок случайный
-if (X.loto.drawn[0] !== 90) ok(X.loto.win === 0 || X.loto.win < 777, 'джекпот только за ПЕРВЫЙ бочонок 90');
+X.lotoDraw();
+ok(X.loto.drawn[0] !== 90, 'без срыва 90 первым не выходит (не дразнит)');
+ok(X.loto.win === 0, 'без срыва джекпота нет');
 X.lotoFinish(true);
 
 console.log(fails ? ('\nFAILS: ' + fails) : '\nALL TESTS PASSED');

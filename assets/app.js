@@ -5625,14 +5625,14 @@ function nxToggle3d() {
         // (grant) — своя метка t на каждого игрока, как у счётчиков led/won.
         const JPC_KEY = 'nexus_jackpot_cfg';
         const JPC_PITY_KEY = 'nexus_jp_pity';
-        const JPC_GAMES = ['Slots', 'Grid', 'Lines', 'Wheel', 'Roulette']; // b491: рулетка тоже кормит банк
-        const JPC_GAME_RU = { Slots: 'Слоты', Grid: 'Сетка', Lines: 'Линии', Wheel: 'Колесо', Roulette: 'Рулетка' };
-        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор', Roulette: 'золотое зеро' };
+        const JPC_GAMES = ['Slots', 'Grid', 'Lines', 'Wheel', 'Roulette', 'Loto']; // b491; b518: лото тоже в общем джекпоте
+        const JPC_GAME_RU = { Slots: 'Слоты', Grid: 'Сетка', Lines: 'Линии', Wheel: 'Колесо', Roulette: 'Рулетка', Loto: 'Лото' };
+        const JPC_GAME_UNIT = { Slots: 'на барабан', Grid: 'на ячейку', Lines: 'на ячейку', Wheel: 'на сектор', Roulette: 'золотое зеро', Loto: 'золотой бочонок' };
         // Заводские вероятности = ровно прежние константы b220:
         //   Слоты  3 / (5*10 + 3) = 5.66 %   Сетка 2 / (5*10 + 2) = 3.85 %
         //   Линии  1 / 25        = 4.00 %   Колесо 1 / 16        = 6.25 %
         // b491: Рулетка 1 / 37     = 2.70 %  — золотое зеро (ровно шанс зеро на столе)
-        const JPC_DEFAULT_P = { Slots: 5.66, Grid: 3.85, Lines: 4, Wheel: 6.25, Roulette: 2.7 };
+        const JPC_DEFAULT_P = { Slots: 5.66, Grid: 3.85, Lines: 4, Wheel: 6.25, Roulette: 2.7, Loto: 1.11 }; // b518: лото ≈ 1 из 90 тиражей
         // ============ b471: ЦЕНЫ ОБМЕНА «🏛 ДОМ КОЛЛЕКЦИОНЕРА» ============
         // Три таблицы по редкости + личная цена на отдельную карту. Раньше все три
         // были зашиты константами (MARKET_HOUSE_PRICE, MARKET_SYS_PRICE и база
@@ -6189,7 +6189,7 @@ function nxToggle3d() {
                             (jpcOff() ? 'выключен' : jpcOdds(p)) + '</span>' +
                     '</div>' +
                     '<div class="flex flex-wrap items-center gap-1.5">' +
-                        '<span class="text-[9px] text-slate-500 shrink-0" style="min-width:5.5rem">гарантия, спинов</span>' +
+                        '<span class="text-[9px] text-slate-500 shrink-0" style="min-width:5.5rem">гарантия, ' + (g === 'Loto' ? 'тиражей' : 'спинов') + '</span>' +
                         '<input id="jpc-pity' + g + '" type="number" min="0" max="1000000" step="1" value="' + pity + '" ' +
                             'onchange="jpcSet({pity' + g + ':Math.max(0,Math.round(Number(this.value)||0))})" ' +
                             'class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-0.5 text-[11px] font-bold text-white" style="width:6rem">' +
@@ -6308,6 +6308,15 @@ function nxToggle3d() {
                     const n = 100 / pp;
                     return '1 из ' + (n >= 100 ? Math.round(n).toLocaleString('ru-RU') : (Math.round(n * 10) / 10)) + ' спинов';
                 }
+                // b518: шанс золотого бочонка в лото
+                case 'odds-loto': {
+                    if (jpcOff()) return 'не выпадает';
+                    const pl = jpcP('Loto');
+                    if (pl >= 100) return 'каждый тираж';
+                    if (pl <= 0) return 'не выпадает';
+                    const nl = 100 / pl;
+                    return '1 из ' + (nl >= 100 ? Math.round(nl).toLocaleString('ru-RU') : (Math.round(nl * 10) / 10)) + ' тиражей';
+                }
                 // b491: шанс золотого зеро в рулетке
                 case 'odds-roulette': {
                     if (jpcOff()) return 'не выпадает';
@@ -6320,7 +6329,7 @@ function nxToggle3d() {
             }
             return '';
         }
-        const JPC_LABEL_KEYS = ['feed', 'loss', 'pay', 'pay2', 'pay2v', 'pay3', 'paynum', 'odds-wheel', 'odds-roulette'];
+        const JPC_LABEL_KEYS = ['feed', 'loss', 'pay', 'pay2', 'pay2v', 'pay3', 'paynum', 'odds-wheel', 'odds-roulette', 'odds-loto'];
         function jpcLabelsRender() {
             for (let i = 0; i < JPC_LABEL_KEYS.length; i++) {
                 const key = JPC_LABEL_KEYS[i];
@@ -19657,7 +19666,7 @@ function nxToggle3d() {
         const LOTO_PAY_FULL = 25;   // «ЛОТО!» (все 15) — ставка ×25
         const LOTO_MAX_TICKETS = 6; // b505/b508: максимум карточек в тираже
         const LOTO_GOLD = 90; // b517: золотой бочонок — первым в тираже срывает джекпот сайта
-        const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0, cheer: '' };
+        const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0, cheer: '', jpHit: false };
         try { if (LS.getItem('nx_loto_voice') === '0') loto.voice = false; } catch (e) {}
         try { loto.tickets = Math.max(1, Math.min(LOTO_MAX_TICKETS, parseInt(LS.getItem('nx_loto_tickets'), 10) || 1)); } catch (e) {}
         const LOTO_ONES = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
@@ -19726,6 +19735,13 @@ function nxToggle3d() {
                 fullPaid: false
             };
         }
+        function lotoJpRoll() { // b518: шанс золотого бочонка — из Студии + гарантия, как у других игр
+            try {
+                if (jpcOff()) return false;
+                const p = jpcSpinPct('Loto');
+                return p > 0 && Math.random() * 100 < p;
+            } catch (e) { return false; }
+        }
         function lotoStart() {
             if (loto.active) return;
             const bet = normBet(loto.bet);
@@ -19745,6 +19761,7 @@ function nxToggle3d() {
             loto.drawn = []; loto.last = []; loto.win = 0;
             loto.cards = [];
             for (let k = 0; k < loto.tickets; k++) loto.cards.push(lotoMakeTicket());
+            loto.jpHit = lotoJpRoll(); // b518: срыв джекпота разыгрывается на старте тиража
             loto.active = true;
             lotoStopAuto(false);
             saveState(); updateCoinDisplay();
@@ -19758,15 +19775,30 @@ function nxToggle3d() {
         }
         function lotoDraw() {
             if (!loto.active) return;
-            const n = loto.bag.length ? loto.bag.pop() : null;
+            let n = loto.bag.length ? loto.bag.pop() : null;
             if (n == null) { lotoFinish(false); return; }
+            if (loto.drawn.length === 0) {
+                // b518: золотой бочонок выходит первым ТОЛЬКО по срыву (Студия/гарантия);
+                // без срыва 90 прячется назад, чтобы не дразнить игроков ложным золотом
+                const i90 = loto.bag.indexOf(LOTO_GOLD);
+                if (loto.jpHit) {
+                    if (n !== LOTO_GOLD && i90 >= 0) { loto.bag[i90] = n; n = LOTO_GOLD; }
+                } else if (n === LOTO_GOLD && loto.bag.length) {
+                    loto.bag.push(n);
+                    for (let k = loto.bag.length - 2; k >= 0; k--) {
+                        if (loto.bag[k] !== LOTO_GOLD) { const t2 = loto.bag[loto.bag.length - 1]; loto.bag[loto.bag.length - 1] = loto.bag[k]; loto.bag[k] = t2; break; }
+                    }
+                    n = loto.bag.pop();
+                }
+            }
             loto.drawn.push(n);
             loto.last.push(n);
             if (loto.last.length > 12) loto.last.shift();
             // b517: золотой бочонок 90 первым в тираже — срыв общего джекпота сайта
             let jpPrize = 0;
-            if (loto.drawn.length === 1 && n === LOTO_GOLD) {
+            if (loto.drawn.length === 1 && loto.jpHit && n === LOTO_GOLD) {
                 try { if (!(typeof jpcOff === 'function' && jpcOff())) jpPrize = jackpotWin() || 0; } catch (e) {}
+                try { jpcPityNote('Loto', jpPrize > 0); } catch (e) {} // b518: счётчик гарантии
                 if (jpPrize > 0) {
                     state.coins += 0; // jackpotWin() сама начислила монеты
                     loto.win += jpPrize;
