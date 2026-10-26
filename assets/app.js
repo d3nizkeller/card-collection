@@ -19697,16 +19697,54 @@ function nxToggle3d() {
             const t = Math.floor(n / 10), o = n % 10;
             return o ? LOTO_TENS[t] + ' ' + LOTO_ONES[o] : LOTO_TENS[t];
         }
-        function lotoSpeak(text, cancel) {
+        const LOTO_VOICE_BASE = 'assets/loto-voice/'; // b531: запасной аудио-пак (Google TTS ru) для WebView без синтезатора
+        let lotoUtter = null, lotoVoiceBroken = false;
+        function lotoPlayPack(keys) { // b531: цепочка mp3, когда Web Speech недоступен/сломан
+            if (!keys || !keys.length) return;
+            try {
+                if (typeof Audio === 'undefined') return;
+                let i = 0;
+                const next = function () {
+                    if (i >= keys.length || !loto.voice) return;
+                    const a = new Audio(LOTO_VOICE_BASE + keys[i] + '.mp3');
+                    i++;
+                    a.onended = next;
+                    a.play().catch(function () {});
+                };
+                next();
+            } catch (e) {}
+        }
+        try { // b531: разблокировка звука первым касанием (Android WebView)
+            document.addEventListener('pointerdown', function lotoUnlock() {
+                try { if ('speechSynthesis' in window) window.speechSynthesis.resume(); } catch (e) {}
+                try { document.removeEventListener('pointerdown', lotoUnlock); } catch (e) {}
+            });
+        } catch (e) {}
+        function lotoSpeak(text, cancel, keys) {
             if (!loto.voice || !text) return;
             try {
-                if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-                const u = new SpeechSynthesisUtterance(text);
-                u.lang = 'ru-RU'; u.rate = 1.05; u.pitch = 1.08; u.volume = 1;
-                const vs = window.speechSynthesis.getVoices ? (window.speechSynthesis.getVoices() || []) : [];
-                for (let i = 0; i < vs.length; i++) { if (vs[i] && /^ru/i.test(vs[i].lang || '')) { u.voice = vs[i]; break; } }
-                if (cancel !== false) window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(u);
+                const hasSS = typeof window !== 'undefined' && ('speechSynthesis' in window);
+                if (!hasSS || lotoVoiceBroken) { lotoPlayPack(keys); return; } // b531: фоллбек на mp3-пак
+                const ss = window.speechSynthesis;
+                const doSpeak = function () {
+                    try {
+                        const u = new SpeechSynthesisUtterance(text);
+                        u.lang = 'ru-RU'; u.rate = 1.05; u.pitch = 1.08; u.volume = 1;
+                        const vs = ss.getVoices ? (ss.getVoices() || []) : [];
+                        for (let i = 0; i < vs.length; i++) { if (vs[i] && /^ru/i.test(vs[i].lang || '')) { u.voice = vs[i]; break; } }
+                        u.onend = function () { lotoUtter = null; };
+                        u.onerror = function () { lotoUtter = null; lotoVoiceBroken = true; lotoPlayPack(keys); }; // b531
+                        lotoUtter = u; // b531: держим ссылку — Android Chrome иначе собирает utterance мусором mid-speak
+                        try { ss.resume(); } catch (e) {} // b531: зависший pause на Android
+                        ss.speak(u);
+                        // b531: watchdog — если синтезатор не заговорил, уходим на mp3-пак
+                        setTimeout(function () {
+                            try { if (lotoUtter === u && !ss.speaking && !ss.pending) { lotoVoiceBroken = true; lotoPlayPack(keys); } } catch (e) {}
+                        }, 1500);
+                    } catch (e) {}
+                };
+                if (cancel !== false) { ss.cancel(); setTimeout(doSpeak, 60); } // b531: на Android speak сразу после cancel проглатывается
+                else doSpeak();
             } catch (e) {}
         }
         function lotoSetBet(b) {
@@ -19723,7 +19761,7 @@ function nxToggle3d() {
             loto.voice = !loto.voice;
             try { LS.setItem('nx_loto_voice', loto.voice ? '1' : '0'); } catch (e) {}
             if (!loto.voice) { try { window.speechSynthesis.cancel(); } catch (e) {} }
-            else lotoSpeak('Озвучка включена');
+            else lotoSpeak('Озвучка включена', undefined, ['ph_voice']);
             renderLotoUI();
         }
         // Классическая карточка 3×9: в каждой строке 5 чисел, колонка c — диапазон
@@ -19782,7 +19820,7 @@ function nxToggle3d() {
             loto.active = true;
             lotoStopAuto(false);
             saveState(); updateCoinDisplay();
-            lotoSpeak('Новая игра! Куплено карточек: ' + loto.tickets + '. Тяните бочонки.');
+            lotoSpeak('Новая игра! Куплено карточек: ' + loto.tickets + '. Тяните бочонки.', undefined, ['ph_start']);
             lotoRenderStage(null, 'Мешок перемешан: 90 бочонков, карточек в тираже: ' + loto.tickets + '. Тяните первый!');
             renderLotoUI();
         }
@@ -19831,7 +19869,7 @@ function nxToggle3d() {
                 }
             }
             // b500: озвучка выпавшего номера — главное требование игры
-            lotoSpeak(lotoWords(n) + (hit ? '! Есть на карточке.' : '.'));
+            lotoSpeak(lotoWords(n) + (hit ? '! Есть на карточке.' : '.'), undefined, hit ? ['n' + n, 'ph_hit'] : ['n' + n]);
             let lines = 0, fulls = 0, msg = '';
             for (let k = 0; k < loto.cards.length; k++) {
                 const card = loto.cards[k];
@@ -19858,7 +19896,7 @@ function nxToggle3d() {
             if (lines || fulls) {
                 try { showToast(fulls ? '🎉 ЛОТО на билете! +' + fmtCoins(loto.win) : '🪵 Линия закрыта! Раунд: +' + fmtCoins(loto.win), 'success'); } catch (e) {}
                 try { launchConfetti(fulls ? 160 : 60); SoundFX.play(fulls ? 'legendary' : 'coin'); } catch (e) {}
-                lotoSpeak(fulls ? 'Лото! Все пятнадцать чисел закрыты!' : 'Линия закрыта!', false);
+                lotoSpeak(fulls ? 'Лото! Все пятнадцать чисел закрыты!' : 'Линия закрыта!', false, fulls ? ['ph_loto'] : ['ph_line']);
             }
             if (jpPrize > 0) msg = 'ЗОЛОТОЙ БОЧОНОК 90! Джекпот сайта +' + fmtCoins(jpPrize) + '!';
             const allFull = loto.cards.length > 0 && loto.cards.every(function (cd) { return cd.fullPaid; });
@@ -19874,7 +19912,7 @@ function nxToggle3d() {
                 lotoSettle();
                 loto.cheer = lotoCheerPhrase(); // b509: слова поддержки на случай провального тиража
                 const sd = lotoSummaryData();
-                lotoSpeak(sd.won.length ? 'Тираж окончен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false);
+                lotoSpeak(sd.won.length ? 'Тираж окончен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false, sd.won.length ? ['ph_end'] : ['ph_cheer' + (loto.cheerIdx || 1)]);
             }
             lotoRenderStage(n, msg || (hit ? 'Бочонок ' + n + ' — есть на карточке!' : 'Бочонок ' + n + ' — мимо карточек.'));
             saveState(); updateCoinDisplay();
@@ -19902,7 +19940,7 @@ function nxToggle3d() {
             lotoRenderStage(null, manual ? 'Тираж остановлен на ' + done + ' бочонках. Выигрыш раунда: ' + fmtCoins(loto.win) + '.' : 'Тираж окончен. Выигрыш раунда: ' + fmtCoins(loto.win) + '.');
             loto.cheer = lotoCheerPhrase(); // b509
             const sd = lotoSummaryData();
-            lotoSpeak(sd.won.length ? 'Тираж остановлен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false);
+            lotoSpeak(sd.won.length ? 'Тираж остановлен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false, sd.won.length ? ['ph_stop'] : ['ph_cheer' + (loto.cheerIdx || 1)]);
             renderLotoUI();
         }
         function lotoToggleAuto() {
@@ -19932,13 +19970,14 @@ function nxToggle3d() {
         }
         // b509: итоги тиража — сколько билетов сыграли и сколько принесли; при нуле выигрышей — слова поддержки
         function lotoCheerPhrase() {
+            loto.cheerIdx = 1 + Math.floor(Math.random() * 4); // b531: номер фразы для mp3-пака
             const cheers = [
                 'Повезёт в следующий раз!',
                 'Бочонки сегодня вредничали — отыграетесь в следующем тираже!',
                 'Мешок был строгий. В следующий раз точно повезёт!',
                 'Линии были совсем близко — следующий тираж ваш!'
             ];
-            return cheers[Math.floor(Math.random() * cheers.length)];
+            return cheers[(loto.cheerIdx || 1) - 1];
         }
         function lotoSummaryData() {
             const rowPay = Math.floor(loto.bet * LOTO_PAY_ROW), fullPay = Math.floor(loto.bet * LOTO_PAY_FULL);

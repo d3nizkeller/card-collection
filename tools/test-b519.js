@@ -33,7 +33,8 @@ function fakeEl() {
 const sandbox = {
     console, Uint8ClampedArray, Math, Number, String, Array, Object, JSON, isFinite, parseInt, parseFloat,
     setInterval: () => 0, clearInterval: () => {},
-    window: { addEventListener() {}, speechSynthesis: { cancel() {}, speak() {}, getVoices() { return []; } } },
+    window: { addEventListener() {}, speechSynthesis: { cancel() {}, resume() {}, speak() {}, getVoices() { return []; }, speaking: false, pending: false } },
+    setTimeout(fn, ms) { if (ms >= 1000) return 0; fn(); return 0; },
     SpeechSynthesisUtterance: class { constructor(t) { this.text = t; } },
     document: {
         getElementById(id) { if (!els[id]) els[id] = fakeEl(); return els[id]; },
