@@ -19766,20 +19766,22 @@ function nxToggle3d() {
         }
         const LOTO_VOICE_BASE = 'assets/loto-voice/'; // b531: запасной аудио-пак (Google TTS ru) для WebView без синтезатора
         let lotoUtter = null, lotoVoiceBroken = false;
-        function lotoPlayPack(keys) { // b531: цепочка mp3, когда Web Speech недоступен/сломан
-            if (!keys || !keys.length) return;
+        function lotoPlayPack(keys, done) { // b531/b540: цепочка mp3 с колбэком для очереди
+            const fin = function () { try { if (done) done(); } catch (e) {} };
+            if (!keys || !keys.length) { fin(); return; }
             try {
-                if (typeof Audio === 'undefined') return;
+                if (typeof Audio === 'undefined') { fin(); return; }
                 let i = 0;
                 const next = function () {
-                    if (i >= keys.length || !loto.voice) return;
+                    if (i >= keys.length || !loto.voice) { fin(); return; }
                     const a = new Audio(LOTO_VOICE_BASE + keys[i] + '.mp3');
                     i++;
                     a.onended = next;
-                    a.play().catch(function () {});
+                    a.onerror = next;
+                    a.play().catch(next);
                 };
                 next();
-            } catch (e) {}
+            } catch (e) { fin(); }
         }
         try { // b531: разблокировка звука первым касанием (Android WebView)
             document.addEventListener('pointerdown', function lotoUnlock() {
@@ -19787,32 +19789,45 @@ function nxToggle3d() {
                 try { document.removeEventListener('pointerdown', lotoUnlock); } catch (e) {}
             });
         } catch (e) {}
+        // ==== b540: озвучка очередью — фраза договаривает до конца, следующая звучит по порядку ====
+        const lotoVoiceQ = [];
+        let lotoVoiceBusy = false;
+        function lotoVoiceClear() { // новый тираж / выключенная озвучка — хвост очереди сбрасываем
+            lotoVoiceQ.length = 0;
+            lotoVoiceBusy = false;
+            try { if (typeof window !== 'undefined' && ('speechSynthesis' in window)) window.speechSynthesis.cancel(); } catch (e) {}
+        }
         function lotoSpeak(text, cancel, keys) {
             if (!loto.voice || !text) return;
+            lotoVoiceQ.push({ text: text, keys: keys });
+            if (lotoVoiceQ.length > 6) lotoVoiceQ.shift(); // в авто-режиме хвост не копим
+            lotoVoicePump();
+        }
+        function lotoVoicePump() {
+            if (lotoVoiceBusy) return;
+            const item = lotoVoiceQ.shift();
+            if (!item) return;
+            lotoVoiceBusy = true;
+            const done = function () { lotoVoiceBusy = false; setTimeout(lotoVoicePump, 30); };
             try {
                 const hasSS = typeof window !== 'undefined' && ('speechSynthesis' in window);
-                if (!hasSS || lotoVoiceBroken) { lotoPlayPack(keys); return; } // b531: фоллбек на mp3-пак
+                if (!hasSS || lotoVoiceBroken) { lotoPlayPack(item.keys, done); return; }
                 const ss = window.speechSynthesis;
-                const doSpeak = function () {
-                    try {
-                        const u = new SpeechSynthesisUtterance(text);
-                        u.lang = 'ru-RU'; u.rate = 1.05; u.pitch = 1.08; u.volume = 1;
-                        const vs = ss.getVoices ? (ss.getVoices() || []) : [];
-                        for (let i = 0; i < vs.length; i++) { if (vs[i] && /^ru/i.test(vs[i].lang || '')) { u.voice = vs[i]; break; } }
-                        u.onend = function () { lotoUtter = null; };
-                        u.onerror = function () { lotoUtter = null; lotoVoiceBroken = true; lotoPlayPack(keys); }; // b531
-                        lotoUtter = u; // b531: держим ссылку — Android Chrome иначе собирает utterance мусором mid-speak
-                        try { ss.resume(); } catch (e) {} // b531: зависший pause на Android
-                        ss.speak(u);
-                        // b531: watchdog — если синтезатор не заговорил, уходим на mp3-пак
-                        setTimeout(function () {
-                            try { if (lotoUtter === u && !ss.speaking && !ss.pending) { lotoVoiceBroken = true; lotoPlayPack(keys); } } catch (e) {}
-                        }, 1500);
-                    } catch (e) {}
-                };
-                if (cancel !== false) { ss.cancel(); setTimeout(doSpeak, 60); } // b531: на Android speak сразу после cancel проглатывается
-                else doSpeak();
-            } catch (e) {}
+                const u = new SpeechSynthesisUtterance(item.text);
+                u.lang = 'ru-RU'; u.rate = 1.05; u.pitch = 1.08; u.volume = 1;
+                const vs = ss.getVoices ? (ss.getVoices() || []) : [];
+                for (let i = 0; i < vs.length; i++) { if (vs[i] && /^ru/i.test(vs[i].lang || '')) { u.voice = vs[i]; break; } }
+                let finished = false;
+                const fin = function () { if (finished) return; finished = true; lotoUtter = null; done(); };
+                u.onend = fin; // b540: дождались конца фразы — только тогда берём следующую
+                u.onerror = function () { if (finished) return; finished = true; lotoVoiceBroken = true; lotoPlayPack(item.keys, done); };
+                lotoUtter = u;
+                try { ss.resume(); } catch (e) {}
+                ss.speak(u); // b540: БЕЗ cancel() — озвучка больше не перебивает саму себя
+                setTimeout(function () { // watchdog: синтезатор молчит — уходим на mp3-пак
+                    try { if (!finished && lotoUtter === u && !ss.speaking && !ss.pending) { finished = true; lotoVoiceBroken = true; lotoPlayPack(item.keys, done); } } catch (e) {}
+                }, 1500);
+            } catch (e) { done(); }
         }
         function lotoSetBet(b) {
             loto.bet = normBet(b);
@@ -19827,7 +19842,7 @@ function nxToggle3d() {
         function lotoToggleVoice() {
             loto.voice = !loto.voice;
             try { LS.setItem('nx_loto_voice', loto.voice ? '1' : '0'); } catch (e) {}
-            if (!loto.voice) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+            if (!loto.voice) lotoVoiceClear(); // b540
             else lotoSpeak('Озвучка включена', undefined, ['ph_voice']);
             renderLotoUI();
         }
@@ -19981,6 +19996,7 @@ function nxToggle3d() {
             loto.drawn = []; loto.last = []; loto.win = 0;
             loto.cards = [];
             for (let k = 0; k < loto.tickets; k++) loto.cards.push(lotoMakeTicket());
+            lotoVoiceClear(); // b540: новый тираж — озвучка начинает с чистой очереди
             loto.jpHit = lotoJpRoll(); // b518: срыв джекпота разыгрывается на старте тиража
             lotoTronBuild(); // b538: новая игра — барабан снова заряжен 90 шарами
             loto.active = true;
