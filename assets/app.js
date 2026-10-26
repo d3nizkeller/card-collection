@@ -20127,9 +20127,19 @@ function nxToggle3d() {
                     const cell = T.cells[i - 4];
                     if (cell.jkp) host.classList.add('jp');
                     else if (scCellPrize(cell) > 0) host.classList.add('win');
+                    if (cell.mult > 0 || cell.jkp) scMarkHitBall(t, i - 4); // b526: галочка на совпавшем шаре
                 }
             }
             if (T.revealed.every(Boolean)) scSettleTicket(t);
+        }
+        function scMarkHitBall(t, c) { // b526: совпавшее выигрышное число помечаем галочкой
+            const T = scratch.tickets[t];
+            if (!T) return;
+            const cell = T.cells[c];
+            const w = T.winNums.indexOf(cell.num);
+            if (w < 0) return;
+            const ball = document.getElementById('sc-slot-' + t + '-' + w);
+            if (ball) ball.classList.add('hit');
         }
         function scSettleTicket(t) { // b525: каждый билет рассчитывается независимо
             const T = scratch.tickets[t];
@@ -20146,6 +20156,14 @@ function nxToggle3d() {
                 if (cell.mult > 0 && T.winNums.indexOf(cell.num) >= 0) { win += scCellPrize(cell); hits++; }
             }
             T.win = win + jp;
+            // b526: расшифровка совпадений — игрок видит, за что пришёл приз
+            const expl = [];
+            for (let c = 0; c < 12; c++) {
+                const cl = T.cells[c];
+                if (cl.jkp) { if (jp > 0) expl.push('JKP → джекпот +' + fmtCoins(jp)); continue; }
+                if (cl.mult > 0 && T.winNums.indexOf(cl.num) >= 0) expl.push('число ' + cl.num + ' → +' + fmtCoins(scCellPrize(cl)));
+            }
+            T.explain = expl.length ? expl.join(' • ') : 'совпадений нет';
             if (jp > 0) {
                 try { launchConfetti(220); SoundFX.play('legendary'); } catch (e) {}
                 try { showToast('👑 Скретч, билет ' + (t + 1) + ': золотая клетка! Джекпот +' + fmtCoins(jp), 'success'); } catch (e) {}
@@ -20302,7 +20320,8 @@ function nxToggle3d() {
                     res.innerHTML = 'Стирайте фольгу! Билетов в тираже: <b class="text-slate-200">' + scratch.tickets.length + '</b>, ставка каждого: <b class="text-slate-200">' + fmtCoins(scratch.bet) + '</b>.';
                 } else {
                     const total = scratch.tickets.reduce(function (a, T) { return a + T.win; }, 0);
-                    res.innerHTML = 'Все билеты разыграны: выигрыш <b class="text-amber-300">' + fmtCoins(total) + '</b> при затраченных ' + fmtCoins(cost) + '. Купить ещё?';
+                    const details = scratch.tickets.map(function (T, i) { return 'Билет ' + (i + 1) + ': ' + (T.explain || 'совпадений нет'); }).join(' · ');
+                    res.innerHTML = 'Все билеты разыграны: выигрыш <b class="text-amber-300">' + fmtCoins(total) + '</b> при затраченных ' + fmtCoins(cost) + '.<br><span class="text-slate-500">' + details + '</span> Купить ещё?';
                 }
             }
             const wrap = document.getElementById('sc-tickets');
@@ -20328,6 +20347,7 @@ function nxToggle3d() {
                                 const cell = T.cells[i - 4];
                                 if (cell.jkp) host.classList.add('jp');
                                 else if (scCellPrize(cell) > 0) host.classList.add('win');
+                                if (cell.mult > 0 || cell.jkp) scMarkHitBall(t, i - 4);
                             }
                         }
                     }
@@ -20337,6 +20357,23 @@ function nxToggle3d() {
                 const vals = document.querySelectorAll('.sc-jp-val');
                 for (let k = 0; k < vals.length; k++) vals[k].textContent = fmtCoins(jackpotPool());
             } catch (e) {}
+            // b526: поясняющий блок — чтобы игрок понял, что мигает и почему
+            const leg = document.getElementById('sc-legend');
+            if (leg) {
+                const show = scratch.tickets.some(function (T) {
+                    return T.revealed.some(function (rv, idx) {
+                        if (idx < 4 || !rv) return false;
+                        const cl = T.cells[idx - 4];
+                        return cl.jkp || cl.mult > 0;
+                    });
+                });
+                if (show) {
+                    leg.innerHTML = '<b>Как читать:</b> зелёная мигающая клетка с бейджем «ВЫИГРЫШ» — ваше число совпало с выигрышным, приз уже начислен. Шар с зелёной галочкой — совпавшее выигрышное число. Золотая клетка JKP срывает джекпот сайта.';
+                    leg.classList.remove('hidden');
+                } else {
+                    leg.classList.add('hidden');
+                }
+            }
         }
         function renderScratch() { renderScratchUI(); }
         // ============ /b519 ============

@@ -123,6 +123,18 @@ X.scReveal(0, 0);
 ok(X.scratch.tickets[0].revealed[0] === true, 'scReveal(0,0) вскрыл клетку');
 ok(X.scratch.tickets[0].done === false, 'билет ещё не разыгран');
 
+// 7) b526: расшифровка совпадений и поясняющий блок
+sandbox.state.coins = 100000000;
+X.scSetCount(1);
+X.scratchSetBet(1000);
+X.scratchBuy();
+const TW = X.scratch.tickets[0];
+TW.cells[0] = { num: TW.winNums[0], mult: 2, sym: 'fa-star', jkp: false };
+X.scEraseAll();
+ok(typeof TW.explain === 'string' && TW.explain.indexOf('число ' + TW.winNums[0]) >= 0, 'расшифровка: «число N → +X» (' + TW.explain + ')');
+ok(els['sc-legend'].innerHTML.indexOf('Как читать') >= 0, 'поясняющий блок показан при выигрыше');
+ok(els['sc-result'].innerHTML.indexOf('Билет 1:') >= 0, 'в итоге есть расшифровка по билетам');
+
 function scratch_tickets_len() { return X.scratch.tickets.length; }
 
 console.log(fails ? ('\nFAILS: ' + fails) : '\nALL TESTS PASSED');
