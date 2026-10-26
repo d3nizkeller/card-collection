@@ -24,6 +24,7 @@ function fakeEl() {
     return {
         innerHTML: '', textContent: '', value: '', style: {},
         classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
+        querySelectorAll() { return []; },
         set disabled(v) {}, get disabled() { return false; },
         getContext() { return fakeCtx(); },
         getBoundingClientRect() { return { width: 96, height: 96, left: 0, top: 0 }; },

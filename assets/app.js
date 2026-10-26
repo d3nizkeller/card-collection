@@ -5763,6 +5763,7 @@ function nxToggle3d() {
                 n['p' + g] = num('p' + g, 0, 100, JPC_DEFAULT_P[g]);
                 n['pity' + g] = Math.round(num('pity' + g, 0, 1000000, 0));
             });
+            n.tbg = (typeof o.tbg === 'string') ? o.tbg.slice(0, 150000) : ''; // b532: фон билетов Скретч (URL или data:image)
             n.mkt = jpcMktNorm(o.mkt);   // b471: цены обмена «Дом коллекционера»
             n.grant = {};
             if (o.grant && typeof o.grant === 'object') {
@@ -6167,6 +6168,7 @@ function nxToggle3d() {
             if (sum) sum.innerHTML = jpcSumChips();
             const pn = document.getElementById('jpc-pool-now');
             if (pn) pn.textContent = fmtCoins(jackpotPool());
+            try { tbgRender(); } catch (e) {} // b532: превью фона билетов в Студии
             // b416: что именно починила автоматика — владелец должен видеть причину
             const fn = document.getElementById('jpc-fix-note');
             if (fn) {
@@ -6176,6 +6178,66 @@ function nxToggle3d() {
                         (jpFixInfo.debt > 0 ? ', долг <b class="text-slate-300">' + fmtCoins(jpFixInfo.debt) + '</b> покрыт домом' : '') +
                         '. Битые записи реестра банк не учитывает — раньше они уводили счётчики в 1e57, где у double шаг ≈ 1e40 и взносы игроков исчезали, поэтому банк стоял на месте. С b419 банк растёт без ограничений: реестр ведётся разрядами 1e13 → 1e16 → 1e19…';
                 } else fn.hidden = true;
+            }
+        }
+        // ==== b532: фон билетов Скретча из Студии (URL или загруженный файл, синхронно на всех) ====
+        function tbgSet(val) {
+            jpc.tbg = String(val || '').slice(0, 150000);
+            try { jackpotSave(); } catch (e) {}
+            try { jpSyncSoon(); } catch (e) {}
+            tbgRender();
+            try { renderScratchUI(); } catch (e) {}
+        }
+        function tbgApplyUrl() {
+            const el = document.getElementById('tbg-url');
+            const v = el ? String(el.value || '').trim() : '';
+            if (!v) return;
+            if (!/^https?:\/\//.test(v) && !/^data:image\//.test(v)) {
+                try { showToast('Нужна ссылка https://… или data:image/…', 'error'); } catch (e) {}
+                return;
+            }
+            tbgSet(v);
+        }
+        function tbgUpload(inp) {
+            try {
+                const f = inp.files && inp.files[0];
+                if (!f) return;
+                const fr = new FileReader();
+                fr.onload = function () {
+                    const img = new Image();
+                    img.onload = function () {
+                        try {
+                            const max = 480;
+                            const k = Math.min(1, max / Math.max(img.width, img.height));
+                            const cv = document.createElement('canvas');
+                            cv.width = Math.max(1, Math.round(img.width * k));
+                            cv.height = Math.max(1, Math.round(img.height * k));
+                            cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+                            const data = cv.toDataURL('image/webp', 0.72);
+                            if (data.length > 150000) {
+                                try { showToast('Файл слишком большой для фона — возьмите картинку проще', 'error'); } catch (e) {}
+                                return;
+                            }
+                            tbgSet(data);
+                        } catch (e) {}
+                    };
+                    img.src = fr.result;
+                };
+                fr.readAsDataURL(f);
+                inp.value = '';
+            } catch (e) {}
+        }
+        function tbgClear() {
+            tbgSet('');
+            const el = document.getElementById('tbg-url');
+            if (el) el.value = '';
+        }
+        function tbgRender() {
+            const pv = document.getElementById('tbg-preview');
+            if (pv) {
+                const v = (jpc && jpc.tbg) || '';
+                pv.classList.toggle('hidden', !v);
+                if (v) pv.style.backgroundImage = 'url("' + v + '")';
             }
         }
         function jpcProbRows() {
@@ -20387,6 +20449,18 @@ function nxToggle3d() {
             let html = '';
             for (let t = 0; t < scratch.tickets.length; t++) html += scTicketHtml(t);
             wrap.innerHTML = html;
+            // b532: фон билетов из Студии + тёмная вуаль для читаемости
+            const tbg = (typeof jpc !== 'undefined' && jpc && jpc.tbg) ? jpc.tbg : '';
+            const tks = wrap.querySelectorAll ? wrap.querySelectorAll('.sc-ticket') : [];
+            for (let k = 0; k < tks.length; k++) {
+                if (tbg) {
+                    tks[k].classList.add('has-bg');
+                    tks[k].style.backgroundImage = 'linear-gradient(165deg, rgba(24,16,40,.72), rgba(10,6,20,.82)), url("' + tbg + '")';
+                } else {
+                    tks[k].classList.remove('has-bg');
+                    tks[k].style.backgroundImage = '';
+                }
+            }
             for (let t = 0; t < scratch.tickets.length; t++) {
                 const T = scratch.tickets[t];
                 for (let i = 0; i < 16; i++) {

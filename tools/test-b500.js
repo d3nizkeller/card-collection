@@ -18,6 +18,7 @@ function fakeEl() {
     return {
         innerHTML: '', textContent: '', value: '',
         classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
+        querySelectorAll() { return []; },
         set disabled(v) {}, get disabled() { return false; },
     };
 }
