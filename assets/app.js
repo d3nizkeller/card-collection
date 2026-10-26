@@ -19980,6 +19980,11 @@ function nxToggle3d() {
                 const sd = lotoSummaryData();
                 lotoSpeak(sd.won.length ? 'Тираж окончен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false, sd.won.length ? ['ph_end'] : ['ph_cheer' + (loto.cheerIdx || 1)]);
             }
+            // b534: лототрон раскручивается на каждом розыгрыше
+            try {
+                const tron = document.getElementById('loto-tron');
+                if (tron) { tron.classList.add('spinning'); setTimeout(function () { tron.classList.remove('spinning'); }, 900); }
+            } catch (e) {}
             lotoRenderStage(n, msg || (hit ? 'Бочонок ' + n + ' — есть на карточке!' : 'Бочонок ' + n + ' — мимо карточек.'));
             saveState(); updateCoinDisplay();
             renderLotoUI();
