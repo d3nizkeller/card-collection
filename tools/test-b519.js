@@ -136,6 +136,7 @@ ok(els['sc-legend'].innerHTML.indexOf('Как читать') >= 0, 'поясня
 ok(els['sc-result'].innerHTML.indexOf('Билет 1:') >= 0, 'в итоге есть расшифровка по билетам');
 
 // 8) b529: золотая клетка управляется из Студии (scJpRoll)
+X.scEraseAll(); // дорозыгрыш активного билета из предыдущего теста
 sandbox.__jpPct = 100;
 sandbox.state.coins = 100000000;
 X.scSetCount(2);
