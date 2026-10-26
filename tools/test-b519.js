@@ -46,7 +46,7 @@ const sandbox = {
     launchConfetti() {}, SoundFX: { play() {} },
     jackpotFeed() {}, jackpotOnLoss(x) { return x; }, jackpotPool() { return 12345; },
     jackpotWin() { const p = sandbox.__jp || 0; sandbox.state.coins += p; return p; },
-    jpcOff() { return false; }, jpcPityNote() {},
+    jpcOff() { return false; }, jpcSpinPct(g) { return sandbox.__jpPct || 0; }, jpcPityNote() {},
     normBet(b) { b = Math.floor(Number(b)); return isFinite(b) && b >= 1 ? b : 1; },
     fmtCoins(n) { return String(n); },
     syncBetInput() {},
