@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob255" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob255">
+    <script src="assets/three.min.js?v=nxmob256" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob256">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob255">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob256">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob255">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob256">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -347,7 +347,7 @@
                         <!-- сцена: мешок, текущий бочонок, последние бочонки -->
                         <div class="loto-stage mt-4">
                             <div class="loto-bag" aria-hidden="true">
-                                <img src="assets/loto-bag.png?v=nxmob255" class="loto-bag-img" alt="">
+                                <img src="assets/loto-bag.png?v=nxmob256" class="loto-bag-img" alt="">
                                 <span id="loto-bag-left" class="loto-bag-left">90</span>
                             </div>
                             <div id="loto-current" class="loto-current"></div>
@@ -3674,6 +3674,39 @@ min-height:56vh}
         .sc-wslot:not(.rev)::after, .sc-cell:not(.rev)::after{ animation:none; }
     }
 
+    /* ===== b522: скретч-билет — премиальная тёмная голограмма с янтарным неоном ===== */
+    .sc-ticket{
+        background:
+            radial-gradient(90% 70% at 50% -10%, rgba(251,146,60,.35), transparent 60%),
+            radial-gradient(120% 90% at 50% 115%, rgba(0,0,0,.5), transparent 60%),
+            linear-gradient(165deg,#26334a 0%,#16202f 45%,#0b1220 100%);
+        box-shadow:0 24px 60px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.12);
+        border:1px solid rgba(251,146,60,.35);
+    }
+    .sc-ticket::before{ background:none; }
+    .sc-ticket::after{ background:radial-gradient(closest-side, rgba(251,146,60,.35), transparent); }
+    .sc-notch{ background:#0e1626; }
+    .sc-brand{ color:#fff; }
+    .sc-brand-i{ color:#fb923c; }
+    .sc-price{ background:linear-gradient(135deg,#fb923c,#f45800); color:#fff; box-shadow:0 4px 12px rgba(244,88,0,.45); }
+    .sc-super{ color:#fdba74; }
+    .sc-super-val{ color:#fff; text-shadow:0 0 18px rgba(251,146,60,.8), 0 2px 0 rgba(0,0,0,.4); font-size:38px; }
+    .sc-cap{ background:rgba(251,146,60,.16); border:1px solid rgba(251,146,60,.4); color:#fdba74; }
+    .sc-wslot .sc-face{
+        background:radial-gradient(circle at 32% 28%, #ffffff 0%, #eef0f4 45%, #c3c8d2 75%, #9aa0ad 100%);
+        color:#0f172a;
+        box-shadow:inset 0 -4px 8px rgba(0,0,0,.28), inset 3px 4px 6px rgba(255,255,255,.95), 0 6px 16px rgba(0,0,0,.5);
+    }
+    .sc-cell .sc-face{
+        background:linear-gradient(165deg,#3b4a63,#1b2534);
+        border-color:rgba(148,163,184,.35);
+    }
+    .sc-cell.jkp .sc-face{ background:linear-gradient(160deg,#4a3208,#241a04); border-color:#fcd34d; }
+    .sc-num{ color:#fff; }
+    .sc-sym{ color:#fbbf24; }
+    .sc-serial{ color:#94a3b8; }
+    .sc-empty{ border-color:rgba(148,163,184,.4); color:#94a3b8; }
+
     /* ===== b521: скретч — контраст и порядок: блик внутри клеток, металл фольги, жирный суперприз ===== */
     .sc-wslot, .sc-cell{ overflow:hidden; } /* блик больше не вылетает за клетку */
     .sc-ticket{
@@ -3753,10 +3786,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob255"></script>
-    <script src="assets/stories.js?v=nxmob255"></script>
-    <script src="assets/qrcode.min.js?v=nxmob255"></script>
-    <script src="assets/qr-transfer.js?v=nxmob255"></script>
+    <script src="assets/app.js?v=nxmob256"></script>
+    <script src="assets/stories.js?v=nxmob256"></script>
+    <script src="assets/qrcode.min.js?v=nxmob256"></script>
+    <script src="assets/qr-transfer.js?v=nxmob256"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
