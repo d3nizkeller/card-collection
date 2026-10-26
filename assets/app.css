@@ -1178,7 +1178,7 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 /* b488: переключатель режимов «Игры» на десять плиток: на телефоне 5+5,
    от sm — одна строка из десяти (в tailwind.css нет sm:grid-cols-10) */
 .nx-modes{grid-template-columns:repeat(6,minmax(0,1fr))}
-@media (min-width:640px){.nx-modes{grid-template-columns:repeat(11,minmax(0,1fr))}}
+@media (min-width:640px){.nx-modes{grid-template-columns:repeat(12,minmax(0,1fr))}}
 
 /* b489: рулетка-казино: сукно, клетки стола, казино-фишки, история, дом колеса */
 .rl-wheelhouse{filter:drop-shadow(0 12px 34px rgba(2,6,23,.7))}
