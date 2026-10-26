@@ -143,6 +143,7 @@ X.scSetCount(2);
 X.scratchSetBet(100);
 X.scratchBuy();
 ok(X.scratch.tickets.every(T => T.cells.some(c => c.jkp)), 'шанс 100%: золотая клетка в каждом билете');
+X.scEraseAll(); // дорозыгрыш билетов со 100% шансом
 sandbox.__jpPct = 0;
 X.scratchBuy();
 ok(X.scratch.tickets.every(T => !T.cells.some(c => c.jkp)), 'шанс 0%: золотых клеток нет');
