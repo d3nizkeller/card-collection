@@ -20036,6 +20036,8 @@ function nxToggle3d() {
             if (ph) ph.textContent = phrase || '';
             const bl = document.getElementById('loto-bag-left');
             if (bl) bl.textContent = loto.active ? loto.bag.length : 90;
+            const tray = document.getElementById('loto-tray'); // b535: лоток выпавших шаров на тумбе
+            if (tray) tray.innerHTML = loto.last.slice(-5).map(function (v) { return '<i class="lt-tball">' + v + '</i>'; }).join('');
             const last = document.getElementById('loto-last');
             if (last) last.innerHTML = loto.last.slice().reverse().map(function (v) { return lotoBarrelHtml(v, true); }).join('');
         }

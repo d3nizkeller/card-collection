@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob265" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob265">
+    <script src="assets/three.min.js?v=nxmob266" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob266">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob265">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob266">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob265">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob266">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -350,18 +350,18 @@
                         <div class="loto-stage mt-4">
                             <div class="loto-tron" id="loto-tron">
                                     <div class="lt-drum">
-                                        <div class="lt-barrels">
-                                            <i class="lt-b" style="--x:16%;--y:28%;--r:-14deg"></i>
-                                            <i class="lt-b" style="--x:50%;--y:16%;--r:9deg"></i>
-                                            <i class="lt-b" style="--x:32%;--y:50%;--r:-6deg"></i>
-                                            <i class="lt-b" style="--x:58%;--y:46%;--r:16deg"></i>
-                                            <i class="lt-b" style="--x:22%;--y:64%;--r:4deg"></i>
-                                            <i class="lt-b" style="--x:46%;--y:70%;--r:-11deg"></i>
+                                        <i class="lt-clamp" style="--a:20deg"></i><i class="lt-clamp" style="--a:80deg"></i><i class="lt-clamp" style="--a:140deg"></i><i class="lt-clamp" style="--a:200deg"></i><i class="lt-clamp" style="--a:260deg"></i><i class="lt-clamp" style="--a:320deg"></i>
+                                        <div class="lt-hub"><i class="lt-spoke"></i><i class="lt-spoke"></i><i class="lt-spoke"></i></div>
+                                        <div class="lt-balls">
+                                            <i class="lt-ball" style="--x:24%;--y:72%"></i><i class="lt-ball" style="--x:38%;--y:78%"></i><i class="lt-ball" style="--x:52%;--y:74%"></i><i class="lt-ball" style="--x:31%;--y:62%"></i><i class="lt-ball" style="--x:45%;--y:64%"></i><i class="lt-ball" style="--x:59%;--y:62%"></i><i class="lt-ball" style="--x:38%;--y:52%"></i>
                                         </div>
                                         <div class="lt-glass"></div>
                                     </div>
-                                    <div class="lt-neck"></div>
-                                    <div class="lt-stand"><span id="loto-bag-left" class="loto-bag-left">90</span></div>
+                                    <div class="lt-base">
+                                        <div class="lt-tray" id="loto-tray"></div>
+                                        <button type="button" class="lt-btn" onclick="lotoDraw()" title="Достать бочонок"></button>
+                                        <div class="lt-counter"><span id="loto-bag-left" class="loto-bag-left">90</span></div>
+                                    </div>
                                 </div>
                             <div id="loto-current" class="loto-current"></div>
                             <div id="loto-phrase" class="loto-phrase">Нажмите «Новая игра» — и голос ведущего назовёт первый бочонок.</div>
@@ -3948,6 +3948,96 @@ min-height:56vh}
     @media (prefers-reduced-motion:reduce){
         .lt-barrels, .loto-tron.spinning, .loto-tron.spinning .lt-barrels{ animation:none; }
     }
+
+    /* ===== b535: лототрон как на референсе — акриловый барабан, спицы, шары на дне, белая тумба с лотком ===== */
+    .lt-neck, .lt-stand{ display:none; }
+    .loto-tron{ width:150px; height:196px; }
+    .lt-drum{
+        position:absolute; left:5px; top:0; width:140px; height:140px; border-radius:50%;
+        background:radial-gradient(circle at 50% 38%, rgba(255,255,255,.12), rgba(255,255,255,.03) 55%, rgba(255,255,255,.10) 80%, rgba(255,255,255,.18));
+        border:2px solid rgba(255,255,255,.55);
+        box-shadow:inset 0 0 24px rgba(255,255,255,.14), inset 0 -16px 26px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.45);
+    }
+    .lt-clamp{
+        position:absolute; left:50%; top:50%; width:9px; height:13px; margin:-6px 0 0 -4px;
+        background:linear-gradient(180deg,#f3f4f6,#9ca3af); border-radius:2px;
+        transform:rotate(var(--a)) translateY(-71px);
+        box-shadow:0 0 4px rgba(0,0,0,.55);
+    }
+    .lt-hub{
+        position:absolute; left:50%; top:50%; width:16px; height:16px; margin:-8px 0 0 -8px; border-radius:50%;
+        background:radial-gradient(circle at 35% 30%,#f9fafb,#9ca3af 70%,#6b7280);
+        box-shadow:0 0 6px rgba(0,0,0,.5);
+        animation:lt-spin 7s linear infinite;
+    }
+    .lt-spoke{ position:absolute; left:50%; top:0; width:2px; height:64px; margin-left:-1px; background:linear-gradient(180deg,#e5e7eb,#6b7280); transform-origin:50% 0; }
+    .lt-spoke:nth-child(1){ transform:rotate(0deg); }
+    .lt-spoke:nth-child(2){ transform:rotate(120deg); }
+    .lt-spoke:nth-child(3){ transform:rotate(240deg); }
+    .loto-tron.spinning .lt-hub{ animation-duration:.6s; }
+    .lt-balls{ position:absolute; inset:0; }
+    .lt-ball{
+        position:absolute; left:var(--x); top:var(--y); width:18px; height:18px; border-radius:50%;
+        background:radial-gradient(circle at 35% 30%,#ffffff,#e5e7eb 55%,#cbd5e1);
+        box-shadow:inset -2px -3px 5px rgba(0,0,0,.18), inset 2px 3px 4px rgba(255,255,255,.9), 0 2px 4px rgba(0,0,0,.35);
+    }
+    .lt-ball::after{
+        content:''; position:absolute; left:50%; top:10%; width:58%; height:46%;
+        transform:translateX(-50%) rotate(-14deg); border-radius:50%;
+        background:radial-gradient(circle at 40% 35%,#4ade80,#16a34a 75%);
+    }
+    .loto-tron.spinning .lt-ball{ animation:lt-jig .5s ease-in-out infinite; }
+    .loto-tron.spinning .lt-ball:nth-child(2){ animation-delay:.07s; }
+    .loto-tron.spinning .lt-ball:nth-child(3){ animation-delay:.14s; }
+    .loto-tron.spinning .lt-ball:nth-child(4){ animation-delay:.21s; }
+    .loto-tron.spinning .lt-ball:nth-child(5){ animation-delay:.28s; }
+    .loto-tron.spinning .lt-ball:nth-child(6){ animation-delay:.35s; }
+    .loto-tron.spinning .lt-ball:nth-child(7){ animation-delay:.42s; }
+    @keyframes lt-jig{ 0%,100%{ transform:translate(0,0); } 30%{ transform:translate(2px,-6px); } 60%{ transform:translate(-2px,-2px); } }
+    .lt-glass{
+        position:absolute; left:12%; top:8%; width:42%; height:22%; border-radius:50%;
+        background:linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0));
+        transform:rotate(-16deg); pointer-events:none;
+    }
+    .lt-base{
+        position:absolute; left:50%; bottom:0; transform:translateX(-50%);
+        width:150px; height:52px; border-radius:8px;
+        background:linear-gradient(180deg,#ffffff 0%,#e5e7eb 45%,#cbd5e1 100%);
+        box-shadow:0 10px 22px rgba(0,0,0,.5), inset 0 1px 0 #fff;
+    }
+    .lt-tray{
+        position:absolute; left:8px; top:-11px; width:88px; height:24px; border-radius:6px;
+        background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.5);
+        box-shadow:inset 0 2px 6px rgba(0,0,0,.28);
+        display:flex; align-items:center; gap:2px; padding:0 3px; overflow:hidden;
+    }
+    .lt-tball{
+        flex:0 0 auto; width:17px; height:17px; border-radius:50%;
+        background:radial-gradient(circle at 35% 30%,#fff,#e2e8f0 60%,#cbd5e1);
+        color:#15803d; font-size:8px; font-weight:900;
+        display:flex; align-items:center; justify-content:center;
+        box-shadow:0 1px 3px rgba(0,0,0,.35);
+    }
+    .lt-btn{
+        position:absolute; right:10px; top:9px; width:20px; height:20px; border-radius:50%;
+        border:2px solid #cbd5e1; background:radial-gradient(circle at 35% 30%,#86efac,#16a34a 70%);
+        box-shadow:0 2px 6px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.6); cursor:pointer;
+    }
+    .lt-btn:active{ transform:scale(.9); }
+    .lt-counter{
+        position:absolute; left:10px; bottom:7px; font-size:10px; font-weight:900; color:#334155;
+        background:rgba(255,255,255,.75); border:1px solid #cbd5e1; border-radius:4px; padding:1px 6px;
+    }
+    .lt-counter::before{ content:'в троне: '; color:#64748b; font-weight:800; }
+    .loto-bag-left{ color:#0f172a; text-shadow:none; font-size:11px; }
+    @media (max-width:480px){
+        .loto-tron{ width:128px; height:170px; }
+        .lt-drum{ left:4px; width:120px; height:120px; }
+        .lt-clamp{ transform:rotate(var(--a)) translateY(-61px); }
+        .lt-spoke{ height:55px; }
+        .lt-base{ width:128px; height:46px; }
+        .lt-tray{ width:74px; }
+    }
     /* ===== b532: фон билетов из Студии ===== */
     .sc-ticket.has-bg{ background-size:100% 100%, 100% 100%; background-position:center, center; background-repeat:no-repeat, no-repeat; }
 
@@ -3980,10 +4070,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob265"></script>
-    <script src="assets/stories.js?v=nxmob265"></script>
-    <script src="assets/qrcode.min.js?v=nxmob265"></script>
-    <script src="assets/qr-transfer.js?v=nxmob265"></script>
+    <script src="assets/app.js?v=nxmob266"></script>
+    <script src="assets/stories.js?v=nxmob266"></script>
+    <script src="assets/qrcode.min.js?v=nxmob266"></script>
+    <script src="assets/qr-transfer.js?v=nxmob266"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
