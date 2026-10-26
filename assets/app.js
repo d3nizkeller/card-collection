@@ -19804,7 +19804,7 @@ function nxToggle3d() {
                 lotoSettle();
                 loto.cheer = lotoCheerPhrase(); // b509: слова поддержки на случай провального тиража
                 const sd = lotoSummaryData();
-                lotoSpeak(sd.won.length ? 'Тираж окончен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + sd.total + '.' : loto.cheer, false);
+                lotoSpeak(sd.won.length ? 'Тираж окончен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false);
             }
             lotoRenderStage(n, msg || (hit ? 'Бочонок ' + n + ' — есть на карточке!' : 'Бочонок ' + n + ' — мимо карточек.'));
             saveState(); updateCoinDisplay();
@@ -19832,7 +19832,7 @@ function nxToggle3d() {
             lotoRenderStage(null, manual ? 'Тираж остановлен на ' + done + ' бочонках. Выигрыш раунда: ' + fmtCoins(loto.win) + '.' : 'Тираж окончен. Выигрыш раунда: ' + fmtCoins(loto.win) + '.');
             loto.cheer = lotoCheerPhrase(); // b509
             const sd = lotoSummaryData();
-            lotoSpeak(sd.won.length ? 'Тираж остановлен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + sd.total + '.' : loto.cheer, false);
+            lotoSpeak(sd.won.length ? 'Тираж остановлен. Сыграли билетов: ' + sd.won.length + ' из ' + sd.tickets.length + '. Выигрыш: ' + fmtCoins(sd.total) + '.' : loto.cheer, false);
             renderLotoUI();
         }
         function lotoToggleAuto() {
