@@ -19750,7 +19750,7 @@ function nxToggle3d() {
         const LOTO_PAY_FULL = 25;   // «ЛОТО!» (все 15) — ставка ×25
         const LOTO_MAX_TICKETS = 6; // b505/b508: максимум карточек в тираже
         const LOTO_GOLD = 90; // b517: золотой бочонок — первым в тираже срывает джекпот сайта
-        const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, last: [], win: 0, cheer: '', jpHit: false };
+        const loto = { bet: 1000, tickets: 1, voice: true, active: false, bag: [], drawn: [], cards: [], auto: 0, autoT: 0, last: [], win: 0, cheer: '', jpHit: false };
         try { if (LS.getItem('nx_loto_voice') === '0') loto.voice = false; } catch (e) {}
         try { loto.tickets = Math.max(1, Math.min(LOTO_MAX_TICKETS, parseInt(LS.getItem('nx_loto_tickets'), 10) || 1)); } catch (e) {}
         const LOTO_ONES = ['', 'один', 'два', 'три', 'четыре', 'пять', 'шесть', 'семь', 'восемь', 'девять'];
@@ -19803,6 +19803,7 @@ function nxToggle3d() {
             if (lotoVoiceQ.length > 6) lotoVoiceQ.shift(); // в авто-режиме хвост не копим
             lotoVoicePump();
         }
+        function lotoVoicePending() { return lotoVoiceBusy || lotoVoiceQ.length > 0; } // b541: озвучка ещё договаривает
         function lotoVoicePump() {
             if (lotoVoiceBusy) return;
             const item = lotoVoiceQ.shift();
@@ -20011,9 +20012,10 @@ function nxToggle3d() {
             return true;
         }
         function lotoDraw() {
-            if (!loto.active) return;
+            if (!loto.active) return false;
+            if (loto.voice && lotoVoicePending()) return false; // b541: сначала голос договаривает номер — потом следующий шар
             let n = loto.bag.length ? loto.bag.pop() : null;
-            if (n == null) { lotoFinish(false); return; }
+            if (n == null) { lotoFinish(false); return false; }
             if (loto.drawn.length === 0) {
                 // b518: золотой бочонок выходит первым ТОЛЬКО по срыву (Студия/гарантия);
                 // без срыва 90 прячется назад, чтобы не дразнить игроков ложным золотом
@@ -20105,6 +20107,7 @@ function nxToggle3d() {
             lotoRenderStage(n, msg || (hit ? 'Шар ' + n + ' — есть на карточке!' : 'Шар ' + n + ' — мимо карточек.'));
             saveState(); updateCoinDisplay();
             renderLotoUI();
+            return true;
         }
         function lotoSettle() {
             lotoStopAuto(false);
@@ -20134,13 +20137,22 @@ function nxToggle3d() {
         function lotoToggleAuto() {
             if (!loto.active) return;
             if (loto.auto) { lotoStopAuto(true); return; }
-            loto.auto = setInterval(function () {
-                try { if (loto.active) lotoDraw(); else lotoStopAuto(true); } catch (e) { lotoStopAuto(false); }
-            }, 3400);
+            loto.auto = 1;
+            lotoAutoSchedule(300); // b541: авто идёт по голосу, а не по таймеру вслепую
             renderLotoUI();
         }
+        function lotoAutoSchedule(delay) { // b541: следующий шар — когда озвучка договорит номер
+            try { clearTimeout(loto.autoT); } catch (e) {}
+            loto.autoT = setTimeout(function () {
+                if (!loto.active || !loto.auto) return;
+                let ok = false;
+                try { ok = !!lotoDraw(); } catch (e) { ok = false; }
+                if (!loto.active) { lotoStopAuto(true); return; }
+                lotoAutoSchedule(ok ? (loto.voice ? 400 : 1500) : 400);
+            }, delay);
+        }
         function lotoStopAuto(ui) {
-            if (loto.auto) { try { clearInterval(loto.auto); } catch (e) {} loto.auto = 0; }
+            if (loto.auto) { try { clearTimeout(loto.autoT); } catch (e) {} loto.auto = 0; }
             if (ui) renderLotoUI();
         }
         function lotoBarrelHtml(n, mini) { // b538: выпавший номер показываем шаром как в троне
