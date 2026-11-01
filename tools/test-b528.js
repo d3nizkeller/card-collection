@@ -70,11 +70,13 @@ function boot(opts) {
         const q = fs.readFileSync(path.join(ROOT, 'assets', 'qr-transfer.js'), 'utf8');
         const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
         const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
+        const bp = fs.readFileSync(path.join(ROOT, 'tools', 'build.py'), 'utf8');
         ok(q.indexOf('var refreshHave = function (cb2)') >= 0, 'перед коммитом — сверка списка с живым media/');
         ok(q.indexOf("NX_CLEAN.masters.filter(function (m) { return have['media/' + m]; })") >= 0, 'исчезнувшие мастера пропускаются');
         ok(q.indexOf('Удалять нечего: неиспользуемые файлы уже удалены') >= 0, 'полностью устаревший список → честное «нечего»');
         ok(q.indexOf("var s3 = document.getElementById('nx-clean-status'); if (s3) s3.textContent = em;") >= 0, 'ошибка видна в статус-строке панели');
-        ok(/nxmob275/.test(html) && !/nxmob274/.test(html) && /const VERSION = 'nxmob275';/.test(sw), 'тег nxmob275');
+        const tag = (bp.match(/BUILD_TAG = '(nxmob\d+)'/) || [])[1];
+        ok(!!tag && html.indexOf(tag) > 0 && new RegExp("const VERSION = '" + tag + "';").test(sw), 'тег единый: ' + tag);
     }
     console.log('B. Устаревший список: коммит только по живым путям');
     {
