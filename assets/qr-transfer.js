@@ -1287,32 +1287,24 @@ function nxMediaUsedNames() { // имена файлов, которые сай�
             (state.cards || []).forEach(function (c) { var n = nxMediaKey(c && c.image); if (n) used[n] = 1; });
         }
     } catch (e) {}
-    try { // b351: всё, что сайт сам заливал на GitHub, по определению в работе
-        nxMediaPushedSet().forEach(function (n) { used[n] = 1; });
+    try { // b527: МУЗЫКА паков (track_*.mp3 в media/) — раньше аудит смотрел только
+        // на картинки и собирался удалять треки активных паков как «лишние»
+        if (typeof state !== 'undefined' && state) (state.packs || []).forEach(function (p) { var n = nxMediaKey(p && p.musicUrl); if (n) used[n] = 1; });
+        (defaultPacks || []).forEach(function (p) { ['image', 'musicUrl'].forEach(function (f) { var n = nxMediaKey(p && p[f]); if (n) used[n] = 1; }); });
     } catch (e) {}
+    try { // b527: глубокий скан живой памяти: любая строка-ссылка на медиа-файл
+        // (очередь джекпота, альбомные бонусы, миссии, история — всё, что держит имя)
+        if (typeof state !== 'undefined' && state) nxMediaDeepNames(state, used, 0);
+    } catch (e) {}
+    // b527: правило b351 «всё, что сайт сам заливал, по определению в работе»
+    // УБРАНО: иначе арт удалённой карты висел бы на хостинге вечно — а владелец
+    // просил обратное (не нагружать хостинг неиспользуемым). Живые ссылки ловит
+    // скан памяти выше + скан облака комнаты и джекпота в nxMediaUnusedCompute.
     return used;
 }
-function nxMediaAudit() {
-    if (!nxGhToken()) {
-        try { nxOwnerToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
-        var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
-        return;
-    }
-    var repo = nxGhRepoName();
-    nxStatus('Читаю список файлов media/ на GitHub…');
-    nxGhApi('/repos/' + repo + '/contents/media').then(function (list) {
-        var files = (list || []).filter(function (f) { return f.type === 'file'; });
-        var used = nxMediaUsedNames();
-        NX_MEDIA_EXTRA = files.filter(function (f) { return f.name !== 'manifest.json' && !used[f.name]; }).map(function (f) { return f.name; });
-        var usedCount = files.length - NX_MEDIA_EXTRA.length;
-        var msg = 'media/: ' + files.length + ' файл(ов), из них в работе ' + usedCount +
-            (NX_MEDIA_EXTRA.length ? '; лишних ' + NX_MEDIA_EXTRA.length + ': ' + NX_MEDIA_EXTRA.slice(0, 8).join(', ') + (NX_MEDIA_EXTRA.length > 8 ? '…' : '') : '; лишних нет');
-        nxStatus(msg, NX_MEDIA_EXTRA.length ? '' : 'ok');
-        var r = document.getElementById('nx-audit-result'); if (r) r.textContent = msg;
-        var b = document.getElementById('nx-audit-del-btn');
-        if (b) { b.disabled = !NX_MEDIA_EXTRA.length; b.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: ' + (NX_MEDIA_EXTRA.length || '—'); }
-        try { nxOwnerToast(NX_MEDIA_EXTRA.length ? 'Лишних файлов в media/: ' + NX_MEDIA_EXTRA.length + ' — список в статус-строке' : 'Лишних файлов нет: всё в media/ используется сайтом', 'success'); } catch (e) {}
-    }).catch(function (e) { nxStatus('Ошибка аудита: ' + e.message, 'err'); });
+function nxMediaAudit() { // b527: старый аудит делегирует новой панели «Медиа-хранилище»
+    // (там и музыка паков в «используется», и миниатюры умирают вместе с мастером)
+    nxMediaShowUnused();
 }
 function nxMediaAuditApply() {
     if (!NX_MEDIA_EXTRA.length) return;
@@ -1349,6 +1341,202 @@ function nxMediaAuditApply() {
         });
     })(1);
 }
+// ---- b527: МЕДИА-ХРАНИЛИЩЕ И АВТООЧИСТКА (панель по макету владельца) ----
+// Владелец: «добавь авто удаление неиспользованных фото и mp3: авто удаляются,
+// если не привязаны к паку или карточке, если медиа не используется в игре —
+// чтоб не нагружать хостинг неиспользуемыми файлами». Надстроено над аудитом
+// b350, но строже и с авто-режимом раз в сутки:
+//   - в «используется» теперь входит музыка паков (pack.musicUrl — track_*.mp3)
+//     и глубокий скан живой памяти: любая строка-ссылка на файл media/
+//     (очередь джекпота, альбомы, миссии — всё, что держит имя файла);
+//   - базовый набор (NX_EMBED_MEDIA + дефолтные паки/карты) защищён всегда;
+//   - свежие загрузки (менее 6 ч по дате последнего коммита файла) не трогаются;
+//   - вместе с мастером умирают его миниатюры media/t|t2|t3/<имя>.webp,
+//     иначе сироты продолжали бы лежать на хостинге;
+//   - авто-режим (checkbox «Автоочистка (раз в сутки)») работает только у
+//     владельца с токеном, без подтверждения, не чаще раза в 24 ч; сообщение
+//     коммита то же, что у b350 — «Вернуть удалённое уборкой» (b351) всё
+//     возвращает одним кликом.
+var NX_CLEAN = { masters: [], deriv: [], ready: false, running: false };
+function nxMediaDeepNames(o, out, depth) { // b527: имена медиа-файлов из любых строк объекта
+    if (depth > 8 || o == null) return;
+    if (typeof o === 'string') {
+        if (/\.(jpg|jpeg|png|webp|gif|mp3|ogg|wav|m4a|aac)([?#].*)?$/i.test(o)) { try { var n = nxMediaKey(o); if (n) out[n] = 1; } catch (e) {} }
+        return;
+    }
+    if (typeof o !== 'object') return;
+    if (Array.isArray(o)) { for (var i = 0; i < o.length; i++) nxMediaDeepNames(o[i], out, depth + 1); return; }
+    for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) nxMediaDeepNames(o[k], out, depth + 1);
+}
+function nxMediaBaseProtected() { // b527: базовый набор игры — не удаляется никогда
+    var prot = { 'manifest.json': 1 };
+    try { Object.keys(NX_EMBED_MEDIA).forEach(function (k) { prot[k] = 1; }); } catch (e) {}
+    try { defaultPacks.forEach(function (p) { ['image', 'musicUrl'].forEach(function (f) { var n = nxMediaKey(p && p[f]); if (n) prot[n] = 1; }); }); } catch (e) {}
+    try { defaultCards.forEach(function (c) { var n = nxMediaKey(c && c.image); if (n) prot[n] = 1; }); } catch (e) {}
+    return prot;
+}
+function nxMediaRemoteDocsNames(done) { // b527: каталог из облака (комната + джекпот), а не только из памяти
+    var urls = [];
+    try {
+        var room = (typeof CLOUD !== 'undefined' && CLOUD && CLOUD.room) ? CLOUD.room : '7j8uytui';
+        if (typeof CLOUD !== 'undefined' && CLOUD && CLOUD.db) urls.push(String(CLOUD.db) + '/' + room);
+        else urls.push('https://textdb.dev/api/data/nexus-tcg-room-' + room);
+    } catch (e) { urls.push('https://textdb.dev/api/data/nexus-tcg-room-7j8uytui'); }
+    urls.push('https://textdb.dev/api/data/nexus-tcg-jackpot-v3');
+    if (typeof fetch !== 'function') { done({}); return; }
+    Promise.all(urls.map(function (u) {
+        return fetch(u, { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+    })).then(function (docs) {
+        var out = {};
+        docs.forEach(function (d) { try { if (d) nxMediaDeepNames(d, out, 0); } catch (e) {} });
+        done(out);
+    }, function () { done({}); });
+}
+function nxMediaUnusedCompute(repo, done, fail) { // список неиспользуемых мастеров + их миниатюр
+    nxMediaRemoteDocsNames(function (remoteUsed) {
+    nxGhApi('/repos/' + repo + '/contents/media').then(function (list) {
+        var files = (list || []).filter(function (f) { return f.type === 'file'; });
+        var used = nxMediaUsedNames();
+        Object.keys(remoteUsed).forEach(function (k) { used[k] = 1; }); // b527: облако комнаты и джекпот
+        var prot = nxMediaBaseProtected();
+        var cands = files.filter(function (f) { return !used[f.name] && !prot[f.name]; });
+        Promise.all(['t', 't2', 't3'].map(function (sub) { // миниатюры: умирают вместе с мастером
+            return nxGhApi('/repos/' + repo + '/contents/media/' + sub).then(function (sl) {
+                return (sl || []).filter(function (f) { return f.type === 'file'; }).map(function (f) { return sub + '/' + f.name; });
+            }, function () { return []; });
+        })).then(function (subs) {
+            var haveSub = {};
+            subs.forEach(function (a) { a.forEach(function (p) { haveSub[p] = 1; }); });
+            var now = Date.now();
+            Promise.all(cands.map(function (f) { // возраст файла: свежие загрузки не трогаем
+                return nxGhApi('/repos/' + repo + '/commits?path=' + encodeURIComponent('media/' + f.name) + '&per_page=1').then(function (c) {
+                    var d = (c && c[0] && c[0].commit && c[0].commit.committer && c[0].commit.committer.date) || '';
+                    return { name: f.name, ageH: d ? (now - Date.parse(d)) / 3600000 : 1e9 };
+                }, function () { return { name: f.name, ageH: 1e9 }; });
+            })).then(function (aged) {
+                var masters = [], deriv = [];
+                aged.forEach(function (a) {
+                    if (a.ageH < 6) return; // b527: загрузка моложе 6 ч — не трогать
+                    masters.push(a.name);
+                    var base = a.name.replace(/\.[^.]+$/, '');
+                    ['t/', 't2/', 't3/'].forEach(function (s) { var p = s + base + '.webp'; if (haveSub[p]) deriv.push(p); });
+                });
+                done({ masters: masters, deriv: deriv, total: files.length });
+            }, fail);
+        }, fail);
+    }).catch(fail);
+    });
+}
+function nxMediaShowUnused() { // «Показать неиспользуемые»
+    if (!nxGhToken()) {
+        try { nxOwnerToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
+        var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
+        return;
+    }
+    var repo = nxGhRepoName();
+    nxStatus('Смотрю, какие файлы media/ (фото и mp3) не используются игрой…');
+    nxMediaUnusedCompute(repo, function (r) {
+        NX_CLEAN.masters = r.masters; NX_CLEAN.deriv = r.deriv; NX_CLEAN.ready = true;
+        var msg = 'media/: ' + r.total + ' файл(ов); неиспользуемых: ' + r.masters.length +
+            (r.masters.length ? ' (' + r.masters.slice(0, 8).join(', ') + (r.masters.length > 8 ? '…' : '') + ')' : ' — всё в работе');
+        nxStatus(msg, r.masters.length ? '' : 'ok');
+        var s = document.getElementById('nx-clean-status'); if (s) s.textContent = msg;
+        var b = document.getElementById('nx-clean-del-btn'); if (b) b.disabled = !r.masters.length;
+        try { NX_MEDIA_EXTRA = r.masters.slice(); } catch (e) {} // синхронно со служебной кнопкой b350
+        var ob = document.getElementById('nx-audit-del-btn'); if (ob) { ob.disabled = !r.masters.length; ob.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: ' + (r.masters.length || '—'); }
+        var orr = document.getElementById('nx-audit-result'); if (orr) orr.textContent = msg;
+        try { nxOwnerToast(r.masters.length ? 'Неиспользуемых файлов в media/: ' + r.masters.length + ' (список в статус-строке)' : 'Неиспользуемых файлов нет: всё в media/ работает', 'success'); } catch (e) {}
+    }, function (e) { nxStatus('Ошибка аудита media/: ' + String((e && e.message) || e), 'err'); });
+}
+function nxMediaDeleteCommit(repo, paths, cb, fail) { // один коммит удаления (message как у b350 — b351 вернёт)
+    (function attempt(n) {
+        nxGhHead(repo).then(function (h) {
+            var entries = paths.map(function (p) { return { path: p, mode: '100644', type: 'blob', sha: null }; });
+            return nxGhApi('/repos/' + repo + '/git/trees', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ base_tree: h.tree, tree: entries }) }).then(function (tr) {
+                return nxGhApi('/repos/' + repo + '/git/commits', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'авто: уборка лишних media/ (' + paths.length + ')', parents: [h.head], tree: tr.sha }) }).then(function (nc) {
+                    return nxGhApi('/repos/' + repo + '/git/refs/heads/' + h.branch, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sha: nc.sha }) });
+                });
+            });
+        }).then(cb).catch(function (e) {
+            if (n < 3 && /not a fast forward/i.test(String(e && e.message))) { setTimeout(function () { attempt(n + 1); }, 1500); return; }
+            fail(String((e && e.message) || e));
+        });
+    })(1);
+}
+function nxMediaDeleteNow(auto) { // «Удалить сейчас» / авто-режим
+    if (!nxGhToken()) {
+        try { nxOwnerToast('Сначала сохраните токен GitHub в блоке «Картинки сайта → GitHub»', 'error'); } catch (e) {}
+        var t = document.getElementById('nx-gh-token'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
+        return;
+    }
+    var repo = nxGhRepoName();
+    var go = function () {
+        if (!NX_CLEAN.masters.length) {
+            nxStatus('Удалять нечего: неиспользуемых файлов в media/ нет', 'ok');
+            var s0 = document.getElementById('nx-clean-status'); if (s0) s0.textContent = 'Удалять нечего: всё в media/ используется игрой';
+            var b0 = document.getElementById('nx-clean-del-btn'); if (b0) b0.disabled = true;
+            return;
+        }
+        if (!auto && !window.confirm('Удалить ' + NX_CLEAN.masters.length + ' неиспользуемых файл(ов) из media/ (и ' + NX_CLEAN.deriv.length + ' миниатюр)?\n\n' + NX_CLEAN.masters.slice(0, 15).join('\n') + (NX_CLEAN.masters.length > 15 ? '\n…' : '') + '\n\nОстаются только фото и mp3, привязанные к картам/пакам/базовому набору. Вернуть можно кнопкой «Вернуть удалённое уборкой».')) return;
+        var paths = NX_CLEAN.masters.map(function (m) { return 'media/' + m; }).concat(NX_CLEAN.deriv.map(function (p) { return 'media/' + p; }));
+        nxStatus((auto ? 'Автоочистка: ' : '') + 'удаляю ' + NX_CLEAN.masters.length + ' неиспользуемых файл(ов) из media/…');
+        nxProgress(0.3, 'Удаляю ' + NX_CLEAN.masters.length + ' файл(ов) + ' + NX_CLEAN.deriv.length + ' миниатюр…');
+        nxMediaDeleteCommit(repo, paths, function () {
+            var del = NX_CLEAN.masters.slice(), nd = NX_CLEAN.deriv.length;
+            try { var s = nxMediaPushedSet(); del.forEach(function (d) { s.delete(d); }); nxMediaSavePushed(s); } catch (e) {}
+            NX_CLEAN = { masters: [], deriv: [], ready: false, running: false };
+            try { LS.setItem('nx_last_autoclean', String(Date.now())); } catch (e) {}
+            var b = document.getElementById('nx-clean-del-btn'); if (b) b.disabled = true;
+            var s2 = document.getElementById('nx-clean-status'); if (s2) s2.textContent = 'Удалено неиспользуемых: ' + del.length + ' (+миниатюр ' + nd + '). Хостинг разгружен.';
+            var ob = document.getElementById('nx-audit-del-btn'); if (ob) { ob.disabled = true; ob.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: —'; }
+            nxProgress(1, 'Готово: ' + del.length + ' неиспользуемых файл(ов) и ' + nd + ' миниатюр удалено из media/', 'ok');
+            nxStatus((auto ? 'Автоочистка: ' : '') + 'удалено из media/: ' + del.join(', '), 'ok');
+            try { nxCrashLog('cleanup: удалено ' + del.length + ' неиспользуемых media/ (+' + nd + ' миниатюр)' + (auto ? ' [авто]' : '')); } catch (e) {}
+            try { nxOwnerToast((auto ? 'Автоочистка: ' : '') + 'из media/ удалено ' + del.length + ' неиспользуемых файл(ов) (+' + nd + ' миниатюр)', 'success'); } catch (e) {}
+        }, function (msg) {
+            nxProgress(0, ''); nxStatus('Ошибка удаления из media/: ' + msg, 'err');
+            try { nxOwnerToast('Ошибка автоочистки media/: ' + msg, 'error'); } catch (e) {}
+        });
+    };
+    if (NX_CLEAN.ready) { go(); return; }
+    nxStatus('Считаю неиспользуемые файлы media/…');
+    nxMediaUnusedCompute(repo, function (r) {
+        NX_CLEAN.masters = r.masters; NX_CLEAN.deriv = r.deriv; NX_CLEAN.ready = true;
+        go();
+    }, function (e) { nxStatus('Ошибка аудита media/: ' + String((e && e.message) || e), 'err'); });
+}
+function nxAutoCleanOn() {
+    try {
+        if (LS.getItem('nx_autoclean') == null) return !!nxGhToken(); // токен есть -> авто включено по умолчанию
+        return LS.getItem('nx_autoclean') === '1';
+    } catch (e) { return false; }
+}
+function nxAutoCleanSet(v) {
+    try { LS.setItem('nx_autoclean', v ? '1' : '0'); } catch (e) {}
+    nxAutoCleanLabel();
+    try { nxOwnerToast(v ? 'Автоочистка media/ ВКЛ: неиспользуемые фото и mp3 удалятся сами раз в сутки' : 'Автоочистка media/ выключена', 'success'); } catch (e) {}
+}
+function nxAutoCleanLabel() { var c = document.getElementById('nx-autoclean-chk'); if (c) c.checked = nxAutoCleanOn(); }
+function nxMaybeAutoClean() { // раз в сутки, только владелец с токеном, без подтверждения
+    try {
+        if (!nxAutoCleanOn() || !nxGhToken() || !navigator.onLine || document.hidden) return;
+        if (NX_CLEAN.running) return;
+        var last = parseInt(LS.getItem('nx_last_autoclean') || '0', 10) || 0;
+        if (Date.now() - last < 24 * 3600 * 1000) return;
+        LS.setItem('nx_last_autoclean', String(Date.now())); // и после ошибки не долбим чаще раза в сутки
+        NX_CLEAN.running = true;
+        nxMediaUnusedCompute(nxGhRepoName(), function (r) {
+            NX_CLEAN.masters = r.masters; NX_CLEAN.deriv = r.deriv; NX_CLEAN.ready = true; NX_CLEAN.running = false;
+            if (!r.masters.length) { nxStatus('Автоочистка: неиспользуемых файлов в media/ нет — хостинг чист', 'ok'); return; }
+            nxMediaDeleteNow(true);
+        }, function (e) { NX_CLEAN.running = false; nxStatus('Автоочистка: ошибка аудита ' + String((e && e.message) || e), 'err'); });
+    } catch (e) {}
+}
+try {
+    setTimeout(function () { try { nxAutoCleanLabel(); } catch (e) {} }, 1500);
+    setTimeout(function () { try { nxMaybeAutoClean(); } catch (e) {} }, 45000); // первый шанс — после старта
+    setInterval(function () { try { nxMaybeAutoClean(); } catch (e) {} }, 30 * 60 * 1000); // и каждые полчаса проверка
+} catch (e) {}
 // ---- b345: возврат артов из старой сборки (если media/ пуста) ----
 function nxOldBuildUrl() { return 'https://raw.githubusercontent.com/' + nxGhRepoName() + '/15b635af139ba580a5f49c38a21f88d4a54ea559/index.html'; }
 function nxCheckMediaMissing() {

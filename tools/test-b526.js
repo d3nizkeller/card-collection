@@ -81,9 +81,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
             'nxFetchArtBytes: fetch с предохранителем 20 с');
         ok(q.indexOf('if (items.length < cap && pendingAll.length)') >= 0,
             'Шаг 3: пачка добирается до cap копиями с сайта даже при полупустом кэше');
-        ok(!/nxmob272/.test(html) && /nxmob273/.test(html), 'index.html: тег nxmob273 (клиенты перечитают js)');
-        ok(/const VERSION = 'nxmob273';/.test(sw), 'sw.js: новый кэш ассетов nxmob273');
-        ok(/BUILD_TAG = 'nxmob273'/.test(bp), 'build.py: BUILD_TAG nxmob273');
+        ok(!/nxmob27[0-3]/.test(html) && /nxmob274/.test(html), 'index.html: текущий тег nxmob274 (клиенты перечитают js)');
+        ok(/const VERSION = 'nxmob274';/.test(sw), 'sw.js: новый кэш ассетов nxmob274');
+        ok(/BUILD_TAG = 'nxmob274'/.test(bp), 'build.py: BUILD_TAG nxmob274');
     }
 
     console.log('B. nxWithTimeout гасит висячий промис');
