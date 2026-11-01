@@ -106,7 +106,8 @@ function boot() {
         ok(q.indexOf('function nxMediaBaseProtected()') >= 0 && q.indexOf("if (a.ageH < 6) return;") >= 0, 'protection: base set and elapsed time 6 hours');
         ok(q.indexOf("['t/', 't2/', 't3/'].forEach") >= 0, 'unused master takes thumbnails t/t2/t3 with it');
         ok(q.indexOf("message: 'авто: уборка лишних media/ (' + paths.length + ')'") >= 0, 'deletion commit message as in b350 (b351 can revert)');
-        ok(!/nxmob273/.test(html) && /nxmob274/.test(html) && /const VERSION = 'nxmob274';/.test(sw), 'tag nxmob274 (index.html + sw.js)');
+        const tag = (fs.readFileSync(path.join(ROOT, 'tools', 'build.py'), 'utf8').match(/BUILD_TAG = '(nxmob\d+)'/) || [])[1];
+        ok(!!tag && html.indexOf(tag) > 0 && new RegExp("const VERSION = '" + tag + "';").test(sw), 'tag single: ' + tag + ' (index.html + sw.js + build.py)');
     }
 
     console.log('B. Calculation: unused = masters - in-use - base - fresh');

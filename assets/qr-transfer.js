@@ -1470,6 +1470,21 @@ function nxMediaDeleteNow(auto) { // «Удалить сейчас» / авто-
         return;
     }
     var repo = nxGhRepoName();
+    // b528: перед коммитом ВСЕГДА сверяем список с живым media/. Раньше клик по
+    // устаревшему списку (файлы уже удалила автоочистка в этой или соседней вкладке)
+    // уводил tree API в 422 GitRPC::BadObjectState (sha:null по несуществующему
+    // пути) — владелец видел «не удаляет, выдаёт ошибку».
+    var refreshHave = function (cb2) {
+        Promise.all(['', 't', 't2', 't3'].map(function (sub) {
+            return nxGhApi('/repos/' + repo + '/contents/media' + (sub ? '/' + sub : '')).then(function (l) {
+                return (l || []).filter(function (f) { return f.type === 'file'; }).map(function (f) { return (sub ? sub + '/' : '') + f.name; });
+            }, function () { return []; });
+        })).then(function (lists) {
+            var have = {};
+            lists.forEach(function (a) { a.forEach(function (p) { have['media/' + p] = 1; }); }); // b528: ключи как в путях коммита
+            cb2(have);
+        }, function () { cb2(null); });
+    };
     var go = function () {
         if (!NX_CLEAN.masters.length) {
             nxStatus('Удалять нечего: неиспользуемых файлов в media/ нет', 'ok');
@@ -1477,25 +1492,45 @@ function nxMediaDeleteNow(auto) { // «Удалить сейчас» / авто-
             var b0 = document.getElementById('nx-clean-del-btn'); if (b0) b0.disabled = true;
             return;
         }
-        if (!auto && !window.confirm('Удалить ' + NX_CLEAN.masters.length + ' неиспользуемых файл(ов) из media/ (и ' + NX_CLEAN.deriv.length + ' миниатюр)?\n\n' + NX_CLEAN.masters.slice(0, 15).join('\n') + (NX_CLEAN.masters.length > 15 ? '\n…' : '') + '\n\nОстаются только фото и mp3, привязанные к картам/пакам/базовому набору. Вернуть можно кнопкой «Вернуть удалённое уборкой».')) return;
-        var paths = NX_CLEAN.masters.map(function (m) { return 'media/' + m; }).concat(NX_CLEAN.deriv.map(function (p) { return 'media/' + p; }));
-        nxStatus((auto ? 'Автоочистка: ' : '') + 'удаляю ' + NX_CLEAN.masters.length + ' неиспользуемых файл(ов) из media/…');
-        nxProgress(0.3, 'Удаляю ' + NX_CLEAN.masters.length + ' файл(ов) + ' + NX_CLEAN.deriv.length + ' миниатюр…');
-        nxMediaDeleteCommit(repo, paths, function () {
-            var del = NX_CLEAN.masters.slice(), nd = NX_CLEAN.deriv.length;
-            try { var s = nxMediaPushedSet(); del.forEach(function (d) { s.delete(d); }); nxMediaSavePushed(s); } catch (e) {}
-            NX_CLEAN = { masters: [], deriv: [], ready: false, running: false };
-            try { LS.setItem('nx_last_autoclean', String(Date.now())); } catch (e) {}
-            var b = document.getElementById('nx-clean-del-btn'); if (b) b.disabled = true;
-            var s2 = document.getElementById('nx-clean-status'); if (s2) s2.textContent = 'Удалено неиспользуемых: ' + del.length + ' (+миниатюр ' + nd + '). Хостинг разгружен.';
-            var ob = document.getElementById('nx-audit-del-btn'); if (ob) { ob.disabled = true; ob.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: —'; }
-            nxProgress(1, 'Готово: ' + del.length + ' неиспользуемых файл(ов) и ' + nd + ' миниатюр удалено из media/', 'ok');
-            nxStatus((auto ? 'Автоочистка: ' : '') + 'удалено из media/: ' + del.join(', '), 'ok');
-            try { nxCrashLog('cleanup: удалено ' + del.length + ' неиспользуемых media/ (+' + nd + ' миниатюр)' + (auto ? ' [авто]' : '')); } catch (e) {}
-            try { nxOwnerToast((auto ? 'Автоочистка: ' : '') + 'из media/ удалено ' + del.length + ' неиспользуемых файл(ов) (+' + nd + ' миниатюр)', 'success'); } catch (e) {}
-        }, function (msg) {
-            nxProgress(0, ''); nxStatus('Ошибка удаления из media/: ' + msg, 'err');
-            try { nxOwnerToast('Ошибка автоочистки media/: ' + msg, 'error'); } catch (e) {}
+        refreshHave(function (have) {
+            if (!have) { nxStatus('Ошибка удаления: не удалось прочитать свежий список media/ — повторите', 'err'); return; }
+            var masters = NX_CLEAN.masters.filter(function (m) { return have['media/' + m]; });
+            var deriv = NX_CLEAN.deriv.filter(function (p) { return have['media/' + p]; });
+            var gone = NX_CLEAN.masters.length - masters.length;
+            if (!masters.length) {
+                NX_CLEAN = { masters: [], deriv: [], ready: false, running: false };
+                var s1 = document.getElementById('nx-clean-status'); if (s1) s1.textContent = 'Удалять нечего: неиспользуемые файлы уже удалены' + (gone ? ' (список устарел на ' + gone + ' поз.)' : '');
+                var b1 = document.getElementById('nx-clean-del-btn'); if (b1) b1.disabled = true;
+                nxStatus('Удалять нечего: неиспользуемые файлы уже удалены ранее', 'ok');
+                return;
+            }
+            var doDelete = function () {
+                var paths = masters.map(function (m) { return 'media/' + m; }).concat(deriv.map(function (p) { return 'media/' + p; }));
+                nxStatus((auto ? 'Автоочистка: ' : '') + 'удаляю ' + masters.length + ' неиспользуемых файл(ов) из media/…');
+                nxProgress(0.3, 'Удаляю ' + masters.length + ' файл(ов) + ' + deriv.length + ' миниатюр…');
+                nxMediaDeleteCommit(repo, paths, function () {
+                    var del = masters.slice(), nd = deriv.length;
+                    try { var s = nxMediaPushedSet(); del.forEach(function (d) { s.delete(d); }); nxMediaSavePushed(s); } catch (e) {}
+                    NX_CLEAN = { masters: [], deriv: [], ready: false, running: false };
+                    try { LS.setItem('nx_last_autoclean', String(Date.now())); } catch (e) {}
+                    var b = document.getElementById('nx-clean-del-btn'); if (b) b.disabled = true;
+                    var s2 = document.getElementById('nx-clean-status'); if (s2) s2.textContent = 'Удалено неиспользуемых: ' + del.length + ' (+миниатюр ' + nd + '). Хостинг разгружен.';
+                    var ob = document.getElementById('nx-audit-del-btn'); if (ob) { ob.disabled = true; ob.innerHTML = '<i class="fa-solid fa-trash mr-1"></i>Удалить лишнее: —'; }
+                    nxProgress(1, 'Готово: ' + del.length + ' неиспользуемых файл(ов) и ' + nd + ' миниатюр удалено из media/', 'ok');
+                    nxStatus((auto ? 'Автоочистка: ' : '') + 'удалено из media/: ' + del.join(', '), 'ok');
+                    try { nxCrashLog('cleanup: удалено ' + del.length + ' неиспользуемых media/ (+' + nd + ' миниатюр)' + (auto ? ' [авто]' : '')); } catch (e) {}
+                    try { nxOwnerToast((auto ? 'Автоочистка: ' : '') + 'из media/ удалено ' + del.length + ' неиспользуемых файл(ов) (+' + nd + ' миниатюр)', 'success'); } catch (e) {}
+                }, function (msg) {
+                    nxProgress(0, '');
+                    var em = 'Ошибка удаления из media/: ' + msg;
+                    nxStatus(em, 'err');
+                    var s3 = document.getElementById('nx-clean-status'); if (s3) s3.textContent = em;
+                    try { nxOwnerToast(em, 'error'); } catch (e) {}
+                });
+            };
+            if (auto) { doDelete(); return; }
+            if (!window.confirm('Удалить ' + masters.length + ' неиспользуемых файл(ов) из media/ (и ' + deriv.length + ' миниатюр)?\n\n' + masters.slice(0, 15).join('\n') + (masters.length > 15 ? '\n…' : '') + (gone ? '\n\n(ещё ' + gone + ' из списка уже удалены ранее — их пропускаю)' : '') + '\n\nОстаются только фото и mp3, привязанные к картам/пакам/базовому набору. Вернуть можно кнопкой «Вернуть удалённое уборкой».')) return;
+            doDelete();
         });
     };
     if (NX_CLEAN.ready) { go(); return; }
