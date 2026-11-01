@@ -24,20 +24,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob277" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob277">
+    <script src="assets/three.min.js?v=nxmob278" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob278">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob277">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob278">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob277">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob278">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1250,7 +1250,12 @@
                         </div>
                         <!-- b473: свои шансы редкостей у пака. Это ВЕСА, а не
                              проценты: крутка нормирует их сама, как и показ. -->
-                        <div class="flex flex-col min-w-0 sm:col-span-2">
+                        <!-- b535: sm:col-span-2 ВЫРЕЗАН из собранного tailwind.css —
+                             блок не растягивался на обе колонки и справа зияла
+                             пустота (скрин владельца с крестом). Как в b480:
+                             инлайн grid-column:1 / -1 (на мобильной одноколоночной
+                             сетке это просто первая колонка — безопасно). -->
+                        <div class="flex flex-col min-w-0 sm:col-span-2" style="grid-column:1 / -1">
                             <label class="block text-[11px] font-medium text-slate-400 mb-1 flex items-center gap-2">Шансы редкостей (веса)
                                 <button type="button" onclick="packOddsReroll()" title="Предложить новый случайный набор и закрепить его в паке" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold text-slate-300 transition"><i class="fa-solid fa-dice mr-1"></i>Сгенерировать</button>
                             </label>
@@ -4209,10 +4214,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob277"></script>
-    <script src="assets/stories.js?v=nxmob277"></script>
-    <script src="assets/qrcode.min.js?v=nxmob277"></script>
-    <script src="assets/qr-transfer.js?v=nxmob277"></script>
+    <script src="assets/app.js?v=nxmob278"></script>
+    <script src="assets/stories.js?v=nxmob278"></script>
+    <script src="assets/qrcode.min.js?v=nxmob278"></script>
+    <script src="assets/qr-transfer.js?v=nxmob278"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
