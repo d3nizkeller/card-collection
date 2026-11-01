@@ -64,9 +64,11 @@ function boot() {
         ok(q.includes("cands.push('https://' + c.slice(7))"), 'http-ссылки апгрейдятся до https');
         ok(/return nxFetchArtBytes\(it\.url\)\.then\(function \(hit\) \{\s*if \(!hit\) throw new Error\('нет в кэше и нет копии на сайте: '/.test(q), 'blobOf: нет кэша → байты из копий на сайте');
         ok(q.includes('try { imgCachePut(it.url, hit.blob); } catch (e) {}'), 'найденная копия кладётся в кэш (повтор без сети)');
-        ok(q.includes('if (!items.length && pendingAll.length) {'), '«Шаг 3»/автоотправка: пустой кэш ≠ «отправлять нечего»');
+        // b526: условие расширено — пачка добирается до cap и с полупустым кэшем
+        ok(q.includes('if (items.length < cap && pendingAll.length) {'), '«Шаг 3»/автоотправка: пустой или полупустой кэш ≠ «отправлять нечего» (b526: пачка до cap)');
         ok(q.includes('Кэш пуст — тяну арты из копий на сайте'), 'прогресс объясняет, откуда берутся байты');
-        ok(/imgCacheStoreFromNetwork\(j\.eff\)\.then\(ou => \{ if \(ou\) fresh\+\+; tick\(\); \}, \(\) => \{[\s\S]{0,240}?nxFetchArtBytes\(j\.eff\)/.test(q), '«Шаг 1»: молча мёртвую ссылку подменяет копия с сайта');
+        // b526: фолбэк переехал с мёртвого reject-обработчика на null-результат store
+        ok(/nxWithTimeout\(imgCacheStoreFromNetwork\(j\.eff\), 25000\)\.then\(ou => \{[\s\S]{0,420}?nxFetchArtBytes\(j\.eff\)/.test(q), '«Шаг 1»: молча мёртвую ссылку подменяет копия с сайта (b526: фолбэк на null, а не мёртвый reject)');
         ok((q.match(/копии на сайте нет/g) || []).length >= 2, 'проверка ссылок пугает только когда копии на сайте нет');
 
         const tag = (sw.match(/const VERSION = '(nxmob\d+)';/) || [])[1];

@@ -923,6 +923,18 @@ function nxGhRepoName() {
         (function () { try { return String(LS.getItem('nx_gh_repo') || '').trim(); } catch (e) { return ''; } })() ||
         'd3nizkeller/card-collection';
 }
+// b526: промис с предохранителем. «Молчащий» хост (TCP принял, ответа нет)
+// держал fetch по несколько минут (свой таймаут браузера): Шаг 1 стоял с
+// заблокированной кнопкой, Шаг 3 не доходил до коммита, автоотправка вязла.
+// Теперь любая сетевая ступень конвейера ограничена ~20-25 секундами,
+// дальше — фолбэк на копии сайта или честный пропуск без зависания.
+function nxWithTimeout(p, ms) {
+    return new Promise(function (res, rej) {
+        var t = setTimeout(function () { rej(new Error('timeout ' + ms + 'ms')); }, ms);
+        try { p.then(function (v) { clearTimeout(t); res(v); }, function (e) { clearTimeout(t); rej(e); }); }
+        catch (e) { clearTimeout(t); rej(e); }
+    });
+}
 // b482: байты арта из ЛЮБОЙ копии, доступной с сайта: мастер mediaUrl
 // (same-origin/зеркало) → мастер media/<имя> на этом сайте → миниатюры
 // t3/t2/t → https-апгрейд http-ссылки (mixed-content) → исходная ссылка.
@@ -934,9 +946,11 @@ function nxFetchArtBytes(url) {
     var get = function (u) {
         if (!u || tries.indexOf(u) >= 0) return Promise.resolve(null);
         tries.push(u);
-        return fetch(u, { mode: 'cors' }).then(function (r) {
-            if (!r.ok) return null;
-            return r.blob().then(function (b) { return (b && b.size) ? { blob: b, url: u } : null; });
+        // b526: fetch с предохранителем 20 с — молчащий хост больше не
+        // держит всю цепочку копий (и Шаг 1 / Шаг 3) до таймаута браузера
+        return nxWithTimeout(fetch(u, { mode: 'cors' }), 20000).then(function (r) {
+            if (!r || !r.ok) return null;
+            return nxWithTimeout(r.blob(), 20000).then(function (b) { return (b && b.size) ? { blob: b, url: u } : null; });
         }).catch(function () { return null; });
     };
     var cands = [];
@@ -1081,12 +1095,22 @@ function nxAutoMediaPushRun(manual, done) {
     var pendingAll = [];
     try { pendingAll = nxPendingMediaList(); } catch (e) {}
     nxCollectPendingMedia(cap).then(function (items) {
-        if (!items.length && pendingAll.length) {
-            // b482: кэш пуст — не повод отказывать: байты дотянутся из копий на
-            // сайте прямо в nxGhPushMedia (blobOf). Владелец: «должно
-            // автоматически скачивать картинки на гитхаб с сайта».
-            items = pendingAll.slice(0, cap).map(function (p) { return { name: p.name, url: p.url }; });
-            nxProgress(0.1, 'Кэш пуст — тяну арты из копий на сайте: ' + items.length + ' из ' + pendingAll.length);
+        // b526: копии с сайта добирались ТОЛЬКО при полностью пустом кэше
+        // устройства. С полупустым кэшем в коммит уезжали 1-2 закэшированных
+        // файла, а остальная очередь ждала следующего захода: история репо
+        // пополнялась сотнями одиночных коммитов (13 коммитов по 1 файлу за
+        // 20 минут). Теперь пачка всегда добирается до cap: кэш + копии сайта
+        // (байты копий дотянет nxGhPushMedia/blobOf, b482).
+        if (items.length < cap && pendingAll.length) {
+            var have = {}; items.forEach(function (it) { have[it.name] = 1; });
+            var cachedN = items.length;
+            pendingAll.forEach(function (p) {
+                if (items.length >= cap || have[p.name]) return;
+                have[p.name] = 1;
+                items.push({ name: p.name, url: p.url });
+            });
+            if (!cachedN && items.length) nxProgress(0.1, 'Кэш пуст — тяну арты из копий на сайте: ' + items.length + ' из ' + pendingAll.length);
+            else if (items.length > cachedN) nxProgress(0.1, 'Пачка ' + items.length + ': ' + cachedN + ' из кэша + ' + (items.length - cachedN) + ' с копий сайта');
         }
         if (!items.length) {
             if (manual) { nxStatus('Отправлять нечего: новых картинок в кэше нет и копий на сайте не нашлось. Нажмите «Шаг 1. Скачать все картинки»', 'err'); try { nxOwnerToast('В кэше нет новых картинок для отправки', 'error'); } catch (e) {} }
@@ -1592,7 +1616,17 @@ function nxAutoCacheOnce() {
         imgCacheObjUrl(u).then(hit => {
             if (hit) { done++; step(); return; }
             try { IMG_FAIL.delete(u); } catch (e) {} // b324: ссылку могли считать мёртвой до оживления хоста
-            imgCacheStoreFromNetwork(u).then(ou => { if (ou) fresh++; done++; step(); }, () => { done++; step(); });
+            nxWithTimeout(imgCacheStoreFromNetwork(u), 25000).then(ou => {
+                if (ou) { fresh++; done++; step(); return; }
+                // b526: прямой fetch не ответил (imgCacheStoreFromNetwork глотает
+                // ошибку и молча несёт null — reject-обработчик тут был мёртвым
+                // кодом). Добираем байты из копий на сайте, иначе у владельца
+                // мастера не доходят до кэша и Шаг 3 говорит «нечего отправлять».
+                nxFetchArtBytes(u).then(hit => {
+                    if (hit) { try { imgCachePut(u, hit.blob); } catch (e2) {} fresh++; }
+                    done++; step();
+                }, () => { done++; step(); });
+            }, () => { done++; step(); });
         }, () => { done++; step(); });
     };
     step(); step();
@@ -1788,17 +1822,26 @@ function nxCacheAll() { // фоном тянет всю коллекцию в п
             return;
         }
         const j = jobs[ptr++];
-        imgCacheObjUrl(j.eff).then(hit => {
-            if (hit) { tick(); return; } // уже в кэше — сеть не трогаем
-            imgCacheStoreFromNetwork(j.eff).then(ou => { if (ou) fresh++; tick(); }, () => {
-                // b482: ссылка молчит/без CORS — пробуем копии на сайте (мастер
-                // media/, миниатюры, https-версия) и кладём их байты в кэш
-                nxFetchArtBytes(j.eff).then(hit => {
-                    if (hit) { try { imgCachePut(j.eff, hit.blob); } catch (e) {} fresh++; }
-                    tick();
+        try {
+            imgCacheObjUrl(j.eff).then(hit => {
+                if (hit) { tick(); return; } // уже в кэше — сеть не трогаем
+                // b526: imgCacheStoreFromNetwork НЕ РЕJECTит никогда (ошибка
+                // глотается внутри и приходит null), поэтому фолбэк b482,
+                // повешенный на reject, не срабатывал ВООБЩЕ: молчащая или
+                // CORS-закрытая ссылка считалась «скачанной», кэш оставался
+                // пустым, а Шаг 3 потом не находил байтов. Фолбэк переехал на
+                // null-результат, сетевая ступень — под предохранитель 25 с.
+                nxWithTimeout(imgCacheStoreFromNetwork(j.eff), 25000).then(ou => {
+                    if (ou) { fresh++; tick(); return; }
+                    // b482: ссылка молчит/без CORS — пробуем копии на сайте (мастер
+                    // media/, миниатюры, https-версия) и кладём их байты в кэш
+                    nxFetchArtBytes(j.eff).then(hit => {
+                        if (hit) { try { imgCachePut(j.eff, hit.blob); } catch (e) {} fresh++; }
+                        tick();
+                    }, () => tick());
                 }, () => tick());
-            });
-        }, () => tick());
+            }, () => tick());
+        } catch (e) { tick(); } // b526: сбой на одном арте не останавливает всю очередь
     };
     nxOwnerToast('Старт: ' + total + ' артов в очереди на закачку в кэш', 'success');
     for (let i = 0; i < 3; i++) next();
