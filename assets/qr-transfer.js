@@ -580,6 +580,7 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
         var fin = function () {
             doneN++;
             if (doneN % 4 === 0 || doneN === total) nxProgress(doneN / total, 'Проверяю ссылки карточек и паков: ' + doneN + '/' + total);
+            try { kick(); } catch (e) {} // b536: освободившийся поток берёт следующую ссылку
             if (doneN < total) return;
             if (!problems.length) {
                 nxProgress(1, 'Ссылки: все ' + total + ' паков/карточек — картинки рабочие или в кэше', 'ok');
@@ -593,7 +594,17 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
             else { nxSayOnce('links_bad_' + problems.length, msg); }
             nxStatus(msg + '  →  замените ссылку или добавьте арт в кэш («Скачать все арты»)', 'err');
         };
-        items.forEach(function (it) {
+        // b536: РАНЬШЕ ВСЕ 486 ССЫЛОК ПРОБОВАЛИСЬ МАСТЕРАМИ ОДНОВРЕМЕННО
+        // (new Image() на 2-16 МБ каждая, без очереди): через 9 секунд после
+        // старта у владельца (автопроверка) декодер и канал умирали вместе с
+        // вкладкой — «тёмные квадраты вместо картинок» и краш WebView.
+        // Теперь: (1) очередь в 4 потока; (2) пробуется ЛЁГКАЯ миниатюра
+        // media/t/ (15-25 КБ) — её живость означает живость арта на сайте;
+        // мастер открывается только в обработчике ошибки (nxFetchArtBytes),
+        // тоже не толпой.
+        var qi = 0;
+        function kick() { if (qi < items.length) checkOne(items[qi++]); }
+        function checkOne(it) {
             var eff = it.url;
             try { eff = mediaUrl(it.url); } catch (e) {}
             var where = it.kind === 'pack'
@@ -640,9 +651,16 @@ function nxCheckLinks(silent) { // b342-solo: мёртвая ссылка + не
                     }
                     fin();
                 };
-                im2.src = eff;
+                // b536: пробуем миниатюру (15-25 КБ), не мастер (2-16 МБ): у живой
+                // карточки на сайте миниатюра есть всегда; если её нет (арт новее
+                // сборки) — onerror доберёт копии через nxFetchArtBytes, как раньше
+                var probe = eff;
+                try { probe = nxThumbFor(it.url, 'small') || eff; } catch (e) {}
+                im2.src = probe;
             }, function () { fin(); });
-        });
+        }
+        // старт очереди: 4 потока (было «все сразу»)
+        for (var q = 0; q < 4; q++) kick();
     } catch (e) {}
 }
 
@@ -675,7 +693,14 @@ function nxCheckArts(silent) { // b342-solo: проверить, что все �
             im.decoding = 'async';
             im.onload = function () { ok++; fin(); pump(); };
             im.onerror = function () { bad.push(k); fin(); pump(); };
-            im.src = NX_EMBED_MEDIA[k];
+            var src = NX_EMBED_MEDIA[k];
+            // b536: пробуем ЛЁГКУЮ миниатюру, не мастер: 73 мастера по 1-2.5 МБ —
+            // это ~100 МБ трафика и распакованных битмапов на 9-й секунде после
+            // старта; живость арта миниатюра подтверждает так же
+            if (String(src).indexOf('data:') !== 0) {
+                try { src = nxThumbFor(src, 'small') || src; } catch (e) {}
+            }
+            im.src = src;
         };
         for (var q = 0; q < 3; q++) pump();
     } catch (e) {}
