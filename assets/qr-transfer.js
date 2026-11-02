@@ -1793,29 +1793,62 @@ function nxAutoCacheOnce() {
     // офлайн-готовность интерфейса при этом сохраняется полностью).
     var nxAutoWantMaster = false;
     try { nxAutoWantMaster = !!nxGhToken() && (nxAutoEmbedOn() || nxAutoMediaOn()); } catch (e) {}
+    // b536: мастер-режим (устройство владельца с токеном) раньше грел МАСТЕРА
+    // ВСЕГО каталога (460+ файлов по 2-16 МБ) по 10 штук каждую минуту, в 2 потока:
+    // ~30-40 МБ фонового трафика в минуту, IndexedDB и декодирование забивали
+    // память — WebView падал («тёмные квадраты вместо картинок», вкладка гибнет).
+    // Теперь: (1) мастера греются ТОЛЬКО для артов, которые автопуш ещё не вшил
+    // (nxNewBasesForMap) — остальным мастера на устройстве не нужны вовсе;
+    // (2) не чаще раза в 5 минут; (3) в ОДИН поток и малым капом; (4) только когда
+    // видимые картинки уже догружены и канал не в эконом-режиме.
+    if (nxAutoWantMaster) {
+        try {
+            var nxLastMaster = parseInt(LS.getItem('nx_last_master_warm') || '0', 10);
+            if (Date.now() - nxLastMaster < 300000) return;
+            if (NX_SLOW) return; // save-data / 2G: мастера фоном недопустимы
+            for (var nxi = 0; nxi < document.images.length; nxi++) {
+                // видимые картинки ещё грузятся — фон не имеет права отнимать канал
+                if (!document.images[nxi].complete) return;
+            }
+        } catch (e) { return; }
+    }
     try {
-        nxAllMediaUrls().forEach(raw => {
-            let eff = raw; try { eff = mediaUrl(raw); } catch (e) {}
-            if (!eff || eff.indexOf('http') !== 0) return;
-            if (nxAutoWantMaster) { jobs.push(eff); return; }
-            let mid = '', small = '';
-            try { mid = nxThumbFor(raw, 'mid'); small = nxThumbFor(raw, 'small'); } catch (e) {}
-            // nxThumbFor возвращает '' для локальных (не http) артов и для файлов,
-            // которых нет в картах сборки, — тогда остаётся мастер, как раньше.
-            if (mid && mid.indexOf('http') === 0) jobs.push(mid);
-            if (small && small.indexOf('http') === 0 && small !== mid) jobs.push(small);
-            if (!mid && !small) jobs.push(eff);
-        });
+        if (nxAutoWantMaster) {
+            nxNewBasesForMap().forEach(function (b) {
+                var u = nxMediaUrlForBase(b);
+                if (u && u.indexOf('http') === 0 && jobs.indexOf(u) < 0) jobs.push(u);
+            });
+        } else {
+            nxAllMediaUrls().forEach(raw => {
+                let eff = raw; try { eff = mediaUrl(raw); } catch (e) {}
+                if (!eff || eff.indexOf('http') !== 0) return;
+                let mid = '', small = '';
+                try { mid = nxThumbFor(raw, 'mid'); small = nxThumbFor(raw, 'small'); } catch (e) {}
+                // nxThumbFor возвращает '' для локальных (не http) артов и для файлов,
+                // которых нет в картах сборки, — тогда остаётся мастер, как раньше.
+                if (mid && mid.indexOf('http') === 0) jobs.push(mid);
+                if (small && small.indexOf('http') === 0 && small !== mid) jobs.push(small);
+                if (!mid && !small) jobs.push(eff);
+            });
+        }
     } catch (e) { return; }
     if (!jobs.length) return;
     nxAutoRunning = true;
-    // b377: 10 — это было про мастера по 3 МБ. Миниатюры в 50 раз легче,
-    // поэтому берём больше за подход и не держим канал занятым полчаса.
-    const CAP = nxAutoWantMaster ? 10 : 40;
+    // b536: флаг «фон качает мастера» — imgErrorChain в app.js по нему НЕ
+    // эскалирует зависшие миниатюры на мегабайтные мастера (спираль смерти)
+    if (nxAutoWantMaster) {
+        window.__nxMasterBusy = true;
+        try { LS.setItem('nx_last_master_warm', String(Date.now())); } catch (e) {}
+    }
+    // b377: миниатюры в 50 раз легче мастеров — в миниатюрном режиме берём
+    // больше за подход и не держим канал занятым полчаса.
+    // b536: мастер-режим — кап 4 и один поток (было 10 и два).
+    const CAP = nxAutoWantMaster ? 4 : 40;
     let i = 0, done = 0, fresh = 0;
     const step = () => {
         if (i >= jobs.length || done >= CAP) {
             nxAutoRunning = false;
+            window.__nxMasterBusy = false; // b536: снять предохранитель эскалации
             if (fresh) { try { nxOwnerToast('Автокэш артов: +' + fresh + ' сохранено в устройстве', 'success'); } catch (e) {} }
             try { nxUpdateCounts(); } catch (e) {}
             // b327: хост ожил и всё дотянулось — радуемся один раз
@@ -1852,7 +1885,7 @@ function nxAutoCacheOnce() {
             }, () => { done++; step(); });
         }, () => { done++; step(); });
     };
-    step(); step();
+    step(); if (!nxAutoWantMaster) step(); // b536: мастера — строго в один поток
 }
 setTimeout(() => { try { nxAutoCacheOnce(); } catch (e) {} }, 8000); // сразу после старта
 setInterval(() => { try { nxAutoCacheOnce(); } catch (e) {} }, 60000); // и каждую минуту

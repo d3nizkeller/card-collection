@@ -37,7 +37,7 @@ THUMBS = os.path.join(MEDIA, 't')
 MIDS = os.path.join(MEDIA, 't2')
 BIGS = os.path.join(MEDIA, 't3')   # b438: «большой» уровень — просмотр карты, галерея
 
-BUILD_TAG = 'nxmob278'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
+BUILD_TAG = 'nxmob279'          # b382: защита будущих карт: меморизация отсутствующих миниатюр, --report, cron в CI — клиенты должны перечитать app.js
 THUMB_W = 256                 # мелкая миниатюра (списки, компактные сетки), px
 THUMB_Q = 72
 MID_W = 512                   # средняя (обычные сетки, вскрытие пака), px
@@ -547,8 +547,18 @@ def all_media_images():
     out = []
     for f in sorted(os.listdir(MEDIA)):
         p = os.path.join(MEDIA, f)
-        if os.path.isfile(p) and f.lower().endswith('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.jfif', '.tif', '.tiff'):  # b382: тот же список, что в thumbs_for_media.py
+        if not os.path.isfile(p):
+            continue
+        if f.lower().endswith('.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp', '.jfif', '.tif', '.tiff'):  # b382: тот же список, что в thumbs_for_media.py
             out.append(f)
+        elif '.' not in f:  # b536: файлы без расширения («3840x») — картинка ли?
+            try:
+                from PIL import Image as _Im
+                with _Im.open(p) as _im:
+                    _im.verify()
+                out.append(f)
+            except Exception:
+                pass
     return out
 
 

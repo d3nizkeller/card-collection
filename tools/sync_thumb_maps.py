@@ -67,6 +67,17 @@ MID_DECL = 'const NX_EMBED_THUMB_MID = '
 BIG_DECL = 'const NX_EMBED_BIG = '  # b438
 
 
+def _sniff_image(p):
+    """b536: файл без расширения — картинка ли? (единое правило с thumbs_for_media.py)."""
+    try:
+        from PIL import Image
+        with Image.open(p) as im:
+            im.verify()
+        return True
+    except Exception:
+        return False
+
+
 def masters():
     """Имена файлов-мастеров в media/ (без подкаталогов)."""
     if not os.path.isdir(MEDIA):
@@ -74,7 +85,11 @@ def masters():
     out = []
     for f in sorted(os.listdir(MEDIA)):
         p = os.path.join(MEDIA, f)
-        if os.path.isfile(p) and f.lower().endswith(EXT):
+        if not os.path.isfile(p):
+            continue
+        if f.lower().endswith(EXT):
+            out.append(f)
+        elif '.' not in f and _sniff_image(p):   # b536: без расширения, но картинка
             out.append(f)
     return out
 
