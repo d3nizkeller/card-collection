@@ -6999,6 +6999,7 @@ function nxToggle3d() {
                 try { const rj0 = remote && remote.jp ? remote.jp : remote; if (rj0 && !rj0.ep) window.__nxJpLegacyAt = Date.now(); } catch (e) {}
                 jackpotMerge(remote && remote.jp ? remote.jp : remote);
                 jpcMerge(remote && remote.jpc); // b414: настройки джекпота от владельца комнаты
+                dsgMerge(remote && remote.dsg); // b541: оформление комнаты от админа
                 marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
                 siteStatsMerge(remote && remote.st); // b277: чужие записи реестра игроков
                 jpAutoCompactIfNeeded(); // b423: загрязнённый реестр чиним до пуша
@@ -7007,6 +7008,7 @@ function nxToggle3d() {
                     const rj = (chk && chk.jp) ? chk.jp : chk;
                     jackpotMerge(rj);
                     jpcMerge(chk && chk.jpc); // b414
+                    dsgMerge(chk && chk.dsg); // b541: оформление комнаты
                     marketMerge(chk && chk.mk); // b136
                     siteStatsMerge(chk && chk.st); // b277
                     // b183: документ перезаписали между нашей записью и чтением ИЛИ в облаке не хватает
@@ -7058,6 +7060,7 @@ function nxToggle3d() {
                 const rj = remote && remote.jp ? remote.jp : remote;
                 jackpotMerge(rj);
                 jpcMerge(remote && remote.jpc); // b414
+                dsgMerge(remote && remote.dsg); // b541: общая тема комнаты прилетает этим же pull'ом
                 marketMerge(remote && remote.mk); // b136
                 siteStatsMerge(remote && remote.st); // b277
                 try { jpcApplyGrants(); } catch (e) {} // b414
@@ -7264,13 +7267,17 @@ function nxToggle3d() {
         }, 10000);
         // b183: документ общего банка (тот же, что пушит jpSyncNow) — нужен и для аварийной отправки
         function jpDoc() {
-            return {
+            const doc = {
                 jp: { led: jackpot.led, won: jackpot.won, wins: jackpot.wins, names: jackpot.names, hall: jackpot.hall, hallCut: jackpot.hallCut || 0, ep: Math.floor(jackpot.ep) || 0 }, // b418: tombstone; b420: эпоха реестра
                 jpc: jpcDoc(), // b414: настройки джекпота и назначенные выдачи — видны всему сайту
                 mk: marketDoc(), // b136
                 st: siteStatsDoc(), // b277: статистика игроков сайта — балансы, паки, джекпоты
                 updatedAt: Date.now() + '-' + JACKPOT_CID
             };
+            // b541: общая тема комнаты. Поле пишем ТОЛЬКО если админ её задавал —
+            // иначе клиент, который её ещё не видел, затирал бы документ пустым значением
+            try { if (dsg && dsg.at > 0) doc.dsg = dsgDoc(); } catch (e) {}
+            return doc;
         }
         // b183: аварийная отправка при скрытии/закрытии вкладки: sendBeacon (textdb) или keepalive-fetch (firebase).
         // Без неё игрок, сорвавший банк и закрывший страницу, уносил выплату с собой — банк у остальных не уменьшался.
@@ -20839,6 +20846,7 @@ function nxToggle3d() {
                 if (btn) btn.classList.toggle('nx-theme-on', nxTheme !== 'standard');
                 var mbtn = document.getElementById('mob-nav-theme');
                 if (mbtn) mbtn.style.color = nxTheme !== 'standard' ? '#f0abfc' : '';
+                try { dsgRender(); } catch (e) {}
             } catch (e) {}
         }
         // ---- слой оформления: создаётся только для непустой темы ----
@@ -21132,6 +21140,111 @@ function nxToggle3d() {
                 else go();
             } catch (e) {}
         })();
+        // ==========================================================================
+        // b541: ОФОРМЛЕНИЕ КОМНАТЫ — админ задаёт вид сайта для всех игроков
+        // Живёт в том же облачном документе, что и настройки джекпота (поле dsg):
+        // админ жмёт «Применить всем» в Студии → запись {t, fx, at} уходит в облако,
+        // и на ближайшем цикле синхронизации (≤15 c) тема применяется у всех.
+        // Побеждает самая свежая запись по метке at — старая копия её не затрёт.
+        // ==========================================================================
+        var DSG_KEY = 'nexus_dsg';
+        var dsg = dsgLoad();
+        function dsgLoad() {
+            try {
+                var o = JSON.parse(LS.getItem(DSG_KEY) || 'null');
+                if (o && typeof o === 'object') {
+                    return { t: String(o.t || ''), fx: (o.fx === 0 ? 0 : 1), at: Math.floor(o.at) || 0 };
+                }
+            } catch (e) {}
+            return { t: '', fx: 1, at: 0 };
+        }
+        function dsgSave() { try { LS.setItem(DSG_KEY, JSON.stringify(dsg)); } catch (e) {} }
+        function dsgDoc() { return { t: dsg.t, fx: dsg.fx, at: dsg.at }; }
+        function dsgMerge(remote) {
+            if (!remote || typeof remote !== 'object') return false;
+            var at = Math.floor(remote.at) || 0;
+            if (!at || at <= (dsg.at || 0)) return false;
+            var t = String(remote.t || '');
+            if (t && !NX_THEMES[t]) t = '';
+            dsg = { t: t, fx: (remote.fx === 0 ? 0 : 1), at: at };
+            dsgSave();
+            if (dsg.t) { // админ выбрал тему — ставим её у себя
+                nxThemeFx = !!dsg.fx;
+                nxThemePick(dsg.t);
+            } else {
+                dsgRender();
+            }
+            return true;
+        }
+        function dsgPublish() {
+            try {
+                if (typeof cloudGuest === 'function' && cloudGuest()) {
+                    showToast('Вид для всех может менять только создатель комнаты', 'error');
+                    return;
+                }
+                dsg = { t: nxTheme, fx: nxThemeFx ? 1 : 0, at: Date.now() };
+                dsgSave();
+                dsgRender();
+                try { jpSyncSoon(); } catch (e) {}
+                showToast('🌐 «' + NX_THEMES[nxTheme].name + '» теперь у всех игроков комнаты', 'success');
+            } catch (e) {}
+        }
+        function dsgClear() {
+            try {
+                if (typeof cloudGuest === 'function' && cloudGuest()) {
+                    showToast('Общую тему может снять только создатель комнаты', 'error');
+                    return;
+                }
+                dsg = { t: '', fx: 1, at: Date.now() };
+                dsgSave();
+                dsgRender();
+                try { jpSyncSoon(); } catch (e) {}
+                showToast('Общая тема снята — у каждого игрока снова свой выбор', 'success');
+            } catch (e) {}
+        }
+        function dsgRender() {
+            try {
+                var has = !!(dsg.t && NX_THEMES[dsg.t]);
+                var guest = (typeof cloudGuest === 'function') ? cloudGuest() : false;
+                var pub = document.getElementById('dsg-publish');
+                var clr = document.getElementById('dsg-clear');
+                if (pub) {
+                    pub.disabled = guest;
+                    pub.classList.toggle('opacity-40', guest);
+                    pub.classList.toggle('cursor-not-allowed', guest);
+                }
+                if (clr) {
+                    var off = guest || !has;
+                    clr.disabled = off;
+                    clr.classList.toggle('opacity-40', off);
+                    clr.classList.toggle('cursor-not-allowed', off);
+                }
+                var st = document.getElementById('dsg-state');
+                if (st) {
+                    if (has) {
+                        var when = '';
+                        try {
+                            when = new Date(dsg.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                        } catch (e) {}
+                        st.innerHTML = 'У всех игроков комнаты: <b class="text-slate-200">' + NX_THEMES[dsg.t].ico + ' ' + NX_THEMES[dsg.t].name + '</b>'
+                            + (when ? ' · обновлено в ' + when : '');
+                    } else {
+                        st.innerHTML = 'Общая тема не задана — каждый игрок видит свой выбор.';
+                    }
+                }
+                var note = document.getElementById('dsg-note');
+                if (note) {
+                    if (has) {
+                        note.classList.remove('hidden');
+                        note.innerHTML = 'Оформление комнаты задаёт создатель: <b class="text-slate-200">'
+                            + NX_THEMES[dsg.t].ico + ' ' + NX_THEMES[dsg.t].name
+                            + '</b>. Ваш выбор действует до следующего изменения админом.';
+                    } else {
+                        note.classList.add('hidden');
+                    }
+                }
+            } catch (e) {}
+        }
         // b540: Escape закрывает окно внешнего вида (как и остальные модалки игры)
         document.addEventListener('keydown', function (e) {
             if (e && e.key === 'Escape' && nxThemeModalOpen) { nxThemeClose(); }
