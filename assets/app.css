@@ -1262,21 +1262,47 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
    ========================================================================== */
 .nx-2d{
     position:relative;
-    width:100%; max-width:520px; margin:0 auto;
+    width:100%; max-width:540px; margin:0 auto;
     display:grid; gap:5px;
-    padding:10px; border-radius:18px;
-    background:linear-gradient(180deg,#2a1b14 0%,#1b1226 45%,#0c0714 100%);
-    border:2px solid rgba(251,191,36,.38);
-    box-shadow:inset 0 2px 0 rgba(255,255,255,.12), inset 0 -14px 34px rgba(0,0,0,.6), 0 14px 34px rgba(0,0,0,.5);
+    padding:30px 12px 14px; border-radius:24px;
+    background:
+        radial-gradient(120% 60% at 50% -12%, rgba(255,214,120,.20), transparent 62%),
+        linear-gradient(180deg,#3b2410 0%,#2a1220 38%,#120a14 72%,#0a0610 100%);
+    border:3px solid #c8a24a;
+    box-shadow:
+        inset 0 0 0 2px rgba(255,236,179,.35),
+        inset 0 0 0 5px rgba(0,0,0,.55),
+        inset 0 0 0 6px rgba(212,175,55,.45),
+        inset 0 14px 30px rgba(255,214,120,.10),
+        inset 0 -18px 40px rgba(0,0,0,.7),
+        0 18px 40px rgba(0,0,0,.6),
+        0 0 0 1px rgba(0,0,0,.85);
 }
-.nx-2d::after{ /* внутренняя рамка-«стекло» */
-    content:''; position:absolute; inset:5px; border-radius:13px;
-    border:1px solid rgba(251,191,36,.16); pointer-events:none;
+/* маркиза с бегущими лампочками */
+.nx-2d::before{
+    content:'';
+    position:absolute; left:14px; right:14px; top:7px; height:16px;
+    border-radius:9px;
+    background:
+        radial-gradient(circle at 9px 8px, #fff3c4 0 2.4px, rgba(255,214,120,.55) 3.4px, transparent 4.6px) 0 0/22px 16px repeat-x,
+        linear-gradient(180deg,#f3d38a,#8a6420);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.65), 0 0 16px rgba(251,191,36,.35);
+    animation:nxChase 1.1s linear infinite;
+}
+@keyframes nxChase{ from{background-position:0 0,0 0} to{background-position:22px 0,0 0} }
+/* тёмное окно барабанов за картами */
+.nx-2d::after{
+    content:'';
+    position:absolute; left:10px; right:10px; top:28px; bottom:10px;
+    border-radius:14px; pointer-events:none;
+    background:linear-gradient(180deg,#05040a,#0f0a16 60%,#07050c);
+    box-shadow:inset 0 0 26px rgba(0,0,0,.95), inset 0 2px 0 rgba(255,255,255,.07), inset 0 -2px 0 rgba(0,0,0,.85);
 }
 .nx-2d > div{
-    position:relative; aspect-ratio:3 / 4 !important;
-    border-radius:8px; overflow:hidden; background:#0b1220;
-    border:1px solid rgba(148,163,184,.28);
+    position:relative; z-index:1; aspect-ratio:3 / 4 !important;
+    border-radius:9px; overflow:hidden; background:#0b1220;
+    border:1px solid rgba(255,236,179,.35);
+    box-shadow:0 1px 0 rgba(255,255,255,.22), 0 6px 14px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.6);
 }
 .nx-2d > div img{
     position:absolute; inset:0; width:100%; height:100%;
