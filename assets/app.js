@@ -20803,6 +20803,11 @@ function nxToggle3d() {
                 if (el && el.parentNode) el.parentNode.removeChild(el);
             });
         }
+        // b539: гирлянда — не «точки в ряд», а настоящая нить: провод провисает
+        // дугами между точками подвеса, к нему на коротких хвостиках подвешены
+        // патроны, в них — лампочки с бликом и мягким ореолом. Всё одной SVG:
+        // 20 с лишним лампочек стоят один элемент вместо двух десятков div'ов,
+        // а «дыхание» света — анимация прозрачности ореола, её считает композитор.
         function nxGarlandBuild(kind) {
             var g = document.getElementById('nx-garland');
             if (!g) {
@@ -20813,16 +20818,68 @@ function nxToggle3d() {
             }
             var fx = NX_FX[kind] || NX_FX.newyear;
             var cols = fx.garland || ['#f87171', '#fbbf24', '#34d399', '#60a5fa'];
-            var n = Math.max(12, Math.min(36, Math.round(window.innerWidth / 44)));
-            g.innerHTML = '';
-            for (var i = 0; i < n; i++) {
-                var b = document.createElement('i');
-                var c = cols[i % cols.length];
-                b.style.background = c;
-                b.style.boxShadow = '0 0 9px 2px ' + c;
-                b.style.animationDelay = ((i % 5) * 0.28).toFixed(2) + 's';
-                g.appendChild(b);
+            var w = Math.max(320, Math.round(window.innerWidth));
+            var narrow = w < 640;
+            var base = 1;                 // высота, где нить прибита к «потолку»
+            var sag = narrow ? 5 : 8;     // насколько провисает между подвесами
+            var span = narrow ? 74 : 96;  // расстояние между точками подвеса
+            var segs = Math.max(4, Math.round(w / span));
+            var step = w / segs;
+
+            // провод: цепочка квадратичных дуг с изломом на каждом подвесе
+            var d = 'M0,' + base;
+            for (var i = 0; i < segs; i++) {
+                var x0 = i * step;
+                d += ' Q' + (x0 + step / 2).toFixed(1) + ',' + (base + sag * 2).toFixed(1) +
+                     ' ' + ((i + 1) * step).toFixed(1) + ',' + base;
             }
+
+            // лампочки вдоль нити: y считаем по той же дуге, поэтому каждая
+            // висит ровно там, где проходит провод
+            var bulbGap = narrow ? 46 : 58;
+            var m = Math.max(4, Math.round(w / bulbGap));
+            var gap = w / m;
+            var bulbs = '';
+            for (var j = 0; j < m; j++) {
+                var bx = (j + 0.5) * gap;
+                var si = Math.floor(bx / step);
+                var t = Math.min(1, Math.max(0, (bx - si * step) / step));
+                var by = base + 4 * sag * t * (1 - t);
+                var c = cols[j % cols.length];
+                var delay = ((j % 6) * 0.38).toFixed(2);
+                var X = bx.toFixed(1), Y = by.toFixed(1);
+                var body = 'M' + (bx - 3.1).toFixed(1) + ',' + (by + 4.3).toFixed(1) +
+                    ' a3.1,3.1 0 1,1 6.2,0 c0,3.6 -1.5,6.3 -3.1,6.3 c-1.6,0 -3.1,-2.7 -3.1,-6.3 z';
+                bulbs +=
+                    '<g class="nx-bulb" style="color:' + c + ';animation-delay:' + delay + 's">' +
+                        '<circle class="nx-halo" cx="' + X + '" cy="' + (by + 8).toFixed(1) + '" r="' + (narrow ? 11 : 13) + '" fill="url(#nxGlowG)"/>' +
+                        '<line x1="' + X + '" y1="' + Y + '" x2="' + X + '" y2="' + (by + 2.2).toFixed(1) + '" stroke="rgba(203,213,225,.5)" stroke-width=".9"/>' +
+                        '<rect x="' + (bx - 1.5).toFixed(1) + '" y="' + (by + 1.6).toFixed(1) + '" width="3" height="3.4" rx="1.1" fill="#0b1120" stroke="rgba(148,163,184,.6)" stroke-width=".45"/>' +
+                        '<path d="' + body + '" fill="currentColor"/>' +
+                        '<path d="' + body + '" fill="url(#nxShadeG)"/>' +
+                        '<ellipse cx="' + (bx - 1).toFixed(1) + '" cy="' + (by + 6.4).toFixed(1) + '" rx=".9" ry="1.5" fill="#fff" opacity=".85"/>' +
+                    '</g>';
+            }
+
+            // лёгкое отражение нити на «стекле» шапки — гирлянда перестаёт
+            // выглядеть наклейкой поверх интерфейса
+            g.innerHTML =
+                '<svg width="' + w + '" height="30" viewBox="0 0 ' + w + ' 30" aria-hidden="true">' +
+                    '<defs>' +
+                        '<radialGradient id="nxGlowG">' +
+                            '<stop offset="0" stop-color="currentColor" stop-opacity=".85"/>' +
+                            '<stop offset="45%" stop-color="currentColor" stop-opacity=".30"/>' +
+                            '<stop offset="100%" stop-color="currentColor" stop-opacity="0"/>' +
+                        '</radialGradient>' +
+                        '<linearGradient id="nxShadeG" x1="0" y1="0" x2="0" y2="1">' +
+                            '<stop offset="0" stop-color="#000" stop-opacity="0"/>' +
+                            '<stop offset="48%" stop-color="#000" stop-opacity=".05"/>' +
+                            '<stop offset="100%" stop-color="#000" stop-opacity=".55"/>' +
+                        '</linearGradient>' +
+                    '</defs>' +
+                    '<path d="' + d + '" fill="none" stroke="rgba(203,213,225,.42)" stroke-width="1"/>' +
+                    bulbs +
+                '</svg>';
         }
         function nxDecoBuild(kind) {
             var old = document.getElementById('nx-deco');

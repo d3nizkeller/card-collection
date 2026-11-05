@@ -1287,9 +1287,13 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 
 /* --- анимационный слой: частицы, гирлянда, украшения --- */
 #nx-snow{position:fixed;left:0;top:0;z-index:55;pointer-events:none;display:block}
-#nx-garland{position:fixed;left:0;right:0;top:0;height:13px;z-index:56;pointer-events:none;display:flex;align-items:flex-start;justify-content:space-around;padding:0 3px;overflow:hidden}
-#nx-garland i{width:6px;height:6px;margin-top:1px;border-radius:50%;animation:nxBulb 2.4s ease-in-out infinite}
-@keyframes nxBulb{0%,100%{opacity:.32;transform:scale(.8)}50%{opacity:1;transform:scale(1.18)}}
+/* b539: гирлянда — SVG-нить с провисом, патронами и лампочками. Свет «дышит»
+   прозрачностью ореола (её считает композитор), поэтому 20+ лампочек не стоят
+   почти ничего даже на телефоне. */
+#nx-garland{position:fixed;left:0;right:0;top:0;height:30px;z-index:56;pointer-events:none;overflow:hidden}
+#nx-garland svg{display:block;width:100%;height:30px}
+#nx-garland .nx-halo{opacity:.6;animation:nxHalo 3.8s ease-in-out infinite}
+@keyframes nxHalo{0%,100%{opacity:.26}40%{opacity:.95}58%{opacity:.5}72%{opacity:.78}}
 
 #nx-deco{position:fixed;inset:0;z-index:54;pointer-events:none;overflow:hidden}
 #nx-deco span{position:absolute;line-height:1;filter:drop-shadow(0 6px 14px rgba(2,6,23,.75));will-change:transform}
@@ -1490,6 +1494,6 @@ html[data-nx-theme="autumn"] ::selection{background:rgba(245,158,11,.4)}
 /* Уважаем системную настройку «меньше движения»: тема остаётся,
    но мигание и качание украшений выключается. */
 @media (prefers-reduced-motion: reduce){
-    #nx-garland i,#nx-deco span{animation:none !important}
+    #nx-garland .nx-halo,#nx-deco span{animation:none !important}
     #tab-studio .nx-theme-tile{transition:none}
 }
