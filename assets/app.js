@@ -20672,20 +20672,54 @@ function nxToggle3d() {
         function renderScratch() { renderScratchUI(); }
         // ============ /b519 ============
         // ==========================================================================
-        // b537: ВНЕШНИЙ ВИД ИГРЫ (Студия → «Расписание» → «Внешний вид игры»)
-        // Три оформления сайта: стандартное (как было), новогоднее (снег,
-        // гирлянда, морозный фон, украшения) и праздничное (золото, конфетти,
-        // фейерверк). Выбор хранится на устройстве: nx_theme + nx_theme_fx.
-        // Анимация монтируется ТОЛЬКО в активной теме и снимается при возврате
-        // к стандартной — обычный вид не тратит ни одного лишнего кадра.
-        // Предпросмотр без сохранения: index.html?theme=newyear
+        // ВНЕШНИЙ ВИД ИГРЫ (b537 → b538): 10 оформлений сайта
+        // Студия → «Расписание» → «Внешний вид игры». Выбор живёт на устройстве
+        // (localStorage: nx_theme, nx_theme_fx) и навешивается атрибутом
+        // data-nx-theme на <html>; предпросмотр без сохранения — ?theme=space
+        // Стандартная тема не рисует ничего: ни канваса, ни гирлянды, ни украшений.
+        // Каждая тема = фон (CSS) + частицы (один canvas) + гирлянда + 6 эмодзи
+        // по краям; всё это монтируется только в активной теме.
         // ==========================================================================
         var NX_THEMES = {
-            standard: { name: 'Стандартный', ico: '🌙', sub: 'как сейчас' },
-            newyear: { name: 'Новогодний', ico: '❄️', sub: 'снег, гирлянда' },
-            festive: { name: 'Праздничный', ico: '🎉', sub: 'золото, конфетти' }
+            standard:  { name: 'Стандартный', ico: '🌙', sub: 'как сейчас', meta: '#020617' },
+            newyear:   { name: 'Новогодний', ico: '❄️', sub: 'снег', meta: '#050a18' },
+            festive:   { name: 'Праздничный', ico: '🎉', sub: 'конфетти', meta: '#150a14' },
+            halloween: { name: 'Хэллоуин', ico: '🎃', sub: 'летучие мыши', meta: '#140611' },
+            love:      { name: 'Любовь', ico: '💖', sub: 'сердечки', meta: '#1c0713' },
+            space:     { name: 'Космос', ico: '🌌', sub: 'звёзды', meta: '#050514' },
+            ocean:     { name: 'Океан', ico: '🌊', sub: 'пузыри', meta: '#02131c' },
+            cyber:     { name: 'Киберпанк', ico: '⚡', sub: 'неон', meta: '#06060e' },
+            sakura:    { name: 'Сакура', ico: '🌸', sub: 'лепестки', meta: '#170a15' },
+            autumn:    { name: 'Осень', ico: '🍂', sub: 'листья', meta: '#150d05' }
         };
-        var NX_THEME_META = { standard: '#020617', newyear: '#050a18', festive: '#150a14' };
+        // b538: настройки частиц для каждой темы. shape — как рисуется частица,
+        // colors — палитра, size — размер, vy — скорость по вертикали (минус = вверх,
+        // так плывут пузыри в «Океане»), sway — амплитуда качания, dens — плотность.
+        // garland — цвета лампочек гирлянды сверху.
+        var NX_FX = {
+            newyear: { shape: 'dot', colors: ['#ffffff', '#a5f3fc', '#e0f2fe'], size: [0.8, 3.0], vy: [16, 56], sway: 12, alpha: [0.45, 0.95], dens: 1, garland: ['#f87171', '#fbbf24', '#34d399', '#60a5fa'] },
+            festive: { shape: 'rect', colors: ['#fbbf24', '#f472b6', '#34d399', '#a78bfa', '#f87171', '#38bdf8', '#fde68a'], size: [3, 8], vy: [34, 96], sway: 14, alpha: [0.7, 1], dens: 0.8, garland: ['#fbbf24', '#fde68a', '#f472b6'] },
+            halloween: { shape: 'bat', colors: ['#f97316', '#c084fc', '#fbbf24', '#a78bfa'], size: [5, 11], vy: [22, 60], sway: 26, alpha: [0.72, 1], dens: 0.5, garland: ['#f97316', '#a855f7', '#fbbf24'] },
+            love: { shape: 'heart', colors: ['#fb7185', '#f472b6', '#fda4af', '#fecdd3'], size: [5, 11], vy: [14, 42], sway: 16, alpha: [0.7, 1], dens: 0.7, garland: ['#fb7185', '#f472b6', '#fecdd3'] },
+            space: { shape: 'star', colors: ['#e0e7ff', '#a5b4fc', '#f0abfc', '#67e8f9', '#ffffff'], size: [1.2, 3.6], vy: [4, 20], sway: 5, alpha: [0.35, 1], dens: 1.15, twinkle: true, garland: ['#a5b4fc', '#67e8f9', '#f0abfc'] },
+            ocean: { shape: 'bubble', colors: ['#67e8f9', '#a5f3fc', '#bae6fd', '#7dd3fc'], size: [2, 7], vy: [-46, -14], sway: 10, alpha: [0.4, 0.85], dens: 0.85, garland: ['#22d3ee', '#67e8f9', '#bae6fd'] },
+            cyber: { shape: 'bolt', colors: ['#22d3ee', '#f472b6', '#a3e635', '#e879f9'], size: [6, 13], vy: [50, 130], sway: 2, alpha: [0.7, 1], dens: 0.42, garland: ['#22d3ee', '#f472b6', '#a3e635'] },
+            sakura: { shape: 'petal', colors: ['#fbcfe8', '#f9a8d4', '#fda4af', '#fecdd3'], size: [4, 9], vy: [12, 34], sway: 28, alpha: [0.75, 1], dens: 0.75, garland: ['#f9a8d4', '#fbcfe8', '#fda4af'] },
+            autumn: { shape: 'leaf', colors: ['#f59e0b', '#d97706', '#b45309', '#ea580c', '#ca8a04'], size: [5, 11], vy: [20, 52], sway: 30, alpha: [0.8, 1], dens: 0.65, garland: ['#f59e0b', '#ea580c', '#ca8a04'] }
+        };
+        // украшения по краям: [слева-верх, слева-низ, справа-верх, справа-низ, низ-слева, низ-справа]
+        var NX_DECO = {
+            newyear: ['❄', '❅', '✦', '❄', '🎄', '🎁'],
+            festive: ['🎉', '✦', '🎊', '✧', '🎈', '🎁'],
+            halloween: ['🦇', '✦', '🕷', '✧', '🎃', '🍬'],
+            love: ['💖', '✦', '💘', '✧', '🌹', '💌'],
+            space: ['🪐', '✦', '☄', '✧', '🚀', '👾'],
+            ocean: ['🐚', '✦', '🐠', '✧', '🐙', '🦀'],
+            cyber: ['⚡', '✦', '🤖', '✧', '💾', '🔌'],
+            sakura: ['🌸', '✿', '🏮', '✧', '🎋', '🍡'],
+            autumn: ['🍁', '✦', '🍂', '✧', '🍄', '🌰']
+        };
+        var NX_THEME_KEYS = Object.keys(NX_THEMES).join('|');
         var nxTheme = 'standard';
         var nxThemeFx = true;
         var nxThemeUrlLock = false; // тема пришла из ссылки ?theme=… — не сохраняем
@@ -20694,7 +20728,7 @@ function nxToggle3d() {
             try { var t = LS.getItem('nx_theme'); if (NX_THEMES[t]) nxTheme = t; } catch (e) {}
             try { nxThemeFx = LS.getItem('nx_theme_fx') !== '0'; } catch (e) {}
             try {
-                var m = /[?&]theme=(standard|newyear|festive)(?:&|$)/.exec(location.search || '');
+                var m = new RegExp('[?&]theme=(' + NX_THEME_KEYS + ')(?:&|$)').exec(location.search || '');
                 if (m) { nxTheme = m[1]; nxThemeUrlLock = true; }
             } catch (e) {}
         }
@@ -20709,7 +20743,8 @@ function nxToggle3d() {
                 html.setAttribute('data-nx-theme', nxTheme);
                 html.classList.toggle('nx-theme-fx', nxTheme !== 'standard' && !!nxThemeFx);
                 var mt = document.querySelector('meta[name="theme-color"]');
-                if (mt) mt.setAttribute('content', NX_THEME_META[nxTheme] || '#020617');
+                var T = NX_THEMES[nxTheme] || NX_THEMES.standard;
+                if (mt) mt.setAttribute('content', T.meta || '#020617');
             } catch (e) {}
         }
         function nxThemePick(t) {
@@ -20721,9 +20756,8 @@ function nxToggle3d() {
             nxThemeMount();
             nxThemeSyncUI();
             try {
-                showToast(t === 'standard' ? '🌙 Стандартный вид возвращён'
-                    : (t === 'newyear' ? '❄️ Новогодний вид: снег, гирлянда и украшения сайта'
-                                       : '🎉 Праздничный вид: золото, конфетти и фейерверк'), 'success');
+                var T = NX_THEMES[t];
+                showToast(T.ico + ' Оформление: ' + T.name, 'success');
             } catch (e) {}
         }
         function nxThemeFxToggle(on) {
@@ -20747,7 +20781,7 @@ function nxToggle3d() {
                     var T = NX_THEMES[nxTheme] || NX_THEMES.standard;
                     var tail = nxTheme === 'standard'
                         ? ' — обычное оформление, анимаций нет.'
-                        : (nxThemeFx ? ' — снег и украшения включены.' : ' — только цвета, без анимации.');
+                        : (nxThemeFx ? ' — частицы и украшения включены.' : ' — только цвета, без анимации.');
                     st.innerHTML = 'Сейчас: <b class="text-slate-200">' + T.ico + ' ' + T.name + '</b>' + tail
                         + (nxThemeUrlLock ? ' <span class="text-amber-300">(предпросмотр по ссылке, не сохранено)</span>' : '');
                 }
@@ -20758,7 +20792,7 @@ function nxToggle3d() {
             try {
                 if (nxTheme === 'standard' || !nxThemeFx) { nxThemeKillFx(); return; }
                 nxDecoBuild(nxTheme);
-                nxGarlandBuild();
+                nxGarlandBuild(nxTheme);
                 nxSnowStart(nxTheme);
             } catch (e) {}
         }
@@ -20769,7 +20803,7 @@ function nxToggle3d() {
                 if (el && el.parentNode) el.parentNode.removeChild(el);
             });
         }
-        function nxGarlandBuild() {
+        function nxGarlandBuild(kind) {
             var g = document.getElementById('nx-garland');
             if (!g) {
                 g = document.createElement('div');
@@ -20777,26 +20811,39 @@ function nxToggle3d() {
                 g.setAttribute('aria-hidden', 'true');
                 document.body.appendChild(g);
             }
+            var fx = NX_FX[kind] || NX_FX.newyear;
+            var cols = fx.garland || ['#f87171', '#fbbf24', '#34d399', '#60a5fa'];
             var n = Math.max(12, Math.min(36, Math.round(window.innerWidth / 44)));
-            var html = '';
-            for (var i = 0; i < n; i++) html += '<i></i>';
-            if (g.innerHTML !== html) g.innerHTML = html;
+            g.innerHTML = '';
+            for (var i = 0; i < n; i++) {
+                var b = document.createElement('i');
+                var c = cols[i % cols.length];
+                b.style.background = c;
+                b.style.boxShadow = '0 0 9px 2px ' + c;
+                b.style.animationDelay = ((i % 5) * 0.28).toFixed(2) + 's';
+                g.appendChild(b);
+            }
         }
         function nxDecoBuild(kind) {
             var old = document.getElementById('nx-deco');
             if (old && old.parentNode) old.parentNode.removeChild(old);
+            var set = NX_DECO[kind] || NX_DECO.newyear;
             var d = document.createElement('div');
             d.id = 'nx-deco';
             d.setAttribute('aria-hidden', 'true');
-            d.innerHTML = (kind === 'festive')
-                ? '<span class="nx-d-l1">🎉</span><span class="nx-d-l2">✦</span><span class="nx-d-r1">🎊</span><span class="nx-d-r2">✦</span><span class="nx-d-bl">🎈</span><span class="nx-d-br">🎁</span>'
-                : '<span class="nx-d-l1">❄</span><span class="nx-d-l2">❅</span><span class="nx-d-r1">✦</span><span class="nx-d-r2">❄</span><span class="nx-d-bl">🎄</span><span class="nx-d-br">🎁</span>';
+            d.innerHTML =
+                '<span class="nx-d-l1">' + set[0] + '</span>' +
+                '<span class="nx-d-l2">' + set[1] + '</span>' +
+                '<span class="nx-d-r1">' + set[2] + '</span>' +
+                '<span class="nx-d-r2">' + set[3] + '</span>' +
+                '<span class="nx-d-bl">' + set[4] + '</span>' +
+                '<span class="nx-d-br">' + set[5] + '</span>';
             document.body.appendChild(d);
         }
-        // ---- снег (новогодний) и конфетти (праздничный): один canvas ----
+        // ---- частицы: снег, конфетти, сердечки, звёзды, пузыри, молнии, лепестки, листья ----
         var nxSnowRaf = 0, nxSnowParts = [], nxSnowCtx = null, nxSnowCv = null, nxSnowDpr = 1, nxSnowPrev = 0, nxSnowKind = 'newyear';
         function nxSnowStart(kind) {
-            nxSnowKind = (kind === 'festive') ? 'festive' : 'newyear';
+            nxSnowKind = NX_FX[kind] ? kind : 'newyear';
             nxSnowStop();
             try {
                 var cv = document.createElement('canvas');
@@ -20826,38 +20873,34 @@ function nxToggle3d() {
             nxSnowBuild();
         }
         function nxSnowBuild() {
+            var fx = NX_FX[nxSnowKind] || NX_FX.newyear;
             var w = window.innerWidth, h = window.innerHeight;
-            // b399: на слабом устройстве частиц втрое меньше — снег остаётся, лаги уходят
+            // b399: на слабом устройстве частиц втрое меньше — эффект остаётся, лаги уходят
             var low = (typeof nxLowPow !== 'undefined') && nxLowPow;
-            var n = low ? 22 : Math.max(18, Math.min(84, Math.round(w * h / 26000)));
-            if (nxSnowKind === 'festive') n = Math.max(16, Math.round(n * 0.8));
+            var base = low ? 22 : Math.max(18, Math.min(84, Math.round(w * h / 26000)));
+            var n = Math.max(12, Math.round(base * (fx.dens || 1)));
+            if (low) n = Math.min(n, 30);
             nxSnowParts.length = 0;
             for (var i = 0; i < n; i++) nxSnowParts.push(nxSnowPart(true));
         }
         function nxSnowPart(spread) {
+            var fx = NX_FX[nxSnowKind] || NX_FX.newyear;
             var w = window.innerWidth, h = window.innerHeight;
-            var p = {
+            var up = (fx.vy[0] + fx.vy[1]) < 0; // пузыри в «Океане» плывут снизу вверх
+            var spin = (fx.shape === 'rect' || fx.shape === 'petal' || fx.shape === 'leaf' || fx.shape === 'bat') ? 3.4 : 0.5;
+            return {
                 x: Math.random() * w,
-                y: spread ? Math.random() * h : -24,
+                y: spread ? Math.random() * h : (up ? h + 26 : -26),
                 ph: Math.random() * 6.283,
+                tw: Math.random() * 6.283,
                 rot: Math.random() * 6.283,
-                vr: (Math.random() - 0.5) * 3.2
+                vr: (Math.random() - 0.5) * spin,
+                s: fx.size[0] + Math.random() * (fx.size[1] - fx.size[0]),
+                vy: fx.vy[0] + Math.random() * (fx.vy[1] - fx.vy[0]),
+                vx: -6 + Math.random() * 12,
+                a: fx.alpha[0] + Math.random() * (fx.alpha[1] - fx.alpha[0]),
+                color: fx.colors[Math.floor(Math.random() * fx.colors.length)]
             };
-            if (nxSnowKind === 'festive') {
-                p.w = 3 + Math.random() * 5;
-                p.h = p.w * (0.5 + Math.random() * 0.7);
-                p.vy = 34 + Math.random() * 62;
-                p.vx = -12 + Math.random() * 24;
-                p.color = ['#fbbf24', '#f472b6', '#34d399', '#a78bfa', '#f87171', '#38bdf8', '#fde68a'][Math.floor(Math.random() * 7)];
-                p.a = 0.7 + Math.random() * 0.3;
-            } else {
-                p.r = 0.8 + Math.random() * 2.2;
-                p.vy = 16 + Math.random() * 40 + p.r * 6;
-                p.vx = -8 + Math.random() * 16;
-                p.color = Math.random() < 0.16 ? '#a5f3fc' : '#ffffff';
-                p.a = 0.45 + Math.random() * 0.5;
-            }
-            return p;
         }
         function nxSnowFrame(ts) {
             nxSnowRaf = requestAnimationFrame(nxSnowFrame);
@@ -20869,38 +20912,101 @@ function nxToggle3d() {
             nxSnowPrev = ts;
             var k = dt / 1000;
             var w = window.innerWidth, h = window.innerHeight;
+            var fx = NX_FX[nxSnowKind] || NX_FX.newyear;
             ctx.setTransform(nxSnowDpr, 0, 0, nxSnowDpr, 0, 0);
             ctx.clearRect(0, 0, w, h);
             for (var i = 0; i < nxSnowParts.length; i++) {
                 var p = nxSnowParts[i];
                 p.ph += k * 1.1;
-                p.x += p.vx * k + Math.sin(p.ph) * 12 * k;
+                p.x += p.vx * k + Math.sin(p.ph) * (fx.sway || 12) * k;
                 p.y += p.vy * k;
-                if (nxSnowKind === 'festive') p.rot += p.vr * k;
-                if (p.y > h + 26 || p.x < -40 || p.x > w + 40) { nxSnowParts[i] = nxSnowPart(false); continue; }
-                ctx.globalAlpha = p.a;
-                if (nxSnowKind === 'festive') {
-                    ctx.save();
-                    ctx.translate(p.x, p.y);
-                    ctx.rotate(p.rot);
-                    ctx.fillStyle = p.color;
-                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-                    ctx.restore();
-                } else {
-                    ctx.beginPath();
-                    ctx.fillStyle = p.color;
-                    ctx.arc(p.x, p.y, p.r, 0, 6.283);
-                    ctx.fill();
-                }
+                p.rot += p.vr * k;
+                if (fx.twinkle) p.tw += k * 2.6;
+                var out = (p.vy < 0) ? (p.y < -34) : (p.y > h + 34);
+                if (out || p.x < -70 || p.x > w + 70) { nxSnowParts[i] = nxSnowPart(false); continue; }
+                nxDrawPart(ctx, p, fx);
             }
             ctx.globalAlpha = 1;
+        }
+        function nxDrawPart(ctx, p, fx) {
+            var s = p.s, shape = fx.shape;
+            ctx.globalAlpha = fx.twinkle ? p.a * (0.55 + 0.45 * Math.sin(p.tw)) : p.a;
+            if (shape === 'dot') {
+                ctx.beginPath(); ctx.fillStyle = p.color;
+                ctx.arc(p.x, p.y, s, 0, 6.283); ctx.fill();
+                return;
+            }
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.strokeStyle = p.color;
+            if (shape === 'rect') {
+                ctx.fillRect(-s / 2, -s * 0.35, s, s * 0.7);
+            } else if (shape === 'heart') {
+                var k1 = s / 10;
+                ctx.beginPath();
+                ctx.moveTo(0, 3.4 * k1);
+                ctx.bezierCurveTo(-6.2 * k1, -1.2 * k1, -4.4 * k1, -6.4 * k1, 0, -3.1 * k1);
+                ctx.bezierCurveTo(4.4 * k1, -6.4 * k1, 6.2 * k1, -1.2 * k1, 0, 3.4 * k1);
+                ctx.fill();
+            } else if (shape === 'star') {
+                ctx.beginPath();
+                for (var j = 0; j < 10; j++) {
+                    var r = (j % 2) ? s * 0.42 : s;
+                    var ang = -Math.PI / 2 + j * Math.PI / 5;
+                    if (j) ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+                    else ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r);
+                }
+                ctx.closePath();
+                ctx.fill();
+            } else if (shape === 'bubble') {
+                ctx.lineWidth = Math.max(1, s * 0.26);
+                ctx.beginPath(); ctx.arc(0, 0, s, 0, 6.283); ctx.stroke();
+                ctx.globalAlpha *= 0.5;
+                ctx.beginPath(); ctx.arc(-s * 0.28, -s * 0.28, s * 0.3, 0, 6.283); ctx.fill();
+            } else if (shape === 'petal') {
+                ctx.beginPath();
+                ctx.ellipse(0, 0, s * 0.45, s * 0.95, 0, 0, 6.283);
+                ctx.fill();
+            } else if (shape === 'leaf') {
+                ctx.beginPath();
+                ctx.ellipse(0, 0, s * 0.52, s * 1.02, 0, 0, 6.283);
+                ctx.fill();
+                ctx.globalAlpha *= 0.55;
+                ctx.strokeStyle = 'rgba(0,0,0,.45)';
+                ctx.lineWidth = Math.max(0.7, s * 0.1);
+                ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.stroke();
+            } else if (shape === 'bat') {
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(-s * 0.9, -s * 0.75, -s * 1.55, -s * 0.15);
+                ctx.quadraticCurveTo(-s * 0.9, s * 0.2, -s * 0.28, s * 0.28);
+                ctx.quadraticCurveTo(-s * 0.12, s * 0.55, 0, s * 0.6);
+                ctx.quadraticCurveTo(s * 0.12, s * 0.55, s * 0.28, s * 0.28);
+                ctx.quadraticCurveTo(s * 0.9, s * 0.2, s * 1.55, -s * 0.15);
+                ctx.quadraticCurveTo(s * 0.9, -s * 0.75, 0, 0);
+                ctx.closePath();
+                ctx.fill();
+            } else if (shape === 'bolt') {
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.28, -s);
+                ctx.lineTo(s * 0.34, -s * 0.12);
+                ctx.lineTo(s * 0.02, 0);
+                ctx.lineTo(s * 0.42, s);
+                ctx.lineTo(-s * 0.22, s * 0.16);
+                ctx.lineTo(s * 0.08, 0.04 * s);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
         }
         var nxThemeRszTimer = 0;
         window.addEventListener('resize', function () {
             if (!nxSnowCv) return;
             clearTimeout(nxThemeRszTimer); // телефон повернули — пересобираем слой один раз
             nxThemeRszTimer = setTimeout(function () {
-                try { nxSnowResize(); nxGarlandBuild(); } catch (e) {}
+                try { nxSnowResize(); nxGarlandBuild(nxTheme); } catch (e) {}
             }, 250);
         });
         // запуск: тема применяется сразу при разборе скрипта, декор — когда есть body

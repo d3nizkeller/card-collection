@@ -1254,45 +1254,41 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 }
 
 /* ==========================================================================
-   b537: ВНЕШНИЙ ВИД ИГРЫ — «Стандартный / Новогодний / Праздничный»
+   b538: ВНЕШНИЙ ВИД ИГРЫ — 10 оформлений сайта
    Переключатель: Студия → вкладка «Расписание» → «Внешний вид игры».
    Настройка живёт на устройстве (localStorage: nx_theme, nx_theme_fx) и
    навешивается атрибутом data-nx-theme на <html>. Для стандартной темы тут
    НЕТ ни одного правила: у обычного игрока не появляется ни лишнего кадра,
-   ни лишней анимации. Снег/конфетти рисуются одним canvas (id="nx-snow"),
-   гирлянда и украшения — лёгкими DOM-элементами, которые создаются только
-   при включённой теме и удаляются при возврате к стандартной.
+   ни лишней анимации. Частицы (снег, конфетти, сердечки, звёзды, пузыри,
+   молнии, лепестки, листья) рисуются одним canvas (id="nx-snow"), гирлянда и
+   украшения — лёгкими DOM-элементами, которые создаются только при включённой
+   теме и удаляются при возврате к стандартной.
    ========================================================================== */
 
 /* --- плитки выбора темы в Студии ---
    Специфичность #tab-studio .nx-theme-tile обязательна: общее правило
    «все кнопки Студии — Liquid Glass» (#tab-studio button) иначе превращает
    плитки в круглые пилюли и рисует им глянцевый блик. */
-#tab-studio .nx-theme-tile{position:relative;display:flex;flex-direction:column;gap:2px;padding:9px 10px;border-radius:14px;border:1px solid #334155;background:linear-gradient(160deg,#101a2e,#0b1120);text-align:left;cursor:pointer;overflow:hidden;box-shadow:none;text-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease}
+#nx-theme-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-width:760px}
+@media (min-width:480px){#nx-theme-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:900px){#nx-theme-list{grid-template-columns:repeat(5,minmax(0,1fr))}}
+#tab-studio .nx-theme-tile{position:relative;display:flex;flex-direction:column;gap:1px;min-width:0;padding:7px 9px;border-radius:13px;border:1px solid #334155;background:linear-gradient(160deg,#101a2e,#0b1120);text-align:left;cursor:pointer;overflow:hidden;box-shadow:none;text-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease}
 #tab-studio .nx-theme-tile::before{content:none}
 #tab-studio .nx-theme-tile:hover{transform:translateY(-1px);border-color:#475569;box-shadow:0 8px 20px rgba(2,6,23,.45)}
 #tab-studio .nx-theme-tile:active{transform:scale(.98)}
-#tab-studio .nx-theme-tile .nx-tt-ico{font-size:17px;line-height:1.15}
-#tab-studio .nx-theme-tile .nx-tt-name{font-size:10.5px;font-weight:900;color:#e2e8f0;line-height:1.15}
-#tab-studio .nx-theme-tile .nx-tt-sub{font-size:9px;font-weight:700;color:#64748b;line-height:1.3}
+#tab-studio .nx-theme-tile .nx-tt-ico{font-size:15px;line-height:1.2}
+#tab-studio .nx-theme-tile .nx-tt-name{font-size:10px;font-weight:900;color:#e2e8f0;line-height:1.18}
+#tab-studio .nx-theme-tile .nx-tt-sub{font-size:8.5px;font-weight:700;color:#64748b;line-height:1.3}
 #tab-studio .nx-theme-tile.is-on{border-color:#a78bfa;background:linear-gradient(160deg,#221a4d,#14122b);box-shadow:0 0 0 1px rgba(167,139,250,.5),0 8px 22px rgba(124,58,237,.3)}
 #tab-studio .nx-theme-tile.is-on .nx-tt-name{color:#fff}
 #tab-studio .nx-theme-tile.is-on .nx-tt-sub{color:#c4b5fd}
-#tab-studio .nx-theme-tile.is-on::after{content:'\2713';position:absolute;top:5px;right:8px;font-size:10px;font-weight:900;color:#c4b5fd}
+#tab-studio .nx-theme-tile.is-on::after{content:'\2713';position:absolute;top:4px;right:6px;font-size:9px;font-weight:900;color:#c4b5fd}
 #nx-theme-fx:disabled{opacity:.45}
-/* на широком экране плитки не растягиваются на пол-страницы */
-#nx-theme-list{max-width:760px}
 
-/* --- анимационный слой: снег/конфетти, гирлянда, украшения --- */
+/* --- анимационный слой: частицы, гирлянда, украшения --- */
 #nx-snow{position:fixed;left:0;top:0;z-index:55;pointer-events:none;display:block}
 #nx-garland{position:fixed;left:0;right:0;top:0;height:13px;z-index:56;pointer-events:none;display:flex;align-items:flex-start;justify-content:space-around;padding:0 3px;overflow:hidden}
-#nx-garland i{width:6px;height:6px;margin-top:1px;border-radius:50%;background:#f87171;box-shadow:0 0 9px 2px rgba(248,113,113,.8);animation:nxBulb 2.4s ease-in-out infinite}
-#nx-garland i:nth-child(4n+2){background:#fbbf24;box-shadow:0 0 9px 2px rgba(251,191,36,.8);animation-delay:.35s}
-#nx-garland i:nth-child(4n+3){background:#34d399;box-shadow:0 0 9px 2px rgba(52,211,153,.8);animation-delay:.7s}
-#nx-garland i:nth-child(4n){background:#60a5fa;box-shadow:0 0 9px 2px rgba(96,165,250,.8);animation-delay:1.05s}
-html[data-nx-theme="festive"] #nx-garland i{background:#fbbf24;box-shadow:0 0 10px 2px rgba(251,191,36,.85)}
-html[data-nx-theme="festive"] #nx-garland i:nth-child(3n+2){background:#f472b6;box-shadow:0 0 10px 2px rgba(244,114,182,.8);animation-delay:.45s}
-html[data-nx-theme="festive"] #nx-garland i:nth-child(3n){background:#fde68a;box-shadow:0 0 12px 3px rgba(253,230,138,.9);animation-delay:.9s}
+#nx-garland i{width:6px;height:6px;margin-top:1px;border-radius:50%;animation:nxBulb 2.4s ease-in-out infinite}
 @keyframes nxBulb{0%,100%{opacity:.32;transform:scale(.8)}50%{opacity:1;transform:scale(1.18)}}
 
 #nx-deco{position:fixed;inset:0;z-index:54;pointer-events:none;overflow:hidden}
@@ -1306,7 +1302,7 @@ html[data-nx-theme="festive"] #nx-garland i:nth-child(3n){background:#fde68a;box
 @keyframes nxDrift{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-14px) rotate(6deg)}}
 @keyframes nxBob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-10px) rotate(4deg)}}
 
-/* --- «Новогодний»: ночное небо со звёздами, лёд на шапке, морозная кромка --- */
+/* --- 1. «Новогодний»: ночное небо со звёздами, лёд на шапке --- */
 html[data-nx-theme="newyear"] body{
     background-color:#04070f !important;
     background-image:
@@ -1327,7 +1323,7 @@ html[data-nx-theme="newyear"] header.sticky{
 }
 html[data-nx-theme="newyear"] ::selection{background:rgba(56,189,248,.35)}
 
-/* --- «Праздничный»: тёплое золото с рубином, конфетти, фейерверк --- */
+/* --- 2. «Праздничный»: тёплое золото с рубином, конфетти --- */
 html[data-nx-theme="festive"] body{
     background-color:#0d0611 !important;
     background-image:
@@ -1344,6 +1340,142 @@ html[data-nx-theme="festive"] header.sticky{
     box-shadow:0 8px 30px rgba(251,191,36,.14),inset 0 -1px 0 rgba(253,230,138,.24);
 }
 html[data-nx-theme="festive"] ::selection{background:rgba(251,191,36,.4)}
+
+/* --- 3. «Хэллоуин»: тыквенный огонь снизу и фиолетовая мгла сверху --- */
+html[data-nx-theme="halloween"] body{
+    background-color:#0e050b !important;
+    background-image:
+        radial-gradient(920px 540px at 84% 112%, rgba(249,115,22,.24), transparent 62%),
+        radial-gradient(780px 480px at 10% -8%, rgba(168,85,247,.22), transparent 60%),
+        radial-gradient(520px 320px at 50% 104%, rgba(251,191,36,.10), transparent 65%),
+        radial-gradient(1.6px 1.6px at 62px 84px, rgba(253,186,116,.50), transparent 55%),
+        radial-gradient(1.4px 1.4px at 182px 38px, rgba(216,180,254,.45), transparent 55%),
+        linear-gradient(180deg,#120611 0%,#17081b 46%,#0a0409 100%);
+    background-size:auto,auto,auto,260px 260px,300px 300px,auto;
+    background-repeat:no-repeat,no-repeat,no-repeat,repeat,repeat,no-repeat;
+}
+html[data-nx-theme="halloween"] header.sticky{
+    background:rgba(23,8,19,.86);
+    border-bottom-color:rgba(249,115,22,.42);
+    box-shadow:0 8px 30px rgba(249,115,22,.16),inset 0 -1px 0 rgba(253,186,116,.24);
+}
+html[data-nx-theme="halloween"] ::selection{background:rgba(249,115,22,.42)}
+
+/* --- 4. «Любовь»: розовый закат и мягкое свечение --- */
+html[data-nx-theme="love"] body{
+    background-color:#170510 !important;
+    background-image:
+        radial-gradient(900px 560px at 50% -12%, rgba(244,114,182,.22), transparent 62%),
+        radial-gradient(760px 460px at 92% 8%, rgba(251,113,133,.18), transparent 58%),
+        radial-gradient(700px 460px at 4% 30%, rgba(236,72,153,.14), transparent 60%),
+        radial-gradient(1.4px 1.4px at 48px 56px, rgba(253,164,175,.45), transparent 55%),
+        linear-gradient(180deg,#1d0716 0%,#170611 48%,#0d0309 100%);
+    background-size:auto,auto,auto,260px 260px,auto;
+    background-repeat:no-repeat,no-repeat,no-repeat,repeat,no-repeat;
+}
+html[data-nx-theme="love"] header.sticky{
+    background:rgba(30,9,23,.86);
+    border-bottom-color:rgba(244,114,182,.42);
+    box-shadow:0 8px 30px rgba(244,114,182,.16),inset 0 -1px 0 rgba(254,205,211,.22);
+}
+html[data-nx-theme="love"] ::selection{background:rgba(244,114,182,.42)}
+
+/* --- 5. «Космос»: туманность, плотное звёздное поле --- */
+html[data-nx-theme="space"] body{
+    background-color:#03030c !important;
+    background-image:
+        radial-gradient(1100px 640px at 26% -10%, rgba(99,102,241,.26), transparent 60%),
+        radial-gradient(900px 560px at 84% 6%, rgba(168,85,247,.20), transparent 58%),
+        radial-gradient(760px 520px at 12% 88%, rgba(34,211,238,.14), transparent 60%),
+        radial-gradient(1.4px 1.4px at 30px 40px, rgba(255,255,255,.75), transparent 55%),
+        radial-gradient(1px 1px at 90px 130px, rgba(199,210,254,.65), transparent 55%),
+        radial-gradient(1.8px 1.8px at 150px 70px, rgba(240,171,252,.55), transparent 55%),
+        linear-gradient(180deg,#05051a 0%,#03030c 55%,#02020a 100%);
+    background-size:auto,auto,auto,180px 180px,240px 240px,300px 300px,auto;
+    background-repeat:no-repeat,no-repeat,no-repeat,repeat,repeat,repeat,no-repeat;
+}
+html[data-nx-theme="space"] header.sticky{
+    background:rgba(8,8,26,.86);
+    border-bottom-color:rgba(129,140,248,.4);
+    box-shadow:0 8px 30px rgba(99,102,241,.18),inset 0 -1px 0 rgba(199,210,254,.22);
+}
+html[data-nx-theme="space"] ::selection{background:rgba(129,140,248,.4)}
+
+/* --- 6. «Океан»: глубина, блики волн, пузыри снизу вверх --- */
+html[data-nx-theme="ocean"] body{
+    background-color:#01101a !important;
+    background-image:
+        radial-gradient(1000px 600px at 50% -18%, rgba(34,211,238,.30), transparent 62%),
+        radial-gradient(860px 520px at 88% 92%, rgba(14,165,233,.24), transparent 60%),
+        radial-gradient(720px 440px at 8% 74%, rgba(45,212,191,.18), transparent 60%),
+        radial-gradient(1.5px 1.5px at 56px 90px, rgba(165,243,252,.45), transparent 55%),
+        linear-gradient(180deg,#041c2a 0%,#02131f 46%,#010a12 100%);
+    background-size:auto,auto,auto,280px 280px,auto;
+    background-repeat:no-repeat,no-repeat,no-repeat,repeat,no-repeat;
+}
+html[data-nx-theme="ocean"] header.sticky{
+    background:rgba(4,24,36,.86);
+    border-bottom-color:rgba(34,211,238,.42);
+    box-shadow:0 8px 30px rgba(34,211,238,.16),inset 0 -1px 0 rgba(165,243,252,.22);
+}
+html[data-nx-theme="ocean"] ::selection{background:rgba(34,211,238,.4)}
+
+/* --- 7. «Киберпанк»: неоновая сетка и магентово-циановые всполохи --- */
+html[data-nx-theme="cyber"] body{
+    background-color:#05050c !important;
+    background-image:
+        radial-gradient(900px 560px at 10% -10%, rgba(34,211,238,.20), transparent 60%),
+        radial-gradient(900px 560px at 92% 4%, rgba(244,114,182,.20), transparent 60%),
+        repeating-linear-gradient(0deg, rgba(34,211,238,.055) 0 1px, transparent 1px 46px),
+        repeating-linear-gradient(90deg, rgba(244,114,182,.05) 0 1px, transparent 1px 46px),
+        linear-gradient(180deg,#06060f 0%,#04040a 55%,#020206 100%);
+    background-size:auto,auto,46px 46px,46px 46px,auto;
+    background-repeat:no-repeat,no-repeat,repeat,repeat,no-repeat;
+}
+html[data-nx-theme="cyber"] header.sticky{
+    background:rgba(7,7,16,.9);
+    border-bottom-color:rgba(34,211,238,.45);
+    box-shadow:0 8px 30px rgba(244,114,182,.15),inset 0 -1px 0 rgba(34,211,238,.28);
+}
+html[data-nx-theme="cyber"] ::selection{background:rgba(34,211,238,.35)}
+
+/* --- 8. «Сакура»: тёплая сливовая ночь и розовая дымка --- */
+html[data-nx-theme="sakura"] body{
+    background-color:#150a13 !important;
+    background-image:
+        radial-gradient(940px 560px at 20% -12%, rgba(249,168,212,.20), transparent 62%),
+        radial-gradient(860px 520px at 86% 6%, rgba(253,164,175,.16), transparent 60%),
+        radial-gradient(720px 460px at 50% 112%, rgba(190,24,93,.16), transparent 62%),
+        radial-gradient(1.4px 1.4px at 60px 70px, rgba(254,205,211,.40), transparent 55%),
+        linear-gradient(180deg,#1b0c18 0%,#150a13 50%,#0b0409 100%);
+    background-size:auto,auto,auto,260px 260px,auto;
+    background-repeat:no-repeat,no-repeat,no-repeat,repeat,no-repeat;
+}
+html[data-nx-theme="sakura"] header.sticky{
+    background:rgba(28,12,24,.86);
+    border-bottom-color:rgba(249,168,212,.42);
+    box-shadow:0 8px 30px rgba(249,168,212,.15),inset 0 -1px 0 rgba(254,205,211,.22);
+}
+html[data-nx-theme="sakura"] ::selection{background:rgba(249,168,212,.4)}
+
+/* --- 9. «Осень»: медовое золото и жжёная умбра --- */
+html[data-nx-theme="autumn"] body{
+    background-color:#120903 !important;
+    background-image:
+        radial-gradient(940px 560px at 82% -10%, rgba(245,158,11,.22), transparent 62%),
+        radial-gradient(860px 520px at 8% 10%, rgba(194,65,12,.20), transparent 60%),
+        radial-gradient(760px 480px at 50% 112%, rgba(202,138,4,.14), transparent 62%),
+        radial-gradient(1.5px 1.5px at 54px 66px, rgba(253,230,138,.40), transparent 55%),
+        linear-gradient(180deg,#160b04 0%,#120903 52%,#080401 100%);
+    background-size:auto,auto,auto,280px 280px,auto;
+    background-repeat:no-repeat,no-repeat,no-repeat,repeat,no-repeat;
+}
+html[data-nx-theme="autumn"] header.sticky{
+    background:rgba(26,14,5,.88);
+    border-bottom-color:rgba(245,158,11,.42);
+    box-shadow:0 8px 30px rgba(245,158,11,.15),inset 0 -1px 0 rgba(253,230,138,.24);
+}
+html[data-nx-theme="autumn"] ::selection{background:rgba(245,158,11,.4)}
 
 /* На телефоне украшения мельче и прижаты к самым краям — под палец не лезут */
 @media (max-width:640px){
