@@ -1291,6 +1291,18 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 #slots-fallback.nx-2d{max-width:400px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
 #grid-wrap.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr))}
 #lines-board.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr)); perspective:none; padding:10px}
+/* b554: 2D-стол тоже крутится — ячейки дрожат и размываются, как барабаны */
+.nx-2d.nx-spin > div{animation:nxReelSpin .16s linear infinite}
+.nx-2d.nx-spin > div img{filter:blur(1.4px)}
+@keyframes nxReelSpin{
+    0%{transform:translateY(-7%)}
+    50%{transform:translateY(7%)}
+    100%{transform:translateY(-7%)}
+}
+@media (prefers-reduced-motion: reduce){
+    .nx-2d.nx-spin > div{animation:none}
+    .nx-2d.nx-spin > div img{filter:none}
+}
 @media (max-width:420px){
     .nx-2d{padding:7px; gap:4px; border-radius:14px}
     .nx-2d > div{border-radius:6px}

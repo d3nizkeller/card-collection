@@ -9974,8 +9974,14 @@ function nxToggle3d() {
             slots.lastResult = res;
             try { SoundFX.play('click'); } catch (e) {}
             if (!slots.ready || slots.fallback) {
-                slotsRenderFallback(res);
-                setTimeout(() => slotsFinish(res, bet), 700);
+                const NS = slots.symbols.length || 1;
+                // b554: сначала «прокрутка» барабанов, потом результат
+                nx2dSpinLoop('slots-fallback', () => {
+                    slotsRenderFallback([0, 1, 2].map(() => Math.floor(Math.random() * NS)));
+                }, 700, () => {
+                    slotsRenderFallback(res);
+                    slotsFinish(res, bet);
+                });
                 return;
             }
             slots.spinning = true;
@@ -10097,6 +10103,22 @@ function nxToggle3d() {
             b = normBet(b);
             slots.bet = b;
             renderSlotsUI();
+        }
+        // b554: 2D-стол тоже должен «крутиться». Пока идёт спин, перебираем
+        // символы в ячейках (плюс дрожание/размытие из CSS), в конце — результат.
+        function nx2dSpinLoop(id, tick, ms, done) {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('nx-spin');
+            const t0 = Date.now();
+            const iv = setInterval(function () {
+                if (Date.now() - t0 >= ms) {
+                    clearInterval(iv);
+                    if (el) el.classList.remove('nx-spin');
+                    try { if (done) done(); } catch (e) {}
+                    return;
+                }
+                try { tick(); } catch (e) {}
+            }, 80);
         }
         function slotsRenderFallback(res) {
             const box = document.getElementById('slots-fallback');
@@ -10529,10 +10551,16 @@ function nxToggle3d() {
                 grid3dStartSpin();
             } else {
                 grid.phase3d = '';
-                grid.cells = Array.from({ length: GRID_COLS * GRID_ROWS }, () => gridRandSym());
-                const all = new Set(grid.cells.map((_, i) => i));
-                gridRenderCells(all, 'drop');
-                setTimeout(() => gridStep(bet), 700);
+                // b554: в 2D-столе карты сначала «крутятся», потом падают результатом
+                nx2dSpinLoop('grid-wrap', () => {
+                    grid.cells = Array.from({ length: GRID_COLS * GRID_ROWS }, () => gridRandSym());
+                    gridRenderCells(null, '');
+                }, 700, () => {
+                    grid.cells = Array.from({ length: GRID_COLS * GRID_ROWS }, () => gridRandSym());
+                    const all = new Set(grid.cells.map((_, i) => i));
+                    gridRenderCells(all, 'drop');
+                    gridStep(bet);
+                });
             }
         }
         function gridStep(bet) {
