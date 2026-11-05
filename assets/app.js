@@ -2331,6 +2331,10 @@ function nxToggle3d() {
                 const parent = el.parentNode;
                 if (parent && parent.classList && parent.classList.contains('nx-cab')) return;
                 if (!parent) return;
+                // b556: у «Линий» поле живёт внутри сцены (lines-stage), а сцена нам
+                // не нужна — корпус ставим рядом со сценой, а саму сцену прячем.
+                const stage = (id === 'lines-board') ? document.getElementById('lines-stage') : null;
+                const host = (stage && stage.parentNode) ? stage.parentNode : parent;
                 const cab = document.createElement('div');
                 cab.className = 'nx-cab';
                 const marq = document.createElement('div');
@@ -2339,10 +2343,18 @@ function nxToggle3d() {
                 const pay = document.createElement('div');
                 pay.className = 'nx-cab-pay';
                 pay.innerHTML = '<i>7</i><i>BAR</i><i>7</i><i>BAR</i><i>7</i>';
-                parent.insertBefore(cab, el);
+                if (stage) host.insertBefore(cab, stage); else host.insertBefore(cab, el);
                 cab.appendChild(marq);
                 cab.appendChild(pay);
                 cab.appendChild(el);
+                // b556: линии выигрышей рисуются в SVG поверх игрового поля.
+                // Поле переехало в корпус — забираем SVG с собой, иначе он
+                // остаётся в пустой 3D-сцене и полосы уезжают в угол.
+                if (id === 'lines-board') {
+                    const svg = document.getElementById('lines-svg');
+                    if (svg) el.appendChild(svg);
+                    if (stage) stage.style.display = 'none';
+                }
                 const tray = document.createElement('div');
                 tray.className = 'nx-cab-tray';
                 cab.appendChild(tray);

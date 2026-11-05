@@ -1347,6 +1347,9 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 #slots-fallback.nx-2d{grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px}
 #grid-wrap.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr))}
 #lines-board.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr)); perspective:none}
+/* b556: SVG с линиями выигрышей лежит поверх поля (теперь он живёт внутри доски) */
+#lines-board > #lines-svg,
+.nx-2d > #lines-svg{position:absolute; inset:0; width:100%; height:100%; z-index:3; pointer-events:none}
 /* b554: 2D-стол тоже крутится — ячейки дрожат и размываются, как барабаны */
 .nx-2d.nx-spin > div{animation:nxReelSpin .16s linear infinite}
 .nx-2d.nx-spin > div img{filter:blur(1.4px)}
