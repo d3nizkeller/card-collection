@@ -20723,6 +20723,7 @@ function nxToggle3d() {
         var nxTheme = 'standard';
         var nxThemeFx = true;
         var nxThemeUrlLock = false; // тема пришла из ссылки ?theme=… — не сохраняем
+        var nxThemeModalOpen = false; // b540: открыто окно «Внешний вид игры»
 
         function nxThemePrefRead() {
             try { var t = LS.getItem('nx_theme'); if (NX_THEMES[t]) nxTheme = t; } catch (e) {}
@@ -20768,23 +20769,76 @@ function nxToggle3d() {
             nxThemeMount();
             nxThemeSyncUI();
         }
+        // b540: плитки рисуются из одного источника (NX_THEMES) сразу в два места —
+        // окно в шапке (доступно всем) и карточку в Студии. Раньше разметка
+        // дублировалась в HTML, и любая новая тема требовала двух правок.
+        function nxThemeTilesHTML() {
+            var html = '';
+            for (var k in NX_THEMES) {
+                if (!Object.prototype.hasOwnProperty.call(NX_THEMES, k)) continue;
+                var T = NX_THEMES[k];
+                html += '<button type="button" data-nx-theme-btn="' + k + '" onclick="nxThemePick(\'' + k + '\')"' +
+                    ' class="nx-theme-tile" title="' + T.name + '">' +
+                        '<span class="nx-tt-ico">' + T.ico + '</span>' +
+                        '<span class="nx-tt-name">' + T.name + '</span>' +
+                        '<span class="nx-tt-sub">' + T.sub + '</span>' +
+                    '</button>';
+            }
+            return html;
+        }
+        function nxThemeRenderLists() {
+            try {
+                var boxes = document.querySelectorAll('[data-nx-theme-list]');
+                if (!boxes.length) return;
+                var html = nxThemeTilesHTML();
+                for (var i = 0; i < boxes.length; i++) {
+                    if (boxes[i].innerHTML !== html) boxes[i].innerHTML = html;
+                }
+            } catch (e) {}
+        }
+        function nxThemeOpen() {
+            try {
+                nxThemeRenderLists();
+                var m = document.getElementById('modal-nx-theme');
+                if (m) m.classList.remove('hidden');
+                nxThemeModalOpen = true;
+                nxThemeSyncUI();
+            } catch (e) {}
+        }
+        function nxThemeClose() {
+            try {
+                var m = document.getElementById('modal-nx-theme');
+                if (m) m.classList.add('hidden');
+            } catch (e) {}
+            nxThemeModalOpen = false;
+        }
         function nxThemeSyncUI() {
             try {
                 var tiles = document.querySelectorAll('[data-nx-theme-btn]');
                 for (var i = 0; i < tiles.length; i++) {
                     tiles[i].classList.toggle('is-on', tiles[i].getAttribute('data-nx-theme-btn') === nxTheme);
                 }
-                var cb = document.getElementById('nx-theme-fx');
-                if (cb) { cb.checked = !!nxThemeFx; cb.disabled = (nxTheme === 'standard'); }
-                var st = document.getElementById('nx-theme-state');
-                if (st) {
-                    var T = NX_THEMES[nxTheme] || NX_THEMES.standard;
-                    var tail = nxTheme === 'standard'
-                        ? ' — обычное оформление, анимаций нет.'
-                        : (nxThemeFx ? ' — частицы и украшения включены.' : ' — только цвета, без анимации.');
-                    st.innerHTML = 'Сейчас: <b class="text-slate-200">' + T.ico + ' ' + T.name + '</b>' + tail
-                        + (nxThemeUrlLock ? ' <span class="text-amber-300">(предпросмотр по ссылке, не сохранено)</span>' : '');
+                var ids = ['nx-theme-fx', 'nx-theme-fx-modal'];
+                for (var c = 0; c < ids.length; c++) {
+                    var cb = document.getElementById(ids[c]);
+                    if (cb) { cb.checked = !!nxThemeFx; cb.disabled = (nxTheme === 'standard'); }
                 }
+                var T = NX_THEMES[nxTheme] || NX_THEMES.standard;
+                var tail = nxTheme === 'standard'
+                    ? ' — обычное оформление, анимаций нет.'
+                    : (nxThemeFx ? ' — частицы и украшения включены.' : ' — только цвета, без анимации.');
+                var stateHTML = 'Сейчас: <b class="text-slate-200">' + T.ico + ' ' + T.name + '</b>' + tail
+                    + (nxThemeUrlLock ? ' <span class="text-amber-300">(предпросмотр по ссылке, не сохранено)</span>' : '');
+                var sts = ['nx-theme-state', 'nx-theme-state-modal'];
+                for (var s = 0; s < sts.length; s++) {
+                    var st = document.getElementById(sts[s]);
+                    if (st) st.innerHTML = stateHTML;
+                }
+                // кнопка в шапке / «Вид» в меню подсвечиваются, когда тема не стандартная
+                var btn = document.getElementById('nx-theme-btn');
+                if (btn) btn.classList.toggle('nx-theme-on', nxTheme !== 'standard');
+                var mbtn = document.getElementById('mob-nav-theme');
+                if (mbtn) mbtn.style.color = nxTheme !== 'standard' ? '#f0abfc' : '';
             } catch (e) {}
         }
         // ---- слой оформления: создаётся только для непустой темы ----
@@ -21072,12 +21126,16 @@ function nxToggle3d() {
                 nxThemePrefRead();
                 nxThemePaint();
                 var go = function () {
-                    try { nxThemeMount(); nxThemeSyncUI(); } catch (e) {}
+                    try { nxThemeRenderLists(); nxThemeMount(); nxThemeSyncUI(); } catch (e) {}
                 };
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
                 else go();
             } catch (e) {}
         })();
+        // b540: Escape закрывает окно внешнего вида (как и остальные модалки игры)
+        document.addEventListener('keydown', function (e) {
+            if (e && e.key === 'Escape' && nxThemeModalOpen) { nxThemeClose(); }
+        });
         window.onload = function() {
           // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
           // игра продолжит работу и покажет ПОДРОБНОСТЬ (со стеком в консоли), а не молчаливый «Script error.»

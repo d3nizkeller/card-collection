@@ -1265,25 +1265,40 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
    теме и удаляются при возврате к стандартной.
    ========================================================================== */
 
-/* --- плитки выбора темы в Студии ---
-   Специфичность #tab-studio .nx-theme-tile обязательна: общее правило
-   «все кнопки Студии — Liquid Glass» (#tab-studio button) иначе превращает
-   плитки в круглые пилюли и рисует им глянцевый блик. */
-#nx-theme-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-width:760px}
-@media (min-width:480px){#nx-theme-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (min-width:900px){#nx-theme-list{grid-template-columns:repeat(5,minmax(0,1fr))}}
-#tab-studio .nx-theme-tile{position:relative;display:flex;flex-direction:column;gap:1px;min-width:0;padding:7px 9px;border-radius:13px;border:1px solid #334155;background:linear-gradient(160deg,#101a2e,#0b1120);text-align:left;cursor:pointer;overflow:hidden;box-shadow:none;text-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease}
-#tab-studio .nx-theme-tile::before{content:none}
-#tab-studio .nx-theme-tile:hover{transform:translateY(-1px);border-color:#475569;box-shadow:0 8px 20px rgba(2,6,23,.45)}
-#tab-studio .nx-theme-tile:active{transform:scale(.98)}
-#tab-studio .nx-theme-tile .nx-tt-ico{font-size:15px;line-height:1.2}
-#tab-studio .nx-theme-tile .nx-tt-name{font-size:10px;font-weight:900;color:#e2e8f0;line-height:1.18}
-#tab-studio .nx-theme-tile .nx-tt-sub{font-size:8.5px;font-weight:700;color:#64748b;line-height:1.3}
-#tab-studio .nx-theme-tile.is-on{border-color:#a78bfa;background:linear-gradient(160deg,#221a4d,#14122b);box-shadow:0 0 0 1px rgba(167,139,250,.5),0 8px 22px rgba(124,58,237,.3)}
-#tab-studio .nx-theme-tile.is-on .nx-tt-name{color:#fff}
-#tab-studio .nx-theme-tile.is-on .nx-tt-sub{color:#c4b5fd}
-#tab-studio .nx-theme-tile.is-on::after{content:'\2713';position:absolute;top:4px;right:6px;font-size:9px;font-weight:900;color:#c4b5fd}
-#nx-theme-fx:disabled{opacity:.45}
+/* --- плитки выбора темы ---
+   Одна и та же разметка живёт в двух местах: карточка в Студии (#tab-studio) и
+   окно «Внешний вид игры» (#modal-nx-theme), доступное всем игрокам (b540).
+   Поэтому у каждого правила два селектора. Специфичность #tab-studio … нужна,
+   чтобы общее правило «все кнопки Студии — Liquid Glass» (#tab-studio button)
+   не превращало плитки в круглые пилюли с глянцевым бликом. */
+[data-nx-theme-list]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-width:760px}
+@media (min-width:480px){[data-nx-theme-list]{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:900px){[data-nx-theme-list]{grid-template-columns:repeat(5,minmax(0,1fr))}}
+#tab-studio .nx-theme-tile,
+#modal-nx-theme .nx-theme-tile{position:relative;display:flex;flex-direction:column;gap:1px;min-width:0;padding:7px 9px;border-radius:13px;border:1px solid #334155;background:linear-gradient(160deg,#101a2e,#0b1120);text-align:left;cursor:pointer;overflow:hidden;box-shadow:none;text-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease,background .16s ease}
+#tab-studio .nx-theme-tile::before,
+#modal-nx-theme .nx-theme-tile::before{content:none}
+#tab-studio .nx-theme-tile:hover,
+#modal-nx-theme .nx-theme-tile:hover{transform:translateY(-1px);border-color:#475569;box-shadow:0 8px 20px rgba(2,6,23,.45)}
+#tab-studio .nx-theme-tile:active,
+#modal-nx-theme .nx-theme-tile:active{transform:scale(.98)}
+#tab-studio .nx-theme-tile .nx-tt-ico,
+#modal-nx-theme .nx-theme-tile .nx-tt-ico{font-size:15px;line-height:1.2}
+#tab-studio .nx-theme-tile .nx-tt-name,
+#modal-nx-theme .nx-theme-tile .nx-tt-name{font-size:10px;font-weight:900;color:#e2e8f0;line-height:1.18}
+#tab-studio .nx-theme-tile .nx-tt-sub,
+#modal-nx-theme .nx-theme-tile .nx-tt-sub{font-size:8.5px;font-weight:700;color:#64748b;line-height:1.3}
+#tab-studio .nx-theme-tile.is-on,
+#modal-nx-theme .nx-theme-tile.is-on{border-color:#a78bfa;background:linear-gradient(160deg,#221a4d,#14122b);box-shadow:0 0 0 1px rgba(167,139,250,.5),0 8px 22px rgba(124,58,237,.3)}
+#tab-studio .nx-theme-tile.is-on .nx-tt-name,
+#modal-nx-theme .nx-theme-tile.is-on .nx-tt-name{color:#fff}
+#tab-studio .nx-theme-tile.is-on .nx-tt-sub,
+#modal-nx-theme .nx-theme-tile.is-on .nx-tt-sub{color:#c4b5fd}
+#tab-studio .nx-theme-tile.is-on::after,
+#modal-nx-theme .nx-theme-tile.is-on::after{content:'\2713';position:absolute;top:4px;right:6px;font-size:9px;font-weight:900;color:#c4b5fd}
+#nx-theme-fx:disabled,#nx-theme-fx-modal:disabled{opacity:.45}
+/* b540: кнопка в шапке подсвечивается, когда включена не стандартная тема */
+#nx-theme-btn.nx-theme-on{border-color:rgba(240,171,252,.8);box-shadow:0 0 0 1px rgba(240,171,252,.35),0 0 18px rgba(217,70,239,.4)}
 
 /* --- анимационный слой: частицы, гирлянда, украшения --- */
 #nx-snow{position:fixed;left:0;top:0;z-index:55;pointer-events:none;display:block}
