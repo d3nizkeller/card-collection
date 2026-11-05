@@ -1271,6 +1271,11 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
    Поэтому у каждого правила два селектора. Специфичность #tab-studio … нужна,
    чтобы общее правило «все кнопки Студии — Liquid Glass» (#tab-studio button)
    не превращало плитки в круглые пилюли с глянцевым бликом. */
+/* b544: базовые значения палитры (стандартная тема = прежний графит Tailwind).
+   Темы ниже переопределяют их, поэтому мелкие контролы, панели и границы
+   можно описывать один раз — и они сами красятся под выбранный вид. */
+:root{--nx-s0:2 6 23;--nx-s1:15 23 42;--nx-s2:30 41 59;--nx-ln:51 65 85;--nx-ln2:71 85 105;--nx-ac:139 92 246;}
+
 [data-nx-theme-list]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;max-width:760px}
 @media (min-width:480px){[data-nx-theme-list]{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:900px){[data-nx-theme-list]{grid-template-columns:repeat(5,minmax(0,1fr))}}
@@ -1619,10 +1624,3 @@ html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-arrow{ background:
 html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-spot{ background: radial-gradient(ellipse at center, rgb(var(--nx-ac) / .18), rgb(var(--nx-s0) / 0) 70%); }
 html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-stage::before{ background: linear-gradient(90deg, rgb(var(--nx-s0) / .88), rgb(var(--nx-s0) / 0)); }
 html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-stage::after{ background: linear-gradient(270deg, rgb(var(--nx-s0) / .88), rgb(var(--nx-s0) / 0)); }
-
-/* b543b: мелкие «стеклянные» контролы (чипы количества, поле, ряд) — в той же гамме */
-html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-chip{background:rgb(var(--nx-s2) / .55);border-color:rgb(var(--nx-ln2) / .5)}
-html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-chip:hover{background:rgb(var(--nx-s2) / .85);border-color:rgb(var(--nx-ac) / .5)}
-html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-chip-max:hover{background:rgb(var(--nx-ac) / .18);border-color:rgb(var(--nx-ac) / .6)}
-html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-input{background:rgb(var(--nx-s0) / .85);border-color:rgb(var(--nx-ln) / .9)}
-html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-row{background:rgb(var(--nx-s1) / .55);border-color:rgb(var(--nx-ln) / .75)}

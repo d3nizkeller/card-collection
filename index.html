@@ -38,20 +38,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob286" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob286">
+    <script src="assets/three.min.js?v=nxmob287" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob287">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob286">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob287">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob286">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob287">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -4187,49 +4187,47 @@ min-height:56vh}
     /* ===== b532: фон билетов из Студии ===== */
     .sc-ticket.has-bg{ background-size:100% 100%, 100% 100%; background-position:center, center; background-repeat:no-repeat, no-repeat; }
 
-    /* ===== b533: ЖИДКОЕ СТЕКЛО для строки «Открыть сразу» + долой нативные спиннеры =====
-       Владелец: «стрелочки верх-вниз выглядят некрасиво, и где жидкое стекло».
-       Нативные спиннеры number-инпутов прячем сайтом целиком (клавиши и ввод
-       руками работают), а панель количества паков и её чипы получают стекло:
-       полупрозрачный градиент + blur + верхний блик + внутренние света. */
+    /* ===== b544: строка «Открыть сразу» — чистая панель в гамме темы =====
+       Раньше здесь было «жидкое стекло» с сине-циановым градиентом и большим
+       размытым бликом сверху: на тёплых темах блик читался как грязное пятно,
+       а чипы терялись на фоне. Теперь это спокойная тёмная панель с чёткой
+       рамкой, а цвет берётся из палитры темы (--nx-s0…s2, --nx-ln, --nx-ac),
+       поэтому она одинаково аккуратно выглядит в любом оформлении. */
+    /* нативные «стрелочки» у числовых полей всё ещё прячем (ввод и клавиши работают) */
     input[type="number"]{ -moz-appearance:textfield; appearance:textfield; }
     input[type="number"]::-webkit-outer-spin-button,
     input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; appearance:none; margin:0; width:0; height:0; }
     .nx-glass-row{
-        position:relative; padding:6px 8px; border-radius:16px;
-        background:linear-gradient(135deg, rgba(148,163,184,.16), rgba(15,23,42,.42) 55%, rgba(56,189,248,.10));
-        border:1px solid rgba(255,255,255,.14);
-        backdrop-filter:blur(14px) saturate(1.5); -webkit-backdrop-filter:blur(14px) saturate(1.5);
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -1px 0 rgba(2,6,23,.5), 0 10px 26px rgba(2,6,23,.45);
+        position:relative; display:flex; align-items:center; gap:6px;
+        padding:6px 8px; border-radius:14px;
+        background:rgb(var(--nx-s0) / .55);
+        border:1px solid rgb(var(--nx-ln) / .85);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
     }
-    .nx-glass-row::before{ /* верхний блик — «стеклянная» вспышка света */
-        content:''; position:absolute; left:8%; right:8%; top:1px; height:45%;
-        border-radius:16px 16px 40% 40% / 16px 16px 100% 100%;
-        background:linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,0));
-        pointer-events:none;
-    }
+    .nx-glass-row::before{ content:none; }
     .nx-glass-chip{
-        padding:4px 8px; border-radius:12px; font-size:10px; font-weight:900; letter-spacing:.02em;
-        color:#cbd5e1; background:rgba(148,163,184,.10); border:1px solid rgba(255,255,255,.10);
-        backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.10), 0 2px 6px rgba(2,6,23,.35);
-        transition:background .15s, border-color .15s, color .15s, transform .05s;
+        flex:0 0 auto; min-width:32px; height:26px; padding:0 9px;
+        display:inline-flex; align-items:center; justify-content:center;
+        border-radius:9px; font-size:11px; font-weight:800; letter-spacing:.01em; line-height:1;
+        color:#cbd5e1; background:rgb(var(--nx-s2) / .5);
+        border:1px solid rgb(var(--nx-ln) / .9);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+        transition:background .15s, border-color .15s, color .15s, transform .06s;
     }
-    .nx-glass-chip:hover{ background:rgba(148,163,184,.20); border-color:rgba(255,255,255,.22); color:#f1f5f9; }
+    .nx-glass-chip:hover{ background:rgb(var(--nx-s2) / .85); border-color:rgb(var(--nx-ln2)); color:#f1f5f9; }
     .nx-glass-chip:active{ transform:translateY(1px); }
-    .nx-glass-chip-on{ background:rgba(56,189,248,.22); border-color:rgba(125,211,252,.65); color:#e0f2fe;
-        box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 0 12px rgba(56,189,248,.35); }
-    .nx-glass-chip-max{ color:#fcd34d; }
-    .nx-glass-chip-max:hover{ background:rgba(251,191,36,.16); border-color:rgba(251,191,36,.5); color:#fde68a; }
+    .nx-glass-chip-on{ color:#fff; background:rgb(var(--nx-ac) / .22); border-color:rgb(var(--nx-ac) / .8);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.16), 0 0 10px rgb(var(--nx-ac) / .28); }
+    .nx-glass-chip-max{ color:#fcd34d; border-color:rgb(var(--nx-ac) / .45); }
+    .nx-glass-chip-max:hover{ background:rgb(var(--nx-ac) / .2); border-color:rgb(var(--nx-ac) / .75); color:#fde68a; }
     .nx-glass-input{
-        width:3rem; padding:4px 2px; border-radius:12px; text-align:center;
-        font-size:11px; font-weight:900; color:#f8fafc;
-        background:rgba(2,6,23,.35); border:1px solid rgba(255,255,255,.12);
-        box-shadow:inset 0 2px 6px rgba(2,6,23,.55), inset 0 1px 0 rgba(255,255,255,.06);
-        backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+        width:52px; height:26px; padding:0 4px; border-radius:9px; text-align:center;
+        font-size:11px; font-weight:800; color:#f8fafc;
+        background:rgb(var(--nx-s0) / .92); border:1px solid rgb(var(--nx-ln) / .9);
+        box-shadow:inset 0 1px 2px rgba(0,0,0,.35);
     }
-    .nx-glass-input:focus{ outline:none; border-color:rgba(125,211,252,.7);
-        box-shadow:inset 0 2px 6px rgba(2,6,23,.55), 0 0 0 2px rgba(56,189,248,.25); }
+    .nx-glass-input:focus{ outline:none; border-color:rgb(var(--nx-ac) / .8);
+        box-shadow:0 0 0 2px rgb(var(--nx-ac) / .2); }
 
     /* ===== b534: веса редкостей — во всю ширину ячейки =====
        Владелец: «это должно быть во всю ширину, чтоб не было пустого места».
@@ -4272,10 +4270,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob286"></script>
-    <script src="assets/stories.js?v=nxmob286"></script>
-    <script src="assets/qrcode.min.js?v=nxmob286"></script>
-    <script src="assets/qr-transfer.js?v=nxmob286"></script>
+    <script src="assets/app.js?v=nxmob287"></script>
+    <script src="assets/stories.js?v=nxmob287"></script>
+    <script src="assets/qrcode.min.js?v=nxmob287"></script>
+    <script src="assets/qr-transfer.js?v=nxmob287"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
