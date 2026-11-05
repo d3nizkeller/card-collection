@@ -2265,6 +2265,17 @@ function nxToggle3d() {
         function nxTexIsGif(u) { return /\.gif(\?|#|$)/i.test(String(u || '')); }
         function nxAnimTexAdd(img, draw, tex) {
             if (!img || !tex || typeof draw !== 'function') return;
+            // b549: картинку из loadImgSafe никто не вставляет в документ, а браузер
+            // может не крутить анимацию у «невидимой» картинки. Прицепляем её
+            // крошечной невидимой нодой — тогда gif гарантированно идёт кадрами,
+            // и drawImage отдаёт свежий кадр.
+            try {
+                if (!img.__nxInDom && typeof document !== 'undefined' && document.body) {
+                    img.__nxInDom = 1;
+                    img.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;';
+                    document.body.appendChild(img);
+                }
+            } catch (e) {}
             for (let i = 0; i < NX_ANIM_TEX.length; i++) if (NX_ANIM_TEX[i].tex === tex) return;
             NX_ANIM_TEX.push({ img: img, draw: draw, tex: tex, t: 0 });
         }
