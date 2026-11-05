@@ -2116,6 +2116,11 @@ function nxToggle3d() {
                 if (!full) return '';
                 const map = (tier === 'mid') ? NX_EMBED_THUMB_MID : NX_EMBED_THUMB;
                 const key = nxMediaKey(full) || nxMediaKey(s);
+                // b547: .gif — это АНИМАЦИЯ, а миниатюры сборки — статичные webp.
+                // Подменяя гифку миниатюрой, мы гасили движение (жалоба владельца:
+                // «гифки не двигаются ни в играх, ни в карточках»). Для gif всегда
+                // отдаём мастер — пусть он тяжелее, зато живой.
+                if (/\.gif$/i.test(key)) return '';
                 const rel = map[key];
                 if (rel) {
                     if (full.indexOf('http') !== 0) return rel;   // локальный арт — путь относительный
@@ -2226,6 +2231,7 @@ function nxToggle3d() {
                 const full = mediaUrl(s);              // уже с учётом зеркала и NX_EMBED_MEDIA
                 if (!full) return '';
                 const key = nxMediaKey(full) || nxMediaKey(s);
+                if (/\.gif$/i.test(key)) return ''; // b547: gif показываем мастером — иначе теряется анимация
                 const rel = NX_EMBED_BIG[key];
                 if (!rel) return '';
                 if (full.indexOf('http') !== 0) return rel;   // локальный арт — путь относительный
