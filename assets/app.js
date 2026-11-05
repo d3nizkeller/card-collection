@@ -9667,8 +9667,8 @@ function nxToggle3d() {
             // b49: символы собираем ДО попытки создать WebGL — они нужны и фолбэку
             slots.symbols = slotsSymbols();
             slots.symKey = slots.symbols.map(sl => sl.id).join(',');
-            // b551: gif-символы в 3D не анимируются — этот стол рисуем в 2D
-            if (nxGifInGames()) { slots.fallback = true; slotsRenderFallback(); return; }
+            // b552: 2D-фолбэк для gif-столов отменён — он ломал раскладку
+            // (карточки растягивались на весь контейнер). Столы снова в 3D.
             if (nxWeakGpu() && !nxForce3d()) { slots.fallback = true; slotsRenderFallback(); return; } // b309
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
@@ -10182,9 +10182,8 @@ function nxToggle3d() {
         function grid3dEnsure() {
             if (grid3d.ready || grid3d.failed) return;
             if (nxWeakGpu() && !nxForce3d()) { grid3d.failed = true; return; } // b309
-            // b551: gif-символы в 3D не анимируются — «Сетку» рисуем в 2D
+            // b552: переход в 2D из-за gif отменён (ломал раскладку)
             try { if (!slots.symbols.length) slots.symbols = slotsSymbols(); } catch (e) {}
-            if (nxGifInGames()) { grid3d.failed = true; return; }
             const container = document.getElementById('grid3d-container');
             if (!container) return;
             let renderer;
@@ -12289,8 +12288,7 @@ function nxToggle3d() {
             const box = document.getElementById('lines-3d-box');
             const board = document.getElementById('lines-board');
             if (!box) return;
-            // b551: gif-символы в 3D не анимируются — «Линии» рисуем в 2D
-            if (nxGifInGames()) { lines.no3d = true; return; }
+            // b552: переход в 2D из-за gif отменён (ломал раскладку)
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { lines.no3d = true; return; }
