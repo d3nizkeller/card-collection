@@ -1254,55 +1254,85 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 }
 
 /* ==========================================================================
-   b553: 2D-СТОЛ «ИГРОВОЙ АВТОМАТ»
+   b553/b555: 2D-СТОЛ — КАЗИНО-АВТОМАТ
    Игры, в наборе которых есть gif-карты, рисуются в 2D (в WebGL-текстуре
-   гифка не оживает). Чтобы это не выглядело «просто полем», стол получает
-   корпус автомата: тёмная панель с золотой окантовкой, ровная сетка,
-   одинаковая ширина карт и подписи внизу.
+   гифка не оживает). Чтобы это выглядело как настоящий автомат, стол
+   оборачивается корпусом: арка с названием и лампочками, таблица выплат,
+   окно барабанов, лоток для монет и рычаг справа.
    ========================================================================== */
-.nx-2d{
-    position:relative;
-    width:100%; max-width:540px; margin:0 auto;
-    display:grid; gap:5px;
-    padding:30px 12px 14px; border-radius:24px;
-    background:
-        radial-gradient(120% 60% at 50% -12%, rgba(255,214,120,.20), transparent 62%),
-        linear-gradient(180deg,#3b2410 0%,#2a1220 38%,#120a14 72%,#0a0610 100%);
-    border:3px solid #c8a24a;
+.nx-cab{
+    position:relative; width:100%; max-width:540px; margin:18px auto 24px;
+    padding:12px 14px 12px; border-radius:18px;
+    display:flex; flex-direction:column; gap:7px;
+    background:linear-gradient(180deg,#fdf3c8 0%,#efd186 12%,#cfa63c 40%,#a87f22 66%,#e6c96d 88%,#b3892c 100%);
+    border:3px solid #7d5f18;
     box-shadow:
-        inset 0 0 0 2px rgba(255,236,179,.35),
-        inset 0 0 0 5px rgba(0,0,0,.55),
-        inset 0 0 0 6px rgba(212,175,55,.45),
-        inset 0 14px 30px rgba(255,214,120,.10),
-        inset 0 -18px 40px rgba(0,0,0,.7),
-        0 18px 40px rgba(0,0,0,.6),
-        0 0 0 1px rgba(0,0,0,.85);
+        inset 0 2px 0 rgba(255,255,255,.75),
+        inset 0 -4px 10px rgba(110,74,8,.5),
+        0 18px 40px rgba(0,0,0,.6);
 }
-/* маркиза с бегущими лампочками */
-.nx-2d::before{
-    content:'';
-    position:absolute; left:14px; right:14px; top:7px; height:16px;
-    border-radius:9px;
+.nx-cab-marquee{
+    position:relative; height:56px; border-radius:44px 44px 10px 10px;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
     background:
-        radial-gradient(circle at 9px 8px, #fff3c4 0 2.4px, rgba(255,214,120,.55) 3.4px, transparent 4.6px) 0 0/22px 16px repeat-x,
-        linear-gradient(180deg,#f3d38a,#8a6420);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.65), 0 0 16px rgba(251,191,36,.35);
+        radial-gradient(120% 130% at 50% -30%, rgba(255,255,255,.8), transparent 55%),
+        linear-gradient(180deg,#f9e9b3,#d9b451 45%,#a8801f 100%);
+    border:2px solid #7d5f18;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.85), 0 4px 12px rgba(0,0,0,.35);
+}
+.nx-cab-marquee b{
+    font-size:17px; font-weight:900; font-style:italic; letter-spacing:.08em;
+    color:#8f1d1d; text-shadow:0 1px 0 #fff6cf, 0 -1px 0 #5a0f0f, 0 0 12px rgba(255,220,120,.6);
+    transform:translateY(-3px);
+}
+.nx-cab-bulbs{
+    position:absolute; left:8px; right:8px; bottom:3px; height:8px;
+    background:radial-gradient(circle at 5px 4px,#fffbdc 0 2px,rgba(255,214,120,.75) 3px,transparent 4px) 0 0/14px 8px repeat-x;
     animation:nxChase 1.1s linear infinite;
 }
-@keyframes nxChase{ from{background-position:0 0,0 0} to{background-position:22px 0,0 0} }
-/* тёмное окно барабанов за картами */
-.nx-2d::after{
-    content:'';
-    position:absolute; left:10px; right:10px; top:28px; bottom:10px;
-    border-radius:14px; pointer-events:none;
-    background:linear-gradient(180deg,#05040a,#0f0a16 60%,#07050c);
-    box-shadow:inset 0 0 26px rgba(0,0,0,.95), inset 0 2px 0 rgba(255,255,255,.07), inset 0 -2px 0 rgba(0,0,0,.85);
+@keyframes nxChase{ from{background-position:0 0} to{background-position:14px 0} }
+.nx-cab-pay{
+    height:19px; display:flex; gap:3px; padding:2px; border-radius:4px;
+    background:#f7f2e2; border:1px solid #8a6a1e;
+    box-shadow:inset 0 1px 0 #fff, 0 2px 6px rgba(0,0,0,.3);
+}
+.nx-cab-pay i{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    font-style:normal; font-size:8px; font-weight:900; color:#b91c1c;
+    background:#fffdf5; border:1px solid #e2d9ba; border-radius:2px;
+}
+.nx-cab-tray{
+    height:22px; border-radius:6px 6px 11px 11px;
+    background:linear-gradient(180deg,#4a3710,#241a06 60%,#100b02);
+    box-shadow:inset 0 3px 8px rgba(0,0,0,.9), inset 0 -2px 0 rgba(255,220,140,.22);
+}
+.nx-cab-lever{
+    position:absolute; right:-16px; top:148px; width:15px; height:74px; z-index:5;
+    border-radius:8px; cursor:pointer;
+    background:linear-gradient(90deg,#3a3a3a,#111 45%,#2c2c2c);
+    box-shadow:0 6px 14px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.25);
+    transition:transform .12s ease;
+}
+.nx-cab-lever::before{
+    content:''; position:absolute; left:50%; top:-16px; width:24px; height:24px;
+    transform:translateX(-50%); border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#6a6a6a,#111 70%);
+    box-shadow:0 3px 8px rgba(0,0,0,.6), inset 0 1px 2px rgba(255,255,255,.35);
+}
+.nx-cab-lever:active{ transform:translateY(8px) }
+/* само поле — тёмное окно барабанов внутри корпуса */
+.nx-2d{
+    position:relative; width:100%; margin:0;
+    display:grid; gap:4px; padding:8px;
+    border-radius:10px;
+    background:linear-gradient(180deg,#0a0a10,#16121e 60%,#0b0810);
+    box-shadow:inset 0 0 26px rgba(0,0,0,.95), inset 0 2px 0 rgba(255,255,255,.07), inset 0 -2px 0 rgba(0,0,0,.9);
 }
 .nx-2d > div{
     position:relative; z-index:1; aspect-ratio:3 / 4 !important;
-    border-radius:9px; overflow:hidden; background:#0b1220;
-    border:1px solid rgba(255,236,179,.35);
-    box-shadow:0 1px 0 rgba(255,255,255,.22), 0 6px 14px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.6);
+    border-radius:5px; overflow:hidden; background:#fdfaf0;
+    border:2px solid #efe4c4;
+    box-shadow:0 2px 6px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.25);
 }
 .nx-2d > div img{
     position:absolute; inset:0; width:100%; height:100%;
@@ -1314,9 +1344,9 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
     text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     background:linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,.88));
 }
-#slots-fallback.nx-2d{max-width:400px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+#slots-fallback.nx-2d{grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px}
 #grid-wrap.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr))}
-#lines-board.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr)); perspective:none; padding:10px}
+#lines-board.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr)); perspective:none}
 /* b554: 2D-стол тоже крутится — ячейки дрожат и размываются, как барабаны */
 .nx-2d.nx-spin > div{animation:nxReelSpin .16s linear infinite}
 .nx-2d.nx-spin > div img{filter:blur(1.4px)}
@@ -1328,10 +1358,14 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 @media (prefers-reduced-motion: reduce){
     .nx-2d.nx-spin > div{animation:none}
     .nx-2d.nx-spin > div img{filter:none}
+    .nx-cab-bulbs{animation:none}
 }
 @media (max-width:420px){
-    .nx-2d{padding:7px; gap:4px; border-radius:14px}
-    .nx-2d > div{border-radius:6px}
+    .nx-cab{padding:9px 10px; border-radius:14px; gap:5px}
+    .nx-cab-marquee{height:46px}
+    .nx-cab-marquee b{font-size:14px}
+    .nx-2d{padding:6px; gap:3px}
+    .nx-2d > div{border-radius:4px; border-width:1px}
 }
 
 /* ==========================================================================

@@ -2319,14 +2319,40 @@ function nxToggle3d() {
                 return nxPoolHasGif(chosen.length ? chosen : state.cards);
             } catch (e) { return false; }
         }
-        // b553: включаем 2D-стол «как автомат» — корпус, ровная сетка, карты
-        // одинаковой ширины. Вызывается только когда стол уходит в 2D.
-        function nx2dMark(id) {
+        // b553/b555: 2D-стол выглядит как казино-автомат: вокруг поля строится
+        // корпус — арка с названием и лампочками, таблица выплат, лоток для монет
+        // и рычаг справа (он же «Крутить»).
+        function nx2dMark(id, title, spinFn) {
             try {
                 const el = document.getElementById(id);
                 if (!el) return;
                 el.classList.add('nx-2d');
                 el.classList.remove('hidden');
+                const parent = el.parentNode;
+                if (parent && parent.classList && parent.classList.contains('nx-cab')) return;
+                if (!parent) return;
+                const cab = document.createElement('div');
+                cab.className = 'nx-cab';
+                const marq = document.createElement('div');
+                marq.className = 'nx-cab-marquee';
+                marq.innerHTML = '<b>' + (title || 'LUCKY SLOT') + '</b><i class="nx-cab-bulbs"></i>';
+                const pay = document.createElement('div');
+                pay.className = 'nx-cab-pay';
+                pay.innerHTML = '<i>7</i><i>BAR</i><i>7</i><i>BAR</i><i>7</i>';
+                parent.insertBefore(cab, el);
+                cab.appendChild(marq);
+                cab.appendChild(pay);
+                cab.appendChild(el);
+                const tray = document.createElement('div');
+                tray.className = 'nx-cab-tray';
+                cab.appendChild(tray);
+                const lev = document.createElement('div');
+                lev.className = 'nx-cab-lever';
+                lev.title = 'Дёрнуть рычаг';
+                lev.addEventListener('click', function () {
+                    try { if (spinFn && typeof window[spinFn] === 'function') window[spinFn](); } catch (e) {}
+                });
+                cab.appendChild(lev);
             } catch (e) {}
         }
         // Страховка: тик идёт и вне циклов рендера столов — но только пока открыта
@@ -9678,7 +9704,7 @@ function nxToggle3d() {
             slots.symbols = slotsSymbols();
             slots.symKey = slots.symbols.map(sl => sl.id).join(',');
             // b551/b553: gif-символы в 3D не анимируются — стол становится 2D-автоматом
-            if (nxGifInGames()) { slots.fallback = true; slotsRenderFallback(); nx2dMark('slots-fallback'); return; }
+            if (nxGifInGames()) { slots.fallback = true; slotsRenderFallback(); nx2dMark('slots-fallback', 'СЛОТЫ', 'slotsSpin'); return; }
             if (nxWeakGpu() && !nxForce3d()) { slots.fallback = true; slotsRenderFallback(); return; } // b309
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
@@ -10216,7 +10242,7 @@ function nxToggle3d() {
             if (nxWeakGpu() && !nxForce3d()) { grid3d.failed = true; return; } // b309
             // b553: переход в 2D-автомат для gif-столов
             try { if (!slots.symbols.length) slots.symbols = slotsSymbols(); } catch (e) {}
-            if (nxGifInGames()) { grid3d.failed = true; nx2dMark('grid-wrap'); return; }
+            if (nxGifInGames()) { grid3d.failed = true; nx2dMark('grid-wrap', 'СЕТКА', 'gridSpin'); return; }
             const container = document.getElementById('grid3d-container');
             if (!container) return;
             let renderer;
@@ -12328,7 +12354,7 @@ function nxToggle3d() {
             const board = document.getElementById('lines-board');
             if (!box) return;
             // b551/b553: gif-символы в 3D не анимируются — «Линии» становятся 2D-автоматом
-            if (nxGifInGames()) { lines.no3d = true; nx2dMark('lines-board'); return; }
+            if (nxGifInGames()) { lines.no3d = true; nx2dMark('lines-board', 'ЛИНИИ', 'linesSpin'); return; }
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { lines.no3d = true; return; }
