@@ -1254,6 +1254,49 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 }
 
 /* ==========================================================================
+   b553: 2D-СТОЛ «ИГРОВОЙ АВТОМАТ»
+   Игры, в наборе которых есть gif-карты, рисуются в 2D (в WebGL-текстуре
+   гифка не оживает). Чтобы это не выглядело «просто полем», стол получает
+   корпус автомата: тёмная панель с золотой окантовкой, ровная сетка,
+   одинаковая ширина карт и подписи внизу.
+   ========================================================================== */
+.nx-2d{
+    position:relative;
+    width:100%; max-width:520px; margin:0 auto;
+    display:grid; gap:5px;
+    padding:10px; border-radius:18px;
+    background:linear-gradient(180deg,#2a1b14 0%,#1b1226 45%,#0c0714 100%);
+    border:2px solid rgba(251,191,36,.38);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.12), inset 0 -14px 34px rgba(0,0,0,.6), 0 14px 34px rgba(0,0,0,.5);
+}
+.nx-2d::after{ /* внутренняя рамка-«стекло» */
+    content:''; position:absolute; inset:5px; border-radius:13px;
+    border:1px solid rgba(251,191,36,.16); pointer-events:none;
+}
+.nx-2d > div{
+    position:relative; aspect-ratio:3 / 4 !important;
+    border-radius:8px; overflow:hidden; background:#0b1220;
+    border:1px solid rgba(148,163,184,.28);
+}
+.nx-2d > div img{
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; display:block;
+}
+.nx-2d > div > .nx-2d-cap{
+    position:absolute; left:0; right:0; bottom:0; z-index:2;
+    padding:2px 3px; font-size:8px; line-height:1.1; font-weight:800; color:#fff;
+    text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    background:linear-gradient(180deg, rgba(2,6,23,0), rgba(2,6,23,.88));
+}
+#slots-fallback.nx-2d{max-width:400px; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px}
+#grid-wrap.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr))}
+#lines-board.nx-2d{grid-template-columns:repeat(5,minmax(0,1fr)); perspective:none; padding:10px}
+@media (max-width:420px){
+    .nx-2d{padding:7px; gap:4px; border-radius:14px}
+    .nx-2d > div{border-radius:6px}
+}
+
+/* ==========================================================================
    b538: ВНЕШНИЙ ВИД ИГРЫ — 10 оформлений сайта
    Переключатель: Студия → вкладка «Расписание» → «Внешний вид игры».
    Настройка живёт на устройстве (localStorage: nx_theme, nx_theme_fx) и
