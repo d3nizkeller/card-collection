@@ -9565,6 +9565,10 @@ function nxToggle3d() {
                 try { texJ.encoding = THREE.sRGBEncoding; texJ.anisotropy = PACK3D_ANISO; } catch (e) {}
                 return texJ;
             }
+            // b548: текстуру создаём ДО загрузки арта — иначе в асинхронном
+            // колбэке её просто нет, и gif не к чему привязать
+            const tex = new THREE.CanvasTexture(cv);
+            try { tex.encoding = THREE.sRGBEncoding; tex.anisotropy = PACK3D_ANISO; } catch (e) {}
             const bg = g.createLinearGradient(0, 0, W, H);
             bg.addColorStop(0, '#0b1220'); bg.addColorStop(1, col + '40');
             g.fillStyle = bg; g.fillRect(0, 0, W, H);
@@ -9579,7 +9583,6 @@ function nxToggle3d() {
             };
             crimp(0); crimp(H - CR);
             const artTop = CR, artH = H - CR * 2 - PL;
-            let animPaint = null; // b548: перерисовка арта для gif-символа
             if (sym.image) {
                 loadImgSafe(sym.image, img => {
                     // b548: арт — отдельной функцией: её дёргает тик игры, чтобы
@@ -9602,8 +9605,9 @@ function nxToggle3d() {
                         } catch (e) {}
                     };
                     paintArt();
-                    if (nxTexIsGif(sym.image)) animPaint = { img: img, paint: paintArt };
                     tex.needsUpdate = true;
+                    // b548: gif-символ — оживляем текстуру в тике игры
+                    if (nxTexIsGif(sym.image)) nxAnimTexAdd(img, paintArt, tex);
                 });
             } else {
                 g.fillStyle = col; g.font = 'bold ' + Math.round(H * 0.21) + 'px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -9614,10 +9618,6 @@ function nxToggle3d() {
             g.fillStyle = '#f8fafc'; g.font = 'bold ' + Math.round(H * 0.052) + 'px Inter, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
             wrapCanvasText(g, sym.name, W / 2, H - CR - PL / 2, W - 30, Math.round(H * 0.056));
             g.strokeStyle = col; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
-            const tex = new THREE.CanvasTexture(cv);
-            try { tex.encoding = THREE.sRGBEncoding; tex.anisotropy = PACK3D_ANISO; } catch (e) {}
-            // b548: gif-символ — оживляем текстуру в тике игры
-            if (animPaint) nxAnimTexAdd(animPaint.img, animPaint.paint, tex);
             return tex;
         }
 

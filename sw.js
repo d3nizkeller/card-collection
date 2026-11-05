@@ -2,7 +2,7 @@
    Арты и скрипты скачиваются с сервера ОДИН раз на браузер; дальше отдаются из
    кэша мгновенно — в Telegram Mini App повторное открытие становится мгновенным
    и работает без сети. Тихая сверка с сервером — не чаще раза в 7 дней на файл. */
-const VERSION = 'nxmob291'; // b548: gif анимируется в 3D-столах (Слоты/Линии/Сетка) — старый кэш чистится на activate
+const VERSION = 'nxmob292'; // b548: gif анимируется в 3D-столах (Слоты/Линии/Сетка) — старый кэш чистится на activate
 const CACHE_MEDIA = 'nx-media-v2';
 const CACHE_ASSETS = 'nx-assets-' + VERSION;
 const CACHE_PAGES = 'nx-pages-' + VERSION;
