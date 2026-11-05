@@ -13858,6 +13858,7 @@ function nxToggle3d() {
             if (name === 'story' && window.s9OnShow) window.s9OnShow(); // b254: relayout встроенного резчика
             if (name === 'stats') { try { statsRender(); jpSyncNow(); } catch (e) {} } // b277: вкладка статистики — сразу тянем свежие данные из облака
             if (name === 'jackpot') { try { jpcAdminRender(); jpcSim(); jpSyncNow(); } catch (e) {} } // b414: панель управления джекпотом
+            if (name === 'schedule') { try { nxThemeSyncUI(); } catch (e) {} } // b537: «Внешний вид игры» — актуализируем плитки тем
             try { LS.setItem('nexus_studio_sec', name); } catch (e) {}
         }
         // ===== b399: авто-детектор слабого устройства и энергорежим =====
@@ -20670,6 +20671,250 @@ function nxToggle3d() {
         }
         function renderScratch() { renderScratchUI(); }
         // ============ /b519 ============
+        // ==========================================================================
+        // b537: ВНЕШНИЙ ВИД ИГРЫ (Студия → «Расписание» → «Внешний вид игры»)
+        // Три оформления сайта: стандартное (как было), новогоднее (снег,
+        // гирлянда, морозный фон, украшения) и праздничное (золото, конфетти,
+        // фейерверк). Выбор хранится на устройстве: nx_theme + nx_theme_fx.
+        // Анимация монтируется ТОЛЬКО в активной теме и снимается при возврате
+        // к стандартной — обычный вид не тратит ни одного лишнего кадра.
+        // Предпросмотр без сохранения: index.html?theme=newyear
+        // ==========================================================================
+        var NX_THEMES = {
+            standard: { name: 'Стандартный', ico: '🌙', sub: 'как сейчас' },
+            newyear: { name: 'Новогодний', ico: '❄️', sub: 'снег, гирлянда' },
+            festive: { name: 'Праздничный', ico: '🎉', sub: 'золото, конфетти' }
+        };
+        var NX_THEME_META = { standard: '#020617', newyear: '#050a18', festive: '#150a14' };
+        var nxTheme = 'standard';
+        var nxThemeFx = true;
+        var nxThemeUrlLock = false; // тема пришла из ссылки ?theme=… — не сохраняем
+
+        function nxThemePrefRead() {
+            try { var t = LS.getItem('nx_theme'); if (NX_THEMES[t]) nxTheme = t; } catch (e) {}
+            try { nxThemeFx = LS.getItem('nx_theme_fx') !== '0'; } catch (e) {}
+            try {
+                var m = /[?&]theme=(standard|newyear|festive)(?:&|$)/.exec(location.search || '');
+                if (m) { nxTheme = m[1]; nxThemeUrlLock = true; }
+            } catch (e) {}
+        }
+        function nxThemePersist() {
+            if (nxThemeUrlLock) return;
+            try { LS.setItem('nx_theme', nxTheme); LS.setItem('nx_theme_fx', nxThemeFx ? '1' : '0'); } catch (e) {}
+        }
+        // только классы и атрибуты — без DOM-узлов, можно звать до готовности body
+        function nxThemePaint() {
+            try {
+                var html = document.documentElement;
+                html.setAttribute('data-nx-theme', nxTheme);
+                html.classList.toggle('nx-theme-fx', nxTheme !== 'standard' && !!nxThemeFx);
+                var mt = document.querySelector('meta[name="theme-color"]');
+                if (mt) mt.setAttribute('content', NX_THEME_META[nxTheme] || '#020617');
+            } catch (e) {}
+        }
+        function nxThemePick(t) {
+            if (!NX_THEMES[t]) t = 'standard';
+            nxTheme = t;
+            nxThemeUrlLock = false;
+            nxThemePaint();
+            nxThemePersist();
+            nxThemeMount();
+            nxThemeSyncUI();
+            try {
+                showToast(t === 'standard' ? '🌙 Стандартный вид возвращён'
+                    : (t === 'newyear' ? '❄️ Новогодний вид: снег, гирлянда и украшения сайта'
+                                       : '🎉 Праздничный вид: золото, конфетти и фейерверк'), 'success');
+            } catch (e) {}
+        }
+        function nxThemeFxToggle(on) {
+            nxThemeFx = !!on;
+            nxThemeUrlLock = false;
+            nxThemePaint();
+            nxThemePersist();
+            nxThemeMount();
+            nxThemeSyncUI();
+        }
+        function nxThemeSyncUI() {
+            try {
+                var tiles = document.querySelectorAll('[data-nx-theme-btn]');
+                for (var i = 0; i < tiles.length; i++) {
+                    tiles[i].classList.toggle('is-on', tiles[i].getAttribute('data-nx-theme-btn') === nxTheme);
+                }
+                var cb = document.getElementById('nx-theme-fx');
+                if (cb) { cb.checked = !!nxThemeFx; cb.disabled = (nxTheme === 'standard'); }
+                var st = document.getElementById('nx-theme-state');
+                if (st) {
+                    var T = NX_THEMES[nxTheme] || NX_THEMES.standard;
+                    var tail = nxTheme === 'standard'
+                        ? ' — обычное оформление, анимаций нет.'
+                        : (nxThemeFx ? ' — снег и украшения включены.' : ' — только цвета, без анимации.');
+                    st.innerHTML = 'Сейчас: <b class="text-slate-200">' + T.ico + ' ' + T.name + '</b>' + tail
+                        + (nxThemeUrlLock ? ' <span class="text-amber-300">(предпросмотр по ссылке, не сохранено)</span>' : '');
+                }
+            } catch (e) {}
+        }
+        // ---- слой оформления: создаётся только для непустой темы ----
+        function nxThemeMount() {
+            try {
+                if (nxTheme === 'standard' || !nxThemeFx) { nxThemeKillFx(); return; }
+                nxDecoBuild(nxTheme);
+                nxGarlandBuild();
+                nxSnowStart(nxTheme);
+            } catch (e) {}
+        }
+        function nxThemeKillFx() {
+            nxSnowStop();
+            ['nx-snow', 'nx-garland', 'nx-deco'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+            });
+        }
+        function nxGarlandBuild() {
+            var g = document.getElementById('nx-garland');
+            if (!g) {
+                g = document.createElement('div');
+                g.id = 'nx-garland';
+                g.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(g);
+            }
+            var n = Math.max(12, Math.min(36, Math.round(window.innerWidth / 44)));
+            var html = '';
+            for (var i = 0; i < n; i++) html += '<i></i>';
+            if (g.innerHTML !== html) g.innerHTML = html;
+        }
+        function nxDecoBuild(kind) {
+            var old = document.getElementById('nx-deco');
+            if (old && old.parentNode) old.parentNode.removeChild(old);
+            var d = document.createElement('div');
+            d.id = 'nx-deco';
+            d.setAttribute('aria-hidden', 'true');
+            d.innerHTML = (kind === 'festive')
+                ? '<span class="nx-d-l1">🎉</span><span class="nx-d-l2">✦</span><span class="nx-d-r1">🎊</span><span class="nx-d-r2">✦</span><span class="nx-d-bl">🎈</span><span class="nx-d-br">🎁</span>'
+                : '<span class="nx-d-l1">❄</span><span class="nx-d-l2">❅</span><span class="nx-d-r1">✦</span><span class="nx-d-r2">❄</span><span class="nx-d-bl">🎄</span><span class="nx-d-br">🎁</span>';
+            document.body.appendChild(d);
+        }
+        // ---- снег (новогодний) и конфетти (праздничный): один canvas ----
+        var nxSnowRaf = 0, nxSnowParts = [], nxSnowCtx = null, nxSnowCv = null, nxSnowDpr = 1, nxSnowPrev = 0, nxSnowKind = 'newyear';
+        function nxSnowStart(kind) {
+            nxSnowKind = (kind === 'festive') ? 'festive' : 'newyear';
+            nxSnowStop();
+            try {
+                var cv = document.createElement('canvas');
+                cv.id = 'nx-snow';
+                cv.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(cv);
+                nxSnowCv = cv;
+                nxSnowCtx = cv.getContext('2d');
+                nxSnowResize();
+                nxSnowPrev = 0;
+                nxSnowRaf = requestAnimationFrame(nxSnowFrame);
+            } catch (e) { nxSnowCv = null; nxSnowCtx = null; }
+        }
+        function nxSnowStop() {
+            if (nxSnowRaf) { try { cancelAnimationFrame(nxSnowRaf); } catch (e) {} nxSnowRaf = 0; }
+            if (nxSnowCv && nxSnowCv.parentNode) nxSnowCv.parentNode.removeChild(nxSnowCv);
+            nxSnowCv = null; nxSnowCtx = null; nxSnowParts.length = 0; nxSnowPrev = 0;
+        }
+        function nxSnowResize() {
+            if (!nxSnowCv) return;
+            nxSnowDpr = Math.min(2, window.devicePixelRatio || 1);
+            var w = window.innerWidth, h = window.innerHeight;
+            nxSnowCv.width = Math.max(1, Math.round(w * nxSnowDpr));
+            nxSnowCv.height = Math.max(1, Math.round(h * nxSnowDpr));
+            nxSnowCv.style.width = w + 'px';
+            nxSnowCv.style.height = h + 'px';
+            nxSnowBuild();
+        }
+        function nxSnowBuild() {
+            var w = window.innerWidth, h = window.innerHeight;
+            // b399: на слабом устройстве частиц втрое меньше — снег остаётся, лаги уходят
+            var low = (typeof nxLowPow !== 'undefined') && nxLowPow;
+            var n = low ? 22 : Math.max(18, Math.min(84, Math.round(w * h / 26000)));
+            if (nxSnowKind === 'festive') n = Math.max(16, Math.round(n * 0.8));
+            nxSnowParts.length = 0;
+            for (var i = 0; i < n; i++) nxSnowParts.push(nxSnowPart(true));
+        }
+        function nxSnowPart(spread) {
+            var w = window.innerWidth, h = window.innerHeight;
+            var p = {
+                x: Math.random() * w,
+                y: spread ? Math.random() * h : -24,
+                ph: Math.random() * 6.283,
+                rot: Math.random() * 6.283,
+                vr: (Math.random() - 0.5) * 3.2
+            };
+            if (nxSnowKind === 'festive') {
+                p.w = 3 + Math.random() * 5;
+                p.h = p.w * (0.5 + Math.random() * 0.7);
+                p.vy = 34 + Math.random() * 62;
+                p.vx = -12 + Math.random() * 24;
+                p.color = ['#fbbf24', '#f472b6', '#34d399', '#a78bfa', '#f87171', '#38bdf8', '#fde68a'][Math.floor(Math.random() * 7)];
+                p.a = 0.7 + Math.random() * 0.3;
+            } else {
+                p.r = 0.8 + Math.random() * 2.2;
+                p.vy = 16 + Math.random() * 40 + p.r * 6;
+                p.vx = -8 + Math.random() * 16;
+                p.color = Math.random() < 0.16 ? '#a5f3fc' : '#ffffff';
+                p.a = 0.45 + Math.random() * 0.5;
+            }
+            return p;
+        }
+        function nxSnowFrame(ts) {
+            nxSnowRaf = requestAnimationFrame(nxSnowFrame);
+            if (document.hidden) { nxSnowPrev = 0; return; } // вкладка скрыта — кадры не жжём
+            var ctx = nxSnowCtx;
+            if (!ctx) return;
+            if (!nxSnowPrev) nxSnowPrev = ts;
+            var dt = Math.min(50, ts - nxSnowPrev);
+            nxSnowPrev = ts;
+            var k = dt / 1000;
+            var w = window.innerWidth, h = window.innerHeight;
+            ctx.setTransform(nxSnowDpr, 0, 0, nxSnowDpr, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+            for (var i = 0; i < nxSnowParts.length; i++) {
+                var p = nxSnowParts[i];
+                p.ph += k * 1.1;
+                p.x += p.vx * k + Math.sin(p.ph) * 12 * k;
+                p.y += p.vy * k;
+                if (nxSnowKind === 'festive') p.rot += p.vr * k;
+                if (p.y > h + 26 || p.x < -40 || p.x > w + 40) { nxSnowParts[i] = nxSnowPart(false); continue; }
+                ctx.globalAlpha = p.a;
+                if (nxSnowKind === 'festive') {
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate(p.rot);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    ctx.restore();
+                } else {
+                    ctx.beginPath();
+                    ctx.fillStyle = p.color;
+                    ctx.arc(p.x, p.y, p.r, 0, 6.283);
+                    ctx.fill();
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+        var nxThemeRszTimer = 0;
+        window.addEventListener('resize', function () {
+            if (!nxSnowCv) return;
+            clearTimeout(nxThemeRszTimer); // телефон повернули — пересобираем слой один раз
+            nxThemeRszTimer = setTimeout(function () {
+                try { nxSnowResize(); nxGarlandBuild(); } catch (e) {}
+            }, 250);
+        });
+        // запуск: тема применяется сразу при разборе скрипта, декор — когда есть body
+        (function nxThemeBoot() {
+            try {
+                nxThemePrefRead();
+                nxThemePaint();
+                var go = function () {
+                    try { nxThemeMount(); nxThemeSyncUI(); } catch (e) {}
+                };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+                else go();
+            } catch (e) {}
+        })();
         window.onload = function() {
           // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
           // игра продолжит работу и покажет ПОДРОБНОСТЬ (со стеком в консоли), а не молчаливый «Script error.»

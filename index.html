@@ -16,6 +16,20 @@
          Кешированием теперь занимается sw.js + версионирование ?v= -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#020617">
+    <!-- b537: тема оформления («Студия → Расписание → Внешний вид игры»)
+         применяется ДО первой отрисовки, иначе при включённом новогоднем
+         виде страница на мгновение мигала стандартным фоном -->
+    <script>
+        try {
+            var _nxT = localStorage.getItem('nx_theme');
+            if (_nxT === 'newyear' || _nxT === 'festive') {
+                document.documentElement.setAttribute('data-nx-theme', _nxT);
+                if (localStorage.getItem('nx_theme_fx') !== '0') document.documentElement.classList.add('nx-theme-fx');
+                var _mt = document.querySelector('meta[name="theme-color"]');
+                if (_mt) _mt.setAttribute('content', _nxT === 'newyear' ? '#050a18' : '#150a14');
+            }
+        } catch (e) {}
+    </script>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -24,20 +38,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob279" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob279">
+    <script src="assets/three.min.js?v=nxmob280" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob280">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob279">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob280">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob279">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob280">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -1729,6 +1743,24 @@
             </div><!-- /studio-sec cards -->
 
             <div class="studio-sec space-y-3" data-sec="schedule" hidden>
+            <!-- b537: ВНЕШНИЙ ВИД ИГРЫ — стандартный / новогодний / праздничный.
+                 Выбор хранится на устройстве (localStorage), других игроков не трогает. -->
+            <div>
+                <div class="bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
+                    <h4 class="text-sm font-bold text-white mb-0.5"><i class="fa-solid fa-palette text-fuchsia-400 mr-1.5"></i>Внешний вид игры</h4>
+                    <p class="text-[10px] text-slate-500 leading-snug">Как выглядит сайт <b class="text-slate-300">на этом устройстве</b>: обычный тёмный вид, Новый год со снегом и украшениями или праздничный с золотом и конфетти. Настройка сохраняется у вас и не меняет оформление других игроков; вернуть как было — кнопка «Стандартный».</p>
+                    <div id="nx-theme-list" class="grid grid-cols-3 gap-1.5 sm:gap-2">
+                        <button type="button" data-nx-theme-btn="standard" onclick="nxThemePick('standard')" class="nx-theme-tile"><span class="nx-tt-ico">🌙</span><span class="nx-tt-name">Стандартный</span><span class="nx-tt-sub">как сейчас</span></button>
+                        <button type="button" data-nx-theme-btn="newyear" onclick="nxThemePick('newyear')" class="nx-theme-tile"><span class="nx-tt-ico">❄️</span><span class="nx-tt-name">Новогодний</span><span class="nx-tt-sub">снег, гирлянда</span></button>
+                        <button type="button" data-nx-theme-btn="festive" onclick="nxThemePick('festive')" class="nx-theme-tile"><span class="nx-tt-ico">🎉</span><span class="nx-tt-name">Праздничный</span><span class="nx-tt-sub">золото, конфетти</span></button>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        <label class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 cursor-pointer"><input id="nx-theme-fx" type="checkbox" class="accent-fuchsia-500 w-3.5 h-3.5" onchange="nxThemeFxToggle(this.checked)">снегопад, гирлянда, украшения</label>
+                        <span class="text-[10px] text-slate-600">без галочки — только цвета, без анимации (экономит батарею)</span>
+                    </div>
+                    <p id="nx-theme-state" class="text-[10px] text-slate-400"></p>
+                </div>
+            </div>
             <!-- b159: АВТОРАСПИСАНИЕ ВСЕХ ПАКОВ ПО МЕСЯЦУ -->
             <div>
                 <div class="bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
@@ -4214,10 +4246,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob279"></script>
-    <script src="assets/stories.js?v=nxmob279"></script>
-    <script src="assets/qrcode.min.js?v=nxmob279"></script>
-    <script src="assets/qr-transfer.js?v=nxmob279"></script>
+    <script src="assets/app.js?v=nxmob280"></script>
+    <script src="assets/stories.js?v=nxmob280"></script>
+    <script src="assets/qrcode.min.js?v=nxmob280"></script>
+    <script src="assets/qr-transfer.js?v=nxmob280"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {
