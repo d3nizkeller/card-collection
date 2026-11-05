@@ -1281,7 +1281,7 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 #tab-studio .nx-theme-tile.is-on::after{content:'\2713';position:absolute;top:5px;right:8px;font-size:10px;font-weight:900;color:#c4b5fd}
 #nx-theme-fx:disabled{opacity:.45}
 /* на широком экране плитки не растягиваются на пол-страницы */
-#nx-theme-list{max-width:760px;align-items:start}
+#nx-theme-list{max-width:760px}
 
 /* --- анимационный слой: снег/конфетти, гирлянда, украшения --- */
 #nx-snow{position:fixed;left:0;top:0;z-index:55;pointer-events:none;display:block}
