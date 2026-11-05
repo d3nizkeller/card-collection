@@ -6999,7 +6999,6 @@ function nxToggle3d() {
                 try { const rj0 = remote && remote.jp ? remote.jp : remote; if (rj0 && !rj0.ep) window.__nxJpLegacyAt = Date.now(); } catch (e) {}
                 jackpotMerge(remote && remote.jp ? remote.jp : remote);
                 jpcMerge(remote && remote.jpc); // b414: настройки джекпота от владельца комнаты
-                dsgMerge(remote && remote.dsg); // b541: оформление комнаты от админа
                 marketMerge(remote && remote.mk); // b136: лоты и квитанции биржи
                 siteStatsMerge(remote && remote.st); // b277: чужие записи реестра игроков
                 jpAutoCompactIfNeeded(); // b423: загрязнённый реестр чиним до пуша
@@ -7008,7 +7007,6 @@ function nxToggle3d() {
                     const rj = (chk && chk.jp) ? chk.jp : chk;
                     jackpotMerge(rj);
                     jpcMerge(chk && chk.jpc); // b414
-                    dsgMerge(chk && chk.dsg); // b541: оформление комнаты
                     marketMerge(chk && chk.mk); // b136
                     siteStatsMerge(chk && chk.st); // b277
                     // b183: документ перезаписали между нашей записью и чтением ИЛИ в облаке не хватает
@@ -7060,7 +7058,7 @@ function nxToggle3d() {
                 const rj = remote && remote.jp ? remote.jp : remote;
                 jackpotMerge(rj);
                 jpcMerge(remote && remote.jpc); // b414
-                dsgMerge(remote && remote.dsg); // b541: общая тема комнаты прилетает этим же pull'ом
+                try { dsgSync(); } catch (e) {} // b545: тему комнаты тянем своим запросом, а не из общего документа
                 marketMerge(remote && remote.mk); // b136
                 siteStatsMerge(remote && remote.st); // b277
                 try { jpcApplyGrants(); } catch (e) {} // b414
@@ -7274,9 +7272,9 @@ function nxToggle3d() {
                 st: siteStatsDoc(), // b277: статистика игроков сайта — балансы, паки, джекпоты
                 updatedAt: Date.now() + '-' + JACKPOT_CID
             };
-            // b541: общая тема комнаты. Поле пишем ТОЛЬКО если админ её задавал —
-            // иначе клиент, который её ещё не видел, затирал бы документ пустым значением
-            try { if (dsg && dsg.at > 0) doc.dsg = dsgDoc(); } catch (e) {}
+            // b545: тема комнаты больше не пишется в этот документ — у неё свой
+            // (dsgPath): общий документ перезаписывается целиком каждые ~15 с,
+            // и чужая копия без темы затирала выбор админа.
             return doc;
         }
         // b183: аварийная отправка при скрытии/закрытии вкладки: sendBeacon (textdb) или keepalive-fetch (firebase).
@@ -21130,40 +21128,83 @@ function nxToggle3d() {
                 nxThemePaint();
                 var go = function () {
                     try { nxThemeRenderLists(); nxThemeMount(); nxThemeSyncUI(); } catch (e) {}
+                    // b545: тема комнаты — отдельным запросом сразу после старта,
+                    // не дожидаясь первого полного цикла банка
+                    setTimeout(function () { try { dsgSync(); } catch (e) {} }, 1200);
                 };
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
                 else go();
             } catch (e) {}
         })();
         // ==========================================================================
-        // b541: ОФОРМЛЕНИЕ КОМНАТЫ — админ задаёт вид сайта для всех игроков
-        // Живёт в том же облачном документе, что и настройки джекпота (поле dsg):
-        // админ жмёт «Применить всем» в Студии → запись {t, fx, at} уходит в облако,
-        // и на ближайшем цикле синхронизации (≤15 c) тема применяется у всех.
-        // Побеждает самая свежая запись по метке at — старая копия её не затрёт.
+        // b545: ОФОРМЛЕНИЕ КОМНАТЫ — ТЕПЕРЬ В СВОЁМ ДОКУМЕНТЕ
+        // b541 держал тему в общем документе джекпота, и это оказалось ловушкой:
+        // документ перезаписывается целиком любым клиентом каждые ~15 секунд,
+        // поэтому клиент, который ещё не успел принять тему, своим пушем её
+        // затирал (а метка времени из будущего вообще блокировала смену навсегда).
+        // Теперь тема живёт в отдельном документе: пишет только создатель
+        // комнаты, читают все вместе с банком — гонки записи больше нет.
         // ==========================================================================
         var DSG_KEY = 'nexus_dsg';
+        var DSG_MAX_AHEAD = 86400000; // метка из будущего больше суток — мусор, не доверяем
         var dsg = dsgLoad();
+        var dsgBusy = false;
+
+        function dsgPath() {
+            try { if (CLOUD.db) return CLOUD.db + '/nexus-design-v1.json'; } catch (e) {}
+            return 'https://textdb.dev/api/data/nexus-tcg-design-v1';
+        }
+        function dsgSane(at) {
+            at = Math.floor(at) || 0;
+            return at > 0 && at <= Date.now() + DSG_MAX_AHEAD;
+        }
         function dsgLoad() {
             try {
                 var o = JSON.parse(LS.getItem(DSG_KEY) || 'null');
-                if (o && typeof o === 'object') {
-                    return { t: String(o.t || ''), fx: (o.fx === 0 ? 0 : 1), at: Math.floor(o.at) || 0 };
+                if (o && typeof o === 'object' && dsgSane(o.at)) {
+                    return { t: String(o.t || ''), fx: (o.fx === 0 ? 0 : 1), at: Math.floor(o.at) };
                 }
             } catch (e) {}
             return { t: '', fx: 1, at: 0 };
         }
         function dsgSave() { try { LS.setItem(DSG_KEY, JSON.stringify(dsg)); } catch (e) {} }
         function dsgDoc() { return { t: dsg.t, fx: dsg.fx, at: dsg.at }; }
+
+        function dsgFetch() {
+            if (typeof fetch !== 'function') return Promise.resolve(null);
+            return fetch(dsgPath() + '?t=' + Date.now(), nxCloudOpt({ cache: 'no-store' }))
+                .then(function (r) { return r.ok ? r.text() : ''; })
+                .then(function (txt) {
+                    txt = String(txt || '').trim();
+                    if (!txt) return null;
+                    try { return JSON.parse(txt); } catch (e) { return null; }
+                });
+        }
+        function dsgPush() {
+            if (typeof fetch !== 'function') return Promise.resolve(false);
+            if (typeof cloudGuest === 'function' && cloudGuest()) return Promise.resolve(false);
+            return fetch(dsgPath(), nxCloudOpt({
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(dsgDoc())
+            })).then(function (r) { return r.ok; }).catch(function () { return false; });
+        }
+        function dsgSync() {
+            if (dsgBusy) return;
+            dsgBusy = true;
+            dsgFetch().then(function (o) { if (o) dsgMerge(o); })
+                .catch(function () { /* офлайн — попробуем на следующем цикле */ })
+                .then(function () { dsgBusy = false; });
+        }
         function dsgMerge(remote) {
             if (!remote || typeof remote !== 'object') return false;
             var at = Math.floor(remote.at) || 0;
-            if (!at || at <= (dsg.at || 0)) return false;
+            if (!dsgSane(at) || at <= (dsg.at || 0)) return false;
             var t = String(remote.t || '');
             if (t && !NX_THEMES[t]) t = '';
             dsg = { t: t, fx: (remote.fx === 0 ? 0 : 1), at: at };
             dsgSave();
-            if (dsg.t) { // админ выбрал тему — ставим её у себя
+            if (dsg.t) { // создатель выбрал тему — ставим её у себя
                 nxThemeFx = !!dsg.fx;
                 nxThemePick(dsg.t);
             } else {
@@ -21180,8 +21221,14 @@ function nxToggle3d() {
                 dsg = { t: nxTheme, fx: nxThemeFx ? 1 : 0, at: Date.now() };
                 dsgSave();
                 dsgRender();
-                try { jpSyncSoon(); } catch (e) {}
-                showToast('🌐 «' + NX_THEMES[nxTheme].name + '» теперь у всех игроков комнаты', 'success');
+                var name = NX_THEMES[nxTheme] ? NX_THEMES[nxTheme].name : nxTheme;
+                dsgPush().then(function (ok) {
+                    try {
+                        showToast(ok ? ('🌐 «' + name + '» теперь у всех игроков комнаты')
+                                     : 'Не удалось отправить тему — проверьте связь и повторите',
+                                  ok ? 'success' : 'error');
+                    } catch (e) {}
+                });
             } catch (e) {}
         }
         function dsgClear() {
@@ -21193,8 +21240,12 @@ function nxToggle3d() {
                 dsg = { t: '', fx: 1, at: Date.now() };
                 dsgSave();
                 dsgRender();
-                try { jpSyncSoon(); } catch (e) {}
-                showToast('Общая тема снята — у каждого игрока снова свой выбор', 'success');
+                dsgPush().then(function (ok) {
+                    try {
+                        showToast(ok ? 'Общая тема снята — у каждого игрока снова свой выбор'
+                                     : 'Не удалось отправить — проверьте связь', ok ? 'success' : 'error');
+                    } catch (e) {}
+                });
             } catch (e) {}
         }
         function dsgRender() {
