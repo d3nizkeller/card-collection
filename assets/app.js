@@ -2292,6 +2292,33 @@ function nxToggle3d() {
             }
         }
         function nxAnimTexDropAll() { NX_ANIM_TEX.length = 0; }
+        // b551: если в наборе игры есть gif-карты, 3D-стол не может их оживить:
+        // WebGL получает canvas-текстуру, а не живую картинку, и кадры не меняются.
+        // Такой стол честно рисуем в 2D — там карта обычный <img>, и анимация идёт
+        // сама. Как только gif-карт в наборе нет, 3D возвращается.
+        function nxPoolHasGif(list) {
+            try {
+                const arr = list || [];
+                for (let i = 0; i < arr.length; i++) {
+                    const s = arr[i];
+                    if (s && nxTexIsGif(s.image)) return true;
+                }
+            } catch (e) {}
+            return false;
+        }
+        // Набор карт для игр: если игрок выбрал карты в «Карты» — смотрим их,
+        // иначе весь каталог (тогда любой gif в коллекции переводит столы в 2D).
+        function nxGifInGames() {
+            try {
+                if (typeof state === 'undefined' || !state || !state.cards) return false;
+                const ids = (typeof getSlotCardIds === 'function') ? getSlotCardIds() : [];
+                const byId = {};
+                state.cards.forEach(c => { if (c && c.id) byId[c.id] = c; });
+                const chosen = [];
+                ids.forEach(id => { if (byId[id]) chosen.push(byId[id]); });
+                return nxPoolHasGif(chosen.length ? chosen : state.cards);
+            } catch (e) { return false; }
+        }
         // Страховка: тик идёт и вне циклов рендера столов — но только пока открыта
         // вкладка «Игры», иначе мы бы вхолостую перерисовывали холсты в фоне.
         setInterval(function () {
@@ -9600,19 +9627,20 @@ function nxToggle3d() {
                     // кадр gif менялся прямо в текстуре (иначе первый кадр навсегда)
                     const paintArt = () => {
                         try {
-                            g.save();
-                            g.beginPath(); g.rect(9, artTop, W - 18, artH); g.clip();
-                            // b52: подложка-cover затемняется, поверх — картинка ЦЕЛИКОМ (contain)
-                            coverDrawImage(g, img, W, artH);
-                            g.fillStyle = 'rgba(2,6,23,.62)'; g.fillRect(9, artTop, W - 18, artH);
+                            // b550: арт заполняет область ЦЕЛИКОМ (cover). Раньше он
+                            // вписывался с полями — у вертикальных картинок по бокам
+                            // оставались тёмные полосы, и карта выглядела «сжатой».
+                            const aw = W - 18, ah = artH;
                             const iw = img.width || 1, ih = img.height || 1;
-                            const sc = Math.min((W - 26) / iw, (artH - 14) / ih);
+                            g.save();
+                            g.beginPath(); g.rect(9, artTop, aw, ah); g.clip();
+                            const sc = Math.max(aw / iw, ah / ih);
                             const dw = iw * sc, dh = ih * sc;
-                            g.drawImage(img, (W - dw) / 2, artTop + (artH - dh) / 2, dw, dh);
+                            g.drawImage(img, 9 + (aw - dw) / 2, artTop + (ah - dh) / 2, dw, dh);
                             g.restore();
-                            const vg = g.createLinearGradient(0, artTop + artH - Math.round(H * 0.2), 0, artTop + artH);
-                            vg.addColorStop(0, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.85)');
-                            g.fillStyle = vg; g.fillRect(9, artTop + artH - Math.round(H * 0.2), W - 18, Math.round(H * 0.2));
+                            const vg = g.createLinearGradient(0, artTop + ah - Math.round(H * 0.22), 0, artTop + ah);
+                            vg.addColorStop(0, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.8)');
+                            g.fillStyle = vg; g.fillRect(9, artTop + ah - Math.round(H * 0.22), aw, Math.round(H * 0.22));
                         } catch (e) {}
                     };
                     paintArt();
@@ -9639,6 +9667,8 @@ function nxToggle3d() {
             // b49: символы собираем ДО попытки создать WebGL — они нужны и фолбэку
             slots.symbols = slotsSymbols();
             slots.symKey = slots.symbols.map(sl => sl.id).join(',');
+            // b551: gif-символы в 3D не анимируются — этот стол рисуем в 2D
+            if (nxGifInGames()) { slots.fallback = true; slotsRenderFallback(); return; }
             if (nxWeakGpu() && !nxForce3d()) { slots.fallback = true; slotsRenderFallback(); return; } // b309
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
@@ -10152,6 +10182,9 @@ function nxToggle3d() {
         function grid3dEnsure() {
             if (grid3d.ready || grid3d.failed) return;
             if (nxWeakGpu() && !nxForce3d()) { grid3d.failed = true; return; } // b309
+            // b551: gif-символы в 3D не анимируются — «Сетку» рисуем в 2D
+            try { if (!slots.symbols.length) slots.symbols = slotsSymbols(); } catch (e) {}
+            if (nxGifInGames()) { grid3d.failed = true; return; }
             const container = document.getElementById('grid3d-container');
             if (!container) return;
             let renderer;
@@ -12232,14 +12265,14 @@ function nxToggle3d() {
                     // если это gif, чтобы кадр менялся прямо в 3D-текстуре
                     const paintArt = () => {
                         try {
-                            const dw = W - 20, dh = H - 104;
-                            const ar = (img.width || 1) / (img.height || 1), dr = dw / dh;
-                            let sw, sh, sx, sy;
-                            if (ar > dr) { sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
-                            else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
+                            // b550: арт заполняет область целиком (cover) — без тёмных полей по бокам
+                            const aw = W - 20, ah = H - 104;
+                            const iw = img.width || 1, ih = img.height || 1;
+                            const sc = Math.max(aw / iw, ah / ih);
+                            const dw = iw * sc, dh = ih * sc;
                             g.save();
-                            g.beginPath(); g.rect(10, 10, dw, dh); g.clip(); // не залезаем на подпись и рамку
-                            g.drawImage(img, sx, sy, sw, sh, 10, 10, dw, dh);
+                            g.beginPath(); g.rect(10, 10, aw, ah); g.clip(); // не залезаем на подпись и рамку
+                            g.drawImage(img, 10 + (aw - dw) / 2, 10 + (ah - dh) / 2, dw, dh);
                             g.restore();
                         } catch (e) {}
                     };
@@ -12256,6 +12289,8 @@ function nxToggle3d() {
             const box = document.getElementById('lines-3d-box');
             const board = document.getElementById('lines-board');
             if (!box) return;
+            // b551: gif-символы в 3D не анимируются — «Линии» рисуем в 2D
+            if (nxGifInGames()) { lines.no3d = true; return; }
             let renderer;
             try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
             catch (e) { lines.no3d = true; return; }
