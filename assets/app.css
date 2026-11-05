@@ -1510,3 +1510,119 @@ html[data-nx-theme="autumn"] ::selection{background:rgba(245,158,11,.4)}
     #nx-garland .nx-halo,#nx-deco span{animation:none !important}
     #tab-studio .nx-theme-tile{transition:none}
 }
+
+/* ==========================================================================
+   b543: ТЁМНЫЕ ПОВЕРХНОСТИ В ЦВЕТЕ ТЕМЫ
+   Раньше тема перекрашивала только фон страницы и шапку: панели, карточки,
+   поля ввода и карусель оставались холодным графитом (#0f172a) и на тёплых
+   темах («Осень», «Хэллоуин», «Любовь») выглядели чужеродными пятнами.
+   Теперь у каждой темы своя гамма тёмных ступеней (--nx-s0…s2, --nx-ln, --nx-ac),
+   а классы Tailwind (bg-slate-*, border-slate-*, from/to-slate-*) перенаправлены
+   на неё. Стандартная тема не получает ни одного правила — там всё как было.
+   ========================================================================== */
+
+html[data-nx-theme="newyear"]{--nx-s0:4 10 24;--nx-s1:8 20 40;--nx-s2:16 34 60;--nx-ln:30 62 92;--nx-ln2:44 88 124;--nx-ac:56 189 248;}
+html[data-nx-theme="festive"]{--nx-s0:17 8 14;--nx-s1:30 14 24;--nx-s2:46 22 36;--nx-ln:76 40 56;--nx-ln2:104 58 76;--nx-ac:251 191 36;}
+html[data-nx-theme="halloween"]{--nx-s0:14 6 14;--nx-s1:27 11 25;--nx-s2:42 17 36;--nx-ln:74 34 58;--nx-ln2:100 48 78;--nx-ac:249 115 22;}
+html[data-nx-theme="love"]{--nx-s0:20 5 15;--nx-s1:35 10 25;--nx-s2:53 17 35;--nx-ln:88 34 58;--nx-ln2:116 50 78;--nx-ac:244 114 182;}
+html[data-nx-theme="space"]{--nx-s0:5 4 14;--nx-s1:11 10 29;--nx-s2:21 18 47;--nx-ln:42 38 84;--nx-ln2:58 54 110;--nx-ac:129 140 248;}
+html[data-nx-theme="ocean"]{--nx-s0:2 14 24;--nx-s1:5 26 39;--nx-s2:11 41 57;--nx-ln:24 70 92;--nx-ln2:36 92 118;--nx-ac:34 211 238;}
+html[data-nx-theme="cyber"]{--nx-s0:4 4 10;--nx-s1:10 10 20;--nx-s2:19 19 35;--nx-ln:40 40 66;--nx-ln2:56 56 88;--nx-ac:34 211 238;}
+html[data-nx-theme="sakura"]{--nx-s0:18 8 14;--nx-s1:31 14 23;--nx-s2:47 22 35;--nx-ln:80 40 56;--nx-ln2:106 56 74;--nx-ac:249 168 212;}
+html[data-nx-theme="autumn"]{--nx-s0:18 9 3;--nx-s1:29 17 7;--nx-s2:42 26 12;--nx-ln:66 42 22;--nx-ln2:90 58 30;--nx-ac:245 158 11;}
+
+/* утилиты Tailwind → палитра темы */
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-800{background-color:rgb(var(--nx-s2) / 1)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900{background-color:rgb(var(--nx-s1) / 1)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950{background-color:rgb(var(--nx-s0) / 1)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/40{background-color:rgb(var(--nx-s0) / 0.4)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/50{background-color:rgb(var(--nx-s0) / 0.5)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/60{background-color:rgb(var(--nx-s0) / 0.6)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/70{background-color:rgb(var(--nx-s0) / 0.7)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/80{background-color:rgb(var(--nx-s0) / 0.8)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/85{background-color:rgb(var(--nx-s0) / 0.85)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/90{background-color:rgb(var(--nx-s0) / 0.9)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-950\/95{background-color:rgb(var(--nx-s0) / 0.95)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/40{background-color:rgb(var(--nx-s1) / 0.4)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/50{background-color:rgb(var(--nx-s1) / 0.5)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/60{background-color:rgb(var(--nx-s1) / 0.6)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/70{background-color:rgb(var(--nx-s1) / 0.7)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/80{background-color:rgb(var(--nx-s1) / 0.8)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/85{background-color:rgb(var(--nx-s1) / 0.85)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/90{background-color:rgb(var(--nx-s1) / 0.9)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-900\/95{background-color:rgb(var(--nx-s1) / 0.95)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-800\/50{background-color:rgb(var(--nx-s2) / 0.5)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-800\/60{background-color:rgb(var(--nx-s2) / 0.6)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-800\/70{background-color:rgb(var(--nx-s2) / 0.7)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-800\/80{background-color:rgb(var(--nx-s2) / 0.8)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .bg-slate-800\/90{background-color:rgb(var(--nx-s2) / 0.9)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-500{border-color:rgb(var(--nx-ln2) / 1)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-600{border-color:rgb(var(--nx-ln2) / 1)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-700{border-color:rgb(var(--nx-ln2) / 1)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-800{border-color:rgb(var(--nx-ln) / 1)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-800\/50{border-color:rgb(var(--nx-ln) / 0.5)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-800\/70{border-color:rgb(var(--nx-ln) / 0.7)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-800\/80{border-color:rgb(var(--nx-ln) / 0.8)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-700\/60{border-color:rgb(var(--nx-ln2) / 0.6)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-700\/70{border-color:rgb(var(--nx-ln2) / 0.7)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .border-slate-600\/70{border-color:rgb(var(--nx-ln2) / 0.7)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-700{--tw-gradient-from:rgb(var(--nx-s2) / 1) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-700{--tw-gradient-to:rgb(var(--nx-s2) / 1) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-900{--tw-gradient-from:rgb(var(--nx-s1) / 1) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-900{--tw-gradient-to:rgb(var(--nx-s1) / 1) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950{--tw-gradient-from:rgb(var(--nx-s0) / 1) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950{--tw-gradient-to:rgb(var(--nx-s0) / 1) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-900\/60{--tw-gradient-from:rgb(var(--nx-s1) / 0.6) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-900\/60{--tw-gradient-to:rgb(var(--nx-s1) / 0.6) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-900\/80{--tw-gradient-from:rgb(var(--nx-s1) / 0.8) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-900\/80{--tw-gradient-to:rgb(var(--nx-s1) / 0.8) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-900\/90{--tw-gradient-from:rgb(var(--nx-s1) / 0.9) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-900\/90{--tw-gradient-to:rgb(var(--nx-s1) / 0.9) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/10{--tw-gradient-from:rgb(var(--nx-s0) / 0.1) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/10{--tw-gradient-to:rgb(var(--nx-s0) / 0.1) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/15{--tw-gradient-from:rgb(var(--nx-s0) / 0.15) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/15{--tw-gradient-to:rgb(var(--nx-s0) / 0.15) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/20{--tw-gradient-from:rgb(var(--nx-s0) / 0.2) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/20{--tw-gradient-to:rgb(var(--nx-s0) / 0.2) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/30{--tw-gradient-from:rgb(var(--nx-s0) / 0.3) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/30{--tw-gradient-to:rgb(var(--nx-s0) / 0.3) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/60{--tw-gradient-from:rgb(var(--nx-s0) / 0.6) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/60{--tw-gradient-to:rgb(var(--nx-s0) / 0.6) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/70{--tw-gradient-from:rgb(var(--nx-s0) / 0.7) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/70{--tw-gradient-to:rgb(var(--nx-s0) / 0.7) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/80{--tw-gradient-from:rgb(var(--nx-s0) / 0.8) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/80{--tw-gradient-to:rgb(var(--nx-s0) / 0.8) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/85{--tw-gradient-from:rgb(var(--nx-s0) / 0.85) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/85{--tw-gradient-to:rgb(var(--nx-s0) / 0.85) var(--tw-gradient-to-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .from-slate-950\/90{--tw-gradient-from:rgb(var(--nx-s0) / 0.9) var(--tw-gradient-from-position)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .to-slate-950\/90{--tw-gradient-to:rgb(var(--nx-s0) / 0.9) var(--tw-gradient-to-position)}
+
+/* --- именные тёмные блоки магазина (карусель, витрина, деталь пака) --- */
+html[data-nx-theme]:not([data-nx-theme="standard"]) #store-carousel{
+    background:
+        radial-gradient(80% 55% at 50% 0%, rgb(var(--nx-ac) / .10), transparent 62%),
+        radial-gradient(60% 40% at 50% 100%, rgb(var(--nx-ac) / .07), transparent 70%),
+        linear-gradient(180deg, rgb(var(--nx-s1)) 0%, rgb(var(--nx-s0)) 60%, rgb(var(--nx-s0)) 100%);
+    border-color: rgb(var(--nx-ac) / .22);
+}
+html[data-nx-theme]:not([data-nx-theme="standard"]) #carousel-detail{
+    background-image: linear-gradient(to bottom right, rgb(var(--nx-s1) / .92), rgb(var(--nx-s0) / .74));
+    border-color: rgb(var(--nx-ln) / .85);
+}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .store-hero{ background-color: rgb(var(--nx-s1)); border-color: rgb(var(--nx-ac) / .26); }
+html[data-nx-theme]:not([data-nx-theme="standard"]) .store-tile{
+    background: linear-gradient(180deg, rgb(var(--nx-s1) / .92), rgb(var(--nx-s0) / .96));
+    border-color: rgb(var(--nx-ln) / .85);
+}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .store-stat{ background: rgb(var(--nx-s2) / .55); border-color: rgb(var(--nx-ln) / .8); }
+html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-arrow{ background: rgb(var(--nx-s0) / .78); border-color: rgb(var(--nx-ac) / .3); }
+html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-spot{ background: radial-gradient(ellipse at center, rgb(var(--nx-ac) / .18), rgb(var(--nx-s0) / 0) 70%); }
+html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-stage::before{ background: linear-gradient(90deg, rgb(var(--nx-s0) / .88), rgb(var(--nx-s0) / 0)); }
+html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-stage::after{ background: linear-gradient(270deg, rgb(var(--nx-s0) / .88), rgb(var(--nx-s0) / 0)); }
+
+/* b543b: мелкие «стеклянные» контролы (чипы количества, поле, ряд) — в той же гамме */
+html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-chip{background:rgb(var(--nx-s2) / .55);border-color:rgb(var(--nx-ln2) / .5)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-chip:hover{background:rgb(var(--nx-s2) / .85);border-color:rgb(var(--nx-ac) / .5)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-chip-max:hover{background:rgb(var(--nx-ac) / .18);border-color:rgb(var(--nx-ac) / .6)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-input{background:rgb(var(--nx-s0) / .85);border-color:rgb(var(--nx-ln) / .9)}
+html[data-nx-theme]:not([data-nx-theme="standard"]) .nx-glass-row{background:rgb(var(--nx-s1) / .55);border-color:rgb(var(--nx-ln) / .75)}
