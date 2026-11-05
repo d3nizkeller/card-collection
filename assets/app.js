@@ -2254,6 +2254,44 @@ function nxToggle3d() {
             } catch (e) { return ''; }
         }
 
+        // ===== b548: АНИМИРОВАННЫЕ GIF В 3D-ИГРАХ =====
+        // Игровые столы (Слоты, Линии, Сетка) рисуют карту ОДИН раз в canvas и
+        // отдают его как текстуру WebGL. Гифка в такой текстуре замирает на
+        // первом кадре — отсюда «в играх гифки не двигаются». Запоминаем пару
+        // «картинка + её перерисовка + текстура» и обновляем её из тика игры
+        // ~14 раз в секунду: drawImage у анимированного gif берёт ТЕКУЩИЙ кадр,
+        // поэтому текстура оживает. Обычные картинки в этот список не попадают.
+        const NX_ANIM_TEX = [];
+        function nxTexIsGif(u) { return /\.gif(\?|#|$)/i.test(String(u || '')); }
+        function nxAnimTexAdd(img, draw, tex) {
+            if (!img || !tex || typeof draw !== 'function') return;
+            for (let i = 0; i < NX_ANIM_TEX.length; i++) if (NX_ANIM_TEX[i].tex === tex) return;
+            NX_ANIM_TEX.push({ img: img, draw: draw, tex: tex, t: 0 });
+        }
+        function nxAnimTexTick(now) {
+            if (!NX_ANIM_TEX.length) return;
+            now = Number(now) || Date.now();
+            for (let i = NX_ANIM_TEX.length - 1; i >= 0; i--) {
+                const r = NX_ANIM_TEX[i];
+                if (!r || !r.tex) { NX_ANIM_TEX.splice(i, 1); continue; }
+                if (now - r.t < 70) continue;
+                r.t = now;
+                try { r.draw(); r.tex.needsUpdate = true; }
+                catch (e) { NX_ANIM_TEX.splice(i, 1); } // текстуру выбросили — забываем
+            }
+        }
+        function nxAnimTexDropAll() { NX_ANIM_TEX.length = 0; }
+        // Страховка: тик идёт и вне циклов рендера столов — но только пока открыта
+        // вкладка «Игры», иначе мы бы вхолостую перерисовывали холсты в фоне.
+        setInterval(function () {
+            try {
+                if (typeof document === 'undefined' || document.hidden) return;
+                const tab = document.getElementById('tab-battle');
+                if (!tab || tab.classList.contains('hidden')) return;
+                nxAnimTexTick(Date.now());
+            } catch (e) {}
+        }, 70);
+
         function mediaBase() { try { return String(LS.getItem('nexus_media_base') || '').trim().replace(/\/+$/, ''); } catch (e) { return ''; } }
         function mediaBaseSet(v, fromRoom) {
             try {
@@ -9541,21 +9579,30 @@ function nxToggle3d() {
             };
             crimp(0); crimp(H - CR);
             const artTop = CR, artH = H - CR * 2 - PL;
+            let animPaint = null; // b548: перерисовка арта для gif-символа
             if (sym.image) {
                 loadImgSafe(sym.image, img => {
-                    g.save();
-                    g.beginPath(); g.rect(9, artTop, W - 18, artH); g.clip();
-                    // b52: подложка-cover затемняется, поверх — картинка ЦЕЛИКОМ (contain)
-                    coverDrawImage(g, img, W, artH);
-                    g.fillStyle = 'rgba(2,6,23,.62)'; g.fillRect(9, artTop, W - 18, artH);
-                    const iw = img.width || 1, ih = img.height || 1;
-                    const sc = Math.min((W - 26) / iw, (artH - 14) / ih);
-                    const dw = iw * sc, dh = ih * sc;
-                    g.drawImage(img, (W - dw) / 2, artTop + (artH - dh) / 2, dw, dh);
-                    g.restore();
-                    const vg = g.createLinearGradient(0, artTop + artH - Math.round(H * 0.2), 0, artTop + artH);
-                    vg.addColorStop(0, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.85)');
-                    g.fillStyle = vg; g.fillRect(9, artTop + artH - Math.round(H * 0.2), W - 18, Math.round(H * 0.2));
+                    // b548: арт — отдельной функцией: её дёргает тик игры, чтобы
+                    // кадр gif менялся прямо в текстуре (иначе первый кадр навсегда)
+                    const paintArt = () => {
+                        try {
+                            g.save();
+                            g.beginPath(); g.rect(9, artTop, W - 18, artH); g.clip();
+                            // b52: подложка-cover затемняется, поверх — картинка ЦЕЛИКОМ (contain)
+                            coverDrawImage(g, img, W, artH);
+                            g.fillStyle = 'rgba(2,6,23,.62)'; g.fillRect(9, artTop, W - 18, artH);
+                            const iw = img.width || 1, ih = img.height || 1;
+                            const sc = Math.min((W - 26) / iw, (artH - 14) / ih);
+                            const dw = iw * sc, dh = ih * sc;
+                            g.drawImage(img, (W - dw) / 2, artTop + (artH - dh) / 2, dw, dh);
+                            g.restore();
+                            const vg = g.createLinearGradient(0, artTop + artH - Math.round(H * 0.2), 0, artTop + artH);
+                            vg.addColorStop(0, 'rgba(2,6,23,0)'); vg.addColorStop(1, 'rgba(2,6,23,.85)');
+                            g.fillStyle = vg; g.fillRect(9, artTop + artH - Math.round(H * 0.2), W - 18, Math.round(H * 0.2));
+                        } catch (e) {}
+                    };
+                    paintArt();
+                    if (nxTexIsGif(sym.image)) animPaint = { img: img, paint: paintArt };
                     tex.needsUpdate = true;
                 });
             } else {
@@ -9569,6 +9616,8 @@ function nxToggle3d() {
             g.strokeStyle = col; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
             const tex = new THREE.CanvasTexture(cv);
             try { tex.encoding = THREE.sRGBEncoding; tex.anisotropy = PACK3D_ANISO; } catch (e) {}
+            // b548: gif-символ — оживляем текстуру в тике игры
+            if (animPaint) nxAnimTexAdd(animPaint.img, animPaint.paint, tex);
             return tex;
         }
 
@@ -10225,6 +10274,7 @@ function nxToggle3d() {
                 grid3d.animId = requestAnimationFrame(loop);
                 try { // b62: кадр защищён — см. nx3dLoopBail
                 const now = performance.now();
+                try { nxAnimTexTick(now); } catch (e) {} // b548: кадры gif в 3D-картах
                 const dt = Math.min(0.05, (now - grid3d.lastT) / 1000);
                 grid3d.lastT = now;
                 let allIdle = true;
@@ -11377,6 +11427,7 @@ function nxToggle3d() {
             battle3d.raf = requestAnimationFrame(battle3dTick);
             try { // b62: кадр защищён — см. nx3dLoopBail
             const now = performance.now();
+            try { nxAnimTexTick(now); } catch (e) {} // b548: кадры gif в 3D-картах
             const B = battle3d;
 
             // живое окружение: вращение неба, звёзд, рун и парение искр
@@ -12166,21 +12217,24 @@ function nxToggle3d() {
             linesTexCache[sym.id] = tex;
             if (sym.image && g && !sym.jackpot) {
                 loadImgSafe(sym.image, (img) => {
-                    try {
-                        const dw = W - 20, dh = H - 104;
-                        const ar = (img.width || 1) / (img.height || 1), dr = dw / dh;
-                        let sw, sh, sx, sy;
-                        if (ar > dr) { sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
-                        else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
-                        g.drawImage(img, sx, sy, sw, sh, 10, 10, dw, dh);
-                        g.fillStyle = 'rgba(2,6,23,.85)'; g.fillRect(10, H - 84, W - 20, 74);
-                        g.fillStyle = '#ffffff'; g.font = '700 26px system-ui, sans-serif'; g.textAlign = 'center';
-                        g.fillText(String(sym.name || '').slice(0, 14), W / 2, H - 52);
-                        g.fillStyle = col; g.font = '900 18px system-ui, sans-serif';
-                        g.fillText(String(RARITY_LABELS_RU[sym.rarity] || sym.rarity || '').toUpperCase(), W / 2, H - 24);
-                        g.strokeStyle = col; g.lineWidth = 10; g.strokeRect(5, 5, W - 10, H - 10);
-                        tex.needsUpdate = true;
-                    } catch (e) {}
+                    // b548: арт рисуем отдельной функцией — её же дёргает тик,
+                    // если это gif, чтобы кадр менялся прямо в 3D-текстуре
+                    const paintArt = () => {
+                        try {
+                            const dw = W - 20, dh = H - 104;
+                            const ar = (img.width || 1) / (img.height || 1), dr = dw / dh;
+                            let sw, sh, sx, sy;
+                            if (ar > dr) { sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0; }
+                            else { sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2; }
+                            g.save();
+                            g.beginPath(); g.rect(10, 10, dw, dh); g.clip(); // не залезаем на подпись и рамку
+                            g.drawImage(img, sx, sy, sw, sh, 10, 10, dw, dh);
+                            g.restore();
+                        } catch (e) {}
+                    };
+                    paintArt();
+                    try { tex.needsUpdate = true; } catch (e) {}
+                    if (nxTexIsGif(sym.image)) nxAnimTexAdd(img, paintArt, tex);
                 });
             }
             return tex;
@@ -12306,6 +12360,7 @@ function nxToggle3d() {
             lines3d.animId = requestAnimationFrame(lines3dTick);
             try { // b109: кадр под предохранителем
                 const now = performance.now();
+                try { nxAnimTexTick(now); } catch (e) {} // b548: кадры gif в 3D-картах
                 if (lines.mode3d && lines3d.reels.length) {
                     let allStopped = true;
                     for (let c = 0; c < lines3d.reels.length; c++) {
