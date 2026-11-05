@@ -20710,7 +20710,7 @@ function nxToggle3d() {
             ocean: { shape: 'bubble', colors: ['#67e8f9', '#a5f3fc', '#bae6fd', '#7dd3fc'], size: [2, 7], vy: [-46, -14], sway: 10, alpha: [0.4, 0.85], dens: 0.85, garland: ['#22d3ee', '#67e8f9', '#bae6fd'] },
             cyber: { shape: 'bolt', colors: ['#22d3ee', '#f472b6', '#a3e635', '#e879f9'], size: [6, 13], vy: [50, 130], sway: 2, alpha: [0.7, 1], dens: 0.42, garland: ['#22d3ee', '#f472b6', '#a3e635'] },
             sakura: { shape: 'petal', colors: ['#fbcfe8', '#f9a8d4', '#fda4af', '#fecdd3'], size: [4, 9], vy: [12, 34], sway: 28, alpha: [0.75, 1], dens: 0.75, garland: ['#f9a8d4', '#fbcfe8', '#fda4af'] },
-            autumn: { shape: 'leaf', colors: ['#f59e0b', '#d97706', '#b45309', '#ea580c', '#ca8a04'], size: [5, 11], vy: [20, 52], sway: 30, alpha: [0.8, 1], dens: 0.65, garland: ['#f59e0b', '#ea580c', '#ca8a04'] }
+            autumn: { shape: 'leaf', colors: ['#f59e0b', '#d97706', '#b45309', '#ea580c', '#ca8a04'], size: [6, 13], vy: [20, 52], sway: 30, alpha: [0.8, 1], dens: 0.6, garland: ['#f59e0b', '#ea580c', '#ca8a04'] }
         };
         // украшения по краям: [слева-верх, слева-низ, справа-верх, справа-низ, низ-слева, низ-справа]
         var NX_DECO = {
@@ -20726,13 +20726,21 @@ function nxToggle3d() {
         };
         var NX_THEME_KEYS = Object.keys(NX_THEMES).join('|');
         var nxTheme = 'standard';
-        var nxThemeFx = true;
+        // b546: три независимых слоя оформления — админ гасит их по отдельности
+        var nxFxParts = true;    // частицы: снег, листья, сердечки, звёзды, пузыри…
+        var nxFxGarland = true;  // гирлянда по верхней кромке
+        var nxFxDeco = true;     // украшения по краям экрана
         var nxThemeUrlLock = false; // тема пришла из ссылки ?theme=… — не сохраняем
-        var nxThemeModalOpen = false; // b540: открыто окно «Внешний вид игры»
 
+        function nxFxAny() { return !!(nxFxParts || nxFxGarland || nxFxDeco); }
         function nxThemePrefRead() {
             try { var t = LS.getItem('nx_theme'); if (NX_THEMES[t]) nxTheme = t; } catch (e) {}
-            try { nxThemeFx = LS.getItem('nx_theme_fx') !== '0'; } catch (e) {}
+            try {
+                var off = LS.getItem('nx_theme_fx') === '0'; // старый общий выключатель
+                nxFxParts = !off && LS.getItem('nx_theme_parts') !== '0';
+                nxFxGarland = !off && LS.getItem('nx_theme_gar') !== '0';
+                nxFxDeco = !off && LS.getItem('nx_theme_deco') !== '0';
+            } catch (e) {}
             try {
                 var m = new RegExp('[?&]theme=(' + NX_THEME_KEYS + ')(?:&|$)').exec(location.search || '');
                 if (m) { nxTheme = m[1]; nxThemeUrlLock = true; }
@@ -20740,14 +20748,20 @@ function nxToggle3d() {
         }
         function nxThemePersist() {
             if (nxThemeUrlLock) return;
-            try { LS.setItem('nx_theme', nxTheme); LS.setItem('nx_theme_fx', nxThemeFx ? '1' : '0'); } catch (e) {}
+            try {
+                LS.setItem('nx_theme', nxTheme);
+                LS.setItem('nx_theme_fx', nxFxAny() ? '1' : '0'); // совместимость со старыми сборками
+                LS.setItem('nx_theme_parts', nxFxParts ? '1' : '0');
+                LS.setItem('nx_theme_gar', nxFxGarland ? '1' : '0');
+                LS.setItem('nx_theme_deco', nxFxDeco ? '1' : '0');
+            } catch (e) {}
         }
         // только классы и атрибуты — без DOM-узлов, можно звать до готовности body
         function nxThemePaint() {
             try {
                 var html = document.documentElement;
                 html.setAttribute('data-nx-theme', nxTheme);
-                html.classList.toggle('nx-theme-fx', nxTheme !== 'standard' && !!nxThemeFx);
+                html.classList.toggle('nx-theme-fx', nxTheme !== 'standard' && nxFxAny());
                 var mt = document.querySelector('meta[name="theme-color"]');
                 var T = NX_THEMES[nxTheme] || NX_THEMES.standard;
                 if (mt) mt.setAttribute('content', T.meta || '#020617');
@@ -20766,8 +20780,12 @@ function nxToggle3d() {
                 showToast(T.ico + ' Оформление: ' + T.name, 'success');
             } catch (e) {}
         }
-        function nxThemeFxToggle(on) {
-            nxThemeFx = !!on;
+        // b546: what = 'parts' | 'garland' | 'deco'
+        function nxFxToggle(what, on) {
+            on = !!on;
+            if (what === 'parts') nxFxParts = on;
+            else if (what === 'garland') nxFxGarland = on;
+            else if (what === 'deco') nxFxDeco = on;
             nxThemeUrlLock = false;
             nxThemePaint();
             nxThemePersist();
@@ -20801,62 +20819,54 @@ function nxToggle3d() {
                 }
             } catch (e) {}
         }
-        function nxThemeOpen() {
-            try {
-                nxThemeRenderLists();
-                var m = document.getElementById('modal-nx-theme');
-                if (m) m.classList.remove('hidden');
-                nxThemeModalOpen = true;
-                nxThemeSyncUI();
-            } catch (e) {}
-        }
-        function nxThemeClose() {
-            try {
-                var m = document.getElementById('modal-nx-theme');
-                if (m) m.classList.add('hidden');
-            } catch (e) {}
-            nxThemeModalOpen = false;
-        }
         function nxThemeSyncUI() {
             try {
                 var tiles = document.querySelectorAll('[data-nx-theme-btn]');
                 for (var i = 0; i < tiles.length; i++) {
                     tiles[i].classList.toggle('is-on', tiles[i].getAttribute('data-nx-theme-btn') === nxTheme);
                 }
-                var ids = ['nx-theme-fx', 'nx-theme-fx-modal'];
-                for (var c = 0; c < ids.length; c++) {
-                    var cb = document.getElementById(ids[c]);
-                    if (cb) { cb.checked = !!nxThemeFx; cb.disabled = (nxTheme === 'standard'); }
+                // b546: три отдельных выключателя эффектов
+                var map = { 'nx-fx-parts': nxFxParts, 'nx-fx-garland': nxFxGarland, 'nx-fx-deco': nxFxDeco };
+                for (var id in map) {
+                    if (!Object.prototype.hasOwnProperty.call(map, id)) continue;
+                    var cb = document.getElementById(id);
+                    if (cb) { cb.checked = !!map[id]; cb.disabled = (nxTheme === 'standard'); }
                 }
                 var T = NX_THEMES[nxTheme] || NX_THEMES.standard;
+                var bits = [];
+                if (nxFxParts) bits.push('частицы');
+                if (nxFxGarland) bits.push('гирлянда');
+                if (nxFxDeco) bits.push('украшения');
                 var tail = nxTheme === 'standard'
-                    ? ' — обычное оформление, анимаций нет.'
-                    : (nxThemeFx ? ' — частицы и украшения включены.' : ' — только цвета, без анимации.');
+                    ? ' — обычное оформление, эффектов нет.'
+                    : (bits.length ? ' — включено: ' + bits.join(', ') + '.' : ' — только цвета, все эффекты выключены.');
                 var stateHTML = 'Сейчас: <b class="text-slate-200">' + T.ico + ' ' + T.name + '</b>' + tail
                     + (nxThemeUrlLock ? ' <span class="text-amber-300">(предпросмотр по ссылке, не сохранено)</span>' : '');
-                var sts = ['nx-theme-state', 'nx-theme-state-modal'];
-                for (var s = 0; s < sts.length; s++) {
-                    var st = document.getElementById(sts[s]);
-                    if (st) st.innerHTML = stateHTML;
-                }
+                var st = document.getElementById('nx-theme-state');
+                if (st) st.innerHTML = stateHTML;
                 try { dsgRender(); } catch (e) {}
             } catch (e) {}
         }
-        // ---- слой оформления: создаётся только для непустой темы ----
+        function nxRemoveEl(id) {
+            try {
+                var el = document.getElementById(id);
+                if (el && el.parentNode) el.parentNode.removeChild(el);
+            } catch (e) {}
+        }
+        // ---- слой оформления: каждая часть монтируется только если включена ----
         function nxThemeMount() {
             try {
-                if (nxTheme === 'standard' || !nxThemeFx) { nxThemeKillFx(); return; }
-                nxDecoBuild(nxTheme);
-                nxGarlandBuild(nxTheme);
-                nxSnowStart(nxTheme);
+                if (nxTheme === 'standard') { nxThemeKillFx(); return; }
+                if (nxFxGarland) nxGarlandBuild(nxTheme); else nxRemoveEl('nx-garland');
+                if (nxFxDeco) nxDecoBuild(nxTheme); else nxRemoveEl('nx-deco');
+                if (nxFxParts) nxSnowStart(nxTheme); else nxSnowStop();
             } catch (e) {}
         }
         function nxThemeKillFx() {
             nxSnowStop();
-            ['nx-snow', 'nx-garland', 'nx-deco'].forEach(function (id) {
-                var el = document.getElementById(id);
-                if (el && el.parentNode) el.parentNode.removeChild(el);
-            });
+            nxRemoveEl('nx-snow');
+            nxRemoveEl('nx-garland');
+            nxRemoveEl('nx-deco');
         }
         // b539: гирлянда — не «точки в ряд», а настоящая нить: провод провисает
         // дугами между точками подвеса, к нему на коротких хвостиках подвешены
@@ -21000,7 +21010,7 @@ function nxToggle3d() {
             var w = window.innerWidth, h = window.innerHeight;
             var up = (fx.vy[0] + fx.vy[1]) < 0; // пузыри в «Океане» плывут снизу вверх
             var spin = (fx.shape === 'rect' || fx.shape === 'petal' || fx.shape === 'leaf' || fx.shape === 'bat') ? 3.4 : 0.5;
-            return {
+            var part = {
                 x: Math.random() * w,
                 y: spread ? Math.random() * h : (up ? h + 26 : -26),
                 ph: Math.random() * 6.283,
@@ -21013,6 +21023,12 @@ function nxToggle3d() {
                 a: fx.alpha[0] + Math.random() * (fx.alpha[1] - fx.alpha[0]),
                 color: fx.colors[Math.floor(Math.random() * fx.colors.length)]
             };
+            // b546: листья и лепестки не должны быть близнецами — ширина и изгиб разные
+            if (fx.shape === 'leaf' || fx.shape === 'petal') {
+                part.ar = 0.42 + Math.random() * 0.38;
+                part.bend = (Math.random() - 0.5) * part.s * 0.45;
+            }
+            return part;
         }
         function nxSnowFrame(ts) {
             nxSnowRaf = requestAnimationFrame(nxSnowFrame);
@@ -21078,17 +21094,39 @@ function nxToggle3d() {
                 ctx.globalAlpha *= 0.5;
                 ctx.beginPath(); ctx.arc(-s * 0.28, -s * 0.28, s * 0.3, 0, 6.283); ctx.fill();
             } else if (shape === 'petal') {
+                // b546: лепесток сакуры — округлый, с выемкой на кончике
+                var par = p.ar || 0.62;
                 ctx.beginPath();
-                ctx.ellipse(0, 0, s * 0.45, s * 0.95, 0, 0, 6.283);
+                ctx.moveTo(0, -s * 0.95);
+                ctx.bezierCurveTo(par * s * 1.4, -s * 0.5, par * s * 1.2, s * 0.45, par * s * 0.22, s * 0.9);
+                ctx.quadraticCurveTo(0, s * 0.55, -par * s * 0.22, s * 0.9);
+                ctx.bezierCurveTo(-par * s * 1.2, s * 0.45, -par * s * 1.4, -s * 0.5, 0, -s * 0.95);
                 ctx.fill();
             } else if (shape === 'leaf') {
+                // b546: настоящий лист — острые кончик и основание, дуги по бокам,
+                // прожилка с изгибом и черешок. Ширина и изгиб у каждого свои,
+                // поэтому падающие листья не выглядят штампованными овалами.
+                var lar = p.ar || 0.6, bend = p.bend || 0;
                 ctx.beginPath();
-                ctx.ellipse(0, 0, s * 0.52, s * 1.02, 0, 0, 6.283);
+                ctx.moveTo(bend, -s);
+                ctx.bezierCurveTo(lar * s * 1.5, -s * 0.55, lar * s * 1.25, s * 0.35, bend * 0.4, s * 0.92);
+                ctx.bezierCurveTo(-lar * s * 1.25, s * 0.35, -lar * s * 1.5, -s * 0.55, bend, -s);
                 ctx.fill();
-                ctx.globalAlpha *= 0.55;
+                // центральная прожилка повторяет изгиб листа
+                ctx.globalAlpha *= 0.52;
                 ctx.strokeStyle = 'rgba(0,0,0,.45)';
-                ctx.lineWidth = Math.max(0.7, s * 0.1);
-                ctx.beginPath(); ctx.moveTo(0, -s); ctx.lineTo(0, s); ctx.stroke();
+                ctx.lineWidth = Math.max(0.6, s * 0.08);
+                ctx.beginPath();
+                ctx.moveTo(bend, -s * 0.8);
+                ctx.quadraticCurveTo(bend * 0.5, 0, bend * 0.4, s * 0.95);
+                ctx.stroke();
+                // черешок
+                ctx.globalAlpha = p.a * 0.9;
+                ctx.lineWidth = Math.max(0.8, s * 0.1);
+                ctx.beginPath();
+                ctx.moveTo(bend * 0.4, s * 0.88);
+                ctx.lineTo(bend * 0.4, s * 1.25);
+                ctx.stroke();
             } else if (shape === 'bat') {
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
@@ -21162,13 +21200,22 @@ function nxToggle3d() {
             try {
                 var o = JSON.parse(LS.getItem(DSG_KEY) || 'null');
                 if (o && typeof o === 'object' && dsgSane(o.at)) {
-                    return { t: String(o.t || ''), fx: (o.fx === 0 ? 0 : 1), at: Math.floor(o.at) };
+                    return {
+                        t: String(o.t || ''),
+                        fx: (o.fx === 0 ? 0 : 1),
+                        p: (o.p === 0 ? 0 : 1),   // b546: частицы
+                        g: (o.g === 0 ? 0 : 1),   // b546: гирлянда
+                        d: (o.d === 0 ? 0 : 1),   // b546: украшения
+                        at: Math.floor(o.at)
+                    };
                 }
             } catch (e) {}
-            return { t: '', fx: 1, at: 0 };
+            return { t: '', fx: 1, p: 1, g: 1, d: 1, at: 0 };
         }
         function dsgSave() { try { LS.setItem(DSG_KEY, JSON.stringify(dsg)); } catch (e) {} }
-        function dsgDoc() { return { t: dsg.t, fx: dsg.fx, at: dsg.at }; }
+        function dsgDoc() {
+            return { t: dsg.t, fx: dsg.fx, p: dsg.p, g: dsg.g, d: dsg.d, at: dsg.at };
+        }
 
         function dsgFetch() {
             if (typeof fetch !== 'function') return Promise.resolve(null);
@@ -21202,10 +21249,19 @@ function nxToggle3d() {
             if (!dsgSane(at) || at <= (dsg.at || 0)) return false;
             var t = String(remote.t || '');
             if (t && !NX_THEMES[t]) t = '';
-            dsg = { t: t, fx: (remote.fx === 0 ? 0 : 1), at: at };
+            dsg = {
+                t: t,
+                fx: (remote.fx === 0 ? 0 : 1),
+                p: (remote.p === 0 ? 0 : 1),
+                g: (remote.g === 0 ? 0 : 1),
+                d: (remote.d === 0 ? 0 : 1),
+                at: at
+            };
             dsgSave();
-            if (dsg.t) { // создатель выбрал тему — ставим её у себя
-                nxThemeFx = !!dsg.fx;
+            if (dsg.t) { // создатель выбрал тему — ставим её и её эффекты у себя
+                nxFxParts = !!dsg.p;
+                nxFxGarland = !!dsg.g;
+                nxFxDeco = !!dsg.d;
                 nxThemePick(dsg.t);
             } else {
                 dsgRender();
@@ -21218,13 +21274,20 @@ function nxToggle3d() {
                     showToast('Вид для всех может менять только создатель комнаты', 'error');
                     return;
                 }
-                dsg = { t: nxTheme, fx: nxThemeFx ? 1 : 0, at: Date.now() };
+                dsg = {
+                    t: nxTheme,
+                    fx: nxFxAny() ? 1 : 0,
+                    p: nxFxParts ? 1 : 0,
+                    g: nxFxGarland ? 1 : 0,
+                    d: nxFxDeco ? 1 : 0,
+                    at: Date.now()
+                };
                 dsgSave();
                 dsgRender();
                 var name = NX_THEMES[nxTheme] ? NX_THEMES[nxTheme].name : nxTheme;
                 dsgPush().then(function (ok) {
                     try {
-                        showToast(ok ? ('🌐 «' + name + '» теперь у всех игроков комнаты')
+                        showToast(ok ? ('🌐 «' + name + '» и выбранные эффекты теперь у всех игроков комнаты')
                                      : 'Не удалось отправить тему — проверьте связь и повторите',
                                   ok ? 'success' : 'error');
                     } catch (e) {}
@@ -21237,7 +21300,7 @@ function nxToggle3d() {
                     showToast('Общую тему может снять только создатель комнаты', 'error');
                     return;
                 }
-                dsg = { t: '', fx: 1, at: Date.now() };
+                dsg = { t: '', fx: 1, p: 1, g: 1, d: 1, at: Date.now() };
                 dsgSave();
                 dsgRender();
                 dsgPush().then(function (ok) {
@@ -21291,10 +21354,7 @@ function nxToggle3d() {
                 }
             } catch (e) {}
         }
-        // b540: Escape закрывает окно внешнего вида (как и остальные модалки игры)
-        document.addEventListener('keydown', function (e) {
-            if (e && e.key === 'Escape' && nxThemeModalOpen) { nxThemeClose(); }
-        });
+        // b546: отдельного окна «Внешний вид» больше нет — управление живёт в Студии
         window.onload = function() {
           // b62: аварийный предохранитель старта: если любой шаг инициализации упадёт,
           // игра продолжит работу и покажет ПОДРОБНОСТЬ (со стеком в консоли), а не молчаливый «Script error.»

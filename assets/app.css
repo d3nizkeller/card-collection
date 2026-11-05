@@ -1301,7 +1301,7 @@ html.nx-lowpow .dancing #miner-cat-stage svg{animation-duration:.46s}
 #modal-nx-theme .nx-theme-tile.is-on .nx-tt-sub{color:#c4b5fd}
 #tab-studio .nx-theme-tile.is-on::after,
 #modal-nx-theme .nx-theme-tile.is-on::after{content:'\2713';position:absolute;top:4px;right:6px;font-size:9px;font-weight:900;color:#c4b5fd}
-#nx-theme-fx:disabled,#nx-theme-fx-modal:disabled{opacity:.45}
+#nx-fx-parts:disabled,#nx-fx-garland:disabled,#nx-fx-deco:disabled{opacity:.45}
 
 /* --- анимационный слой: частицы, гирлянда, украшения --- */
 #nx-snow{position:fixed;left:0;top:0;z-index:55;pointer-events:none;display:block}
