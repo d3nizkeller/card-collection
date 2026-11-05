@@ -38,20 +38,20 @@
     <!-- Мобильная сборка nxmob24: тяжёлые библиотеки вынесены в assets/ и кешируются -->
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- three.js нужен только в 3D-режимах и только по клику: defer не блокирует парсинг -->
-    <script src="assets/three.min.js?v=nxmob284" defer></script>
-    <link rel="stylesheet" href="assets/fa.css?v=nxmob284">
+    <script src="assets/three.min.js?v=nxmob285" defer></script>
+    <link rel="stylesheet" href="assets/fa.css?v=nxmob285">
     <!-- Inter грузится НЕ блокируя отрисовку: fonts.googleapis.com может быть
          недоступен, и раньше страница висела до таймаута сети -->
     <link rel="stylesheet" media="print" onload="this.media='all'"
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
-    <link rel="stylesheet" href="assets/app.css?v=nxmob284">
+    <link rel="stylesheet" href="assets/app.css?v=nxmob285">
     <!-- ПРЕДКОМПИЛИРОВАННЫЙ Tailwind. Раньше здесь работал Tailwind Play CDN:
          JIT-компилятор + PostCSS выполнялись В БРАУЗЕРЕ и пересобирали весь CSS
          при каждой мутации DOM (~550 мс холодного прогона). На телефоне это
          блокировало главный поток во время анимаций — отсюда подвисания и
          закрытие WebView. Теперь CSS статический, а JS-компилятора нет вовсе. -->
-    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob284">
+    <link id="nx-tw-css" rel="stylesheet" href="assets/tailwind.css?v=nxmob285">
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-violet-500 selection:text-white">
 
@@ -114,12 +114,6 @@
                     <i id="sound-icon" class="fa-solid fa-volume-high text-sm"></i>
                 </button>
 
-                <!-- b540: внешний вид игры — доступен ЛЮБОМУ игроку, не только владельцу комнаты.
-                     На телефоне эта же кнопка живёт в нижней строке навигации (там место есть). -->
-                <button onclick="nxThemeOpen()" id="nx-theme-btn" class="lqg lqg-vio hidden lg:flex w-8 h-8 sm:w-9 sm:h-9 items-center justify-center transition shrink-0" title="Внешний вид игры — 10 оформлений">
-                    <i class="fa-solid fa-palette text-sm"></i>
-                </button>
-
                 <!-- Nav Tabs -->
                 <nav id="hdr-nav" class="hidden lg:flex space-x-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                     <button onclick="switchTab('store')" id="nav-store" class="px-3 py-2 rounded-lg text-sm font-medium transition-all bg-violet-600 text-white shadow">Магазин</button>
@@ -152,9 +146,6 @@
             </button>
             <button onclick="openQrModal()" id="mob-nav-qr" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-qrcode text-[15px] mb-0.5"></i> QR
-            </button>
-            <button onclick="nxThemeOpen()" id="mob-nav-theme" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
-                <i class="fa-solid fa-palette text-[15px] mb-0.5"></i> Вид
             </button>
             <button onclick="switchTab('studio')" id="mob-nav-studio" style="display:none" class="flex flex-col items-center text-[11px] leading-tight px-0.5 text-slate-400">
                 <i class="fa-solid fa-wand-magic-sparkles text-[15px] mb-0.5"></i> Студия
@@ -1757,7 +1748,7 @@
             <div>
                 <div class="bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800 space-y-2.5">
                     <h4 class="text-sm font-bold text-white mb-0.5"><i class="fa-solid fa-palette text-fuchsia-400 mr-1.5"></i>Внешний вид игры</h4>
-                    <p class="text-[10px] text-slate-500 leading-snug">Десять оформлений сайта <b class="text-slate-300">на этом устройстве</b>: обычный тёмный вид, Новый год, праздник, Хэллоуин, любовь, космос, океан, киберпанк, сакура и осень. То же окно открывается кнопкой <b class="text-slate-300">🎨 в шапке</b> (на телефоне — пункт «Вид» в меню) и доступно любому игроку, пароль Студии для этого не нужен. Ниже — <b class="text-slate-300">общая тема комнаты</b>: выбранный вид можно разом включить всем игрокам.</p>
+                    <p class="text-[10px] text-slate-500 leading-snug">Десять оформлений сайта: обычный тёмный вид, Новый год, праздник, Хэллоуин, любовь, космос, океан, киберпанк, сакура и осень. Плитка ставит вид вам для примерки, а <b class="text-slate-300">«Применить выбранный вид всем»</b> включает его каждому игроку комнаты — менять оформление сайта может только создатель.</p>
                     <div id="nx-theme-list" data-nx-theme-list></div>
                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                         <label class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 cursor-pointer"><input id="nx-theme-fx" type="checkbox" class="accent-fuchsia-500 w-3.5 h-3.5" onchange="nxThemeFxToggle(this.checked)">частицы, гирлянда, украшения</label>
@@ -4281,10 +4272,10 @@ min-height:56vh}
     <div id="confetti-container"></div>
 
     <!-- Код игры. Внешний файл: кешируется отдельно от разметки. -->
-    <script src="assets/app.js?v=nxmob284"></script>
-    <script src="assets/stories.js?v=nxmob284"></script>
-    <script src="assets/qrcode.min.js?v=nxmob284"></script>
-    <script src="assets/qr-transfer.js?v=nxmob284"></script>
+    <script src="assets/app.js?v=nxmob285"></script>
+    <script src="assets/stories.js?v=nxmob285"></script>
+    <script src="assets/qrcode.min.js?v=nxmob285"></script>
+    <script src="assets/qr-transfer.js?v=nxmob285"></script>
     <script>
 // ===== Telegram Mini App / мобильная стабилизация (tools/build.py) =====
 (function () {

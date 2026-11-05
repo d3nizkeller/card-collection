@@ -20841,11 +20841,6 @@ function nxToggle3d() {
                     var st = document.getElementById(sts[s]);
                     if (st) st.innerHTML = stateHTML;
                 }
-                // кнопка в шапке / «Вид» в меню подсвечиваются, когда тема не стандартная
-                var btn = document.getElementById('nx-theme-btn');
-                if (btn) btn.classList.toggle('nx-theme-on', nxTheme !== 'standard');
-                var mbtn = document.getElementById('mob-nav-theme');
-                if (mbtn) mbtn.style.color = nxTheme !== 'standard' ? '#f0abfc' : '';
                 try { dsgRender(); } catch (e) {}
             } catch (e) {}
         }
