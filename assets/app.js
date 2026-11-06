@@ -2322,35 +2322,6 @@ function nxToggle3d() {
         // b553/b555: 2D-стол выглядит как казино-автомат: вокруг поля строится
         // корпус — арка с названием и лампочками, таблица выплат, лоток для монет
         // и рычаг справа (он же «Крутить»).
-        // b559: лобби игр как в казино — плитка получает настоящий арт из коллекции
-        // (свой у каждой игры), тёмный градиент снизу для читаемости названия.
-        function nxLobbyArt() {
-            try {
-                const grid = document.querySelector('#tab-battle .nx-modes');
-                if (!grid || grid.dataset.nxArt === '1') return;
-                const cards = (state && state.cards ? state.cards : []).filter(c => c && c.image);
-                if (cards.length < 3) return;
-                grid.dataset.nxArt = '1';
-                const btns = [...grid.querySelectorAll('button')];
-                const step = Math.max(1, Math.floor(cards.length / Math.max(1, btns.length)));
-                btns.forEach((b, i) => {
-                    const c = cards[(i * step + 5) % cards.length];
-                    let url = '';
-                    try { url = mediaUrl(c.image); } catch (e) { url = c.image; }
-                    if (!url) return;
-                    b.style.backgroundImage = 'linear-gradient(180deg, rgba(6,6,10,.10) 0%, rgba(6,6,10,.55) 52%, rgba(6,6,10,.96) 100%), url("' + url + '")';
-                    b.style.backgroundSize = 'cover, cover';
-                    b.style.backgroundPosition = 'center, center';
-                    const ic = b.querySelector('i');
-                    if (ic) ic.style.display = 'none';
-                });
-            } catch (e) {}
-        }
-        try {
-            setTimeout(nxLobbyArt, 2500);
-            setTimeout(nxLobbyArt, 7000);
-        } catch (e) {}
-
         function nx2dMark(id, title, spinFn) {
             try {
                 const el = document.getElementById(id);
