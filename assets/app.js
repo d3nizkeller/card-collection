@@ -3174,7 +3174,7 @@ function nxToggle3d() {
         const AURA_SPRITES = {
             stars: { c: ['#ffd75e', '#fff3c4', '#fbbf24'], f: c => `<path d="M12 2l2.6 6.2 6.7.5-5.1 4.4 1.6 6.6-5.8-3.6-5.8 3.6 1.6-6.6-5.1-4.4 6.7-.5z" fill="${c}"/>` },
             snowflakes: { c: ['#bfdbfe', '#e0f2fe', '#93c5fd'], f: c => `<path d="M12 2v20M4 6l16 12M20 6L4 18M2 12h20" stroke="${c}" stroke-width="2" stroke-linecap="round" fill="none"/>` },
-            moons: { c: ['#fde68a', '#fef3c7', '#fcd34d'], f: c => `<path d="M20 14A9 9 0 1 1 10 3a7 7 0 0 0 10 11z" fill="${c}"/>` },
+            moons: { c: ['#7dd3fc', '#fef3c7', '#fcd34d'], f: c => `<path d="M20 14A9 9 0 1 1 10 3a7 7 0 0 0 10 11z" fill="${c}"/>` },
             suns: { c: ['#fbbf24', '#fb923c', '#fde047'], f: c => `<circle cx="12" cy="12" r="5" fill="${c}"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.5 4.5l2 2M17.5 17.5l2 2M19.5 4.5l-2 2M6.5 17.5l-2 2" stroke="${c}" stroke-width="2" stroke-linecap="round"/>` },
             clouds: { c: ['#e2e8f0', '#f1f5f9', '#cbd5e1'], f: c => `<path d="M6 17a4 4 0 0 1 0-8 6 6 0 0 1 11-1 4.5 4.5 0 0 1 1 9z" fill="${c}"/>` },
             rainbows: { c: ['#ff6b6b'], f: () => `<g fill="none" stroke-width="2.2" stroke-linecap="round"><path d="M4 18a8 8 0 0 1 16 0" stroke="#ff6b6b"/><path d="M7 18a5 5 0 0 1 10 0" stroke="#ffd75e"/><path d="M10 18a2 2 0 0 1 4 0" stroke="#c4b5fd"/></g>` },
@@ -3194,7 +3194,7 @@ function nxToggle3d() {
             gifts: { c: ['#f87171', '#60a5fa', '#4ade80'], f: c => `<rect x="4" y="10" width="16" height="10" rx="2" fill="${c}"/><rect x="3" y="7" width="18" height="4" rx="1" fill="${c}"/><rect x="11" y="7" width="2" height="13" fill="#ffffffcc"/><path d="M12 7c-2-4-7-3-6 0M12 7c2-4 7-3 6 0" stroke="#ffffffcc" stroke-width="1.4" fill="none"/>` },
             bubbles: { c: ['#7dd3fc', '#a5f3fc', '#93c5fd'], f: c => `<circle cx="12" cy="12" r="8" fill="none" stroke="${c}" stroke-width="1.6"/><circle cx="9" cy="9" r="2.2" fill="#ffffffcc"/>` },
             coins: { c: ['#fbbf24', '#f59e0b', '#fde047'], f: c => `<circle cx="12" cy="12" r="9" fill="${c}"/><circle cx="12" cy="12" r="6" fill="none" stroke="#00000033" stroke-width="1.5"/><path d="M12 9v6M10 10.5h4M10 13.5h4" stroke="#00000055" stroke-width="1.4"/>` },
-            crowns: { c: ['#fbbf24', '#f59e0b', '#fde68a'], f: c => `<path d="M3 18l2-9 5 4 2-8 2 8 5-4 2 9z" fill="${c}"/><rect x="3" y="18" width="18" height="3" rx="1" fill="${c}"/>` },
+            crowns: { c: ['#fbbf24', '#f59e0b', '#7dd3fc'], f: c => `<path d="M3 18l2-9 5 4 2-8 2 8 5-4 2 9z" fill="${c}"/><rect x="3" y="18" width="18" height="3" rx="1" fill="${c}"/>` },
             clovers: { c: ['#4ade80', '#22c55e', '#86efac'], f: c => `<g fill="${c}"><circle cx="8.5" cy="8" r="4"/><circle cx="15.5" cy="8" r="4"/><circle cx="8.5" cy="14.5" r="4"/><circle cx="15.5" cy="14.5" r="4"/></g><path d="M12 12c0 4 0 7-1 9" stroke="${c}" stroke-width="1.6" fill="none"/>` },
             flames: { c: ['#f97316', '#ef4444', '#fbbf24'], f: c => `<path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-3 2-4 2-7 1 1.5 2 2.5 3 2.5C12 6 12 4 12 2z" fill="${c}"/><path d="M12 12c.8 1.6 2 2.4 2 4a2 2 0 0 1-4 0c0-1.6 1.2-2.4 2-4z" fill="#ffe9a8"/>` },
             bolts: { c: ['#fde047', '#facc15', '#fef08a'], f: c => `<path d="M13 2L5 13h5l-2 9 9-12h-5l1-8z" fill="${c}"/>` },
@@ -4824,7 +4824,7 @@ function nxToggle3d() {
             }
             g.beginPath(); g.arc(0, 0, R * 0.12, 0, Math.PI * 2);
             const hub = g.createRadialGradient(-R * 0.04, -R * 0.04, R * 0.02, 0, 0, R * 0.12);
-            hub.addColorStop(0, '#fde68a'); hub.addColorStop(1, '#b45309');
+            hub.addColorStop(0, '#7dd3fc'); hub.addColorStop(1, '#b45309');
             g.fillStyle = hub; g.fill();
             g.restore();
             // b489: шарик — белая сфера с бликом, на своей траектории
@@ -9800,9 +9800,9 @@ function nxToggle3d() {
             const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
             const mg = mq.getContext('2d');
             const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
-            mgrad.addColorStop(0, '#0d1830'); mgrad.addColorStop(0.5, '#2a1a63'); mgrad.addColorStop(1, '#0d1830');
+            mgrad.addColorStop(0, '#060a14'); mgrad.addColorStop(0.5, '#0e2740'); mgrad.addColorStop(1, '#060a14');
             mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
-            mg.fillStyle = '#fde68a'; mg.font = '900 52px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+            mg.fillStyle = '#7dd3fc'; mg.font = '900 52px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
             mg.fillText('★ КОЛЛЕКЦИОНЕР КАРТ • СЛОТЫ ★', 512, 68);
             const mqTex = new THREE.CanvasTexture(mq);
             try { mqTex.encoding = THREE.sRGBEncoding; } catch (e) {}
@@ -9835,7 +9835,7 @@ function nxToggle3d() {
                 slots.reels.push(grp);
             }
             // b51: золотой багет вокруг окна барабанов
-            const goldMat = new THREE.MeshStandardMaterial({ color: 0xe6c877, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0x0c1320, emissive: 0x22d3ee, emissiveIntensity: 0.30, roughness: 0.30, metalness: 0.92, envMap: env, envMapIntensity: 1.15 });
             const trimX = 3 * (AW + 0.24) / 2 + 0.10;
             const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.09, H + 0.24, 0.1), goldMat); tv1.position.set(-trimX, 0, R + 0.04); scene.add(tv1);
             const tv2 = tv1.clone(); tv2.position.x = trimX; scene.add(tv2);
@@ -10317,7 +10317,7 @@ function nxToggle3d() {
             const frameMat = new THREE.MeshStandardMaterial({ color: 0x12141c, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
             const back = new THREE.Mesh(new THREE.BoxGeometry(WW + 1.6, WH + 1.8, 0.4), frameMat);
             back.position.set(0, 0, -2.2); scene.add(back);
-            const goldMat = new THREE.MeshStandardMaterial({ color: 0xe6c877, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0x0c1320, emissive: 0x22d3ee, emissiveIntensity: 0.30, roughness: 0.30, metalness: 0.92, envMap: env, envMapIntensity: 1.15 });
             const bx = WW / 2 + 0.12, by = WH / 2 + 0.12;
             const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, WH + 0.34, 0.12), goldMat); tv1.position.set(-bx, 0, 0.72); scene.add(tv1);
             const tv2 = tv1.clone(); tv2.position.x = bx; scene.add(tv2);
@@ -10333,9 +10333,9 @@ function nxToggle3d() {
             const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
             const mg = mq.getContext('2d');
             const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
-            mgrad.addColorStop(0, '#0d1830'); mgrad.addColorStop(0.5, '#2a1a63'); mgrad.addColorStop(1, '#0d1830');
+            mgrad.addColorStop(0, '#060a14'); mgrad.addColorStop(0.5, '#0e2740'); mgrad.addColorStop(1, '#060a14');
             mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
-            mg.fillStyle = '#fde68a'; mg.font = '900 44px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+            mg.fillStyle = '#7dd3fc'; mg.font = '900 44px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
             mg.fillText('★ СЕТОЧНЫЙ СЛОТ • КОЛЛЕКЦИОНЕР КАРТ ★', 512, 68);
             const mqTex = new THREE.CanvasTexture(mq);
             try { mqTex.encoding = THREE.sRGBEncoding; } catch (e) {}
@@ -10351,7 +10351,7 @@ function nxToggle3d() {
                 scene.add(b); grid3d.bulbs.push(b);
             }
             // крышки, скрывающие служебные ряды барабанов
-            const coverMat = new THREE.MeshStandardMaterial({ color: 0x141024, roughness: 0.55, metalness: 0.5 });
+            const coverMat = new THREE.MeshStandardMaterial({ color: 0x0a0c14, roughness: 0.55, metalness: 0.5 });
             const covT = new THREE.Mesh(new THREE.BoxGeometry(WW + 0.2, CH, 0.5), coverMat);
             covT.position.set(0, WH / 2 + CH / 2 - 0.02, 0.1); scene.add(covT);
             const covB = covT.clone(); covB.position.y = -(WH / 2 + CH / 2 - 0.02); scene.add(covB);
@@ -12329,7 +12329,7 @@ function nxToggle3d() {
                 g.fillStyle = bg; g.fillRect(0, 0, W, H);
                 if (sym.jackpot) {
                     const jg = g.createLinearGradient(0, 0, W, H);
-                    jg.addColorStop(0, '#fde68a'); jg.addColorStop(0.5, '#f59e0b'); jg.addColorStop(1, '#b45309');
+                    jg.addColorStop(0, '#7dd3fc'); jg.addColorStop(0.5, '#f59e0b'); jg.addColorStop(1, '#b45309');
                     g.fillStyle = jg; g.fillRect(10, 10, W - 20, H - 104);
                     g.fillStyle = '#1c1917';
                     g.font = '900 30px system-ui, sans-serif'; g.textAlign = 'center';
@@ -12813,7 +12813,7 @@ function nxToggle3d() {
                 p.push('<circle cx="' + C + '" cy="' + C + '" r="388" fill="#0b1220"/>');
                 for (let i = 0; i < 32; i++) { // гирлянда по тёмному ободу
                     const d = i * 11.25 + 5.625;
-                    const col = i % 2 ? '#fde68a' : '#fbbf24';
+                    const col = i % 2 ? '#7dd3fc' : '#fbbf24';
                     p.push('<circle cx="' + px(d, 368) + '" cy="' + py(d, 368) + '" r="9" fill="' + col + '" opacity=".22"/>');
                     p.push('<circle cx="' + px(d, 368) + '" cy="' + py(d, 368) + '" r="4.2" fill="' + col + '"/>');
                 }
@@ -16048,7 +16048,7 @@ function nxToggle3d() {
             return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="drop-shadow-lg shrink-0" aria-hidden="true">
                 <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="rgba(2,6,23,0.62)" stroke="rgba(148,163,184,0.22)" stroke-width="${strokeW}"></circle>
                 <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})" style="transition: stroke-dashoffset .6s ease"></circle>
-                <text x="50%" y="50%" dy="0.35em" text-anchor="middle" font-size="${fs}" font-weight="800" fill="${p >= 100 ? '#fde68a' : '#e2e8f0'}" font-family="ui-monospace, SFMono-Regular, monospace">${label !== undefined ? label : p + '%'}</text>
+                <text x="50%" y="50%" dy="0.35em" text-anchor="middle" font-size="${fs}" font-weight="800" fill="${p >= 100 ? '#7dd3fc' : '#e2e8f0'}" font-family="ui-monospace, SFMono-Regular, monospace">${label !== undefined ? label : p + '%'}</text>
             </svg>`;
         }
 
@@ -19648,7 +19648,7 @@ function nxToggle3d() {
             const right = [];
             if (card.musicUrl) right.push(pill('♪', '700 ' + 11 * u + 'px Inter, sans-serif', '#f0abfc', 'rgba(217,70,239,.12)', 'rgba(217,70,239,.35)'));
             const copies = cardCopies(card.id);
-            if (copies > 1) right.push(pill('×' + copies, '900 ' + 10 * u + 'px Inter, sans-serif', '#fde68a', 'rgba(245,158,11,.25)', 'rgba(251,191,36,.4)'));
+            if (copies > 1) right.push(pill('×' + copies, '900 ' + 10 * u + 'px Inter, sans-serif', '#7dd3fc', 'rgba(245,158,11,.25)', 'rgba(251,191,36,.4)'));
             right.push(pill(rarLabel, '700 ' + 10 * u + 'px Inter, sans-serif', RAR_COLORS[card.rarity] || '#e2e8f0', 'rgba(15,23,42,.8)', 'rgba(51,65,85,1)'));
             let rx = W - p;
             for (let i = right.length - 1; i >= 0; i--) { rx -= right[i].w; drawPill(right[i], rx, p); rx -= 4 * u; }
@@ -20895,7 +20895,7 @@ function nxToggle3d() {
         // garland — цвета лампочек гирлянды сверху.
         var NX_FX = {
             newyear: { shape: 'dot', colors: ['#ffffff', '#a5f3fc', '#e0f2fe'], size: [0.8, 3.0], vy: [16, 56], sway: 12, alpha: [0.45, 0.95], dens: 1, garland: ['#f87171', '#fbbf24', '#34d399', '#60a5fa'] },
-            festive: { shape: 'rect', colors: ['#fbbf24', '#f472b6', '#34d399', '#a78bfa', '#f87171', '#38bdf8', '#fde68a'], size: [3, 8], vy: [34, 96], sway: 14, alpha: [0.7, 1], dens: 0.8, garland: ['#fbbf24', '#fde68a', '#f472b6'] },
+            festive: { shape: 'rect', colors: ['#fbbf24', '#f472b6', '#34d399', '#a78bfa', '#f87171', '#38bdf8', '#7dd3fc'], size: [3, 8], vy: [34, 96], sway: 14, alpha: [0.7, 1], dens: 0.8, garland: ['#fbbf24', '#7dd3fc', '#f472b6'] },
             halloween: { shape: 'bat', colors: ['#f97316', '#c084fc', '#fbbf24', '#a78bfa'], size: [5, 11], vy: [22, 60], sway: 26, alpha: [0.72, 1], dens: 0.5, garland: ['#f97316', '#a855f7', '#fbbf24'] },
             love: { shape: 'heart', colors: ['#fb7185', '#f472b6', '#fda4af', '#fecdd3'], size: [5, 11], vy: [14, 42], sway: 16, alpha: [0.7, 1], dens: 0.7, garland: ['#fb7185', '#f472b6', '#fecdd3'] },
             space: { shape: 'star', colors: ['#e0e7ff', '#a5b4fc', '#f0abfc', '#67e8f9', '#ffffff'], size: [1.2, 3.6], vy: [4, 20], sway: 5, alpha: [0.35, 1], dens: 1.15, twinkle: true, garland: ['#a5b4fc', '#67e8f9', '#f0abfc'] },
