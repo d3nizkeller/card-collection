@@ -9744,16 +9744,27 @@ function nxToggle3d() {
             const AW = H * 0.96 * (9 / 16); // b562: ширина грани = 9:16 от высоты; высота подобрана, чтобы три барабана влезли в корпус
             const R = H / (2 * Math.sin(Math.PI / N));
             // корпус автомата
-            const frameMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x12141c, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
             // b50: корпус под вертикальные барабаны (размеры выводятся из радиуса R ниже,
             // здесь задаются относительно SH/AR — см. после создания барабанов)
             const addFrame = (w, h, d, x, y, z) => { const msh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), frameMat); msh.position.set(x, y, z); scene.add(msh); return msh; };
             // b51: фон — радиальное свечение с звёздами за автоматом
             const bgCv = document.createElement('canvas'); bgCv.width = 512; bgCv.height = 384;
             const bgx = bgCv.getContext('2d');
-            const bgr = bgx.createRadialGradient(256, 168, 24, 256, 190, 340);
-            bgr.addColorStop(0, '#4c1d95'); bgr.addColorStop(0.45, '#1e1b4b'); bgr.addColorStop(1, '#020617');
-            bgx.fillStyle = bgr; bgx.fillRect(0, 0, 512, 384);
+            // b564: современный фон-аврора вместо плоского градиента
+            bgx.fillStyle = '#05070d'; bgx.fillRect(0, 0, 512, 384);
+            let ag1 = bgx.createRadialGradient(110, 40, 8, 110, 40, 320);
+            ag1.addColorStop(0, 'rgba(34,211,238,.38)'); ag1.addColorStop(0.55, 'rgba(34,211,238,.10)'); ag1.addColorStop(1, 'rgba(34,211,238,0)');
+            bgx.fillStyle = ag1; bgx.fillRect(0, 0, 512, 384);
+            let ag2 = bgx.createRadialGradient(420, 330, 8, 420, 330, 330);
+            ag2.addColorStop(0, 'rgba(168,85,247,.40)'); ag2.addColorStop(0.55, 'rgba(168,85,247,.10)'); ag2.addColorStop(1, 'rgba(168,85,247,0)');
+            bgx.fillStyle = ag2; bgx.fillRect(0, 0, 512, 384);
+            let ag3 = bgx.createRadialGradient(256, 210, 40, 256, 210, 330);
+            ag3.addColorStop(0, 'rgba(255,206,120,.10)'); ag3.addColorStop(1, 'rgba(255,206,120,0)');
+            bgx.fillStyle = ag3; bgx.fillRect(0, 0, 512, 384);
+            let ag4 = bgx.createRadialGradient(256, 200, 90, 256, 200, 300);
+            ag4.addColorStop(0, 'rgba(0,0,0,0)'); ag4.addColorStop(1, 'rgba(0,0,0,.62)');
+            bgx.fillStyle = ag4; bgx.fillRect(0, 0, 512, 384);
             for (let i = 0; i < 110; i++) {
                 const x = (i * 97 + 13) % 512, y = (i * 61 + 7) % 384, rr = (i % 3) * 0.5 + 0.5;
                 bgx.globalAlpha = 0.2 + (i % 5) * 0.13;
@@ -9770,7 +9781,7 @@ function nxToggle3d() {
             neonL.position.set(-2.66, 0, -R * 0.3); scene.add(neonL);
             const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.07, 3.6, 0.07), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
             neonR.position.set(2.66, 0, -R * 0.3); scene.add(neonR);
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x070810, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
             floor.rotation.x = -Math.PI / 2;
             floor.position.set(0, -(H / 2 + 1.05), -R / 2 + 0.4); scene.add(floor);
             const back = addFrame(4.5, H + 1.7, 0.4, 0, 0, -(R + 0.45));
@@ -9789,7 +9800,7 @@ function nxToggle3d() {
             const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
             const mg = mq.getContext('2d');
             const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
-            mgrad.addColorStop(0, '#4a044e'); mgrad.addColorStop(0.5, '#86198f'); mgrad.addColorStop(1, '#4a044e');
+            mgrad.addColorStop(0, '#0d1830'); mgrad.addColorStop(0.5, '#2a1a63'); mgrad.addColorStop(1, '#0d1830');
             mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
             mg.fillStyle = '#fde68a'; mg.font = '900 52px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
             mg.fillText('★ КОЛЛЕКЦИОНЕР КАРТ • СЛОТЫ ★', 512, 68);
@@ -9812,7 +9823,7 @@ function nxToggle3d() {
                 grp.add(core);
                 for (let i = 0; i < N; i++) {
                     const th = (i + 0.5) / N * Math.PI * 2;
-                    const m = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ map: texs[i], roughness: 0.34, metalness: 0.22, envMap: env, envMapIntensity: 0.55, side: THREE.FrontSide }));
+                    const m = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ map: texs[i], roughness: 0.28, metalness: 0.16, envMap: env, envMapIntensity: 0.55, side: THREE.FrontSide }));
                     m.position.set(0, R * Math.sin(th), R * Math.cos(th));
                     m.rotation.x = -th;
                     grp.add(m);
@@ -9824,7 +9835,7 @@ function nxToggle3d() {
                 slots.reels.push(grp);
             }
             // b51: золотой багет вокруг окна барабанов
-            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xe6c877, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
             const trimX = 3 * (AW + 0.24) / 2 + 0.10;
             const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.09, H + 0.24, 0.1), goldMat); tv1.position.set(-trimX, 0, R + 0.04); scene.add(tv1);
             const tv2 = tv1.clone(); tv2.position.x = trimX; scene.add(tv2);
@@ -10281,7 +10292,7 @@ function nxToggle3d() {
             const bgCv = document.createElement('canvas'); bgCv.width = 512; bgCv.height = 384;
             const bgx = bgCv.getContext('2d');
             const bgr = bgx.createRadialGradient(256, 170, 24, 256, 190, 340);
-            bgr.addColorStop(0, '#4c1d95'); bgr.addColorStop(0.45, '#1e1b4b'); bgr.addColorStop(1, '#020617');
+            bgr.addColorStop(0, '#0d3550'); bgr.addColorStop(0.42, '#141034'); bgr.addColorStop(1, '#03040a');
             bgx.fillStyle = bgr; bgx.fillRect(0, 0, 512, 384);
             for (let i = 0; i < 110; i++) {
                 const x = (i * 97 + 13) % 512, y = (i * 61 + 7) % 384, rr = (i % 3) * 0.5 + 0.5;
@@ -10299,14 +10310,14 @@ function nxToggle3d() {
             neonL.position.set(-(WW / 2 + 0.55), 0, -1); scene.add(neonL);
             const neonR = new THREE.Mesh(new THREE.BoxGeometry(0.08, WH + 2.2, 0.08), new THREE.MeshBasicMaterial({ color: 0x22d3ee }));
             neonR.position.set(WW / 2 + 0.55, 0, -1); scene.add(neonR);
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x0b0714, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(30, 7), new THREE.MeshStandardMaterial({ color: 0x070810, roughness: 0.26, metalness: 0.85, envMap: env, envMapIntensity: 0.55 }));
             floor.rotation.x = -Math.PI / 2;
             floor.position.set(0, -(WH / 2 + 1.15), 0.5); scene.add(floor);
             // корпус и золотой багет вокруг окна
-            const frameMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
+            const frameMat = new THREE.MeshStandardMaterial({ color: 0x12141c, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
             const back = new THREE.Mesh(new THREE.BoxGeometry(WW + 1.6, WH + 1.8, 0.4), frameMat);
             back.position.set(0, 0, -2.2); scene.add(back);
-            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xe6c877, roughness: 0.28, metalness: 0.95, envMap: env, envMapIntensity: 1.1 });
             const bx = WW / 2 + 0.12, by = WH / 2 + 0.12;
             const tv1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, WH + 0.34, 0.12), goldMat); tv1.position.set(-bx, 0, 0.72); scene.add(tv1);
             const tv2 = tv1.clone(); tv2.position.x = bx; scene.add(tv2);
@@ -10322,7 +10333,7 @@ function nxToggle3d() {
             const mq = document.createElement('canvas'); mq.width = 1024; mq.height = 128;
             const mg = mq.getContext('2d');
             const mgrad = mg.createLinearGradient(0, 0, 1024, 0);
-            mgrad.addColorStop(0, '#4a044e'); mgrad.addColorStop(0.5, '#86198f'); mgrad.addColorStop(1, '#4a044e');
+            mgrad.addColorStop(0, '#0d1830'); mgrad.addColorStop(0.5, '#2a1a63'); mgrad.addColorStop(1, '#0d1830');
             mg.fillStyle = mgrad; mg.fillRect(0, 0, 1024, 128);
             mg.fillStyle = '#fde68a'; mg.font = '900 44px Inter, sans-serif'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
             mg.fillText('★ СЕТОЧНЫЙ СЛОТ • КОЛЛЕКЦИОНЕР КАРТ ★', 512, 68);
@@ -12397,7 +12408,7 @@ function nxToggle3d() {
             const l2 = new THREE.PointLight(0xd24dff, 0.4, 40); l2.position.set(-4, -2, 6); scene.add(l2);
             const l4 = new THREE.PointLight(0xffffff, 0.35, 30); l4.position.set(0, 4.5, 6); scene.add(l4); // b114: верхний софит — верхний ряд не темнеет
             // золотой корпус: капюшоны сверху/снизу, стойки и разделители колонок
-            const gold = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.9 });
+            const gold = new THREE.MeshStandardMaterial({ color: 0xe6c877, roughness: 0.3, metalness: 0.9 });
             const dark = new THREE.MeshStandardMaterial({ color: 0x140f08, roughness: 0.6, metalness: 0.4 });
             const hoodT = new THREE.Mesh(new THREE.BoxGeometry(7.0, 0.5, 0.7), gold); hoodT.position.set(0, 2.82, 0.75); scene.add(hoodT);
             const hoodB = hoodT.clone(); hoodB.position.y = -2.82; scene.add(hoodB);
