@@ -1812,3 +1812,54 @@ html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-arrow{ background:
 html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-spot{ background: radial-gradient(ellipse at center, rgb(var(--nx-ac) / .18), rgb(var(--nx-s0) / 0) 70%); }
 html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-stage::before{ background: linear-gradient(90deg, rgb(var(--nx-s0) / .88), rgb(var(--nx-s0) / 0)); }
 html[data-nx-theme]:not([data-nx-theme="standard"]) .carousel-stage::after{ background: linear-gradient(270deg, rgb(var(--nx-s0) / .88), rgb(var(--nx-s0) / 0)); }
+
+/* ==========================================================================
+   b566: КАРДИНАЛЬНО НОВЫЙ ВИД 3D-СТОЛОВ
+   Сцена превращается в стеклянную панель современного приложения:
+   глубокие скругления, тонкая неоновая кромка сверху, диагональный блик
+   стекла и мягкая виньетка снизу. В three.js ничего не перерисовывается —
+   рамка живёт в CSS поверх канваса.
+   ========================================================================== */
+#slots-container, #grid3d-container, #lines-3d-box{
+    position:relative; overflow:hidden; border-radius:22px;
+    background:#05070d;
+    box-shadow:
+        0 0 0 1px rgba(148,197,255,.16),
+        0 26px 64px rgba(0,0,0,.70),
+        0 0 80px rgba(34,211,238,.10);
+    isolation:isolate;
+}
+#slots-container::before, #grid3d-container::before, #lines-3d-box::before{
+    content:''; position:absolute; inset:0; z-index:3; pointer-events:none; border-radius:inherit;
+    background:
+        linear-gradient(90deg, rgba(34,211,238,.85), rgba(168,85,247,.85) 55%, rgba(34,211,238,.85)) 0 0/100% 2px no-repeat,
+        linear-gradient(106deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,.03) 20%, rgba(255,255,255,0) 42%);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+}
+#slots-container::after, #grid3d-container::after, #lines-3d-box::after{
+    content:''; position:absolute; left:0; right:0; bottom:0; height:34%; z-index:3; pointer-events:none;
+    background:linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.55));
+}
+#slots-container canvas, #grid3d-container canvas, #lines-3d-box canvas{display:block; border-radius:22px}
+@media (max-width:420px){
+    #slots-container, #grid3d-container, #lines-3d-box{border-radius:16px}
+    #slots-container canvas, #grid3d-container canvas, #lines-3d-box canvas{border-radius:16px}
+}
+
+/* b567: современная рамка вокруг самих сцен (было — янтарная рамка казино).
+   Перекрываем Tailwind по id, поэтому !important не нужен для классов,
+   но нужен для .game-stage с его анимацией свечения. */
+#grid3d-box, #lines-stage{
+    border:1px solid rgba(148,197,255,.20);
+    border-radius:22px;
+    background:
+        radial-gradient(ellipse 62% 46% at 50% 0%, rgba(34,211,238,.12), transparent 70%),
+        radial-gradient(ellipse 44% 40% at 88% 92%, rgba(168,85,247,.10), transparent 66%),
+        linear-gradient(#070b16, #04060d);
+    box-shadow:0 26px 64px rgba(0,0,0,.70), 0 0 70px rgba(34,211,238,.08);
+    animation:none;
+}
+#lines-stage.game-stage{animation:none !important}
+@media (max-width:420px){
+    #grid3d-box, #lines-stage{border-radius:16px}
+}
