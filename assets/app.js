@@ -9629,8 +9629,8 @@ function nxToggle3d() {
             // b51/b55: символ — вытянутый вертикальный бустер; размеры параметризованы:
             // классические слоты 224×512, сетка 256×400 — пропорции плоскости и текстуры
             // совпадают, поэтому карты нигде не растянуты
-            const W = (Number.isFinite(+SW) && +SW > 8) ? +SW : 224; // b55: защита от случайных аргументов (map передаёт index/array)
-            const H = (Number.isFinite(+SH) && +SH > 8) ? +SH : 512;
+            const W = (Number.isFinite(+SW) && +SW > 8) ? +SW : 288; // b55: защита от случайных аргументов (map передаёт index/array)
+            const H = (Number.isFinite(+SH) && +SH > 8) ? +SH : 512; // b562: 288×512 = 9:16, как настоящая карта
             const CR = Math.max(26, Math.round(H * 0.09));
             const PL = Math.max(52, Math.round(H * 0.165));
             const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -9740,7 +9740,8 @@ function nxToggle3d() {
             const env = makeStudioEnv();
             // b51: пропорции вертикальной машины объявлены до корпуса: символы-паки вытянутые
             const N = slots.symbols.length;
-            const H = 2.4, AW = 1.02; // b52: вытянутые вертикальные бустеры
+            const H = 2.02;
+            const AW = H * 0.96 * (9 / 16); // b562: ширина грани = 9:16 от высоты; высота подобрана, чтобы три барабана влезли в корпус
             const R = H / (2 * Math.sin(Math.PI / N));
             // корпус автомата
             const frameMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.42, metalness: 0.72, envMap: env, envMapIntensity: 0.7 });
@@ -10245,7 +10246,7 @@ function nxToggle3d() {
         // ---------------- 3D-сцена ----------------
         const gridTexCache = {};
         function gridTexFor(sym) {
-            if (!gridTexCache[sym.id]) gridTexCache[sym.id] = slotsSymbolCanvas(sym, 256, 400); // b55: пропорция как у плоскости
+            if (!gridTexCache[sym.id]) gridTexCache[sym.id] = slotsSymbolCanvas(sym, 288, 512); // b562: 9:16
             return gridTexCache[sym.id];
         }
         function grid3dEnsure() {
@@ -10345,7 +10346,7 @@ function nxToggle3d() {
             const covB = covT.clone(); covB.position.y = -(WH / 2 + CH / 2 - 0.02); scene.add(covB);
             // барабаны: 6 плоскостей (ряды -1..4), поток символов вниз
             if (!slots.symbols.length) slots.symbols = slotsSymbols();
-            const planeGeo = new THREE.PlaneGeometry(CH * 0.94 * 0.64, CH * 0.94); // b55: пропорция плоскости = пропорции текстуры 256×400
+            const planeGeo = new THREE.PlaneGeometry(CH * 0.94 * (9 / 16), CH * 0.94); // b562: пропорция плоскости 9:16 = пропорция текстуры
             grid3d.reels = [];
             for (let c = 0; c < GRID_COLS; c++) {
                 const grp = new THREE.Group();
@@ -12307,7 +12308,7 @@ function nxToggle3d() {
         function linesCardTexture(sym) {
             if (!sym) return null;
             if (linesTexCache[sym.id]) return linesTexCache[sym.id];
-            const W = 256, H = 368;
+            const W = 288, H = 512; // b562: 9:16, как настоящая карта
             const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
             const g = cv.getContext('2d');
             const col = RAR_COLORS[sym.rarity] || '#e2e8f0';
@@ -12413,7 +12414,7 @@ function nxToggle3d() {
             // b112: барабаны — плоские колонки: 3 ПРЯМЫЕ карты в ряд (как средняя линия),
             // вращение = вертикальная вибрация со сменой символов, стоп — точный результат
             const ROW_H = 1.8;
-            const planeGeo = new THREE.PlaneGeometry(1.18, 1.75); // b117: вертикальные карты, стык уходит под разделитель
+            const planeGeo = new THREE.PlaneGeometry(1.75 * (9 / 16), 1.75); // b562: карта 9:16, стык уходит под разделитель
             lines3d.reels = [];
             for (let c = 0; c < 5; c++) {
                 const grp = new THREE.Group();
